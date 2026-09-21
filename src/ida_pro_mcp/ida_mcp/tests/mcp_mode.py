@@ -23,7 +23,8 @@ from ..rpc import MCP_SERVER
 class _AsyncHarness:
     """Event loop on a background thread; sync callers schedule coros."""
 
-    def __init__(self):
+    def __init__(self, pump=None):
+        self.pump = pump
         self.loop: asyncio.AbstractEventLoop | None = None
         self.thread: threading.Thread | None = None
         self._ready = threading.Event()
@@ -33,26 +34,56 @@ class _AsyncHarness:
             self.loop = asyncio.new_event_loop()
             asyncio.set_event_loop(self.loop)
             self._ready.set()
-            self.loop.run_forever()
+            try:
+                self.loop.run_forever()
+            finally:
+                pending = asyncio.all_tasks(self.loop)
+                for task in pending:
+                    task.cancel()
+                if pending:
+                    self.loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+                self.loop.close()
 
         self.thread = threading.Thread(target=loop_target, daemon=True)
         self.thread.start()
         self._ready.wait()
 
     def stop(self):
-        if self.loop is not None:
+        if self.loop is not None and not self.loop.is_closed():
             self.loop.call_soon_threadsafe(self.loop.stop)
         if self.thread is not None:
             self.thread.join(timeout=2)
+            if self.thread.is_alive():
+                raise RuntimeError("MCP test event loop did not stop within 2 seconds")
 
     def run(self, coro, timeout: float = 20.0):
-        fut = asyncio.run_coroutine_threadsafe(coro, self.loop)
-        return fut.result(timeout=timeout)
+        fut = None
+
+        def completed():
+            nonlocal fut
+            # run_until arms the pump before starting the request, so even a
+            # fast HTTP handler cannot fall back to unserviced execute_sync.
+            if fut is None:
+                fut = asyncio.run_coroutine_threadsafe(coro, self.loop)
+            return fut.done()
+
+        try:
+            if self.pump is not None:
+                self.pump.run_until(completed, timeout=timeout)
+            else:
+                completed()
+            return fut.result(timeout=timeout)
+        except BaseException:
+            if fut is not None:
+                fut.cancel()
+            else:
+                coro.close()
+            raise
 
 
 class _McpMode:
-    def __init__(self):
-        self.harness = _AsyncHarness()
+    def __init__(self, pump=None):
+        self.harness = _AsyncHarness(pump)
         self.host = "127.0.0.1"
         self.port: int | None = None
         self.session = None
@@ -73,14 +104,15 @@ class _McpMode:
     def disable(self):
         self._unpatch_tools()
         try:
-            self.harness.run(self._disconnect())
-        except Exception:
-            pass
-        try:
-            MCP_SERVER.stop()
-        except Exception:
-            pass
-        self.harness.stop()
+            try:
+                self.harness.run(self._disconnect())
+            except Exception:
+                pass
+        finally:
+            try:
+                MCP_SERVER.stop()
+            finally:
+                self.harness.stop()
 
     async def _connect(self):
         from mcp import ClientSession
@@ -165,23 +197,30 @@ class _McpMode:
 _instance: _McpMode | None = None
 
 
-def enable_mcp_mode() -> None:
+def enable_mcp_mode(*, pump=None) -> None:
     global _instance
     assert _instance is None, "MCP mode already enabled"
-    _instance = _McpMode()
-    _instance.enable()
+    instance = _McpMode(pump)
+    try:
+        instance.enable()
+    except BaseException:
+        instance.disable()
+        raise
+    _instance = instance
 
 
 def disable_mcp_mode() -> None:
     global _instance
     if _instance is not None:
-        _instance.disable()
-        _instance = None
+        try:
+            _instance.disable()
+        finally:
+            _instance = None
 
 
 @contextmanager
-def mcp_mode() -> Iterator[None]:
-    enable_mcp_mode()
+def mcp_mode(*, pump=None) -> Iterator[None]:
+    enable_mcp_mode(pump=pump)
     try:
         yield
     finally:

@@ -105,6 +105,37 @@ class MainThreadPump:
             self._running = False
             self._drain_pending()
 
+    def run_until(self, done: Callable[[], bool], *, timeout: float) -> None:
+        """Pump on the IDA thread while a test's HTTP request is outstanding.
+
+        Unlike run(), this bounded wait is reusable between synchronous tests.
+        It cannot preempt a native SDK call that does not return.
+        """
+        if self.active:
+            raise RuntimeError("main-thread pump is already running")
+        deadline = time.monotonic() + timeout
+        self.arm()
+        try:
+            while not done():
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise TimeoutError("MCP request exceeded its pump deadline")
+                try:
+                    job = self._queue.get(timeout=min(0.01, remaining))
+                except queue.Empty:
+                    continue
+                if job.cancelled:
+                    job.done.set()
+                    continue
+                self._current = job
+                try:
+                    job.run()
+                finally:
+                    self._current = None
+        finally:
+            self._running = False
+            self._drain_pending()
+
     def stop(self) -> None:
         self._stop.set()
 

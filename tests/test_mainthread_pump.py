@@ -168,3 +168,47 @@ def test_job_submitted_before_run_is_queued_not_rejected():
     submitter.join(timeout=5)
     pump.stop()
     assert results == ["late"]
+
+
+def test_run_until_serves_request_on_calling_thread_and_is_reusable():
+    pump = MainThreadPump()
+    owner = threading.get_ident()
+    for _ in range(2):
+        done = threading.Event()
+        result = []
+        thread = None
+        def request():
+            try:
+                result.append(pump.submit(threading.get_ident, timeout=1))
+            finally:
+                done.set()
+        def complete():
+            nonlocal thread
+            if thread is None:
+                thread = threading.Thread(target=request)
+                thread.start()
+            return done.is_set()
+        pump.run_until(complete, timeout=1)
+        thread.join(1)
+        assert not thread.is_alive()
+        assert result == [owner]
+        assert not pump.active and pump.busy_status() is None
+
+
+@pytest.mark.parametrize('exception', [ValueError('failed'), KeyboardInterrupt()])
+def test_run_until_cleans_up_on_predicate_exception(exception):
+    pump = MainThreadPump()
+    def fail():
+        raise exception
+    with pytest.raises(type(exception)):
+        pump.run_until(fail, timeout=1)
+    assert not pump.active and pump.busy_status() is None
+    pump.run_until(lambda: True, timeout=1)
+
+
+def test_run_until_timeout_cleans_up():
+    pump = MainThreadPump()
+    with pytest.raises(TimeoutError):
+        pump.run_until(lambda: False, timeout=0.01)
+    assert not pump.active and pump.busy_status() is None
+    pump.run_until(lambda: True, timeout=1)

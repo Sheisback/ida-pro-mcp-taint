@@ -163,8 +163,12 @@ With coverage:
         if args.mcp_mode:
             from ida_pro_mcp.ida_mcp.tests.mcp_mode import mcp_mode
 
+            from ida_pro_mcp.ida_mcp.mainthread import get_pump
+
+            # Tests and direct SDK assertions stay on the IDA thread. HTTP
+            # proxy waits cooperatively pump @idasync work on that same thread.
             print("[MCP] Running tests in end-to-end MCP mode.")
-            with mcp_mode():
+            with mcp_mode(pump=get_pump()):
                 results = _run()
         else:
             results = _run()
