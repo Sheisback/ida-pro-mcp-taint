@@ -26,6 +26,7 @@ from . import utils
 
 # Import all API modules to register @tool functions and @resource functions
 from . import api_core
+from . import api_flow
 from . import api_analysis
 from . import api_memory
 from . import api_types
@@ -55,6 +56,7 @@ __all__ = [
     "utils",
     # API modules
     "api_core",
+    "api_flow",
     "api_analysis",
     "api_memory",
     "api_types",
