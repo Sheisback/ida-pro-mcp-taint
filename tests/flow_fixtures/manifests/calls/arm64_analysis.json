@@ -1,0 +1,396 @@
+{
+  "actual_composition_count": 20,
+  "actual_composition_digests": [
+    "sha256-v1:cbfb51ce70a83ae8408a152a325d6a627f00b7c1c1f195e431e466577d6c297e",
+    "sha256-v1:7bf07841199420533df067fe5a0a3ac4b8ac542447330f80d2d31ffede09709a",
+    "sha256-v1:cab85e036145698aa9e2f0f9c4dc54ae76b695a02b510416804f0f4ab1e9f051",
+    "sha256-v1:358451bd774079287a98707b39c0e0669a77b088575f0e0af5e28b934a4abd51",
+    "sha256-v1:164c3afe2186087825d955628bac4d268f9eba26927aefa874d10a7b233eda33",
+    "sha256-v1:3f629ca7532b0307f491696cabefd24232660926dc59dffcde622c0414e41bd7",
+    "sha256-v1:c9aff740f6c389f2a764aef0e38938bf7214ea1634efbeb4b8054e56c4d20681",
+    "sha256-v1:2742279e57970058d6914703eea6955b9d3d12b5f4bd62b751befbd9230b4143",
+    "sha256-v1:f973a5ddf03bbc217c33c1fed89a27144f5cea0d2fad213ad0033f57c6ca1cf9",
+    "sha256-v1:f8c95841c7670bbe17e0023f69534255c87506a1858efd0e1e2958fc306eb323",
+    "sha256-v1:0adc6a241e1ffc78d124267560befb039d94e1a02c032573b41fab8a51478e39",
+    "sha256-v1:eb631f2a6f1ef5b8e5c2263e18bd5de2fa0bbb23e53cebb991d19ed859e625ec",
+    "sha256-v1:939968ce48fcd4b00f90de758dda16ca4fbc0ed1982767a45294a54d1e505805",
+    "sha256-v1:d91a5861c6a6f160f2ad3c718ad811cf260c9d436d6bb8b69214fc5a2f628a6a",
+    "sha256-v1:0a41d8ef0844ca67b7fab5e7266201d466539a2414fbf6f5338fd66b68019a18",
+    "sha256-v1:571901fdaabd514fc9d688f639a609b09368760822bcdf7055e74758969f3021",
+    "sha256-v1:c9990875452095a84de67125a62cf51cb999626fb69339131239cc6cb31d6dd3",
+    "sha256-v1:178f18e1fa7ae984be49711456bb120900f535863d9fa4d76b9a0d066f8b7dbe",
+    "sha256-v1:d17153ad687cb314a4b908e8ebea20126ba9f4e29af7b412ed1060272cb3263e",
+    "sha256-v1:aa9bf86fe04118daafd7d725903214008f173a858ec25d29e99a28c0fb5ae16a"
+  ],
+  "actual_composition_status_counts": {
+    "complete_in_scope": 8,
+    "partial": 12
+  },
+  "arch": "arm64",
+  "branch_counts": {
+    "call_alloc": 5,
+    "call_free": 6,
+    "call_identity": 3
+  },
+  "c02_contexts": {
+    "distinct": true,
+    "left": "sha256-v1:8d725683ea86c4d0e880e8f472522e53ab55c7d3fcbf44e206c919b994d8a9b7",
+    "right": "sha256-v1:62f00134939e867fce172df8f8cf288306d1832c16ca86b5649334b771209e42"
+  },
+  "c03_remainder_reasons": [
+    "missing_reviewed_summary"
+  ],
+  "c04_reviewed_branches": [],
+  "c04_unknown_remainder": true,
+  "call_plan_count": 20,
+  "catalog_digest": "sha256-v1:d81a76bf308d80c63bb196911b5ec4e1faf486990cc4cc8a2b0c77bc69915317",
+  "closure": {
+    "boundaries": [
+      {
+        "callee_rva": null,
+        "caller_snapshot_id": "snapshot-v1:06179c277ffe06e7e97a02ea2364df0340e8b7065c59efcb0b9a4910427638ab",
+        "instruction_rva": 2204,
+        "reason": "unresolved_indirect",
+        "schema_version": 1
+      },
+      {
+        "callee_rva": 2392,
+        "caller_snapshot_id": "snapshot-v1:450ccdab209c64117c109a649a74cf067dea9f7acbbe02447188ef5f62ba3e27",
+        "instruction_rva": 1472,
+        "reason": "external_callee",
+        "schema_version": 1
+      },
+      {
+        "callee_rva": 1604,
+        "caller_snapshot_id": "snapshot-v1:7146bbc911e638bcb09d0c61262861ee84b140c7f6bccb738b1ec556a90f9303",
+        "instruction_rva": 1668,
+        "reason": "recursive_boundary",
+        "schema_version": 1
+      },
+      {
+        "callee_rva": null,
+        "caller_snapshot_id": "snapshot-v1:ec68fc90e76a17b442dea4356a127781c87f3e27fe75a7750ba67959a5f52d2a",
+        "instruction_rva": 1776,
+        "reason": "unresolved_indirect",
+        "schema_version": 1
+      },
+      {
+        "callee_rva": null,
+        "caller_snapshot_id": "snapshot-v1:ec68fc90e76a17b442dea4356a127781c87f3e27fe75a7750ba67959a5f52d2a",
+        "instruction_rva": 1824,
+        "reason": "unresolved_indirect",
+        "schema_version": 1
+      },
+      {
+        "callee_rva": 2380,
+        "caller_snapshot_id": "snapshot-v1:f209b89730682d8551c6b95399a323004c571546c416189c9d920eb47d322401",
+        "instruction_rva": 1508,
+        "reason": "external_callee",
+        "schema_version": 1
+      }
+    ],
+    "max_depth": 8,
+    "max_functions": 64,
+    "root_rvas": [
+      1168,
+      1188,
+      1292,
+      1384,
+      1416,
+      1452,
+      1488,
+      1524,
+      1564,
+      1604,
+      1696,
+      1720,
+      1840,
+      1940,
+      2116,
+      2240
+    ],
+    "visited_rvas": [
+      1168,
+      1188,
+      1292,
+      1384,
+      1416,
+      1452,
+      1488,
+      1524,
+      1564,
+      1604,
+      1696,
+      1720,
+      1840,
+      1940,
+      2116,
+      2240
+    ]
+  },
+  "extraction_file": "tests/flow_fixtures/manifests/calls/extraction_arm64.json",
+  "extraction_file_sha256": "8c18353a5ee078948105a792997b4e03518d6dd9627e8489629cf575f7b1fdc8",
+  "fresh_static_ida_extraction": true,
+  "function_count": 16,
+  "generator_sha256": "161ee1272dbb5fa583594e546e6dfa415634bac0f107a6860b8179809f3d9f03",
+  "heap_call_sequences": {
+    "call_heap_h01": [
+      [
+        "call_alloc"
+      ],
+      [
+        "call_free"
+      ]
+    ],
+    "call_heap_h02": [
+      [
+        "call_alloc"
+      ],
+      [
+        "call_alloc"
+      ],
+      [
+        "call_free"
+      ],
+      [
+        "call_free"
+      ],
+      [
+        "call_free"
+      ],
+      [
+        "call_free"
+      ]
+    ],
+    "call_heap_h03": [
+      [
+        "call_alloc"
+      ],
+      []
+    ],
+    "call_heap_h04": [
+      [
+        "call_alloc"
+      ],
+      [
+        "call_free"
+      ]
+    ]
+  },
+  "limitations": [
+    "Fixture symbols are discovery metadata only; bindings use pinned identities.",
+    "CallInfo exposes width/type-code shape but not complete native type and argloc normalization.",
+    "Non-exhaustive indirect and unreviewed direct targets retain explicit unknown effects.",
+    "No automatic CWE, severity, safe, or vulnerable verdict is produced.",
+    "C01 copy/fill/output/global summaries have no native callers in this fixture; their fully pinned reviewed entrypoint plans are composed without claiming extracted call origins."
+  ],
+  "release_support_claim": false,
+  "remainder_counts": {
+    "missing_reviewed_summary": 3,
+    "no_candidates": 3,
+    "nonexhaustive_indirect": 3
+  },
+  "repeat_equal": true,
+  "reviewed_summaries": [
+    {
+      "display_name": "call_identity",
+      "identity_digest": "sha256-v1:94de0e4a831b60022e42e1445a9b5910db7ec5afe96f0c6ffbe3411c1cb43bac",
+      "kind": "identity",
+      "summary_digest": "sha256-v1:9b402eb9894fc7c011ebed77d1ce0c50476e884e198816bcdefde451913f2fa3"
+    },
+    {
+      "display_name": "call_copy",
+      "identity_digest": "sha256-v1:8961bdb86352daf4668e31f8b57dab7ed98c12869381659937be06ddf4e72011",
+      "kind": "copy",
+      "summary_digest": "sha256-v1:0cf4082a4052e74db5736cf7b051167a4d92c5ae92375cf1f687a56be6dcd33f"
+    },
+    {
+      "display_name": "call_fill",
+      "identity_digest": "sha256-v1:fb11dc62083ef83c1e5e01fed5aac31cdc2a9aef5b4a4bccf0eeafbb671fad27",
+      "kind": "fill",
+      "summary_digest": "sha256-v1:274afcc982ada48712945617d066893ae1b86ad8a17ccc5d30a6e1767d6b617c"
+    },
+    {
+      "display_name": "call_output",
+      "identity_digest": "sha256-v1:c951ff836119ac97b2ff0349467c03de3731218422666a16e1c5d1c91fa96475",
+      "kind": "output",
+      "summary_digest": "sha256-v1:552b0b0186b5673687edaba05251f89ba5e903b8f9a12802bed6bbcc876ce67d"
+    },
+    {
+      "display_name": "call_global",
+      "identity_digest": "sha256-v1:5010b92c37e20880a8b5d30744e5858079c09ea8637ef29dbf3f890c4382987f",
+      "kind": "global",
+      "summary_digest": "sha256-v1:18896017de49168147c50373ad80b3bbec91affc0e0d8e1b0623f4a268df2efd"
+    },
+    {
+      "display_name": "call_alloc",
+      "identity_digest": "sha256-v1:d2e634b7ee632ff6d7282da67ab708435de8efadb3529baa2333ffd551232f5c",
+      "kind": "alloc",
+      "summary_digest": "sha256-v1:733dfc40da24b29f9c8320599893d7362413860073308970b514ccd6ef716715"
+    },
+    {
+      "display_name": "call_free",
+      "identity_digest": "sha256-v1:526a8fb38f0e46ceae4420d75559a925390635adcd4d4e9cacd2f4eb053eab84",
+      "kind": "free",
+      "summary_digest": "sha256-v1:a651461cee338b7487f28723b84190f43ec0aa897ab0029a3c8fcdf8521c0c6c"
+    }
+  ],
+  "roundtrip_equal": true,
+  "schema_version": "flow-call-replay/2",
+  "semantic_cases": {
+    "C01": {
+      "composition_digests": {
+        "copy": "sha256-v1:744d2e9aceb52f784de01e7e60b78516ef04c32a067c40c2e682b366ead44da2",
+        "fill": "sha256-v1:a2ea56484d2a1fb734f33916e19117ec08442f2622839088129e152b9a2632eb",
+        "global": "sha256-v1:7cf050632483b3805e4fa39369b6cd2560055ea3bfd702c092a4245ce49cd326",
+        "identity": "sha256-v1:5f01112204e9fc6f95a6c9dde54c3e1a018d1e43c068eb41330aa71b100ea7b5",
+        "output": "sha256-v1:7aa8f5138ff0c1cb2ce341c7102e225f4d2f3b033937356d2136b7a72706ccb6"
+      },
+      "copy_destination_labels": [
+        "Y"
+      ],
+      "copy_destination_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "fill_destination_labels": [
+        "Z"
+      ],
+      "fill_destination_values": [
+        90,
+        90,
+        90,
+        90
+      ],
+      "global_memory_operation": "global_write",
+      "global_return_labels": [
+        "G"
+      ],
+      "global_return_value": 7,
+      "identity_return_labels": [
+        "X"
+      ],
+      "output_return": null,
+      "output_values": [
+        17,
+        34,
+        51,
+        68
+      ],
+      "reviewed_entrypoint_only": [
+        "call_copy",
+        "call_fill",
+        "call_output",
+        "call_global"
+      ]
+    },
+    "C02": {
+      "composition_digests": [
+        "sha256-v1:0abe6184cd7b70611cfccbcf2d6c15b144f5c853a654fc91e7a7c90b96e42ec4",
+        "sha256-v1:4265f124013f8771efe2dae5fb5e1fba75a13ead0b1873e78faee47621e81b87"
+      ],
+      "left_context": "sha256-v1:8d725683ea86c4d0e880e8f472522e53ab55c7d3fcbf44e206c919b994d8a9b7",
+      "left_return_labels": [
+        "LEFT"
+      ],
+      "right_context": "sha256-v1:62f00134939e867fce172df8f8cf288306d1832c16ca86b5649334b771209e42",
+      "right_return_labels": [
+        "RIGHT"
+      ]
+    },
+    "C03": {
+      "base_return_labels": [
+        "X"
+      ],
+      "composition_digests": [
+        "sha256-v1:0a3cfbdff8d8be6ffb9cd0799ccb736278e6ecf6a2638b24a55ee4d5a3aa7f86",
+        "sha256-v1:98b90cca4e5b7d383924dac738ff84d7d00c5860b1dbee7dcb7c30e783a65ef7"
+      ],
+      "recursive_diagnostics": [
+        "missing_reviewed_summary"
+      ],
+      "recursive_status": "partial",
+      "recursive_unknown_provenance": true
+    },
+    "C04": {
+      "composition_digest": "sha256-v1:6cbdc5b594932791a8201371d97f884cd73462a72c7379f68d6f9a16cae0b76b",
+      "diagnostics": [
+        "missing_reviewed_summary",
+        "nonexhaustive_indirect"
+      ],
+      "return_labels": [],
+      "reviewed_branches": [],
+      "status": "partial",
+      "unknown_provenance": true
+    },
+    "H01": {
+      "composition_digests": [
+        "sha256-v1:d9fe054dd95ea36809fb01c53976a0a295a65dafbf111dc9e79b025358b6cd76",
+        "sha256-v1:350b87af797ff049416db4974a6313a58092b9ff4e2b716ad9a261bd5d50d710"
+      ],
+      "object_id": "object-v1:9fda7b43889c67ec9dab08b02a2b8c4b8fd4b033cfc9431d6875dc6cf4fb6b65",
+      "post_free_lifetime": [
+        "freed"
+      ]
+    },
+    "H02": {
+      "after_left_free": {
+        "left": [
+          "freed"
+        ],
+        "right": [
+          "live"
+        ]
+      },
+      "composition_digests": [
+        "sha256-v1:b5c0839a8bf3273f741a13b1cdf4f62ef6698b1677d86f6a194c3a138ae249b2",
+        "sha256-v1:0368db303bbab9cb4e058cbfacac7cfcf0d5bb353019d641b0d08d045baf6beb",
+        "sha256-v1:502c5b225b12ccff497837a71508e8a62f1cd2200f471f410c8085218adf838d"
+      ],
+      "left_object_id": "object-v1:80582a5abc31a2190c010151ee5ee218f3dc91f0f1570200af727e1e6535a07d",
+      "right_object_id": "object-v1:61ebecec90f4d997bef33b43d7ab0bf95e4cf610c9d3828f29b42f5c09b44dea",
+      "selected_free_site": {
+        "allocation_instruction_rvas": [
+          1964,
+          1980
+        ],
+        "cleanup_first_free_instruction_rva": 2016,
+        "later_right_free_instruction_rva": 2084,
+        "selected_block_index": 9,
+        "selected_left_free_instruction_rva": 2064,
+        "selection": "two_allocations_dominate_and_cleanup_path_excluded"
+      }
+    },
+    "H03": {
+      "composition_digests": [
+        "sha256-v1:539ea8e4576111eedc2b682b6a820751926331017f8a7f06be235a955f275d7b",
+        "sha256-v1:35b60623a9948328fd474f502cd51d63fbc6492d686312fda039a61f60ec0cbb"
+      ],
+      "havoced_objects": [
+        "object-v1:69044c74cc49490a7e63e97959cd7e4abf45fbf7b3423d838f06feb2986ba0a6"
+      ],
+      "object_id": "object-v1:69044c74cc49490a7e63e97959cd7e4abf45fbf7b3423d838f06feb2986ba0a6",
+      "post_call_escape": "unknown",
+      "post_call_lifetime": [
+        "freed",
+        "live",
+        "not_allocated"
+      ],
+      "status": "partial"
+    },
+    "H04": {
+      "composition_digests": [
+        "sha256-v1:e1c55ebae257358d06bba3a396f9fcab43d2bc4dfa07285e27eafa896fdfd0d7",
+        "sha256-v1:3c6411a3771cf8ca0933e6e86e05abdda050e73676d87f47408da454fa2f7e54"
+      ],
+      "join_lifetime": [
+        "freed",
+        "live"
+      ],
+      "object_id": "object-v1:696907419584c5ac1e257ad2fc89979d3083015f0ca24ed2a77eeab2072d11e2"
+    }
+  },
+  "target_executed": false
+}

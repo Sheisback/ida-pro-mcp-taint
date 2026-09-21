@@ -1,10 +1,10 @@
 """Packaging smoke: extract a wheel and import core in an isolated interpreter."""
 
-from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import zipfile
+from pathlib import Path
 
 from ida_pro_mcp.flow_core.build_identity import BUILD_ID as SOURCE_BUILD_ID
 
@@ -29,6 +29,9 @@ def check(directory: Path):
                 "ida_pro_mcp/flow_core/memory_graph.py",
                 "ida_pro_mcp/flow_core/heap.py",
                 "ida_pro_mcp/flow_core/heap_analysis.py",
+                "ida_pro_mcp/flow_core/summaries.py",
+                "ida_pro_mcp/flow_core/interproc.py",
+                "ida_pro_mcp/flow_core/call_composition.py",
                 "ida_pro_mcp/flow_core/runtime_contracts.py",
                 "ida_pro_mcp/flow_core/persistence.py",
                 "ida_pro_mcp/flow_core/runtime.py",
@@ -52,6 +55,9 @@ from ida_pro_mcp.flow_core.memory_analysis import analyze_memory
 from ida_pro_mcp.flow_core.memory_graph import build_memory_graph
 from ida_pro_mcp.flow_core.heap import build_heap_plan
 from ida_pro_mcp.flow_core.heap_analysis import analyze_heap
+from ida_pro_mcp.flow_core.summaries import SummaryCatalog
+from ida_pro_mcp.flow_core.interproc import CallContext
+from ida_pro_mcp.flow_core.call_composition import CallState
 from ida_pro_mcp.flow_core.persistence import Store
 from ida_pro_mcp.flow_core.runtime import Runtime
 from ida_pro_mcp.flow_core.query import Queries
@@ -63,6 +69,9 @@ from ida_pro_mcp.flow_core.states import BitValue
 from ida_pro_mcp.flow_core import canonical_json
 assert BitValue.from_json(canonical_json(BitValue(8, 7))) == BitValue(8, 7)
 assert ResultAxes().analysis == "partial"
+assert SummaryCatalog(()).summaries == ()
+assert CallContext().frames == ()
+assert CallState().objects == ()
 assert BUILD_ID.startswith("flow-build-sha256-v1:")
 assert BUILD_ID == sys.argv[2]
 print("Wheel core import/roundtrip passed without SDK imports")

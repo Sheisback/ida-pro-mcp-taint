@@ -15,10 +15,22 @@ from ida_pro_mcp.flow_core.runtime_contracts import RuntimeScope
 from ida_pro_mcp.flow_core.ssa import SSAProgram
 from ..sync import idasync
 from . import extractor, runtime
+from .summary_catalog import EMPTY_CATALOG, bind_call, compose_binding
 
 
 def build_digest():
     return BUILD_ID
+
+
+def reviewed_catalog(_info=None):
+    """Resolve the internal immutable catalog used for this runtime scope.
+
+    The shipped runtime starts empty; licensed static-receipt generation supplies
+    an explicit reviewed fixture catalog without adding a public tool or a
+    function-name lookup path.
+    """
+
+    return EMPTY_CATALOG
 
 
 def _context(selector=None, requested_profile=None):
@@ -93,43 +105,80 @@ def _fingerprint(info):
 def _extract(ctx, request):
     before = _context()
     require(_fingerprint(before) == request["fingerprint"], "stale_database")
+    require(
+        reviewed_catalog(before).catalog_digest == request["summary_digest"],
+        "stale_summary_catalog",
+    )
     snapshot = extractor.extract_snapshot(
         request["ea"],
         namespace=request["namespace"],
         function_key=request["function_key"],
         profile=request["profile"],
+        summary_digest=request["summary_digest"],
         deadline=ctx.deadline,
         cancelled=ctx.cancel.is_set,
+        include_calls=True,
     )
     require(_fingerprint(_context()) == request["fingerprint"], "stale_database")
     return snapshot, request
 
 
 def _analyze(ctx, extracted):
-    snapshot, request = extracted
+    function, request = extracted
+    snapshot = function.snapshot
     memory = build_memory_graph(snapshot)
     program = memory.program
     ctx.check()
     require(_fingerprint(context()) == request["fingerprint"], "stale_database")
     current = get_runtime(context())
+    catalog = reviewed_catalog(context())
     require(current.store.scope.fingerprint == request["fingerprint"], "stale_database")
+    require(
+        snapshot.identity.summary_digest
+        == request["summary_digest"]
+        == current.store.scope.summary_digest
+        == catalog.catalog_digest,
+        "stale_summary_catalog",
+    )
+    calls = []
+    for observation in function.calls:
+        binding = bind_call(function, observation, catalog, {})
+        composition = compose_binding(function, binding, catalog)
+        calls.append(
+            {"binding": binding.to_data(), "composition": composition.to_data()}
+        )
     sid = current.store.put_artifact("snapshot", snapshot)
     gid = current.store.put_artifact("graph", memory.graph)
     pid = current.store.put_artifact("analysis", program.to_data())
     mid = current.store.put_artifact("analysis", memory.plan.to_data())
     rid = current.store.put_artifact("analysis", memory.result.to_data())
+    cid = current.store.put_artifact(
+        "analysis",
+        {
+            "schema_version": "flow-call-compositions/1",
+            "catalog_digest": catalog.catalog_digest,
+            "calls": calls,
+        },
+    )
     return {
         "snapshot_artifact": sid,
         "graph_artifact": gid,
         "ssa_artifact": pid,
         "memory_plan_artifact": mid,
         "memory_result_artifact": rid,
+        "call_composition_artifact": cid,
+        "call_composition_count": len(calls),
         "snapshot_id": snapshot.snapshot_id,
         "graph_digest": program.graph.graph_digest,
         "analysis": program.graph.axes.analysis,
         "memory_diagnostics": list(memory.result.diagnostics),
         "profile": request["profile"]["profile_id"],
         "maturity": "MMAT_CALLS",
+        "summary_digest": snapshot.identity.summary_digest,
+        "summary_limitations": [
+            "Reviewed summaries bind only by full pinned identity; the default runtime catalog is empty.",
+            "Indirect, external, recursive, and context-limited calls retain unresolved effects.",
+        ],
         "target_executed": False,
     }
 
@@ -139,6 +188,7 @@ HANDLERS = {"snapshot_ssa_v1": Handler(_extract, _analyze)}
 
 def get_runtime(info=None):
     info = info or context()
+    catalog = reviewed_catalog(info)
     root = Path(
         os.environ.get("IDA_MCP_FLOW_STATE_ROOT", str(Path.home() / ".ida-mcp-flow"))
     ).absolute()
@@ -149,7 +199,7 @@ def get_runtime(info=None):
         info["binary"],
         digest(info["profile"]),
         digest(extractor.RULES),
-        digest(extractor.EMPTY_SUMMARIES),
+        catalog.catalog_digest,
         digest(extractor.POLICY),
     )
     return runtime.refresh_runtime(root / namespace, scope, owner, HANDLERS)
@@ -163,6 +213,7 @@ def create(selector, profile, request_key):
         "profile": info["profile"],
         "namespace": engine.store.scope.namespace,
         "fingerprint": engine.store.scope.fingerprint,
+        "summary_digest": engine.store.scope.summary_digest,
         "function_key": "function-entry:" + str(info["ea"]),
     }
     return {
@@ -248,6 +299,7 @@ def page(artifact_id, section, cursor=None, limit=50, evidence_ids=None):
         "axes": graph.axes.to_data(),
         "maturity": graph.snapshot.identity.maturity,
         "profile_digest": graph.snapshot.identity.profile_digest,
+        "summary_digest": graph.snapshot.identity.summary_digest,
         "environment": graph.snapshot.identity.environment.to_data(),
         "diagnostics": [d.to_data() for d in graph.snapshot.function.diagnostics],
         "memory_dependency_count": sum(

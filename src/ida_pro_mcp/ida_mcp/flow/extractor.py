@@ -6,7 +6,10 @@ Only extract_snapshot calls IDA. The remaining contracts/helpers are pure Python
 import hashlib
 import json
 import time
+from dataclasses import dataclass
 from pathlib import Path
+from collections.abc import Callable
+from typing import Literal, cast
 
 from ida_pro_mcp.flow_core.contracts import (
     Block,
@@ -20,8 +23,8 @@ from ida_pro_mcp.flow_core.contracts import (
     Snapshot,
     SnapshotIdentity,
 )
-from ida_pro_mcp.flow_core.serialization import ContractError, digest
-from ida_pro_mcp.flow_core.states import ByteRange, StorageLocation
+from ida_pro_mcp.flow_core.serialization import ContractError, Model, digest
+from ida_pro_mcp.flow_core.states import ByteRange, StorageLocation, require
 
 VERSION = "microcode-extractor/1"
 RULES = {
@@ -39,6 +42,84 @@ POLICY = {
     "analysis": "not_implemented",
 }
 EMPTY_SUMMARIES = {"version": 1, "summaries": []}
+
+
+@dataclass(frozen=True)
+class CallObservation(Model):
+    """One call operand tied to its exact native instruction origin."""
+
+    block_index: int
+    instruction_index: int
+    instruction_ea: int
+    call: CallInfo
+    schema_version: Literal[1] = 1
+
+    def __post_init__(self):
+        super().__post_init__()
+        require(
+            self.block_index >= 0
+            and self.instruction_index >= 0
+            and self.instruction_ea >= 0,
+            "Invalid call observation position",
+        )
+
+
+def _nested_calls(operand: Operand) -> tuple[CallInfo, ...]:
+    if operand.call is not None:
+        children = operand.call.arguments + operand.call.return_operands
+        return (operand.call,) + tuple(
+            call for child in children for call in _nested_calls(child)
+        )
+    return tuple(call for child in operand.children for call in _nested_calls(child))
+
+
+@dataclass(frozen=True)
+class ExtractedFunction(Model):
+    snapshot: Snapshot
+    image_base: int
+    function_ea: int
+    calls: tuple[CallObservation, ...]
+    schema_version: Literal[1] = 1
+
+    def __post_init__(self):
+        super().__post_init__()
+        require(
+            0 <= self.image_base <= self.function_ea,
+            "Function precedes image base",
+        )
+        keys = tuple(
+            (call.block_index, call.instruction_index, call.instruction_ea)
+            for call in self.calls
+        )
+        require(keys == tuple(sorted(set(keys))), "Calls must be sorted and unique")
+        for call in self.calls:
+            require(
+                call.block_index < len(self.snapshot.function.blocks),
+                "Missing call block",
+            )
+            instructions = self.snapshot.function.blocks[call.block_index].instructions
+            require(
+                call.instruction_index < len(instructions),
+                "Missing call instruction",
+            )
+            instruction = instructions[call.instruction_index]
+            require(
+                call.instruction_ea in instruction.source_eas,
+                "Call observation/native origin mismatch",
+            )
+            anchored = tuple(
+                nested
+                for operand in instruction.operands
+                for nested in _nested_calls(operand)
+            )
+            require(
+                anchored == (call.call,),
+                "Call observation/structured instruction mismatch",
+            )
+
+    @property
+    def function_rva(self) -> int:
+        return self.function_ea - self.image_base
 
 
 def anchor_profile(inventory, profile_id, abi, build_manifest):
@@ -95,7 +176,15 @@ def source_eas(operand):
     return tuple(sorted(eas))
 
 
-def make_snapshot(function, environment, profile, namespace, binary_sha256):
+def make_snapshot(
+    function,
+    environment,
+    profile,
+    namespace,
+    binary_sha256,
+    *,
+    summary_digest=None,
+):
     if not namespace.strip():
         raise ContractError("Explicit owner namespace required")
     if (environment.format_id, environment.platform_tag, environment.abi) != (
@@ -112,7 +201,7 @@ def make_snapshot(function, environment, profile, namespace, binary_sha256):
         profile["maturity"],
         digest(profile),
         digest(RULES),
-        digest(EMPTY_SUMMARIES),
+        digest(EMPTY_SUMMARIES) if summary_digest is None else summary_digest,
         digest(POLICY),
         digest(function),
         environment,
@@ -126,6 +215,8 @@ def extract_snapshot(
     namespace,
     function_key,
     profile,
+    summary_digest=None,
+    include_calls=False,
     deadline=None,
     cancelled=lambda: False,
 ):
@@ -187,7 +278,13 @@ def extract_snapshot(
     if not hx.init_hexrays_plugin():
         raise RuntimeError("Hex-Rays initialization unavailable")
     failure = hx.hexrays_failure_t()
-    mba = hx.gen_microcode(hx.mba_ranges_t(function), failure, None, 0, hx.MMAT_CALLS)
+    mba = hx.gen_microcode(
+        hx.mba_ranges_t(function),
+        failure,
+        None,  # pyright: ignore[reportArgumentType] - IDAPython accepts null retlist.
+        0,
+        hx.MMAT_CALLS,
+    )
     if mba is None:
         raise RuntimeError(
             f"gen_microcode failed: code={failure.code}, ea={failure.errea}"
@@ -217,6 +314,11 @@ def extract_snapshot(
         for name in dir(hx)
         if name.startswith("mop_") and isinstance(getattr(hx, name), int)
     }
+    observed_calls = []
+    get_imagebase = getattr(ida_nalt, "get_imagebase", None)
+    if not callable(get_imagebase):
+        raise RuntimeError("IDA image-base API unavailable")
+    image_base = int(cast(Callable[[], int], get_imagebase)())
 
     def locations(value):
         last = int(value.reg.last()) if not value.reg.empty() else -1
@@ -306,7 +408,7 @@ def extract_snapshot(
                 **common,
             )
         if op.t == hx.mop_d:
-            nested = instruction(op.d, 0, depth + 1)
+            nested = instruction(op.d, 0, -1, depth + 1)
             return Operand(
                 "expression",
                 bits,
@@ -318,7 +420,18 @@ def extract_snapshot(
             )
         return opaque(kind, bits, role, f"No structural normalization rule for {kind}")
 
-    def instruction(ins, index, depth=0):
+    def nested_calls(value):
+        found = []
+        if value.call is not None:
+            found.append(value.call)
+            children = value.call.arguments + value.call.return_operands
+        else:
+            children = value.children
+        for child in children:
+            found.extend(nested_calls(child))
+        return found
+
+    def instruction(ins, index, block_index, depth=0):
         check()
         opcode = opcodes.get(ins.opcode, f"unknown_microcode_{int(ins.opcode)}")
         if opcode.startswith("unknown_") or opcode in ("m_ext", "m_und"):
@@ -330,9 +443,23 @@ def extract_snapshot(
         eas = set() if ins.ea == ida_idaapi.BADADDR else {int(ins.ea)}
         for op in operands:
             eas.update(source_eas(op))
-        return Instruction(
+        result = Instruction(
             index, opcode, operands, tuple(sorted(eas)), ins.ea == ida_idaapi.BADADDR
         )
+        if depth == 0:
+            calls = [call for value in operands for call in nested_calls(value)]
+            if len(calls) == 1 and ins.ea != ida_idaapi.BADADDR:
+                observed_calls.append(
+                    (block_index, index, int(ins.ea), calls[0])
+                )
+            elif calls:
+                diagnostics.append(
+                    Diagnostic(
+                        "call_origin_ambiguous",
+                        "Call metadata lacks one exact native instruction origin",
+                    )
+                )
+        return result
 
     blocks = []
     for index in range(mba.qty):
@@ -341,7 +468,7 @@ def extract_snapshot(
         rows = []
         ins = block.head
         while ins is not None:
-            rows.append(instruction(ins, len(rows)))
+            rows.append(instruction(ins, len(rows), index))
             ins = ins.next
         blocks.append(
             Block(
@@ -374,5 +501,23 @@ def extract_snapshot(
     binary = hashlib.sha256(
         Path(ida_nalt.get_input_file_path()).read_bytes()
     ).hexdigest()
-    snapshot = make_snapshot(pure, env, profile, namespace, binary)
-    return Snapshot.from_data(json.loads(json.dumps(snapshot.to_data())))
+    snapshot = make_snapshot(
+        pure,
+        env,
+        profile,
+        namespace,
+        binary,
+        summary_digest=summary_digest,
+    )
+    snapshot = cast(
+        Snapshot, Snapshot.from_data(json.loads(json.dumps(snapshot.to_data())))
+    )
+    if not include_calls:
+        return snapshot
+    calls = tuple(
+        CallObservation(block, instruction_index, instruction_ea, call)
+        for block, instruction_index, instruction_ea, call in sorted(
+            observed_calls, key=lambda item: (item[0], item[1], item[2])
+        )
+    )
+    return ExtractedFunction(snapshot, image_base, int(function_ea), calls)

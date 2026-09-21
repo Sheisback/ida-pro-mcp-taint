@@ -1,0 +1,186 @@
+[
+  {
+    "arch": "x86_64",
+    "abi_id": "darwin-x86_64-sysv-derived",
+    "format": "FMT-MACHO",
+    "manifest_kind": "build_only",
+    "source": "tests/flow_fixtures/call_heap_anchor.c",
+    "source_sha256": "7d02a694d6e26eef398831747849c01f5bda22a119f1ce53e4a35f15ba2b6862",
+    "builder_sha256": "d7cbc3657cf399d365d9f331908925ce2fa8cf002390bd37710fcdb77ff08633",
+    "binary": "call_heap_x86_64",
+    "binary_sha256": "540a6df268ce2f6c0b18cdd764fb4d6490ce6be3a916ff1d72e4a1dbcbeee72e",
+    "companion_artifacts": [
+      {
+        "path": "call_heap_x86_64.dSYM/Contents/Resources/DWARF/call_heap_x86_64",
+        "bundle": "call_heap_x86_64.dSYM",
+        "placement": "sibling_of_binary",
+        "sha256": "a26ea3d361eaa71273f0128f68d8bc1ffe2753e20e510cdcc390236067e6b92b",
+        "required": true,
+        "purpose": "function/source mapping"
+      }
+    ],
+    "functions": [
+      "call_identity",
+      "call_copy",
+      "call_fill",
+      "call_output",
+      "call_global",
+      "call_alloc",
+      "call_free",
+      "call_context_left",
+      "call_context_right",
+      "call_recursive",
+      "call_candidate_increment",
+      "call_indirect",
+      "call_heap_h01",
+      "call_heap_h02",
+      "call_heap_h03",
+      "call_heap_h04"
+    ],
+    "compiler": "Apple clang version 21.0.0 (clang-2100.0.123.102)\nTarget: arm64-apple-darwin27.0.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin",
+    "sdk_version": "26.4",
+    "compile_command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-O0",
+      "-g",
+      "-fno-stack-protector",
+      "-fno-omit-frame-pointer",
+      "-fno-optimize-sibling-calls",
+      "-fno-builtin",
+      "-fdebug-compilation-dir=.",
+      "-ffile-prefix-map=/Users/sheisback/Documents/GitHub/ida-pro-mcp-taint/.omx/team/g011-phase-a-read-omx-b67f1d88/worktrees/worker-2=.",
+      "-c",
+      "tests/flow_fixtures/call_heap_anchor.c",
+      "-o",
+      "$OUTPUT/call_heap_x86_64.o"
+    ],
+    "link_command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-g",
+      "-Wl,-no_uuid",
+      "-Wl,-oso_prefix,$OUTPUT/",
+      "$OUTPUT/call_heap_x86_64.o",
+      "-o",
+      "$OUTPUT/call_heap_x86_64"
+    ],
+    "dsym_command": [
+      "dsymutil",
+      "--oso-prepend-path",
+      "$OUTPUT",
+      "$OUTPUT/call_heap_x86_64"
+    ],
+    "environment": {
+      "SOURCE_DATE_EPOCH": "0"
+    },
+    "object_mtime": 0,
+    "source_types": {
+      "u8": 8,
+      "u32": 32,
+      "usize": 64,
+      "pointer": 64
+    },
+    "reproducibility": {
+      "fresh_builds": 2,
+      "binary_sha256_equal": true,
+      "dwarf_sha256_equal": true
+    },
+    "target_executed": false,
+    "ida_receipt_recorded": false
+  },
+  {
+    "arch": "arm64",
+    "abi_id": "darwin-aarch64",
+    "format": "FMT-MACHO",
+    "manifest_kind": "build_only",
+    "source": "tests/flow_fixtures/call_heap_anchor.c",
+    "source_sha256": "7d02a694d6e26eef398831747849c01f5bda22a119f1ce53e4a35f15ba2b6862",
+    "builder_sha256": "d7cbc3657cf399d365d9f331908925ce2fa8cf002390bd37710fcdb77ff08633",
+    "binary": "call_heap_arm64",
+    "binary_sha256": "1d1a83dad97736832c3aebe566c9927ee196e02dc8bade7ce349e836cd5f059f",
+    "companion_artifacts": [
+      {
+        "path": "call_heap_arm64.dSYM/Contents/Resources/DWARF/call_heap_arm64",
+        "bundle": "call_heap_arm64.dSYM",
+        "placement": "sibling_of_binary",
+        "sha256": "01982c8772f12d0f317b389235215243f8bf42f9a3be14fdf9dfec761300297d",
+        "required": true,
+        "purpose": "function/source mapping"
+      }
+    ],
+    "functions": [
+      "call_identity",
+      "call_copy",
+      "call_fill",
+      "call_output",
+      "call_global",
+      "call_alloc",
+      "call_free",
+      "call_context_left",
+      "call_context_right",
+      "call_recursive",
+      "call_candidate_increment",
+      "call_indirect",
+      "call_heap_h01",
+      "call_heap_h02",
+      "call_heap_h03",
+      "call_heap_h04"
+    ],
+    "compiler": "Apple clang version 21.0.0 (clang-2100.0.123.102)\nTarget: arm64-apple-darwin27.0.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin",
+    "sdk_version": "26.4",
+    "compile_command": [
+      "clang",
+      "-arch",
+      "arm64",
+      "-O0",
+      "-g",
+      "-fno-stack-protector",
+      "-fno-omit-frame-pointer",
+      "-fno-optimize-sibling-calls",
+      "-fno-builtin",
+      "-fdebug-compilation-dir=.",
+      "-ffile-prefix-map=/Users/sheisback/Documents/GitHub/ida-pro-mcp-taint/.omx/team/g011-phase-a-read-omx-b67f1d88/worktrees/worker-2=.",
+      "-c",
+      "tests/flow_fixtures/call_heap_anchor.c",
+      "-o",
+      "$OUTPUT/call_heap_arm64.o"
+    ],
+    "link_command": [
+      "clang",
+      "-arch",
+      "arm64",
+      "-g",
+      "-Wl,-no_uuid",
+      "-Wl,-oso_prefix,$OUTPUT/",
+      "$OUTPUT/call_heap_arm64.o",
+      "-o",
+      "$OUTPUT/call_heap_arm64"
+    ],
+    "dsym_command": [
+      "dsymutil",
+      "--oso-prepend-path",
+      "$OUTPUT",
+      "$OUTPUT/call_heap_arm64"
+    ],
+    "environment": {
+      "SOURCE_DATE_EPOCH": "0"
+    },
+    "object_mtime": 0,
+    "source_types": {
+      "u8": 8,
+      "u32": 32,
+      "usize": 64,
+      "pointer": 64
+    },
+    "reproducibility": {
+      "fresh_builds": 2,
+      "binary_sha256_equal": true,
+      "dwarf_sha256_equal": true
+    },
+    "target_executed": false,
+    "ida_receipt_recorded": false
+  }
+]

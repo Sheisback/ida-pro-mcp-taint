@@ -1,0 +1,368 @@
+{
+  "schema_version": "flow-call-heap-oracles/1",
+  "fixture": "tests/flow_fixtures/call_heap_anchor.c",
+  "oracle_origin": "hand-authored from source semantics; independent of engine output",
+  "status": [
+    "static_analysis_only",
+    "target_must_never_execute",
+    "build_evidence_only_no_ida_receipts",
+    "no_automatic_vulnerability_verdict"
+  ],
+  "reviewed_summary_functions": [
+    "call_identity",
+    "call_copy",
+    "call_fill",
+    "call_output",
+    "call_global",
+    "call_alloc",
+    "call_free"
+  ],
+  "support_functions": [
+    "call_context_left",
+    "call_context_right",
+    "call_recursive",
+    "call_candidate_increment",
+    "call_indirect"
+  ],
+  "observation_helpers": [
+    "call_heap_h01",
+    "call_heap_h02",
+    "call_heap_h03",
+    "call_heap_h04"
+  ],
+  "summary_identity_fields": [
+    "binary_sha256",
+    "callee_rva",
+    "callee_snapshot_id",
+    "profile_digest",
+    "calling_convention",
+    "signature_digest"
+  ],
+  "cases": [
+    {
+      "oracle_id": "C01",
+      "entrypoints": [
+        "call_identity",
+        "call_copy",
+        "call_fill",
+        "call_output",
+        "call_global",
+        "call_alloc",
+        "call_free"
+      ],
+      "seeds": {
+        "identity.arg0": "X",
+        "copy.source.memory[0,n)": "Y",
+        "fill.arg1": "Z",
+        "output.arg1": "O",
+        "global.arg0": "G"
+      },
+      "observations": {
+        "return_effects": [
+          "call_identity returns arg0",
+          "call_global returns the value loaded from call_global_value",
+          "call_alloc returns a fresh allocation candidate or null"
+        ],
+        "memory_effects": [
+          "call_copy writes source.memory[0,n) to destination.memory[0,n)",
+          "call_fill writes arg1 to destination.memory[0,n)",
+          "call_output writes arg1 to output.memory[0,4)",
+          "call_global writes arg0 to call_global_value",
+          "call_free changes reachable allocation lifetime without inventing a data return"
+        ]
+      },
+      "expected_relations": [
+        "reviewed summaries require the full pinned identity, never function name alone",
+        "return values and output/global memory effects remain distinct",
+        "copy and fill ranges are bounded by the explicit length argument"
+      ],
+      "forbidden_relations": [
+        "call_output invents a return value",
+        "destination pointer values acquire pointee provenance merely because memory was written",
+        "call_free is treated as an empty no-effect call"
+      ],
+      "preconditions": [
+        "copy source and destination designate valid ranges of at least n bytes",
+        "fill destination designates a valid range of at least n bytes",
+        "output designates writable aligned u32 storage",
+        "malloc/free use the recorded Darwin fixture ABI; target is never executed"
+      ],
+      "widths": {
+        "u8": 8,
+        "u32": 32,
+        "pointer": 64
+      },
+      "comparison": "observable return, memory, global and lifetime effects; no exact CFG/register count"
+    },
+    {
+      "oracle_id": "C02",
+      "entrypoints": [
+        "call_context_left",
+        "call_context_right"
+      ],
+      "seeds": {
+        "call_context_left.arg0": "LEFT",
+        "call_context_right.arg0": "RIGHT"
+      },
+      "observations": {
+        "shared_callee": "call_identity",
+        "contexts": [
+          "call_context_left -> call_identity",
+          "call_context_right -> call_identity"
+        ],
+        "returns": [
+          "left returns left.arg0+1 modulo 2^32",
+          "right returns right.arg0+2 modulo 2^32"
+        ]
+      },
+      "expected_relations": [
+        "the two direct call sites use distinct bounded call contexts",
+        "LEFT reaches only the left result and RIGHT reaches only the right result"
+      ],
+      "forbidden_relations": [
+        "arguments or returns from the two call contexts are merged solely because the callee is shared",
+        "function-name-only summary lookup bypasses pinned callee identity"
+      ],
+      "preconditions": [
+        "uint32 modular arithmetic",
+        "both direct call sites are analyzed from their own caller context"
+      ],
+      "widths": {
+        "argument": 32,
+        "return": 32
+      },
+      "comparison": "context-qualified observable return dependencies"
+    },
+    {
+      "oracle_id": "C03",
+      "entrypoints": [
+        "call_recursive"
+      ],
+      "seeds": {
+        "arg0": "X",
+        "arg1": "DEPTH"
+      },
+      "observations": {
+        "base_case": "depth==0 returns call_identity(value)",
+        "recursive_case": "depth!=0 calls call_recursive(value+1, depth-1)",
+        "boundary": "context or recursion limit emits an explicit unresolved remainder"
+      },
+      "expected_relations": [
+        "bounded recursive contexts preserve X on the return",
+        "limit exhaustion remains partial and carries an explicit unresolved effect"
+      ],
+      "forbidden_relations": [
+        "recursion limit exhaustion becomes an empty no-effect result",
+        "unbounded contexts are materialized"
+      ],
+      "preconditions": [
+        "depth is an unsigned 32-bit value",
+        "the analysis policy provides finite recursion and context bounds"
+      ],
+      "widths": {
+        "value": 32,
+        "depth": 32,
+        "return": 32
+      },
+      "comparison": "bounded call-plan behavior and explicit unresolved boundary"
+    },
+    {
+      "oracle_id": "C04",
+      "entrypoints": [
+        "call_indirect",
+        "call_identity",
+        "call_candidate_increment"
+      ],
+      "seeds": {
+        "arg0": "X",
+        "arg1": "SELECTOR",
+        "arg2": "UNKNOWN_CANDIDATE"
+      },
+      "observations": {
+        "known_candidates": [
+          "call_identity",
+          "call_candidate_increment"
+        ],
+        "unknown_remainder": true,
+        "join": "candidate branches join at the indirect return"
+      },
+      "expected_relations": [
+        "known candidate results join",
+        "a nonexhaustive candidate set preserves an explicit unknown-call remainder",
+        "X remains possible in every normal-return candidate branch"
+      ],
+      "forbidden_relations": [
+        "known candidates make the indirect target set exhaustive",
+        "unknown remainder is treated as no effect",
+        "one candidate result overwrites the other candidate branches"
+      ],
+      "preconditions": [
+        "arg2, when selected, denotes a callable u32(u32) function",
+        "comparison is restricted to modeled normal returns; arbitrary targets are never executed"
+      ],
+      "widths": {
+        "argument": 32,
+        "selector": 32,
+        "function_pointer": 64,
+        "return": 32
+      },
+      "comparison": "candidate join plus explicit nonexhaustive remainder"
+    },
+    {
+      "oracle_id": "H01",
+      "entrypoints": [
+        "call_heap_h01"
+      ],
+      "seeds": {
+        "arg0": "X"
+      },
+      "observations": {
+        "sequence": [
+          "allocation",
+          "write",
+          "free",
+          "post-free read"
+        ],
+        "read_lifetime_before": [
+          "freed"
+        ]
+      },
+      "expected_relations": [
+        "the post-free read observes the same allocation candidate freed by call_free",
+        "lifetime evidence is reported without an automatic vulnerability verdict"
+      ],
+      "forbidden_relations": [
+        "post-free read is reported live or clean",
+        "source undefined behavior is executed to validate the oracle",
+        "CWE, severity, safe or vulnerable verdict is invented"
+      ],
+      "preconditions": [
+        "static analysis only; the target must never execute",
+        "the non-null branch is the observation path"
+      ],
+      "widths": {
+        "allocation": 1,
+        "store": 8,
+        "load": 8
+      },
+      "comparison": "call-derived allocation identity and lifetime transition"
+    },
+    {
+      "oracle_id": "H02",
+      "entrypoints": [
+        "call_heap_h02"
+      ],
+      "seeds": {
+        "arg0": "X"
+      },
+      "observations": {
+        "allocation_contexts": [
+          "left allocation call site",
+          "right allocation call site"
+        ],
+        "after_left_free": {
+          "left": [
+            "freed"
+          ],
+          "right": [
+            "live"
+          ]
+        }
+      },
+      "expected_relations": [
+        "freeing left does not free the distinct right allocation context",
+        "X reaches the right read before right is freed"
+      ],
+      "forbidden_relations": [
+        "left and right lifetimes mix because both call call_alloc",
+        "left free clears or frees the right allocation"
+      ],
+      "preconditions": [
+        "static analysis only; the target must never execute",
+        "the two-allocation non-null branch is the observation path"
+      ],
+      "widths": {
+        "allocation": 1,
+        "store": 8,
+        "load": 8
+      },
+      "comparison": "call-site/context-qualified heap identities"
+    },
+    {
+      "oracle_id": "H03",
+      "entrypoints": [
+        "call_heap_h03"
+      ],
+      "seeds": {
+        "arg0": "X",
+        "arg1": "UNKNOWN_HEAP_EFFECT"
+      },
+      "observations": {
+        "escape": "allocation pointer is stored in call_escaped_heap",
+        "opaque_effect": "unknown_effect receives the escaped allocation pointer",
+        "post_call_lifetime": [
+          "live",
+          "freed"
+        ]
+      },
+      "expected_relations": [
+        "escape and lifetime axes remain independent",
+        "the unknown reachable effect widens lifetime and memory state"
+      ],
+      "forbidden_relations": [
+        "unknown effect is treated as no effect",
+        "post-call load is reported definitely clean or definitely live"
+      ],
+      "preconditions": [
+        "arg1 denotes a callable void(volatile u8*) function on the modeled normal-return path",
+        "static analysis only; arbitrary callback is never executed"
+      ],
+      "widths": {
+        "allocation": 1,
+        "store": 8,
+        "load": 8,
+        "function_pointer": 64
+      },
+      "comparison": "escape plus conservative unknown reachable effect"
+    },
+    {
+      "oracle_id": "H04",
+      "entrypoints": [
+        "call_heap_h04"
+      ],
+      "seeds": {
+        "arg0": "X",
+        "arg1": "MAY_FREE"
+      },
+      "observations": {
+        "join_lifetime": [
+          "live",
+          "freed"
+        ],
+        "branches": [
+          "may_free==0 keeps allocation live",
+          "may_free!=0 frees allocation before the read"
+        ]
+      },
+      "expected_relations": [
+        "the branch join preserves both live and freed lifetime states",
+        "the post-join read retains X as possible data provenance"
+      ],
+      "forbidden_relations": [
+        "either branch is silently discarded",
+        "the join claims definitely live, definitely freed, safe or vulnerable"
+      ],
+      "preconditions": [
+        "static analysis only; the target must never execute",
+        "the allocation non-null branch is the observation path"
+      ],
+      "widths": {
+        "allocation": 1,
+        "store": 8,
+        "load": 8,
+        "condition": 32
+      },
+      "comparison": "branch-sensitive may-free lifetime join"
+    }
+  ]
+}
