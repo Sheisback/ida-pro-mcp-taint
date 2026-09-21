@@ -5,6 +5,10 @@ It loads the actual implementation from the ida_mcp package.
 """
 
 import sys
+import os
+import json
+import hashlib
+import importlib.util
 import idaapi
 import ida_kernwin
 import ida_netnode
@@ -12,6 +16,58 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from . import ida_mcp
+
+
+def _prepare_runtime():
+    """Resolve only this loader's package; never search or modify sys.path."""
+    folder = os.path.dirname(os.path.abspath(__file__))
+    root = os.path.join(folder, "_ida_pro_mcp_runtime")
+    installed = os.path.isdir(root)
+    if installed:
+        with open(
+            os.path.join(root, "install-manifest.json"), encoding="utf-8"
+        ) as stream:
+            manifest = json.load(stream)
+        if manifest.get("owner") != "ida-pro-mcp" or manifest.get("version") != 1:
+            raise ImportError("Invalid MCP runtime manifest; reinstall the plugin")
+        expected = manifest["files"]
+        actual = {}
+        for directory, dirs, files in os.walk(root):
+            dirs[:] = [d for d in dirs if d != "__pycache__"]
+            for name in files:
+                path = os.path.join(directory, name)
+                relative = os.path.relpath(path, root)
+                if relative == "install-manifest.json":
+                    continue
+                with open(path, "rb") as stream:
+                    actual[relative] = hashlib.sha256(stream.read()).hexdigest()
+        with open(__file__, "rb") as stream:
+            loader_hash = hashlib.sha256(stream.read()).hexdigest()
+        if actual != expected or loader_hash != manifest["loader_sha256"]:
+            raise ImportError("MCP runtime is missing or stale; reinstall the plugin")
+    else:
+        root = os.path.dirname(os.path.realpath(__file__))
+    if not os.path.isfile(os.path.join(root, "flow_core", "__init__.py")):
+        raise ImportError("MCP flow_core is missing; reinstall the plugin")
+    loaded = sys.modules.get("ida_pro_mcp")
+    if loaded is not None:
+        if os.path.realpath(getattr(loaded, "__file__", "") or "") != os.path.realpath(
+            os.path.join(root, "__init__.py")
+        ):
+            raise ImportError("Another ida_pro_mcp runtime is loaded; restart IDA")
+        return
+    spec = importlib.util.spec_from_file_location(
+        "ida_pro_mcp",
+        os.path.join(root, "__init__.py"),
+        submodule_search_locations=[root],
+    )
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["ida_pro_mcp"] = module
+    try:
+        spec.loader.exec_module(module)
+    except BaseException:
+        sys.modules.pop("ida_pro_mcp", None)
+        raise
 
 
 NETNODE_AUTOSTART = "$ ida_mcp.autostart"
@@ -89,6 +145,25 @@ def unload_package(package_name: str):
     ]
     for mod_name in to_remove:
         del sys.modules[mod_name]
+    parent_name, _, child = package_name.rpartition(".")
+    parent = sys.modules.get(parent_name)
+    loaded_child = getattr(parent, child, None) if parent is not None else None
+    if getattr(loaded_child, "__name__", None) == package_name:
+        delattr(parent, child)
+
+
+def _shutdown_flow_runtime(timeout: float = 2.0) -> tuple[str, ...]:
+    """Fence jobs and release Store leases before reload or plugin termination."""
+    module = sys.modules.get("ida_pro_mcp.ida_mcp.flow.runtime")
+    if module is None:
+        return ()
+    pending = tuple(module.shutdown(timeout=timeout))
+    if pending:
+        print(
+            "[MCP] Flow runtime retired jobs that exceeded shutdown deadline: "
+            + ", ".join(pending)
+        )
+    return pending
 
 
 CONFIG_ACTION_ID = "mcp:configure"
@@ -179,7 +254,11 @@ class MCPConfigHandler(idaapi.action_handler_t):
             if endpoint_changed:
                 print(f"[MCP] Configuration updated: {host}:{port} (not saved)")
 
-        if not endpoint_changed and autostart == old_autostart and persist == old_persist:
+        if (
+            not endpoint_changed
+            and autostart == old_autostart
+            and persist == old_persist
+        ):
             print(f"[MCP] Configuration unchanged: {host}:{port}")
             return 1
 
@@ -268,7 +347,7 @@ class MCP(idaapi.plugin_t):
                 if TYPE_CHECKING:
                     from .ida_mcp.discovery import unregister_instance
                 else:
-                    from ida_mcp.discovery import unregister_instance
+                    from ida_pro_mcp.ida_mcp.discovery import unregister_instance
                 unregister_instance(port)
             except Exception as e:
                 print(f"[MCP] Instance unregistration failed: {e}")
@@ -280,12 +359,15 @@ class MCP(idaapi.plugin_t):
             self.mcp.stop()
             self.mcp = None
 
-        # HACK: ensure fresh load of ida_mcp package
-        unload_package("ida_mcp")
+        # Stop durable jobs and release namespace leases before fresh imports.
+        _shutdown_flow_runtime()
+        _prepare_runtime()
+        unload_package("ida_pro_mcp.ida_mcp")
+        unload_package("ida_pro_mcp.flow_core")
         if TYPE_CHECKING:
             from .ida_mcp import MCP_SERVER, IdaMcpHttpRequestHandler
         else:
-            from ida_mcp import MCP_SERVER, IdaMcpHttpRequestHandler
+            from ida_pro_mcp.ida_mcp import MCP_SERVER, IdaMcpHttpRequestHandler
 
         port = self.port
         max_port = port + 100
@@ -310,10 +392,11 @@ class MCP(idaapi.plugin_t):
             if TYPE_CHECKING:
                 from .ida_mcp.discovery import register_instance
             else:
-                from ida_mcp.discovery import register_instance
+                from ida_pro_mcp.ida_mcp.discovery import register_instance
             import os
             import idc
             import ida_nalt
+
             binary = ida_nalt.get_root_filename() or ""
             idb_path = idc.get_idb_path() or ""
             file_path = register_instance(
@@ -324,10 +407,13 @@ class MCP(idaapi.plugin_t):
                 idb_path=idb_path,
             )
             self._registered_port = port
-            print(f"[MCP] Registered instance: {binary} (pid={os.getpid()}, port={port})")
+            print(
+                f"[MCP] Registered instance: {binary} (pid={os.getpid()}, port={port})"
+            )
             print(f"  Discovery file: {file_path}")
         except Exception as e:
             import traceback
+
             print(f"[MCP] Instance registration failed: {e}")
             traceback.print_exc()
 
@@ -338,9 +424,9 @@ class MCP(idaapi.plugin_t):
         self._unregister_instance()
         if self.mcp:
             self.mcp.stop()
+            self.mcp = None
+        _shutdown_flow_runtime()
 
 
 def PLUGIN_ENTRY():
     return MCP()
-
-

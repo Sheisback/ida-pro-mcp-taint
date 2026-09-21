@@ -429,14 +429,17 @@ class _Engine:
         )
         havoc = self.steps[definition].effect == "havoc"
         source_access = self.accesses.get(definition)
+        same_object_strong_store = (
+            source_access is not None
+            and source_access.strong_update
+            and any(c.object_id == oid for c in source_access.candidates)
+        )
         precision = (
             "opaque"
             if havoc or access.unresolved or interval is None
             else (
                 "exact"
-                if source_access is not None
-                and source_access.strong_update
-                and access.alias == "must_alias"
+                if same_object_strong_store and access.alias == "must_alias"
                 else "may_alias"
             )
         )

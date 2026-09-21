@@ -26,6 +26,8 @@ from pathlib import Path
 from threading import RLock
 from typing import Annotated, Any, TypedDict
 
+from ida_pro_mcp.flow_core.build_identity import BUILD_ID as FLOW_BUILD_ID
+
 
 logger = logging.getLogger(__name__)
 
@@ -1388,6 +1390,26 @@ def _handle_tools_call(request_obj: dict[str, Any]) -> dict[str, Any] | None:
     forwarded = copy.deepcopy(request_obj)
     forwarded.setdefault("params", {})["arguments"] = arguments
     try:
+        if tool_name.startswith("flow_") and tool_name != "flow_get_capabilities":
+            build_response = sup._worker_rpc(
+                session,
+                {
+                    "jsonrpc": "2.0",
+                    "id": "flow-build-check",
+                    "method": "tools/call",
+                    "params": {"name": "flow_get_capabilities", "arguments": {}},
+                },
+                timeout=WORKER_CALL_TIMEOUT_SEC or None,
+            )
+            build_result = build_response.get("result") or {}
+            actual_build = (build_result.get("structuredContent") or {}).get("build_id")
+            if actual_build != FLOW_BUILD_ID:
+                raise RuntimeError(
+                    "flow_extension_build_mismatch: supervisor="
+                    + FLOW_BUILD_ID
+                    + ", worker="
+                    + str(actual_build)
+                )
         return sup._worker_rpc(
             session, forwarded, timeout=WORKER_CALL_TIMEOUT_SEC or None
         )

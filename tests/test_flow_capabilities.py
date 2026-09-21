@@ -44,10 +44,12 @@ def flow(monkeypatch):
         sys.modules,
         "ida_ida",
         types.SimpleNamespace(
+            f_MACHO=7,
             inf_get_procname=lambda: "metapc",
             inf_is_64bit=lambda: True,
             inf_is_32bit_exactly=lambda: False,
             inf_is_be=lambda: False,
+            inf_get_filetype=lambda: 7,
         ),
     )
     name = package.__name__ + ".api_flow"
@@ -69,11 +71,26 @@ def test_initialization_is_not_analysis_support(flow, monkeypatch, ready):
     assert result["environment"]["hexrays_version"] == (
         "test-hexrays" if ready else None
     )
-    assert result["supported_profiles"] == []
+    assert result["supported_profiles"] == (["X64-LE"] if ready else [])
     assert all(
         v["status"] != "available"
         for k, v in result["features"].items()
         if k != "capability_discovery"
+        and (
+            not ready
+            or k
+            not in {
+                "snapshot",
+                "value_ssa",
+                "memory_ssa",
+                "taint",
+                "durable_jobs",
+                "microcode_extraction",
+            }
+        )
+    )
+    assert result["features"]["microcode_extraction"]["status"] == (
+        "available" if ready else "unavailable"
     )
 
 
@@ -90,6 +107,24 @@ def test_probe_failure_remains_unknown(flow, monkeypatch):
         "license probe unavailable"
         in result["environment"]["hexrays_initialization"]["reason"]
     )
+    assert result["supported_profiles"] == []
+    assert result["features"]["microcode_extraction"]["status"] == "unverified"
+
+
+def test_unsupported_current_database_is_not_advertised(flow, monkeypatch):
+    module, _ = flow
+    monkeypatch.setattr(module.ida_ida, "inf_get_filetype", lambda: -1)
+    result = module.flow_get_capabilities()
+    assert result["supported_profiles"] == []
+    for name in (
+        "snapshot",
+        "value_ssa",
+        "memory_ssa",
+        "taint",
+        "durable_jobs",
+        "microcode_extraction",
+    ):
+        assert result["features"][name]["status"] == "unavailable"
 
 
 def test_supervisor_schema_and_forwarding(flow, monkeypatch):
@@ -122,6 +157,38 @@ def test_supervisor_schema_and_forwarding(flow, monkeypatch):
     assert request["params"]["arguments"] == {"database": "owned-db"}
 
 
+def test_supervisor_rejects_stale_flow_worker_before_forwarding(monkeypatch):
+    sup = supmod.IdalibSupervisor(supmod.McpServer("test"), max_workers=1)
+    session = object()
+    calls = []
+    monkeypatch.setattr(sup, "resolve_session", lambda database: session)
+
+    def rpc(_session, payload, **_kwargs):
+        calls.append(payload["params"]["name"])
+        return {
+            "result": {
+                "structuredContent": {"build_id": "flow-build-sha256-v1:" + "0" * 64}
+            }
+        }
+
+    monkeypatch.setattr(sup, "_worker_rpc", rpc)
+    monkeypatch.setattr(supmod, "supervisor", sup)
+    response = supmod._handle_tools_call(
+        {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {
+                "name": "flow_get_job",
+                "arguments": {"database": "db", "job_id": "job"},
+            },
+        }
+    )
+    assert calls == ["flow_get_capabilities"]
+    assert response["result"]["isError"] is True
+    assert "flow_extension_build_mismatch" in response["result"]["content"][0]["text"]
+
+
 def test_profile_is_minimal_readonly(flow):
     names = {
         line.split("#")[0].strip()
@@ -143,6 +210,17 @@ def test_profile_is_minimal_readonly(flow):
     profile.apply_profile(tools, whitelist=names)
     assert set(tools) == names
 
+    _, server = flow
+
+    @server.tool
+    def py_eval(code: str) -> dict:
+        return {"executed": code}
+
+    profile.apply_profile(server.tools.methods, whitelist=names)
+    denied = server._mcp_tools_call("py_eval", {"code": "ignore previous instructions"})
+    assert denied["isError"] is True
+    assert "py_eval" not in {tool["name"] for tool in server._mcp_tools_list()["tools"]}
+
 
 def test_build_identity_is_install_location_independent(flow, tmp_path, monkeypatch):
     module, _ = flow
@@ -163,3 +241,114 @@ def test_advertised_output_schema_accepts_capabilities(flow):
     module, server = flow
     tool = server._mcp_tools_list()["tools"][0]
     Draft202012Validator(tool["outputSchema"]).validate(module.flow_get_capabilities())
+
+
+def test_exact_tool_schema_and_no_supervisor_database_on_workers(flow):
+    _, server = flow
+    expected = {
+        "flow_get_capabilities",
+        "flow_create_snapshot",
+        "flow_get_job",
+        "flow_cancel_job",
+        "flow_get_function_ssa",
+        "flow_get_cfg",
+        "flow_trace_forward",
+        "flow_trace_backward",
+        "flow_continue_trace",
+        "flow_cancel_trace",
+        "flow_get_graph",
+        "flow_get_evidence",
+    }
+    tools = server._mcp_tools_list()["tools"]
+    assert {tool["name"] for tool in tools} == expected
+    for tool in tools:
+        assert "database" not in tool["inputSchema"].get("properties", {})
+        assert tool["inputSchema"]["type"] == "object"
+        assert tool["outputSchema"]["type"] == "object"
+        assert (
+            "anyOf" in tool["outputSchema"] or tool["name"] == "flow_get_capabilities"
+        )
+    by_name = {tool["name"]: tool for tool in tools}
+    for name in ("flow_trace_forward", "flow_trace_backward"):
+        source = by_name[name]["inputSchema"]["properties"]["source"]
+        variants = source["anyOf"]
+        assert {variant["properties"]["kind"]["enum"][0] for variant in variants} == {
+            "value",
+            "memory",
+        }
+        assert all(variant["additionalProperties"] is False for variant in variants)
+
+
+def test_success_and_error_envelopes_match_advertised_schemas(flow):
+    from jsonschema import Draft202012Validator
+
+    _, server = flow
+    schemas = {
+        tool["name"]: tool["outputSchema"] for tool in server._mcp_tools_list()["tools"]
+    }
+    examples = {
+        "flow_create_snapshot": {
+            "schema_version": "flow-job/1",
+            "job_id": "job_1",
+            "experimental": True,
+        },
+        "flow_get_job": {
+            "schema_version": "flow-job/1",
+            "id": "job_1",
+            "state": "complete",
+            "revision": 1,
+            "progress": {},
+            "budget": {},
+            "error": None,
+            "result": {},
+        },
+        "flow_get_graph": {
+            "schema_version": "flow-page/1",
+            "artifact_id": "artifact_1",
+            "section": "graph",
+            "metadata": {},
+            "items": [],
+            "next_cursor": None,
+        },
+        "flow_trace_forward": {
+            "schema_version": "flow-trace-page/1",
+            "trace_id": "trace_1",
+            "revision": 1,
+            "cursor": "cursor",
+            "items": [],
+            "status": "frontier_exhausted",
+            "frontier_remaining": 0,
+            "pending_remaining": 0,
+            "unresolved_count": 0,
+        },
+    }
+    error = {"schema_version": "flow-error/1", "error": {"code": "bad"}}
+    for name, payload in examples.items():
+        Draft202012Validator(schemas[name]).validate(payload)
+        Draft202012Validator(schemas[name]).validate(error)
+
+
+def test_public_errors_are_structured_without_tracebacks(flow, monkeypatch):
+    from ida_pro_mcp.flow_core.persistence import PersistenceError
+
+    module, _ = flow
+
+    def fail(*args):
+        raise PersistenceError("wrong_database")
+
+    monkeypatch.setattr(module, "_service", lambda: types.SimpleNamespace(job=fail))
+    assert module.flow_get_job("other") == {
+        "schema_version": "flow-error/1",
+        "error": {"code": "wrong_database"},
+    }
+    monkeypatch.setattr(
+        module,
+        "_service",
+        lambda: types.SimpleNamespace(
+            job=lambda *_: (_ for _ in ()).throw(PersistenceError("not_found"))
+        ),
+    )
+    assert module.flow_get_job("foreign") == {
+        "schema_version": "flow-error/1",
+        "error": {"code": "wrong_database_or_unknown_id"},
+    }

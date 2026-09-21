@@ -1,0 +1,749 @@
+{
+  "schema_version": "flow-public-smoke/1",
+  "target_executed": false,
+  "implementation_sha256": {
+    "src/ida_pro_mcp/ida_mcp/api_flow.py": "e979bef1047c1b6304d60adf0745e92a0148327b77eea9e7fe60f6008f2bf716",
+    "src/ida_pro_mcp/ida_mcp/zeromcp/mcp.py": "05a4f9d1422d5d9c91969838cb56815acb0323097038aa981628ab3e540882db",
+    "src/ida_pro_mcp/ida_mcp.py": "5a1c25460646a2577af58f3ee3e4c3069b2182ff0217883416f1d0d138c54e67",
+    "src/ida_pro_mcp/idalib_server.py": "51d609aaf549e815054c3f3f240a6de2222c8ba599f0944e9576a88eea169f40",
+    "src/ida_pro_mcp/idalib_supervisor.py": "905c01c11152fb4cdbf5ff65af88cf2f137d4e1c9a65202724ac5ac330e41ee5",
+    "src/ida_pro_mcp/installer.py": "3bfa5d6998f8e61c9cb6a74ff49b976dddc96a70d27f65741672c617f681efe4",
+    "profiles/flow-readonly.txt": "97124d69b9b1281cf3e840ad836009544888a730e635b8647ef6d82b33901147",
+    "tests/flow_core/native_api_smoke.py": "3c442615b48441fbbd2b69f420f9076d08163b11804070f8d205bbd90193d23a",
+    "src/ida_pro_mcp/flow_core/__init__.py": "1e03446910ecbbe1cd389ca6eeebec64f35d9d520a3006bc748f53bccff87e73",
+    "src/ida_pro_mcp/flow_core/analysis.py": "8bc2d342ec6060d8c1e0d4f9912e707e7ff24a014f45ddf8af10778743a21b45",
+    "src/ida_pro_mcp/flow_core/build_identity.py": "4c803c4eb9f84b34ff787e7370e618fbda3e89dd423205eef77805df0b6605e2",
+    "src/ida_pro_mcp/flow_core/cfg.py": "167a4491b93278888cda50641c8c1c4d5cc444ab5b57b8f078e76931c7f7749f",
+    "src/ida_pro_mcp/flow_core/contracts.py": "feaa51fad25bb98116fa9501315a87b4efbd8b1ff9fb1ed2e45ef8d7810e0dfa",
+    "src/ida_pro_mcp/flow_core/heap.py": "f2b46370a327e8b32ec3fc13328aabe1e1035a7d0660b90e68a5caa809565d7e",
+    "src/ida_pro_mcp/flow_core/heap_analysis.py": "0e3bd9eed08d9f03860127cf5876f66ae8d0b0606074c00d6144bf3a73b63cc5",
+    "src/ida_pro_mcp/flow_core/host_identity.py": "1fb3c741900852e9d1e56e081b49993feb8304409d354f07a47edb051ce80964",
+    "src/ida_pro_mcp/flow_core/memory.py": "7960fce27069016664271da7d3d6e69a5be586f6dc17d6ea0a899ed1e56363af",
+    "src/ida_pro_mcp/flow_core/memory_analysis.py": "7071ff4027e24249aca7cc653e220f0d2bbe8b3cbe9dddb61279bfaa0c7f80d5",
+    "src/ida_pro_mcp/flow_core/memory_graph.py": "40c5a72781903943588dfdd5dfa7d5bf550bb4597ab613e42876075096e25dd9",
+    "src/ida_pro_mcp/flow_core/persistence.py": "ad1332048875c463bfb826f76292182e8177d97c091c44430fd830e0d9e0f77d",
+    "src/ida_pro_mcp/flow_core/query.py": "e093244e47c71a05b869b0430671691bad82f661fc076a9fcddb0c0544dbc75e",
+    "src/ida_pro_mcp/flow_core/runtime.py": "4971eb622cd08bfcf86aabbf41f5aa4087b85e85401c04b3cc61efe8b8854748",
+    "src/ida_pro_mcp/flow_core/runtime_contracts.py": "a7f58c57d75a6427fc9e3d503b06623fd483ca8abadeb63679658c26112bde8c",
+    "src/ida_pro_mcp/flow_core/serialization.py": "e3901094566002edb58c887c4cbd2db21050b30f4bc1c92cb466268534baf214",
+    "src/ida_pro_mcp/flow_core/ssa.py": "7f7b702f7ebd801e6e38563b187bd0bc10ad102294060033f9139ef673cdf43a",
+    "src/ida_pro_mcp/flow_core/states.py": "4a03c1eec0e86893a58faf81b06853ffd75de7daf40d3eec3b7ace2b5187ee78",
+    "src/ida_pro_mcp/ida_mcp/flow/__init__.py": "e2ad972c65cc8799c94393f9784d2dfbed1afed393d43d7e999cf18562241f46",
+    "src/ida_pro_mcp/ida_mcp/flow/extractor.py": "76b81cd6892d8685e9dc22d24804841e08d3202e1c85505debd9f91bcab653ab",
+    "src/ida_pro_mcp/ida_mcp/flow/p0_probe.py": "2b924038da8ca62ce98704ed22600ad8fba413c35318e1e153d036212937596e",
+    "src/ida_pro_mcp/ida_mcp/flow/runtime.py": "d304da747231489680356784e5c5c183702ed72c95f45e2da851271a655c52bb",
+    "src/ida_pro_mcp/ida_mcp/flow/service.py": "c43fc59cf54fb83d33ccaabf97a4cb304354a17ba26492fad630f4040d99bbb5"
+  },
+  "anchors": [
+    {
+      "profile": "X64-LE",
+      "binary_sha256": "e98ee1f96dead5f8988573b9e8ce2e1466f30f8d5881af4b71a66b7b6e73436a",
+      "job": {
+        "schema_version": "flow-job/1",
+        "id": "job_b010b91594c94790b73fd71e1e517c05",
+        "state": "complete",
+        "revision": 4,
+        "progress": {},
+        "budget": {},
+        "error": null,
+        "result": {
+          "analysis": "partial",
+          "graph_artifact": "artifact_56801a21c692444a926ad5efcf4aae0a",
+          "graph_digest": "sha256-v1:98cafcde29d3bb91251143a4fbc2f6cf9a9bded882ce3de4836d02b254991c1b",
+          "maturity": "MMAT_CALLS",
+          "memory_diagnostics": [
+            "partial_scalar_input"
+          ],
+          "memory_plan_artifact": "artifact_6bbd05677e0e40029375fcbb5b2be8e0",
+          "memory_result_artifact": "artifact_b2685d76122b4c3086d053e8d02395c2",
+          "profile": "X64-LE",
+          "snapshot_artifact": "artifact_377ba416e37047609ae10cf1ed0f3401",
+          "snapshot_id": "snapshot-v1:196063dfba402a9c3b2701a98c09976431c59b342d1261622372f4ad5c642ae4",
+          "ssa_artifact": "artifact_cadd815a9be34a60a637121509cc3e19",
+          "target_executed": false
+        }
+      },
+      "nodes": 16,
+      "edges": 1,
+      "cfg_blocks": 3,
+      "evidence": 16,
+      "calls": [
+        {
+          "tool": "flow_get_capabilities",
+          "response_chars": 2361,
+          "error": null
+        },
+        {
+          "tool": "flow_create_snapshot",
+          "response_chars": 104,
+          "error": null
+        },
+        {
+          "tool": "flow_get_job",
+          "response_chars": 177,
+          "error": null
+        },
+        {
+          "tool": "flow_get_job",
+          "response_chars": 834,
+          "error": null
+        },
+        {
+          "tool": "flow_create_snapshot",
+          "response_chars": 104,
+          "error": null
+        },
+        {
+          "tool": "flow_cancel_job",
+          "response_chars": 834,
+          "error": null
+        },
+        {
+          "tool": "flow_get_function_ssa",
+          "response_chars": 5836,
+          "error": null
+        },
+        {
+          "tool": "flow_get_function_ssa",
+          "response_chars": 4716,
+          "error": null
+        },
+        {
+          "tool": "flow_get_function_ssa",
+          "response_chars": 6488,
+          "error": null
+        },
+        {
+          "tool": "flow_get_function_ssa",
+          "response_chars": 2864,
+          "error": null
+        },
+        {
+          "tool": "flow_get_cfg",
+          "response_chars": 2034,
+          "error": null
+        },
+        {
+          "tool": "flow_get_graph",
+          "response_chars": 5918,
+          "error": null
+        },
+        {
+          "tool": "flow_get_graph",
+          "response_chars": 4798,
+          "error": null
+        },
+        {
+          "tool": "flow_get_graph",
+          "response_chars": 6570,
+          "error": null
+        },
+        {
+          "tool": "flow_get_graph",
+          "response_chars": 6216,
+          "error": null
+        },
+        {
+          "tool": "flow_get_graph",
+          "response_chars": 5714,
+          "error": null
+        },
+        {
+          "tool": "flow_get_graph",
+          "response_chars": 5168,
+          "error": null
+        },
+        {
+          "tool": "flow_get_graph",
+          "response_chars": 3743,
+          "error": null
+        },
+        {
+          "tool": "flow_get_evidence",
+          "response_chars": 4447,
+          "error": null
+        },
+        {
+          "tool": "flow_get_evidence",
+          "response_chars": 4057,
+          "error": null
+        },
+        {
+          "tool": "flow_get_evidence",
+          "response_chars": 4107,
+          "error": null
+        },
+        {
+          "tool": "flow_get_evidence",
+          "response_chars": 2111,
+          "error": null
+        },
+        {
+          "tool": "flow_trace_backward",
+          "response_chars": 7712,
+          "error": null
+        },
+        {
+          "tool": "flow_trace_forward",
+          "response_chars": 1194,
+          "error": null
+        },
+        {
+          "tool": "flow_trace_forward",
+          "response_chars": 1194,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 551,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 551,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 74,
+          "error": {
+            "code": "revision_conflict"
+          }
+        },
+        {
+          "tool": "flow_trace_backward",
+          "response_chars": 1195,
+          "error": null
+        },
+        {
+          "tool": "flow_trace_backward",
+          "response_chars": 1195,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 550,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 550,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 74,
+          "error": {
+            "code": "revision_conflict"
+          }
+        },
+        {
+          "tool": "flow_trace_backward",
+          "response_chars": 1195,
+          "error": null
+        },
+        {
+          "tool": "flow_cancel_trace",
+          "response_chars": 304,
+          "error": null
+        },
+        {
+          "tool": "flow_get_job",
+          "response_chars": 834,
+          "error": null
+        }
+      ],
+      "tools": [
+        "server_health",
+        "lookup_funcs",
+        "list_funcs",
+        "flow_get_capabilities",
+        "flow_create_snapshot",
+        "flow_get_job",
+        "flow_cancel_job",
+        "flow_get_function_ssa",
+        "flow_get_cfg",
+        "flow_get_graph",
+        "flow_get_evidence",
+        "flow_trace_forward",
+        "flow_trace_backward",
+        "flow_continue_trace",
+        "flow_cancel_trace",
+        "idb_open",
+        "idb_list"
+      ],
+      "adoption_detach_preserved_job": true,
+      "flow_build_id": "flow-build-sha256-v1:b9f01e30c57da7631c2c1baf81e1e67c75ce49b2b8ddd406c26720deb4a8f456",
+      "readonly_direct_call_denied": true,
+      "memory_source_selected_exact_access": true,
+      "memory_dependency": {
+        "interval": {
+          "start": 7,
+          "end": 8
+        },
+        "precision": "exact",
+        "object_id": "object-v1:11b8a1123e4876252fec6f79b136671f1bd827425038f1edb4dc8b4cb8585d72",
+        "rule_id": "byte-reaching-store-v1",
+        "evidence_ids": [
+          "evidence-v1:65c7796a5f2aca6fede6d1d0b90115005561cee87ef2d7a885296273856e0437",
+          "evidence-v1:9ce49fc49e03c1a56b58698e6cae879345ce5ccb1577170fc2151b51907cf4e7",
+          "evidence-v1:e7b67e88adfe702c6efde71726be88a631eb5fbf1c0729cbae17dc2cc572039c"
+        ],
+        "derivation_evidence": {
+          "evidence_id": "evidence-v1:e7b67e88adfe702c6efde71726be88a631eb5fbf1c0729cbae17dc2cc572039c",
+          "snapshot_id": "snapshot-v1:196063dfba402a9c3b2701a98c09976431c59b342d1261622372f4ad5c642ae4",
+          "rule_id": "byte-reaching-store-v1",
+          "sites": [],
+          "source_eas": [],
+          "synthetic": true,
+          "origins": [
+            "node-v1:1dfbf8fa75b1172f0d29cf5805e96d64de4e2006194c7b288b26efa21fab500b",
+            "node-v1:98885e40a4f3e6ce5e36a9c0c0a6d15f5d49b2db8b8af15cca4de175240bb6c2"
+          ],
+          "assumptions": [
+            "automatic object identity is structural and conservative; no ABI argument numbering",
+            "experimental Mach-O flat user-space address model; no TLS or MMIO semantics"
+          ],
+          "memory_object_id": "object-v1:11b8a1123e4876252fec6f79b136671f1bd827425038f1edb4dc8b4cb8585d72"
+        }
+      },
+      "input_preserved": true,
+      "target_executed": false
+    },
+    {
+      "profile": "A64-LE",
+      "binary_sha256": "fe9acefb7f883e942ebf836ae36b411b3ae110d20ff5dc442d9539334ef0c1cf",
+      "job": {
+        "schema_version": "flow-job/1",
+        "id": "job_e7cca4a4e4bd4133880526e7806fa710",
+        "state": "complete",
+        "revision": 4,
+        "progress": {},
+        "budget": {},
+        "error": null,
+        "result": {
+          "analysis": "partial",
+          "graph_artifact": "artifact_f32fc8c3718841bfa53c53848eb343b4",
+          "graph_digest": "sha256-v1:2dc28514506a2f819bdc52dcddd76f6eb0faf0a3a6c6bd60775c70c6aa3cfa15",
+          "maturity": "MMAT_CALLS",
+          "memory_diagnostics": [
+            "partial_scalar_input"
+          ],
+          "memory_plan_artifact": "artifact_c5e2505e84844e7e910a62f705d1ca26",
+          "memory_result_artifact": "artifact_5070255b20f142c0a78e415ff61157c0",
+          "profile": "A64-LE",
+          "snapshot_artifact": "artifact_ba3f811b453b4950b8dddd5ad09ce172",
+          "snapshot_id": "snapshot-v1:15c62493c8a27bcd6fa4527b94548e5ce4daa8d8f3cfb7a97bcbcff7d808429e",
+          "ssa_artifact": "artifact_f0e2a6bd262e428f9478090f7bd53639",
+          "target_executed": false
+        }
+      },
+      "nodes": 17,
+      "edges": 7,
+      "cfg_blocks": 3,
+      "evidence": 15,
+      "calls": [
+        {
+          "tool": "flow_get_capabilities",
+          "response_chars": 2358,
+          "error": null
+        },
+        {
+          "tool": "flow_get_job",
+          "response_chars": 85,
+          "error": {
+            "code": "wrong_database_or_unknown_id"
+          }
+        },
+        {
+          "tool": "flow_create_snapshot",
+          "response_chars": 104,
+          "error": null
+        },
+        {
+          "tool": "flow_get_job",
+          "response_chars": 177,
+          "error": null
+        },
+        {
+          "tool": "flow_get_job",
+          "response_chars": 834,
+          "error": null
+        },
+        {
+          "tool": "flow_create_snapshot",
+          "response_chars": 104,
+          "error": null
+        },
+        {
+          "tool": "flow_cancel_job",
+          "response_chars": 834,
+          "error": null
+        },
+        {
+          "tool": "flow_get_function_ssa",
+          "response_chars": 4923,
+          "error": null
+        },
+        {
+          "tool": "flow_get_function_ssa",
+          "response_chars": 5987,
+          "error": null
+        },
+        {
+          "tool": "flow_get_function_ssa",
+          "response_chars": 5857,
+          "error": null
+        },
+        {
+          "tool": "flow_get_function_ssa",
+          "response_chars": 3421,
+          "error": null
+        },
+        {
+          "tool": "flow_get_cfg",
+          "response_chars": 2019,
+          "error": null
+        },
+        {
+          "tool": "flow_get_graph",
+          "response_chars": 5005,
+          "error": null
+        },
+        {
+          "tool": "flow_get_graph",
+          "response_chars": 6069,
+          "error": null
+        },
+        {
+          "tool": "flow_get_graph",
+          "response_chars": 5939,
+          "error": null
+        },
+        {
+          "tool": "flow_get_graph",
+          "response_chars": 5556,
+          "error": null
+        },
+        {
+          "tool": "flow_get_graph",
+          "response_chars": 5151,
+          "error": null
+        },
+        {
+          "tool": "flow_get_graph",
+          "response_chars": 5147,
+          "error": null
+        },
+        {
+          "tool": "flow_get_graph",
+          "response_chars": 5425,
+          "error": null
+        },
+        {
+          "tool": "flow_get_graph",
+          "response_chars": 3599,
+          "error": null
+        },
+        {
+          "tool": "flow_get_evidence",
+          "response_chars": 4361,
+          "error": null
+        },
+        {
+          "tool": "flow_get_evidence",
+          "response_chars": 4095,
+          "error": null
+        },
+        {
+          "tool": "flow_get_evidence",
+          "response_chars": 3698,
+          "error": null
+        },
+        {
+          "tool": "flow_trace_backward",
+          "response_chars": 4705,
+          "error": null
+        },
+        {
+          "tool": "flow_trace_forward",
+          "response_chars": 1194,
+          "error": null
+        },
+        {
+          "tool": "flow_trace_forward",
+          "response_chars": 1194,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 1195,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 1195,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 74,
+          "error": {
+            "code": "revision_conflict"
+          }
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 1196,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 1196,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 74,
+          "error": {
+            "code": "revision_conflict"
+          }
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 1196,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 1196,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 74,
+          "error": {
+            "code": "revision_conflict"
+          }
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 551,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 551,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 74,
+          "error": {
+            "code": "revision_conflict"
+          }
+        },
+        {
+          "tool": "flow_trace_backward",
+          "response_chars": 1195,
+          "error": null
+        },
+        {
+          "tool": "flow_trace_backward",
+          "response_chars": 1195,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 1854,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 1854,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 74,
+          "error": {
+            "code": "revision_conflict"
+          }
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 1854,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 1854,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 74,
+          "error": {
+            "code": "revision_conflict"
+          }
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 1195,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 1195,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 74,
+          "error": {
+            "code": "revision_conflict"
+          }
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 1195,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 1195,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 74,
+          "error": {
+            "code": "revision_conflict"
+          }
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 542,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 542,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 74,
+          "error": {
+            "code": "revision_conflict"
+          }
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 538,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 538,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 74,
+          "error": {
+            "code": "revision_conflict"
+          }
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 550,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 550,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 74,
+          "error": {
+            "code": "revision_conflict"
+          }
+        },
+        {
+          "tool": "flow_trace_backward",
+          "response_chars": 1195,
+          "error": null
+        },
+        {
+          "tool": "flow_cancel_trace",
+          "response_chars": 304,
+          "error": null
+        },
+        {
+          "tool": "flow_get_job",
+          "response_chars": 834,
+          "error": null
+        }
+      ],
+      "tools": [
+        "server_health",
+        "lookup_funcs",
+        "list_funcs",
+        "flow_get_capabilities",
+        "flow_create_snapshot",
+        "flow_get_job",
+        "flow_cancel_job",
+        "flow_get_function_ssa",
+        "flow_get_cfg",
+        "flow_get_graph",
+        "flow_get_evidence",
+        "flow_trace_forward",
+        "flow_trace_backward",
+        "flow_continue_trace",
+        "flow_cancel_trace",
+        "idb_open",
+        "idb_list"
+      ],
+      "adoption_detach_preserved_job": true,
+      "flow_build_id": "flow-build-sha256-v1:b9f01e30c57da7631c2c1baf81e1e67c75ce49b2b8ddd406c26720deb4a8f456",
+      "readonly_direct_call_denied": true,
+      "memory_source_selected_exact_access": true,
+      "memory_dependency": {
+        "interval": {
+          "start": 7,
+          "end": 8
+        },
+        "precision": "exact",
+        "object_id": "object-v1:d8c5a87306b2584c328b0b4c24e41a5591d242c4b26eeea78b456abf156fd847",
+        "rule_id": "byte-reaching-store-v1",
+        "evidence_ids": [
+          "evidence-v1:1c5aa902aaccadfe5ee68323e18b22d5de6572de939a206865b139ed95d52ef7",
+          "evidence-v1:4ef13bafe1fc54df221af76ea8b9aa19f6bc8dce2e037059c871f7e0163a7f57",
+          "evidence-v1:c074997a4bf7ea5039a752c1f9af947acbe05f65db6a53bf04f9ed4f1402cef3"
+        ],
+        "derivation_evidence": {
+          "evidence_id": "evidence-v1:1c5aa902aaccadfe5ee68323e18b22d5de6572de939a206865b139ed95d52ef7",
+          "snapshot_id": "snapshot-v1:15c62493c8a27bcd6fa4527b94548e5ce4daa8d8f3cfb7a97bcbcff7d808429e",
+          "rule_id": "byte-reaching-store-v1",
+          "sites": [],
+          "source_eas": [],
+          "synthetic": true,
+          "origins": [
+            "node-v1:8cd07d26f76a857614762645693e7f3225dd199a37c72ea92dd487ac0a4dc146",
+            "node-v1:bf033161e3ed64245740f07a75ecdd797c3392b2374a46b7aca6cacb83645c8b"
+          ],
+          "assumptions": [
+            "automatic object identity is structural and conservative; no ABI argument numbering",
+            "experimental Mach-O flat user-space address model; no TLS or MMIO semantics"
+          ],
+          "memory_object_id": "object-v1:d8c5a87306b2584c328b0b4c24e41a5591d242c4b26eeea78b456abf156fd847"
+        }
+      },
+      "input_preserved": true,
+      "target_executed": false
+    }
+  ]
+}

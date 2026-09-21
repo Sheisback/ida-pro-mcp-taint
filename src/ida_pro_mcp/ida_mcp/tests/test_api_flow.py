@@ -25,11 +25,29 @@ def test_flow_capabilities_honest():
     assert result["schema_version"] == SCHEMA_VERSION
     assert result["build_id"] == BUILD_ID
     assert len(BUILD_ID.split(":")[-1]) == 64
-    assert result["supported_profiles"] == []
+    assert set(result["supported_profiles"]) <= {"X64-LE", "A64-LE"}
     assert result["features"]["capability_discovery"]["status"] == "available"
     for name, feature in result["features"].items():
-        if name != "capability_discovery":
+        if name not in {
+            "capability_discovery",
+            "snapshot",
+            "value_ssa",
+            "memory_ssa",
+            "taint",
+            "durable_jobs",
+            "microcode_extraction",
+        }:
             assert feature["status"] in ("unverified", "unavailable")
+    supported = bool(result["supported_profiles"])
+    for name in (
+        "snapshot",
+        "value_ssa",
+        "memory_ssa",
+        "taint",
+        "durable_jobs",
+        "microcode_extraction",
+    ):
+        assert (result["features"][name]["status"] == "available") == supported
     assert result["environment"]["bits"] in (16, 32, 64)
     assert any("netnode" in item and "save" in item for item in result["limitations"])
 
@@ -37,7 +55,9 @@ def test_flow_capabilities_honest():
 @test()
 def test_flow_registration_and_local_schema():
     tools = {tool["name"]: tool for tool in MCP_SERVER._mcp_tools_list()["tools"]}
-    assert {name for name in tools if name.startswith("flow_")} == {"flow_get_capabilities"}
+    assert {name for name in tools if name.startswith("flow_")} == {
+        name for name in dir(api_flow) if name.startswith("flow_")
+    }
     assert "trace_data_flow" in tools and "decompile" in tools
     assert "database" not in tools["flow_get_capabilities"]["inputSchema"].get("properties", {})
     assert not inspect.signature(api_flow.flow_get_capabilities).parameters

@@ -11,7 +11,7 @@ import inspect
 import logging
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer, HTTPServer
-from typing import Any, Callable, Union, Annotated, BinaryIO, NotRequired, get_origin, get_args, get_type_hints, is_typeddict
+from typing import Any, Callable, Union, Annotated, BinaryIO, Literal, NotRequired, get_origin, get_args, get_type_hints, is_typeddict
 from types import UnionType
 from urllib.parse import urlparse, parse_qs, urlunparse
 from io import BufferedIOBase
@@ -1302,6 +1302,15 @@ class McpServer:
         # Union[Ts..], Optional[T] and T1 | T2
         if origin in (Union, UnionType):
             return {"anyOf": [self._type_to_json_schema(t) for t in get_args(py_type)]}
+
+        # Literal[values...] -- keep tagged-union discriminants visible to clients.
+        if origin is Literal:
+            values = list(get_args(py_type))
+            schema = {"enum": values}
+            kinds = {type(value) for value in values}
+            if len(kinds) == 1:
+                schema.update(self._type_to_json_schema(kinds.pop()))
+            return schema
 
         # list[T]
         if origin is list:

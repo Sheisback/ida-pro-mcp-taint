@@ -5,12 +5,12 @@ actually returned by _mcp_tools_call, especially for union-of-objects
 return types that should NOT be wrapped in a {"result": ...} envelope.
 """
 
-import http.server  # Preload stdlib http before adding local ida_mcp paths.
+import http.server  # noqa: F401 -- preload before adding local ida_mcp paths.
 import json
 import pathlib
 import sys
 import unittest
-from typing import Annotated, TypedDict
+from typing import Annotated, Literal, TypedDict
 
 _ZEROMCP_SRC = pathlib.Path(__file__).resolve().parents[1] / "src" / "ida_pro_mcp" / "ida_mcp"
 sys.path.insert(0, str(_ZEROMCP_SRC))
@@ -194,7 +194,26 @@ class OutputSchemaUnionOfObjectsTests(unittest.TestCase):
         out = schema["outputSchema"]
 
         self.assertIn("result", out.get("properties", {}),
-                       "mixed union (object + primitive) should still wrap")
+                      "mixed union (object + primitive) should still wrap")
+
+    def test_literal_discriminants_are_enumerated(self):
+        class ValueSource(TypedDict):
+            kind: Literal["value"]
+            node_id: str
+
+        class MemorySource(TypedDict):
+            kind: Literal["memory"]
+            reference: dict
+
+        def trace(source: ValueSource | MemorySource) -> dict:
+            ...
+
+        schema = self._register_and_get_schema(trace)
+        variants = schema["inputSchema"]["properties"]["source"]["anyOf"]
+        self.assertEqual(
+            {variant["properties"]["kind"]["enum"][0] for variant in variants},
+            {"value", "memory"},
+        )
 
 
 class StructuredContentMatchesSchemaTests(unittest.TestCase):

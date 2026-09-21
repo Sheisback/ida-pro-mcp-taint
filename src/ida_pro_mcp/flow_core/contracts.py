@@ -432,6 +432,7 @@ class Evidence(Model):
     synthetic: bool = False
     origins: tuple[str, ...] = ()  # Snapshot-local node IDs, checked by Graph.
     assumptions: tuple[str, ...] = ()
+    memory_object_id: str | None = None
 
     def __post_init__(self):
         super().__post_init__()
@@ -456,6 +457,8 @@ class Evidence(Model):
             check_id(origin, "node")
         for assumption in self.assumptions:
             nonempty(assumption)
+        if self.memory_object_id is not None:
+            check_id(self.memory_object_id, "object")
 
     @property
     def evidence_id(self) -> str:
@@ -611,6 +614,8 @@ class Edge(Model):
     width_bits: int | None = None
     interval: ByteRange | None = None
     predecessor: int | None = None
+    memory_object_id: str | None = None
+    memory_rule_id: str | None = None
 
     def __post_init__(self):
         super().__post_init__()
@@ -628,6 +633,17 @@ class Edge(Model):
         )
         if self.predecessor is not None:
             require(self.predecessor >= 0, "Negative predecessor")
+        require(
+            (self.memory_object_id is None) == (self.memory_rule_id is None),
+            "Memory edge object/rule must be paired",
+        )
+        if self.memory_object_id is not None:
+            require(
+                self.kind == "memory_data_dependency",
+                "Memory derivation belongs on a memory-data edge",
+            )
+            check_id(self.memory_object_id, "object")
+            nonempty(self.memory_rule_id)
 
     @property
     def edge_id(self) -> str:
@@ -764,9 +780,11 @@ class Graph(Model):
         canonical_set(evidence_ids)
         canonical_set(tuple(e.edge_id for e in self.edges))
         nodes, evidence = set(node_ids), set(evidence_ids)
+        evidence_by_id = {item.evidence_id: item for item in self.evidence}
         by_id = {n.node_id: n for n in self.nodes}
         sid = self.snapshot.snapshot_id
         canonical_set(tuple(o.object_id for o in self.objects))
+        memory_objects = {obj.object_id for obj in self.objects}
         canonical_set(tuple(v.version_id for v in self.versions))
         for obj in self.objects:
             require(obj.snapshot_id == sid, "Cross-snapshot memory object")
@@ -779,6 +797,11 @@ class Graph(Model):
         for item in self.evidence:
             require(item.snapshot_id == sid, "Cross-snapshot evidence")
             require(set(item.origins) <= nodes, "Dangling evidence origin")
+            require(
+                item.memory_object_id is None
+                or item.memory_object_id in memory_objects,
+                "Dangling evidence memory object",
+            )
             for site in item.sites:
                 self.snapshot.validate_site(site)
             if item.source_eas:
@@ -841,6 +864,31 @@ class Graph(Model):
         for edge in self.edges:
             require(edge.source in nodes and edge.target in nodes, "Dangling edge")
             require(set(edge.evidence_ids) <= evidence, "Dangling edge evidence")
+            require(
+                edge.memory_object_id is None
+                or edge.memory_object_id in memory_objects,
+                "Dangling edge memory object",
+            )
+            if edge.memory_object_id is not None:
+                require(
+                    (edge.interval is None and edge.width_bits is None)
+                    or (
+                        edge.interval is not None
+                        and edge.width_bits
+                        == 8 * (edge.interval.end - edge.interval.start)
+                    ),
+                    "Memory edge width/range mismatch",
+                )
+                linked = [
+                    evidence_by_id[eid]
+                    for eid in edge.evidence_ids
+                    if evidence_by_id[eid].rule_id == edge.memory_rule_id
+                    and evidence_by_id[eid].origins
+                    == tuple(sorted((edge.source, edge.target)))
+                    and evidence_by_id[eid].memory_object_id == edge.memory_object_id
+                    and evidence_by_id[eid].assumptions
+                ]
+                require(bool(linked), "Missing memory derivation evidence")
             if edge.kind == "phi_input":
                 target = by_id[edge.target]
                 require(

@@ -5,3 +5,16 @@ flow_get_capabilities
 server_health
 lookup_funcs
 list_funcs
+
+# Ephemeral sessions must close with save=false; idb_save is intentionally absent.
+flow_create_snapshot
+flow_get_job
+flow_cancel_job
+flow_get_function_ssa
+flow_get_cfg
+flow_trace_forward
+flow_trace_backward
+flow_continue_trace
+flow_cancel_trace
+flow_get_graph
+flow_get_evidence

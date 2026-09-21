@@ -1,4 +1,5 @@
 import glob
+import hashlib
 import json
 import os
 import shutil
@@ -342,11 +343,21 @@ def list_available_clients():
 
     print()
     print("Usage examples:")
-    print("  ida-pro-mcp --install                                    # Interactive selector")
-    print("  ida-pro-mcp --install claude,cursor                       # Specific client targets")
-    print("  ida-pro-mcp --install vscode --scope project              # Project-level config")
-    print("  ida-pro-mcp --install cursor --transport streamable-http  # Streamable HTTP config")
-    print("  ida-pro-mcp --uninstall cursor                            # Uninstall specific target")
+    print(
+        "  ida-pro-mcp --install                                    # Interactive selector"
+    )
+    print(
+        "  ida-pro-mcp --install claude,cursor                       # Specific client targets"
+    )
+    print(
+        "  ida-pro-mcp --install vscode --scope project              # Project-level config"
+    )
+    print(
+        "  ida-pro-mcp --install cursor --transport streamable-http  # Streamable HTTP config"
+    )
+    print(
+        "  ida-pro-mcp --uninstall cursor                            # Uninstall specific target"
+    )
 
 
 def install_mcp_servers(
@@ -450,21 +461,121 @@ def _remove_path(path: str) -> None:
         os.remove(path)
 
 
-def _install_link_or_copy(source: str, destination: str) -> bool:
-    existing_realpath = (
-        os.path.realpath(destination) if os.path.lexists(destination) else None
-    )
-    if existing_realpath == source:
-        return False
+GUI_BUNDLE = "_ida_pro_mcp_runtime"
+GUI_MANIFEST = "install-manifest.json"
 
-    _remove_path(destination)
-    try:
-        os.symlink(source, destination)
-    except OSError:
-        if os.path.isdir(source):
-            shutil.copytree(source, destination)
-        else:
-            shutil.copy(source, destination)
+
+def _bundle_files(root: str) -> dict[str, str]:
+    """Hash deployed source, never interpreter-generated caches."""
+    result = {}
+    for directory, dirs, files in os.walk(root):
+        dirs[:] = sorted(d for d in dirs if d != "__pycache__")
+        for name in sorted(files):
+            relative = os.path.relpath(os.path.join(directory, name), root)
+            if relative == GUI_MANIFEST:
+                continue
+            with open(os.path.join(root, relative), "rb") as stream:
+                result[relative] = hashlib.sha256(stream.read()).hexdigest()
+    return result
+
+
+def _owned_manifest(root: str) -> dict | None:
+    path = os.path.join(root, GUI_MANIFEST)
+    if not os.path.isfile(path) or os.path.islink(root):
+        return None
+    with open(path, encoding="utf-8") as stream:
+        manifest = json.load(stream)
+    if manifest.get("owner") != "ida-pro-mcp" or manifest.get("version") != 1:
+        raise RuntimeError("Unrecognized GUI installation manifest")
+    for name in manifest["files"]:
+        if os.path.isabs(name) or ".." in name.replace("\\", "/").split("/"):
+            raise RuntimeError("Invalid GUI installation manifest path")
+    return manifest
+
+
+def _install_gui_bundle(folder: str) -> None:
+    destination = os.path.join(folder, GUI_BUNDLE)
+    existing = _owned_manifest(destination)
+    loader_destination = os.path.join(folder, "ida_mcp.py")
+    if os.path.lexists(loader_destination) and existing is None:
+        # Recognize the legacy installer loader, but never replace arbitrary plugins.
+        with open(loader_destination, encoding="utf-8") as stream:
+            if not stream.read().startswith('"""IDA Pro MCP Plugin Loader'):
+                raise RuntimeError("Refusing to replace an unowned GUI loader")
+    if existing is not None and os.path.isfile(loader_destination):
+        with open(loader_destination, "rb") as stream:
+            loader_hash = hashlib.sha256(stream.read()).hexdigest()
+        if loader_hash != existing["loader_sha256"]:
+            raise RuntimeError("Refusing to replace a modified GUI loader")
+    if os.path.lexists(destination):
+        if existing is None:
+            raise RuntimeError(f"Refusing to replace unowned directory: {destination}")
+        extras = set(_bundle_files(destination)) - set(existing["files"])
+        if extras:
+            raise RuntimeError(f"Unowned files in GUI bundle: {sorted(extras)}")
+    with tempfile.TemporaryDirectory(prefix=".ida-mcp-stage-", dir=folder) as staging:
+        bundle = os.path.join(staging, GUI_BUNDLE)
+        os.mkdir(bundle)
+        shutil.copy2(os.path.join(SCRIPT_DIR, "__init__.py"), bundle)
+        for name, source in (
+            ("ida_mcp", IDA_PLUGIN_PKG),
+            ("flow_core", os.path.join(SCRIPT_DIR, "flow_core")),
+        ):
+            shutil.copytree(
+                source,
+                os.path.join(bundle, name),
+                ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+            )
+        loader = os.path.join(staging, "ida_mcp.py")
+        shutil.copy2(IDA_PLUGIN_LOADER, loader)
+        with open(loader, "rb") as stream:
+            loader_hash = hashlib.sha256(stream.read()).hexdigest()
+        manifest = {
+            "owner": "ida-pro-mcp",
+            "version": 1,
+            "files": _bundle_files(bundle),
+            "loader_sha256": loader_hash,
+        }
+        with open(os.path.join(bundle, GUI_MANIFEST), "w", encoding="utf-8") as stream:
+            json.dump(manifest, stream, sort_keys=True)
+        backup = os.path.join(staging, "previous")
+        if existing is not None:
+            os.replace(destination, backup)
+        try:
+            os.replace(bundle, destination)
+            os.replace(loader, os.path.join(folder, "ida_mcp.py"))
+        except BaseException:
+            _remove_path(destination)
+            if existing is not None:
+                os.replace(backup, destination)
+            raise
+
+
+def _uninstall_gui_bundle(folder: str) -> bool:
+    root = os.path.join(folder, GUI_BUNDLE)
+    manifest = _owned_manifest(root)
+    if manifest is None:
+        return False
+    loader = os.path.join(folder, "ida_mcp.py")
+    if os.path.isfile(loader) and not os.path.islink(loader):
+        with open(loader, "rb") as stream:
+            if hashlib.sha256(stream.read()).hexdigest() == manifest["loader_sha256"]:
+                os.unlink(loader)
+    for name in manifest["files"]:
+        path = os.path.join(root, name)
+        # Do not follow a replaced directory symlink outside the owned root.
+        if os.path.commonpath(
+            (os.path.realpath(path), os.path.realpath(root))
+        ) != os.path.realpath(root):
+            continue
+        if os.path.isfile(path) or os.path.islink(path):
+            os.unlink(path)
+    os.unlink(os.path.join(root, GUI_MANIFEST))
+    for directory, _, _ in os.walk(root, topdown=False):
+        try:
+            os.rmdir(directory)
+        except OSError:
+            pass  # Preserve unowned additions and generated caches.
     return True
 
 
@@ -485,51 +596,20 @@ def install_ida_plugin(
             sys.exit(1)
 
     ida_plugin_folder = os.path.join(ida_folder, "plugins")
-    loader_destination = os.path.join(ida_plugin_folder, "ida_mcp.py")
-    pkg_destination = os.path.join(ida_plugin_folder, "ida_mcp")
-    old_plugin = os.path.join(ida_plugin_folder, "mcp-plugin.py")
-
     if uninstall:
-        removed_items: list[str] = []
-        for label, path in (
-            ("loader", loader_destination),
-            ("package", pkg_destination),
-            ("old plugin", old_plugin),
-        ):
-            if os.path.lexists(path):
-                _remove_path(path)
-                removed_items.append(f"{label}: {path}")
-
+        removed = _uninstall_gui_bundle(ida_plugin_folder)
         if not quiet:
-            if removed_items:
-                print("Uninstalled IDA Pro plugin")
-                for item in removed_items:
-                    print(f"  {item}")
-            else:
-                print("Skipping IDA plugin uninstall (not installed)")
+            print(
+                "Uninstalled IDA Pro plugin"
+                if removed
+                else "Skipping IDA plugin uninstall (no owned bundle)"
+            )
         return
 
     os.makedirs(ida_plugin_folder, exist_ok=True)
-    removed_old_plugin = False
-    if os.path.lexists(old_plugin):
-        _remove_path(old_plugin)
-        removed_old_plugin = True
-
-    installed_items: list[str] = []
-    if _install_link_or_copy(IDA_PLUGIN_LOADER, loader_destination):
-        installed_items.append(f"loader: {loader_destination}")
-    if _install_link_or_copy(IDA_PLUGIN_PKG, pkg_destination):
-        installed_items.append(f"package: {pkg_destination}")
-
+    _install_gui_bundle(ida_plugin_folder)
     if not quiet:
-        if installed_items or removed_old_plugin:
-            print("Installed IDA Pro plugin (IDA restart required)")
-            if removed_old_plugin:
-                print(f"  removed old plugin: {old_plugin}")
-            for item in installed_items:
-                print(f"  {item}")
-        else:
-            print("Skipping IDA plugin installation (already up to date)")
+        print("Installed IDA Pro plugin (IDA restart required)")
 
 
 def _resolve_transport(value: str) -> str:

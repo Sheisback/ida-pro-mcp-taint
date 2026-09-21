@@ -819,6 +819,7 @@ class Store:
         items,
         next_state: TraceState,
         *,
+        operation="flow_continue_trace",
         _fault=None,
     ):
         require(
@@ -829,7 +830,16 @@ class Store:
             type(next_state) is TraceState and type(items) is list,
             "invalid_page_contract",
         )
-        operation = "continue:" + identifier
+        require(
+            operation
+            in {
+                "flow_trace_forward",
+                "flow_trace_backward",
+                "flow_continue_trace",
+                "flow_cancel_trace",
+            },
+            "invalid_page_operation",
+        )
         canonical_request = {
             "trace_id": identifier,
             "expected_revision": expected_revision,
