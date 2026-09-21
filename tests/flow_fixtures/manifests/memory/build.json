@@ -1,0 +1,184 @@
+[
+  {
+    "abi_id": "darwin-x86_64-sysv-derived",
+    "arch": "x86_64",
+    "binary": "memory_x86_64",
+    "binary_sha256": "e98ee1f96dead5f8988573b9e8ce2e1466f30f8d5881af4b71a66b7b6e73436a",
+    "builder_sha256": "832f579773ba1122bb8d84991e680c92c920b6965f5b0c002e7c36f233d9980f",
+    "command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-g",
+      "-Wl,-no_uuid",
+      "-Wl,-oso_prefix,$OUTPUT/",
+      "$OUTPUT/memory_x86_64.o",
+      "-o",
+      "$OUTPUT/memory_x86_64"
+    ],
+    "companion_artifacts": [
+      {
+        "bundle": "memory_x86_64.dSYM",
+        "path": "memory_x86_64.dSYM/Contents/Resources/DWARF/memory_x86_64",
+        "placement": "sibling_of_binary",
+        "purpose": "function/source mapping",
+        "required": true,
+        "sha256": "d8f579b2800e92b21bd9a5a42a49ebd4fb6542b3758590733ca4ea9147b40b5a"
+      }
+    ],
+    "compile_command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-O0",
+      "-g",
+      "-fno-stack-protector",
+      "-fdebug-compilation-dir=.",
+      "-ffile-prefix-map=/Users/sheisback/Documents/GitHub/ida-pro-mcp-taint=.",
+      "-c",
+      "tests/flow_fixtures/memory_anchor.c",
+      "-o",
+      "$OUTPUT/memory_x86_64.o"
+    ],
+    "compiler": "Apple clang version 21.0.0 (clang-2100.0.123.102)\nTarget: arm64-apple-darwin27.0.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin",
+    "dsym_command": [
+      "dsymutil",
+      "--oso-prepend-path",
+      "$OUTPUT",
+      "$OUTPUT/memory_x86_64"
+    ],
+    "environment": {
+      "SOURCE_DATE_EPOCH": "0"
+    },
+    "format": "FMT-MACHO",
+    "function_selector": {
+      "kind": "ida_name",
+      "naming_convention": "DWARF C function name without Mach-O underscore prefix",
+      "requires_companion": true,
+      "value": "memory_before_after"
+    },
+    "functions": [
+      "memory_before_after",
+      "memory_alias",
+      "memory_global_roundtrip",
+      "memory_stack_roundtrip"
+    ],
+    "link_command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-g",
+      "-Wl,-no_uuid",
+      "-Wl,-oso_prefix,$OUTPUT/",
+      "$OUTPUT/memory_x86_64.o",
+      "-o",
+      "$OUTPUT/memory_x86_64"
+    ],
+    "object_mtime": 0,
+    "reproducibility": {
+      "binary_sha256_equal": true,
+      "dwarf_sha256_equal": true,
+      "fresh_builds": 2
+    },
+    "sdk_version": "26.4",
+    "source": "tests/flow_fixtures/memory_anchor.c",
+    "source_sha256": "353c6de0fd72a04d9c9ad6eb450b4000909ecaf62b5cf2ef3ac3ab9bffd028b3",
+    "source_types": {
+      "pointer": 64,
+      "u32": 32,
+      "u8": 8
+    },
+    "target_executed": false
+  },
+  {
+    "abi_id": "darwin-aarch64",
+    "arch": "arm64",
+    "binary": "memory_arm64",
+    "binary_sha256": "fe9acefb7f883e942ebf836ae36b411b3ae110d20ff5dc442d9539334ef0c1cf",
+    "builder_sha256": "832f579773ba1122bb8d84991e680c92c920b6965f5b0c002e7c36f233d9980f",
+    "command": [
+      "clang",
+      "-arch",
+      "arm64",
+      "-g",
+      "-Wl,-no_uuid",
+      "-Wl,-oso_prefix,$OUTPUT/",
+      "$OUTPUT/memory_arm64.o",
+      "-o",
+      "$OUTPUT/memory_arm64"
+    ],
+    "companion_artifacts": [
+      {
+        "bundle": "memory_arm64.dSYM",
+        "path": "memory_arm64.dSYM/Contents/Resources/DWARF/memory_arm64",
+        "placement": "sibling_of_binary",
+        "purpose": "function/source mapping",
+        "required": true,
+        "sha256": "7d7ca145e2b41f6516ecb3c689e90cd1b40f0b7552b6c7bc655bc70359c1afca"
+      }
+    ],
+    "compile_command": [
+      "clang",
+      "-arch",
+      "arm64",
+      "-O0",
+      "-g",
+      "-fno-stack-protector",
+      "-fdebug-compilation-dir=.",
+      "-ffile-prefix-map=/Users/sheisback/Documents/GitHub/ida-pro-mcp-taint=.",
+      "-c",
+      "tests/flow_fixtures/memory_anchor.c",
+      "-o",
+      "$OUTPUT/memory_arm64.o"
+    ],
+    "compiler": "Apple clang version 21.0.0 (clang-2100.0.123.102)\nTarget: arm64-apple-darwin27.0.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin",
+    "dsym_command": [
+      "dsymutil",
+      "--oso-prepend-path",
+      "$OUTPUT",
+      "$OUTPUT/memory_arm64"
+    ],
+    "environment": {
+      "SOURCE_DATE_EPOCH": "0"
+    },
+    "format": "FMT-MACHO",
+    "function_selector": {
+      "kind": "ida_name",
+      "naming_convention": "DWARF C function name without Mach-O underscore prefix",
+      "requires_companion": true,
+      "value": "memory_before_after"
+    },
+    "functions": [
+      "memory_before_after",
+      "memory_alias",
+      "memory_global_roundtrip",
+      "memory_stack_roundtrip"
+    ],
+    "link_command": [
+      "clang",
+      "-arch",
+      "arm64",
+      "-g",
+      "-Wl,-no_uuid",
+      "-Wl,-oso_prefix,$OUTPUT/",
+      "$OUTPUT/memory_arm64.o",
+      "-o",
+      "$OUTPUT/memory_arm64"
+    ],
+    "object_mtime": 0,
+    "reproducibility": {
+      "binary_sha256_equal": true,
+      "dwarf_sha256_equal": true,
+      "fresh_builds": 2
+    },
+    "sdk_version": "26.4",
+    "source": "tests/flow_fixtures/memory_anchor.c",
+    "source_sha256": "353c6de0fd72a04d9c9ad6eb450b4000909ecaf62b5cf2ef3ac3ab9bffd028b3",
+    "source_types": {
+      "pointer": 64,
+      "u32": 32,
+      "u8": 8
+    },
+    "target_executed": false
+  }
+]

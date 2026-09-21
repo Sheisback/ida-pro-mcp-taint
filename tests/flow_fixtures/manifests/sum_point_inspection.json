@@ -1,0 +1,70 @@
+[
+  {
+    "format": "elf",
+    "binary_sha256": "77c0b8440394697aa3570c6568e2cd71e009c3c441130ae2a341e83da3b03c9c",
+    "probe_receipt": "sum_point_elf.json",
+    "maturity": "MMAT_CALLS",
+    "function_selector": {
+      "kind": "ida_name",
+      "value": "sum_point"
+    },
+    "debug_companion_required": false,
+    "load_sites": [
+      {
+        "ea": 16858238,
+        "offset_bytes": 0,
+        "width_bytes": 4,
+        "field": "x"
+      },
+      {
+        "ea": 16858350,
+        "offset_bytes": 4,
+        "width_bytes": 4,
+        "field": "y"
+      },
+      {
+        "ea": 16858500,
+        "offset_bytes": 8,
+        "width_bytes": 1,
+        "field": "tag"
+      }
+    ],
+    "mapping_method": "hand-reviewed constant offsets and pointer copies in structured microcode; EA-unique loads (nested duplicate nodes share EA)",
+    "guard_calls": 8,
+    "limitation": "ELF includes compiler-inserted pointer/alignment/overflow guards; their call effects remain unresolved; no engine taint validation"
+  },
+  {
+    "format": "pe",
+    "binary_sha256": "484b8ca4fae4d292f0db5b73c7a8d03b8a28c89a9ae8dea0d7cf487ce9096de5",
+    "probe_receipt": "sum_point_pe.json",
+    "maturity": "MMAT_CALLS",
+    "function_selector": {
+      "kind": "ida_name",
+      "value": "sum_point"
+    },
+    "debug_companion_required": false,
+    "load_sites": [
+      {
+        "ea": 5368714396,
+        "offset_bytes": 0,
+        "width_bytes": 4,
+        "field": "x"
+      },
+      {
+        "ea": 5368714402,
+        "offset_bytes": 4,
+        "width_bytes": 4,
+        "field": "y"
+      },
+      {
+        "ea": 5368714411,
+        "offset_bytes": 8,
+        "width_bytes": 1,
+        "field": "tag"
+      }
+    ],
+    "mapping_method": "hand-reviewed constant offsets and pointer copies in structured microcode; EA-unique loads (nested duplicate nodes share EA)",
+    "guard_calls": 0,
+    "limitation": "no PDB/MSVC; no engine taint validation"
+  }
+]

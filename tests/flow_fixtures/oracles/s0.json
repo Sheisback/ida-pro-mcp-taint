@@ -1,0 +1,221 @@
+{
+  "schema_version": "flow-fixture-oracles/1",
+  "cases": [
+    {
+      "oracle_id": "S0-SCALAR",
+      "function_id": "s0_scalar",
+      "policy": "explicit provenance; control dependencies recorded separately",
+      "seeds": {
+        "arg0": "X"
+      },
+      "expected_relations": [
+        "arg0 -> return: X; value=(arg0+7) mod 2^32"
+      ],
+      "forbidden_relations": [
+        "constant 7 acquires X as its own provenance"
+      ],
+      "preconditions": [
+        "uint32 modular arithmetic"
+      ],
+      "widths": {
+        "arg0": 32,
+        "return": 32
+      },
+      "comparison": "observable value/memory dependencies; no exact CFG/phi/register count",
+      "oracle_origin": "hand-authored from source semantics; not generated from engine output"
+    },
+    {
+      "oracle_id": "S0-PHI",
+      "function_id": "s0_phi",
+      "policy": "explicit provenance; control dependencies recorded separately",
+      "seeds": {
+        "arg0": "X",
+        "arg1": "Y",
+        "arg2": "C"
+      },
+      "expected_relations": [
+        "condition != 0: return depends on arg0",
+        "condition == 0: return depends on arg1",
+        "merged may-provenance includes X and Y"
+      ],
+      "forbidden_relations": [
+        "prove both arms execute",
+        "remove either possible payload source without condition proof",
+        "C becomes explicit payload provenance merely because it controls selection"
+      ],
+      "preconditions": [
+        "both branch outcomes possible; implicit/control provenance separate"
+      ],
+      "widths": {
+        "arg0": 32,
+        "arg1": 32,
+        "arg2": 32,
+        "return": 32
+      },
+      "comparison": "observable value/memory dependencies; no exact CFG/phi/register count",
+      "oracle_origin": "hand-authored from source semantics; not generated from engine output"
+    },
+    {
+      "oracle_id": "S0-OVERWRITE",
+      "function_id": "s0_overwrite",
+      "policy": "explicit provenance; control dependencies recorded separately",
+      "seeds": {
+        "arg0": "X"
+      },
+      "expected_relations": [
+        "return is constant 5 with no explicit X"
+      ],
+      "forbidden_relations": [
+        "arg0 -> return explicit X after unconditional overwrite"
+      ],
+      "preconditions": [
+        "no implicit source seeds"
+      ],
+      "widths": {
+        "arg0": 32,
+        "return": 32
+      },
+      "comparison": "observable value/memory dependencies; no exact CFG/phi/register count",
+      "oracle_origin": "hand-authored from source semantics; not generated from engine output"
+    },
+    {
+      "oracle_id": "S0-PARTIAL",
+      "function_id": "s0_partial",
+      "policy": "explicit provenance; control dependencies recorded separately",
+      "seeds": {
+        "arg0.memory[0,1)": "X",
+        "arg0.memory[1,2)": "Y"
+      },
+      "expected_relations": [
+        "after store byte [0,1) retains X",
+        "after store byte [1,2) is zero without Y",
+        "return depends on byte [0,1), not old [1,2)"
+      ],
+      "forbidden_relations": [
+        "zeroing byte [1,2) clears X from disjoint [0,1)",
+        "old Y remains explicit return provenance after exact overwrite"
+      ],
+      "preconditions": [
+        "arg0 points to a valid writable object of at least two bytes",
+        "byte accesses use uint8_t; singleton exact byte range; no concurrent writes"
+      ],
+      "widths": {
+        "byte": 8,
+        "return": 32
+      },
+      "comparison": "observable value/memory dependencies; no exact CFG/phi/register count",
+      "oracle_origin": "hand-authored from source semantics; not generated from engine output"
+    },
+    {
+      "oracle_id": "S0-ALIAS",
+      "function_id": "s0_alias",
+      "policy": "explicit provenance; control dependencies recorded separately",
+      "seeds": {
+        "arg1": "X"
+      },
+      "expected_relations": [
+        "q and p designate same object",
+        "store through q writes X into p.memory[0,4)",
+        "load through p and return carry X"
+      ],
+      "forbidden_relations": [
+        "p pointer value becomes X merely because its contents are X",
+        "alias q store fails to reach p load"
+      ],
+      "preconditions": [
+        "p aligned valid singleton writable uint32_t object",
+        "no concurrent writes"
+      ],
+      "widths": {
+        "pointer": 64,
+        "store": 32,
+        "return": 32
+      },
+      "comparison": "observable value/memory dependencies; no exact CFG/phi/register count",
+      "oracle_origin": "hand-authored from source semantics; not generated from engine output"
+    },
+    {
+      "oracle_id": "S0-MERGE",
+      "function_id": "s0_merge",
+      "policy": "explicit provenance; control dependencies recorded separately",
+      "seeds": {
+        "arg1": "X",
+        "arg2": "C"
+      },
+      "expected_relations": [
+        "true arm stores X into p.memory[0,4)",
+        "false arm stores constant 9",
+        "merged may-return includes X; false-arm return has no explicit X"
+      ],
+      "forbidden_relations": [
+        "drop true-arm X at join",
+        "treat X as mandatory in false arm"
+      ],
+      "preconditions": [
+        "p aligned valid singleton writable uint32_t object",
+        "both branch outcomes possible"
+      ],
+      "widths": {
+        "pointer": 64,
+        "store": 32,
+        "return": 32
+      },
+      "comparison": "observable value/memory dependencies; no exact CFG/phi/register count",
+      "oracle_origin": "hand-authored from source semantics; not generated from engine output"
+    },
+    {
+      "oracle_id": "S0-OUTPUT",
+      "function_id": "s0_output",
+      "policy": "explicit provenance; control dependencies recorded separately",
+      "seeds": {
+        "arg1": "X"
+      },
+      "expected_relations": [
+        "out.memory[0,4) receives (arg1+1) mod 2^32 and X"
+      ],
+      "forbidden_relations": [
+        "out pointer value gains X merely due to pointee write",
+        "void return invented as a data result"
+      ],
+      "preconditions": [
+        "out aligned valid writable uint32_t object"
+      ],
+      "widths": {
+        "pointer": 64,
+        "store": 32
+      },
+      "comparison": "observable value/memory dependencies; no exact CFG/phi/register count",
+      "oracle_origin": "hand-authored from source semantics; not generated from engine output"
+    },
+    {
+      "oracle_id": "S0-UNKNOWN",
+      "function_id": "s0_unknown",
+      "policy": "explicit provenance; control dependencies recorded separately",
+      "seeds": {
+        "arg0.memory[0,4)": "X"
+      },
+      "expected_relations": [
+        "unknown indirect call may affect reachable p memory",
+        "post-call p load and return preserve unknown effect and possible X"
+      ],
+      "forbidden_relations": [
+        "unresolved call treated as no-effect",
+        "unknown post-call memory reported clean or no-flow"
+      ],
+      "preconditions": [
+        "p valid uint32_t storage on the modeled normal-return path",
+        "callee behavior unresolved; invalidation/lifetime uncertainty not ignored",
+        "do not execute arbitrary function pointer",
+        "effect has exact void(uint32_t*) prototype and denotes a callable function",
+        "value oracle is restricted to callback executions returning normally with p still readable; analyzer must not assume this for unresolved callees"
+      ],
+      "widths": {
+        "pointer": 64,
+        "load": 32,
+        "return": 32
+      },
+      "comparison": "observable value/memory dependencies; no exact CFG/phi/register count",
+      "oracle_origin": "hand-authored from source semantics; not generated from engine output"
+    }
+  ]
+}

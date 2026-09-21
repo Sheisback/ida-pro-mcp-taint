@@ -1,0 +1,548 @@
+{
+  "canonical_digest": "sha256-v1:fce372daac17f822668aecc81d3c7832e523769bac84f6463e99a4ed5a87a223",
+  "extractor_sha256": "76b81cd6892d8685e9dc22d24804841e08d3202e1c85505debd9f91bcab653ab",
+  "function": "memory_stack_roundtrip",
+  "global_symbol": {
+    "ea": 4294983680,
+    "name": "memory_global",
+    "size_bytes": 1
+  },
+  "profile": {
+    "abi": "darwin-aarch64",
+    "abi_provenance": {
+      "binary_sha256": "fe9acefb7f883e942ebf836ae36b411b3ae110d20ff5dc442d9539334ef0c1cf",
+      "compiler": "Apple clang version 21.0.0 (clang-2100.0.123.102)\nTarget: arm64-apple-darwin27.0.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin",
+      "kind": "measured_anchor_build",
+      "sdk_version": "26.4",
+      "source_sha256": "353c6de0fd72a04d9c9ad6eb450b4000909ecaf62b5cf2ef3ac3ab9bffd028b3"
+    },
+    "bitness": 64,
+    "data_endian": "little",
+    "format_id": "FMT-MACHO",
+    "instruction_endian": "little",
+    "maturity": "MMAT_CALLS",
+    "platform_tag": "darwin",
+    "processor": "ARM",
+    "profile_id": "A64-LE",
+    "required_features": [
+      "scalar",
+      "branch",
+      "range_memory",
+      "abi",
+      "isa_specific_contract"
+    ],
+    "version": 1
+  },
+  "repeat_equal": true,
+  "roundtrip_equal": true,
+  "schema_version": "flow-memory-extraction/1",
+  "script_sha256": "63ecbc82e237d7ccbe89cc52483557f2af611731b38782ca0608ebb0edbb7514",
+  "snapshot": {
+    "function": {
+      "blocks": [
+        {
+          "index": 0,
+          "instructions": [],
+          "predecessors": [],
+          "successors": [
+            1
+          ]
+        },
+        {
+          "index": 1,
+          "instructions": [
+            {
+              "index": 0,
+              "opcode": "m_mov",
+              "operands": [
+                {
+                  "address": null,
+                  "block_index": null,
+                  "call": null,
+                  "children": [],
+                  "constant": null,
+                  "diagnostic": null,
+                  "kind": "storage",
+                  "native_kind": "mop_r",
+                  "operation": null,
+                  "role": "left",
+                  "source_eas": [],
+                  "storage": {
+                    "address_space": "microregister",
+                    "bit_offset": 64,
+                    "name": "microregister",
+                    "width_bits": 32
+                  },
+                  "synthetic": false,
+                  "width_bits": 32
+                },
+                {
+                  "address": null,
+                  "block_index": null,
+                  "call": null,
+                  "children": [],
+                  "constant": null,
+                  "diagnostic": null,
+                  "kind": "void",
+                  "native_kind": "mop_z",
+                  "operation": null,
+                  "role": "right",
+                  "source_eas": [],
+                  "storage": null,
+                  "synthetic": false,
+                  "width_bits": null
+                },
+                {
+                  "address": null,
+                  "block_index": null,
+                  "call": null,
+                  "children": [],
+                  "constant": null,
+                  "diagnostic": null,
+                  "kind": "storage",
+                  "native_kind": "mop_S",
+                  "operation": null,
+                  "role": "destination",
+                  "source_eas": [],
+                  "storage": {
+                    "address_space": "stack",
+                    "bit_offset": 96,
+                    "name": "stack",
+                    "width_bits": 32
+                  },
+                  "synthetic": false,
+                  "width_bits": 32
+                }
+              ],
+              "source_eas": [
+                4294968380
+              ],
+              "synthetic": false
+            },
+            {
+              "index": 1,
+              "opcode": "m_mov",
+              "operands": [
+                {
+                  "address": null,
+                  "block_index": null,
+                  "call": null,
+                  "children": [],
+                  "constant": 43,
+                  "diagnostic": null,
+                  "kind": "constant",
+                  "native_kind": "mop_n",
+                  "operation": null,
+                  "role": "left",
+                  "source_eas": [],
+                  "storage": null,
+                  "synthetic": false,
+                  "width_bits": 8
+                },
+                {
+                  "address": null,
+                  "block_index": null,
+                  "call": null,
+                  "children": [],
+                  "constant": null,
+                  "diagnostic": null,
+                  "kind": "void",
+                  "native_kind": "mop_z",
+                  "operation": null,
+                  "role": "right",
+                  "source_eas": [],
+                  "storage": null,
+                  "synthetic": false,
+                  "width_bits": null
+                },
+                {
+                  "address": null,
+                  "block_index": null,
+                  "call": null,
+                  "children": [],
+                  "constant": null,
+                  "diagnostic": null,
+                  "kind": "storage",
+                  "native_kind": "mop_S",
+                  "operation": null,
+                  "role": "destination",
+                  "source_eas": [],
+                  "storage": {
+                    "address_space": "stack",
+                    "bit_offset": 80,
+                    "name": "stack",
+                    "width_bits": 8
+                  },
+                  "synthetic": false,
+                  "width_bits": 8
+                }
+              ],
+              "source_eas": [
+                4294968392
+              ],
+              "synthetic": false
+            },
+            {
+              "index": 2,
+              "opcode": "m_mov",
+              "operands": [
+                {
+                  "address": null,
+                  "block_index": null,
+                  "call": null,
+                  "children": [],
+                  "constant": 47,
+                  "diagnostic": null,
+                  "kind": "constant",
+                  "native_kind": "mop_n",
+                  "operation": null,
+                  "role": "left",
+                  "source_eas": [],
+                  "storage": null,
+                  "synthetic": false,
+                  "width_bits": 8
+                },
+                {
+                  "address": null,
+                  "block_index": null,
+                  "call": null,
+                  "children": [],
+                  "constant": null,
+                  "diagnostic": null,
+                  "kind": "void",
+                  "native_kind": "mop_z",
+                  "operation": null,
+                  "role": "right",
+                  "source_eas": [],
+                  "storage": null,
+                  "synthetic": false,
+                  "width_bits": null
+                },
+                {
+                  "address": null,
+                  "block_index": null,
+                  "call": null,
+                  "children": [],
+                  "constant": null,
+                  "diagnostic": null,
+                  "kind": "storage",
+                  "native_kind": "mop_S",
+                  "operation": null,
+                  "role": "destination",
+                  "source_eas": [],
+                  "storage": {
+                    "address_space": "stack",
+                    "bit_offset": 88,
+                    "name": "stack",
+                    "width_bits": 8
+                  },
+                  "synthetic": false,
+                  "width_bits": 8
+                }
+              ],
+              "source_eas": [
+                4294968400
+              ],
+              "synthetic": false
+            },
+            {
+              "index": 3,
+              "opcode": "m_ldx",
+              "operands": [
+                {
+                  "address": null,
+                  "block_index": null,
+                  "call": null,
+                  "children": [],
+                  "constant": null,
+                  "diagnostic": null,
+                  "kind": "storage",
+                  "native_kind": "mop_r",
+                  "operation": null,
+                  "role": "left",
+                  "source_eas": [],
+                  "storage": {
+                    "address_space": "microregister",
+                    "bit_offset": 6784,
+                    "name": "microregister",
+                    "width_bits": 16
+                  },
+                  "synthetic": false,
+                  "width_bits": 16
+                },
+                {
+                  "address": null,
+                  "block_index": null,
+                  "call": null,
+                  "children": [
+                    {
+                      "address": null,
+                      "block_index": null,
+                      "call": null,
+                      "children": [],
+                      "constant": null,
+                      "diagnostic": {
+                        "code": "unsupported_operand",
+                        "detail": "No structural normalization rule for mop_a",
+                        "severity": "unsupported"
+                      },
+                      "kind": "unknown",
+                      "native_kind": "mop_a",
+                      "operation": null,
+                      "role": "left",
+                      "source_eas": [],
+                      "storage": null,
+                      "synthetic": false,
+                      "width_bits": 64
+                    },
+                    {
+                      "address": null,
+                      "block_index": null,
+                      "call": null,
+                      "children": [
+                        {
+                          "address": null,
+                          "block_index": null,
+                          "call": null,
+                          "children": [
+                            {
+                              "address": null,
+                              "block_index": null,
+                              "call": null,
+                              "children": [],
+                              "constant": null,
+                              "diagnostic": null,
+                              "kind": "storage",
+                              "native_kind": "mop_r",
+                              "operation": null,
+                              "role": "left",
+                              "source_eas": [],
+                              "storage": {
+                                "address_space": "microregister",
+                                "bit_offset": 64,
+                                "name": "microregister",
+                                "width_bits": 8
+                              },
+                              "synthetic": false,
+                              "width_bits": 8
+                            },
+                            {
+                              "address": null,
+                              "block_index": null,
+                              "call": null,
+                              "children": [],
+                              "constant": 1,
+                              "diagnostic": null,
+                              "kind": "constant",
+                              "native_kind": "mop_n",
+                              "operation": null,
+                              "role": "right",
+                              "source_eas": [],
+                              "storage": null,
+                              "synthetic": false,
+                              "width_bits": 8
+                            },
+                            {
+                              "address": null,
+                              "block_index": null,
+                              "call": null,
+                              "children": [],
+                              "constant": null,
+                              "diagnostic": null,
+                              "kind": "void",
+                              "native_kind": "mop_z",
+                              "operation": null,
+                              "role": "destination",
+                              "source_eas": [],
+                              "storage": null,
+                              "synthetic": false,
+                              "width_bits": null
+                            }
+                          ],
+                          "constant": null,
+                          "diagnostic": null,
+                          "kind": "expression",
+                          "native_kind": "mop_d",
+                          "operation": "m_and",
+                          "role": "left",
+                          "source_eas": [
+                            4294968408
+                          ],
+                          "storage": null,
+                          "synthetic": false,
+                          "width_bits": 8
+                        },
+                        {
+                          "address": null,
+                          "block_index": null,
+                          "call": null,
+                          "children": [],
+                          "constant": null,
+                          "diagnostic": null,
+                          "kind": "void",
+                          "native_kind": "mop_z",
+                          "operation": null,
+                          "role": "right",
+                          "source_eas": [],
+                          "storage": null,
+                          "synthetic": false,
+                          "width_bits": null
+                        },
+                        {
+                          "address": null,
+                          "block_index": null,
+                          "call": null,
+                          "children": [],
+                          "constant": null,
+                          "diagnostic": null,
+                          "kind": "void",
+                          "native_kind": "mop_z",
+                          "operation": null,
+                          "role": "destination",
+                          "source_eas": [],
+                          "storage": null,
+                          "synthetic": false,
+                          "width_bits": null
+                        }
+                      ],
+                      "constant": null,
+                      "diagnostic": null,
+                      "kind": "expression",
+                      "native_kind": "mop_d",
+                      "operation": "m_xdu",
+                      "role": "right",
+                      "source_eas": [
+                        4294968408,
+                        4294968412
+                      ],
+                      "storage": null,
+                      "synthetic": false,
+                      "width_bits": 64
+                    },
+                    {
+                      "address": null,
+                      "block_index": null,
+                      "call": null,
+                      "children": [],
+                      "constant": null,
+                      "diagnostic": null,
+                      "kind": "void",
+                      "native_kind": "mop_z",
+                      "operation": null,
+                      "role": "destination",
+                      "source_eas": [],
+                      "storage": null,
+                      "synthetic": false,
+                      "width_bits": null
+                    }
+                  ],
+                  "constant": null,
+                  "diagnostic": null,
+                  "kind": "expression",
+                  "native_kind": "mop_d",
+                  "operation": "m_add",
+                  "role": "right",
+                  "source_eas": [
+                    4294968408,
+                    4294968412
+                  ],
+                  "storage": null,
+                  "synthetic": false,
+                  "width_bits": 64
+                },
+                {
+                  "address": null,
+                  "block_index": null,
+                  "call": null,
+                  "children": [],
+                  "constant": null,
+                  "diagnostic": null,
+                  "kind": "storage",
+                  "native_kind": "mop_r",
+                  "operation": null,
+                  "role": "destination",
+                  "source_eas": [],
+                  "storage": {
+                    "address_space": "microregister",
+                    "bit_offset": 64,
+                    "name": "microregister",
+                    "width_bits": 8
+                  },
+                  "synthetic": false,
+                  "width_bits": 8
+                }
+              ],
+              "source_eas": [
+                4294968408,
+                4294968412
+              ],
+              "synthetic": false
+            }
+          ],
+          "predecessors": [
+            0
+          ],
+          "successors": [
+            2
+          ]
+        },
+        {
+          "index": 2,
+          "instructions": [],
+          "predecessors": [
+            1
+          ],
+          "successors": []
+        }
+      ],
+      "diagnostics": [
+        {
+          "code": "chains_not_serialized",
+          "detail": "SDK use-def/UD-DU availability measured in P0, not MemorySSA or serialized chains",
+          "severity": "information"
+        },
+        {
+          "code": "native_origins_incomplete",
+          "detail": "Observed nested microcode EA union only; optimized-away native origins cannot be reconstructed",
+          "severity": "information"
+        },
+        {
+          "code": "unsupported_operand",
+          "detail": "No structural normalization rule for mop_a",
+          "severity": "unsupported"
+        }
+      ],
+      "entry_block": 0,
+      "function_id": "memory_stack_roundtrip"
+    },
+    "identity": {
+      "binary_digest": "sha256-v1:fe9acefb7f883e942ebf836ae36b411b3ae110d20ff5dc442d9539334ef0c1cf",
+      "environment": {
+        "abi": "darwin-aarch64",
+        "address_space": "ram",
+        "bitness": 64,
+        "data_endian": "little",
+        "extractor_version": "microcode-extractor/1",
+        "format_id": "FMT-MACHO",
+        "hexrays_build": "9.3.0.260213",
+        "ida_build": "9.3",
+        "instruction_endian": "little",
+        "platform_tag": "darwin",
+        "processor": "ARM"
+      },
+      "function_id": "memory_stack_roundtrip",
+      "input_digest": "sha256-v1:e476afd05618b6f12feddba940fd9ad2fcb957e19fca5301e0acf76476097283",
+      "maturity": "MMAT_CALLS",
+      "namespace": "g007-arm64",
+      "policy_digest": "sha256-v1:fbca9931f8e9c10a3c37eaa84b58f2a405f3e7f8ff41a2986f65fa263dab1e93",
+      "profile_digest": "sha256-v1:17c79c234f0479320dfa803d86978133168d96b9f50bec7ef0a7e1b84b0fb673",
+      "rule_digest": "sha256-v1:d8ab490fec53f884af8f3a670b9fe752ce44017f30c58e63a2bfac2dc3b7f863",
+      "schema_version": 1,
+      "semantic_digest": "sha256-v1:2edceb1a48dccf243c88272aef69adb4051b49d7910699ead30a4d684d636e0f",
+      "summary_digest": "sha256-v1:92286845e5554de11b090c992a0aa60af599ff674f2ecdf9b8558f7e58176360"
+    },
+    "schema_version": 1,
+    "snapshot_id": "snapshot-v1:bcafeb2e3f9bce6f26cfebeab463123992fb6052e394adcff84c38b56968f4c0"
+  },
+  "target_executed": false
+}

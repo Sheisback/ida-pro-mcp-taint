@@ -1,0 +1,90 @@
+[
+  {
+    "arch": "x86_64",
+    "abi_id": "darwin-x86_64-sysv-derived",
+    "format": "FMT-MACHO",
+    "source": "tests/flow_fixtures/p0_anchor.c",
+    "source_sha256": "9ca3dd8a030c2d038f3dfe72cecb6d2983ed60b57750abe58b51b1232ac70c36",
+    "binary": "p0_x86_64",
+    "binary_sha256": "015c684b75facbf3e1f8f5928adee695de44d927f2a4b93c5be10261af72350c",
+    "companion_artifacts": [
+      {
+        "path": "p0_x86_64.dSYM/Contents/Resources/DWARF/p0_x86_64",
+        "bundle": "p0_x86_64.dSYM",
+        "placement": "sibling_of_binary",
+        "sha256": "b0e1d5025301de1e5af1f8d28cae4f84d4cac0edee20e7ca5449fd4b5ec9deb8",
+        "required": true,
+        "purpose": "function/source mapping"
+      }
+    ],
+    "function_selector": {
+      "kind": "ida_name",
+      "value": "p0_anchor",
+      "naming_convention": "DWARF C function name without Mach-O underscore prefix",
+      "requires_companion": true
+    },
+    "compiler": "Apple clang version 21.0.0 (clang-2100.0.123.102)\nTarget: arm64-apple-darwin27.0.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin",
+    "sdk_version": "26.4",
+    "command": [
+      "clang",
+      "-arch",
+      "x86_64",
+      "-O0",
+      "-g",
+      "-fno-stack-protector",
+      "tests/flow_fixtures/p0_anchor.c",
+      "-o",
+      "$OUTPUT/p0_x86_64"
+    ],
+    "source_types": {
+      "u32": 32,
+      "unsigned_long_long": 64,
+      "pointer": 64
+    },
+    "target_executed": false
+  },
+  {
+    "arch": "arm64",
+    "abi_id": "darwin-aarch64",
+    "format": "FMT-MACHO",
+    "source": "tests/flow_fixtures/p0_anchor.c",
+    "source_sha256": "9ca3dd8a030c2d038f3dfe72cecb6d2983ed60b57750abe58b51b1232ac70c36",
+    "binary": "p0_arm64",
+    "binary_sha256": "755a8fed2e53d2b6da42067c816a2667c4a307e0a8cdcaca34da9e6e6c3c0b07",
+    "companion_artifacts": [
+      {
+        "path": "p0_arm64.dSYM/Contents/Resources/DWARF/p0_arm64",
+        "bundle": "p0_arm64.dSYM",
+        "placement": "sibling_of_binary",
+        "sha256": "25475b1bc99bf42f7abc4c0b85f4b3daadaf1fa08f8ef1964cb44872e428ca98",
+        "required": true,
+        "purpose": "function/source mapping"
+      }
+    ],
+    "function_selector": {
+      "kind": "ida_name",
+      "value": "p0_anchor",
+      "naming_convention": "DWARF C function name without Mach-O underscore prefix",
+      "requires_companion": true
+    },
+    "compiler": "Apple clang version 21.0.0 (clang-2100.0.123.102)\nTarget: arm64-apple-darwin27.0.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin",
+    "sdk_version": "26.4",
+    "command": [
+      "clang",
+      "-arch",
+      "arm64",
+      "-O0",
+      "-g",
+      "-fno-stack-protector",
+      "tests/flow_fixtures/p0_anchor.c",
+      "-o",
+      "$OUTPUT/p0_arm64"
+    ],
+    "source_types": {
+      "u32": 32,
+      "unsigned_long_long": 64,
+      "pointer": 64
+    },
+    "target_executed": false
+  }
+]

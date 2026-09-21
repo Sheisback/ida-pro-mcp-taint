@@ -1,0 +1,232 @@
+{
+  "analysis_status": "partial",
+  "arch": "arm64",
+  "assumptions": [
+    "Valid fixture objects; sequential recovered CFG; ordinary flat user-space C data accesses, no TLS/MMIO",
+    "index == 0; analyst-selected computed address points to source local[0]; no ABI argument inference or path proof"
+  ],
+  "cache_key": "sha256-v1:a2d53c213cd831d13f6199804416f1ed808f5f8dd7dbdb4693f2b651f50a3064",
+  "dependencies": [
+    {
+      "evidence_ids": [
+        "evidence-v1:dccc77c4a9a7be901bedd91d76fb63469be905bd33f35218a336b0bce1472c60",
+        "evidence-v1:ef5fd1376340e04aa69dc1e335f9f6205a177e72380dbddf52227c14a17697df"
+      ],
+      "interval": {
+        "end": 11,
+        "start": 10
+      },
+      "kind": "memory_data_dependency",
+      "object_id": "object-v1:c55c08f864d3fdfcd83af9e34c7d387a5d900123303b0d4af1ad6637af3ffc49",
+      "precision": "exact",
+      "rule_id": "byte-reaching-store-v1",
+      "source": "node-v1:e12c902d7cc3ea2c62c8476e75e2116727bbf53207d336b013643890df663ae3",
+      "target": "node-v1:55190065b44293eef2390fc223a5df1089fedd8335e3f084e44eb2c68575b9f0"
+    }
+  ],
+  "diagnostics": [
+    "partial_scalar_input",
+    "unresolved_scalar_effect"
+  ],
+  "extraction_file": "tests/flow_fixtures/manifests/memory/arm64_memory_stack_roundtrip.json",
+  "extraction_file_sha256": "ea909a079edc7c471dc6b8fe7c85539f914e12b929663ac44659672434faf657",
+  "fresh_static_ida_extraction": true,
+  "function": "memory_stack_roundtrip",
+  "generator_sha256": "f3bca447461394912ee7f249f3076be261e358fab03c88b8b7fe01e2a0c9c153",
+  "graph_digest": "sha256-v1:476a97c33e953e6871ec796df0affbc0aef5f002353afe385f9ccc4c826df9f2",
+  "implementation_sha256": {
+    "analysis.py": "8bc2d342ec6060d8c1e0d4f9912e707e7ff24a014f45ddf8af10778743a21b45",
+    "cfg.py": "167a4491b93278888cda50641c8c1c4d5cc444ab5b57b8f078e76931c7f7749f",
+    "contracts.py": "e59f1fbdf0db9b3cffd1ba5f16a6c3ab0b1df583db340cf6f28a14a797d26c9c",
+    "memory.py": "7960fce27069016664271da7d3d6e69a5be586f6dc17d6ea0a899ed1e56363af",
+    "memory_analysis.py": "423ee681ad72e8321c01b3c216e28355b1d62579460223870fd8e13b278e6aef",
+    "ssa.py": "7f7b702f7ebd801e6e38563b187bd0bc10ad102294060033f9139ef673cdf43a",
+    "states.py": "4a03c1eec0e86893a58faf81b06853ffd75de7daf40d3eec3b7ace2b5187ee78"
+  },
+  "iterations": 2,
+  "load_observations": [
+    {
+      "access": {
+        "address_node": "node-v1:c4c64dc9fae43cee1e4cc723ed3516cc79cc49c91f875a923ea6ea5def9338a4",
+        "alias": "must_alias",
+        "candidates": [
+          {
+            "interval": {
+              "end": 11,
+              "start": 10
+            },
+            "object_id": "object-v1:c55c08f864d3fdfcd83af9e34c7d387a5d900123303b0d4af1ad6637af3ffc49"
+          }
+        ],
+        "evidence_ids": [
+          "evidence-v1:dccc77c4a9a7be901bedd91d76fb63469be905bd33f35218a336b0bce1472c60"
+        ],
+        "node_id": "node-v1:55190065b44293eef2390fc223a5df1089fedd8335e3f084e44eb2c68575b9f0",
+        "precision": "exact",
+        "strong_update": false,
+        "unresolved": false,
+        "version_id": "memory-v1:e11f5ac44d6be887031cd38b190dfc03668a7d588fe4979c1735d0c9701dbce5",
+        "width_bits": 8
+      },
+      "fact": {
+        "address_labels": {
+          "any_control_source": false,
+          "any_explicit_source": false,
+          "control": [],
+          "explicit": [],
+          "unknown_provenance": true
+        },
+        "labels": {
+          "any_control_source": false,
+          "any_explicit_source": false,
+          "control": [],
+          "explicit": [],
+          "unknown_provenance": false
+        },
+        "node_id": "node-v1:55190065b44293eef2390fc223a5df1089fedd8335e3f084e44eb2c68575b9f0",
+        "pointer": null,
+        "value": {
+          "value": 43,
+          "width_bits": 8
+        }
+      },
+      "node_id": "node-v1:55190065b44293eef2390fc223a5df1089fedd8335e3f084e44eb2c68575b9f0"
+    }
+  ],
+  "memory_order_step_count": 4,
+  "memory_phi_count": 2,
+  "memory_seeds": [
+    {
+      "interval": {
+        "end": 11,
+        "start": 10
+      },
+      "labels": {
+        "any_control_source": false,
+        "any_explicit_source": false,
+        "control": [],
+        "explicit": [
+          "X"
+        ],
+        "unknown_provenance": false
+      },
+      "object_id": "object-v1:c55c08f864d3fdfcd83af9e34c7d387a5d900123303b0d4af1ad6637af3ffc49",
+      "point": "entry",
+      "value": {
+        "value": null,
+        "width_bits": 8
+      }
+    }
+  ],
+  "memory_version_count": 6,
+  "node_count": 22,
+  "objects": [
+    {
+      "address_space": "ram",
+      "disjoint": true,
+      "disjoint_evidence": "fixture current frame, designated buffer and global identities are disjoint",
+      "key": "fixture-frame",
+      "kind": "stack",
+      "singleton": true,
+      "singleton_evidence": "fixture single object / invocation",
+      "size_bytes": 16,
+      "snapshot_id": "snapshot-v1:bcafeb2e3f9bce6f26cfebeab463123992fb6052e394adcff84c38b56968f4c0"
+    }
+  ],
+  "plan_digest": "sha256-v1:321c3291fc9a45f4f239773c71951abea7137e17f51779c89dba063914ca1d63",
+  "pointer_seeds": [
+    {
+      "node_id": "node-v1:4fe6833ca292c97e92539b3e98331bb3df4382a04405e7f1864dba982f5b0e0d",
+      "pointer": {
+        "address_space": "ram",
+        "any_compatible_location": false,
+        "candidates": [
+          {
+            "object_id": "object-v1:c55c08f864d3fdfcd83af9e34c7d387a5d900123303b0d4af1ad6637af3ffc49",
+            "offset": 10
+          }
+        ],
+        "may_be_null": false,
+        "width_bits": 64
+      }
+    },
+    {
+      "node_id": "node-v1:6c70b639ab236b3e059ad7cca13413eef3b1817d92c1d16f03cffaa0ffb38862",
+      "pointer": {
+        "address_space": "ram",
+        "any_compatible_location": false,
+        "candidates": [
+          {
+            "object_id": "object-v1:c55c08f864d3fdfcd83af9e34c7d387a5d900123303b0d4af1ad6637af3ffc49",
+            "offset": 11
+          }
+        ],
+        "may_be_null": false,
+        "width_bits": 64
+      }
+    },
+    {
+      "node_id": "node-v1:c4c64dc9fae43cee1e4cc723ed3516cc79cc49c91f875a923ea6ea5def9338a4",
+      "pointer": {
+        "address_space": "ram",
+        "any_compatible_location": false,
+        "candidates": [
+          {
+            "object_id": "object-v1:c55c08f864d3fdfcd83af9e34c7d387a5d900123303b0d4af1ad6637af3ffc49",
+            "offset": 10
+          }
+        ],
+        "may_be_null": false,
+        "width_bits": 64
+      }
+    },
+    {
+      "node_id": "node-v1:fcfba0aafb690aae8c3b9c2b923cbddfe7facdd30e7d2ab7dfb93b271460fcba",
+      "pointer": {
+        "address_space": "ram",
+        "any_compatible_location": false,
+        "candidates": [
+          {
+            "object_id": "object-v1:c55c08f864d3fdfcd83af9e34c7d387a5d900123303b0d4af1ad6637af3ffc49",
+            "offset": 12
+          }
+        ],
+        "may_be_null": false,
+        "width_bits": 64
+      }
+    }
+  ],
+  "policy_digest": "sha256-v1:13d8fc7cc519f68fb783023249a2d5acd5a64a0580907db277aee6541d07bf34",
+  "release_support_claim": false,
+  "repeat_equal": true,
+  "roundtrip_equal": true,
+  "schema_version": "flow-memory-receipt/1",
+  "selected_source_id": "node-v1:c4c64dc9fae43cee1e4cc723ed3516cc79cc49c91f875a923ea6ea5def9338a4",
+  "snapshot_digest": "sha256-v1:fce372daac17f822668aecc81d3c7832e523769bac84f6463e99a4ed5a87a223",
+  "source_digest": "sha256-v1:4d961907ab3e10a3eb46e7e07772a76d1f1fcd385fbe43e94cb84db2211c0823",
+  "target_executed": false,
+  "target_stores": [
+    {
+      "address_node": "node-v1:4fe6833ca292c97e92539b3e98331bb3df4382a04405e7f1864dba982f5b0e0d",
+      "alias": "must_alias",
+      "candidates": [
+        {
+          "interval": {
+            "end": 11,
+            "start": 10
+          },
+          "object_id": "object-v1:c55c08f864d3fdfcd83af9e34c7d387a5d900123303b0d4af1ad6637af3ffc49"
+        }
+      ],
+      "evidence_ids": [
+        "evidence-v1:ef5fd1376340e04aa69dc1e335f9f6205a177e72380dbddf52227c14a17697df"
+      ],
+      "node_id": "node-v1:e12c902d7cc3ea2c62c8476e75e2116727bbf53207d336b013643890df663ae3",
+      "precision": "exact",
+      "strong_update": true,
+      "unresolved": false,
+      "version_id": "memory-v1:1964fbac3052b5b691aff4770d467e8c47551af3907c9a6cfd1cd6b21d101e99",
+      "width_bits": 8
+    }
+  ]
+}

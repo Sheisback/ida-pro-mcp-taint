@@ -1,0 +1,82 @@
+[
+  {
+    "source": "tests/typed_fixture.c",
+    "source_sha256": "8de0d201f7b64a119553d73603fc7268124ee09d64da9a68d1fef68f0e5e47a2",
+    "binary": "typed_fixture_x64.exe",
+    "binary_sha256": "484b8ca4fae4d292f0db5b73c7a8d03b8a28c89a9ae8dea0d7cf487ce9096de5",
+    "format": "PE32+",
+    "isa": "x86_64",
+    "abi": "windows-x64",
+    "compiler": "x86_64-w64-mingw32-gcc (GCC) 16.2.0\nCopyright (C) 2026 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+    "compiler_sha256": "012ac93959d40444ddc8c67d23d348c062acbe977e6384ca6fe45c0648e97301",
+    "command": [
+      "x86_64-w64-mingw32-gcc",
+      "-O0",
+      "-g",
+      "-fno-ident",
+      "-frandom-seed=flow-s0",
+      "-ffile-prefix-map=$ROOT=.",
+      "-fdebug-prefix-map=$ROOT=.",
+      "-Wl,--no-insert-timestamp",
+      "tests/typed_fixture.c",
+      "-o",
+      "$OUTPUT/typed_fixture_x64.exe"
+    ],
+    "environment": {
+      "SOURCE_DATE_EPOCH": "0"
+    },
+    "debug_info": "embedded DWARF; no PDB",
+    "companion_artifacts": [],
+    "layout_check": {
+      "command": [
+        "x86_64-w64-mingw32-gcc",
+        "-fsyntax-only",
+        "tests/flow_fixtures/typed_layout_check.c"
+      ],
+      "source_sha256": "513128bff950feb84f8e8930f60d8517d1f1db7b59bfef47a72debd91ebfac33",
+      "status": "passed"
+    },
+    "target_executed": false,
+    "reproducibility": {
+      "fresh_builds": 2,
+      "binary_sha256_equal": true,
+      "scope": "same local compiler and SDK environment; distinct output directories"
+    }
+  },
+  {
+    "source": "tests/flow_fixtures/s0.c",
+    "source_sha256": "b3a8e01f062982e1a4351b0ae4fbdffd2240075464b8f09507de88008268f7ff",
+    "binary": "s0_x64.exe",
+    "binary_sha256": "1e657c46806f361895def08222e31db7a022a175d46f48428ba8fc6a10d9fd41",
+    "format": "PE32+",
+    "isa": "x86_64",
+    "abi": "windows-x64",
+    "compiler": "x86_64-w64-mingw32-gcc (GCC) 16.2.0\nCopyright (C) 2026 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+    "compiler_sha256": "012ac93959d40444ddc8c67d23d348c062acbe977e6384ca6fe45c0648e97301",
+    "command": [
+      "x86_64-w64-mingw32-gcc",
+      "-O0",
+      "-g",
+      "-fno-ident",
+      "-frandom-seed=flow-s0",
+      "-ffile-prefix-map=$ROOT=.",
+      "-fdebug-prefix-map=$ROOT=.",
+      "-Wl,--no-insert-timestamp",
+      "tests/flow_fixtures/s0.c",
+      "-o",
+      "$OUTPUT/s0_x64.exe"
+    ],
+    "environment": {
+      "SOURCE_DATE_EPOCH": "0"
+    },
+    "debug_info": "embedded DWARF; no PDB",
+    "companion_artifacts": [],
+    "layout_check": null,
+    "target_executed": false,
+    "reproducibility": {
+      "fresh_builds": 2,
+      "binary_sha256_equal": true,
+      "scope": "same local compiler and SDK environment; distinct output directories"
+    }
+  }
+]

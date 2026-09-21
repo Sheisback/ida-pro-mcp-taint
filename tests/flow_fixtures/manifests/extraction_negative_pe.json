@@ -1,0 +1,14 @@
+{
+  "schema_version": "flow-negative-extraction/1",
+  "binary_sha256": "484b8ca4fae4d292f0db5b73c7a8d03b8a28c89a9ae8dea0d7cf487ce9096de5",
+  "actual_format": "FMT-PE",
+  "requested_format": "FMT-MACHO",
+  "requested_profile": "X64-LE",
+  "requested_abi": "darwin-x86_64-sysv-derived",
+  "exit_code": 1,
+  "successful_receipt_created": false,
+  "exception": "ContractError",
+  "reason": "Binary format mismatch: measured Darwin anchors require FMT-MACHO",
+  "guard": "ida_ida.inf_get_filetype() != ida_ida.f_MACHO",
+  "target_executed": false
+}

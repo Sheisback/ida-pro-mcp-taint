@@ -1,0 +1,291 @@
+{
+  "analysis_status": "partial",
+  "arch": "arm64",
+  "assumptions": [
+    "Valid fixture objects; sequential recovered CFG; ordinary flat user-space C data accesses, no TLS/MMIO"
+  ],
+  "cache_key": "sha256-v1:417417c5a4166712c07f847b62fc93262c0113b30f6f78f9b50798ab8702ea99",
+  "dependencies": [
+    {
+      "evidence_ids": [
+        "evidence-v1:63a0134a7dde1feea6db3650a0cacc0614b924500b69fc3e0251c802c1e9b1c3",
+        "evidence-v1:97b930fe21b3521b16d9a6a76e34958aaece1630c078aa895902c36af2e28912"
+      ],
+      "interval": {
+        "end": 8,
+        "start": 7
+      },
+      "kind": "memory_data_dependency",
+      "object_id": "object-v1:d9c6ec515a1308935681efa139be2fb31a09de01d95db34fd568dd7eaaff1bdd",
+      "precision": "exact",
+      "rule_id": "byte-reaching-store-v1",
+      "source": "node-v1:68d05132222bcdf2795df1a73c8fa5b1b17cb9f03bd9e09ab14b99eca1c2e404",
+      "target": "node-v1:3646ae83bc91ad610dcdcb03357c364ada06e3d2833b278b7283ce12a510a2bd"
+    },
+    {
+      "evidence_ids": [
+        "evidence-v1:63a0134a7dde1feea6db3650a0cacc0614b924500b69fc3e0251c802c1e9b1c3",
+        "evidence-v1:9695e18ae792449575c9ada267da296d6fc2529811de41c16a0bf2fbd0b75d97"
+      ],
+      "interval": {
+        "end": 1,
+        "start": 0
+      },
+      "kind": "memory_data_dependency",
+      "object_id": "object-v1:5cfb0f6c4c946dbfccaa0dc4880b9b002dfa23842efb95370da060322054dbf4",
+      "precision": "exact",
+      "rule_id": "byte-reaching-store-v1",
+      "source": "node-v1:7f0731e6b98c3639e07686446e778dfc22b2773c9d16ecd7ece2ca4052c89132",
+      "target": "node-v1:1351bcde6da2f111f6c01bab0a20179ea4a16045e5d7a89dc32beb1f023373e7"
+    }
+  ],
+  "diagnostics": [
+    "partial_scalar_input"
+  ],
+  "extraction_file": "tests/flow_fixtures/manifests/memory/arm64_memory_before_after.json",
+  "extraction_file_sha256": "20b67acaa3e1fc563e7ee16899570d88a6221bf0379888976982a49a786c3467",
+  "fresh_static_ida_extraction": true,
+  "function": "memory_before_after",
+  "generator_sha256": "f3bca447461394912ee7f249f3076be261e358fab03c88b8b7fe01e2a0c9c153",
+  "graph_digest": "sha256-v1:291d9f222ab8cf98f0a4e1297928e280a878ec3a7edbf51109e9b26619a61beb",
+  "implementation_sha256": {
+    "analysis.py": "8bc2d342ec6060d8c1e0d4f9912e707e7ff24a014f45ddf8af10778743a21b45",
+    "cfg.py": "167a4491b93278888cda50641c8c1c4d5cc444ab5b57b8f078e76931c7f7749f",
+    "contracts.py": "e59f1fbdf0db9b3cffd1ba5f16a6c3ab0b1df583db340cf6f28a14a797d26c9c",
+    "memory.py": "7960fce27069016664271da7d3d6e69a5be586f6dc17d6ea0a899ed1e56363af",
+    "memory_analysis.py": "423ee681ad72e8321c01b3c216e28355b1d62579460223870fd8e13b278e6aef",
+    "ssa.py": "7f7b702f7ebd801e6e38563b187bd0bc10ad102294060033f9139ef673cdf43a",
+    "states.py": "4a03c1eec0e86893a58faf81b06853ffd75de7daf40d3eec3b7ace2b5187ee78"
+  },
+  "iterations": 2,
+  "load_observations": [
+    {
+      "access": {
+        "address_node": "node-v1:494d6a7e6e66734af4b981d463294cbe4e8bd398022ff5c3f0c5a1e77ccc5bc7",
+        "alias": "must_alias",
+        "candidates": [
+          {
+            "interval": {
+              "end": 1,
+              "start": 0
+            },
+            "object_id": "object-v1:5cfb0f6c4c946dbfccaa0dc4880b9b002dfa23842efb95370da060322054dbf4"
+          }
+        ],
+        "evidence_ids": [
+          "evidence-v1:30e5f8cfd39c6244ad63feb4ff44a3c49c8daef16806ec2455462b770989f8e1"
+        ],
+        "node_id": "node-v1:3b0f9fc232683948bd6ba12d3f791efa6926cc9e2e3396b073cfbfca902b1c47",
+        "precision": "exact",
+        "strong_update": false,
+        "unresolved": false,
+        "version_id": "memory-v1:dd7dadc5de6bea9b1e10b7d2580e0fc6b4392809ef6624f01690c305168f90a5",
+        "width_bits": 8
+      },
+      "fact": {
+        "address_labels": {
+          "any_control_source": false,
+          "any_explicit_source": false,
+          "control": [],
+          "explicit": [],
+          "unknown_provenance": false
+        },
+        "labels": {
+          "any_control_source": false,
+          "any_explicit_source": false,
+          "control": [],
+          "explicit": [
+            "X"
+          ],
+          "unknown_provenance": false
+        },
+        "node_id": "node-v1:3b0f9fc232683948bd6ba12d3f791efa6926cc9e2e3396b073cfbfca902b1c47",
+        "pointer": null,
+        "value": {
+          "value": null,
+          "width_bits": 8
+        }
+      },
+      "node_id": "node-v1:3b0f9fc232683948bd6ba12d3f791efa6926cc9e2e3396b073cfbfca902b1c47"
+    },
+    {
+      "access": {
+        "address_node": "node-v1:0449c200cc4c1c50131583e5d9eb708c322199c8ecfb55aee545d989283931e5",
+        "alias": "must_alias",
+        "candidates": [
+          {
+            "interval": {
+              "end": 1,
+              "start": 0
+            },
+            "object_id": "object-v1:5cfb0f6c4c946dbfccaa0dc4880b9b002dfa23842efb95370da060322054dbf4"
+          }
+        ],
+        "evidence_ids": [
+          "evidence-v1:63a0134a7dde1feea6db3650a0cacc0614b924500b69fc3e0251c802c1e9b1c3"
+        ],
+        "node_id": "node-v1:1351bcde6da2f111f6c01bab0a20179ea4a16045e5d7a89dc32beb1f023373e7",
+        "precision": "exact",
+        "strong_update": false,
+        "unresolved": false,
+        "version_id": "memory-v1:b214a4d402cc3a37c971ceb7ab163549dbcd751bc43507e1732235e3019060df",
+        "width_bits": 8
+      },
+      "fact": {
+        "address_labels": {
+          "any_control_source": false,
+          "any_explicit_source": false,
+          "control": [],
+          "explicit": [],
+          "unknown_provenance": false
+        },
+        "labels": {
+          "any_control_source": false,
+          "any_explicit_source": false,
+          "control": [],
+          "explicit": [],
+          "unknown_provenance": false
+        },
+        "node_id": "node-v1:1351bcde6da2f111f6c01bab0a20179ea4a16045e5d7a89dc32beb1f023373e7",
+        "pointer": null,
+        "value": {
+          "value": 0,
+          "width_bits": 8
+        }
+      },
+      "node_id": "node-v1:1351bcde6da2f111f6c01bab0a20179ea4a16045e5d7a89dc32beb1f023373e7"
+    }
+  ],
+  "memory_order_step_count": 5,
+  "memory_phi_count": 2,
+  "memory_seeds": [
+    {
+      "interval": {
+        "end": 1,
+        "start": 0
+      },
+      "labels": {
+        "any_control_source": false,
+        "any_explicit_source": false,
+        "control": [],
+        "explicit": [
+          "X"
+        ],
+        "unknown_provenance": false
+      },
+      "object_id": "object-v1:5cfb0f6c4c946dbfccaa0dc4880b9b002dfa23842efb95370da060322054dbf4",
+      "point": "entry",
+      "value": {
+        "value": null,
+        "width_bits": 8
+      }
+    }
+  ],
+  "memory_version_count": 5,
+  "node_count": 20,
+  "objects": [
+    {
+      "address_space": "ram",
+      "disjoint": true,
+      "disjoint_evidence": "fixture current frame, designated buffer and global identities are disjoint",
+      "key": "fixture-buffer",
+      "kind": "argument",
+      "singleton": true,
+      "singleton_evidence": "fixture single object / invocation",
+      "size_bytes": 1,
+      "snapshot_id": "snapshot-v1:78a4fd3b7548e116e039a9c82cc40a50875a6136c03ef6b7b236b71bad219f7b"
+    },
+    {
+      "address_space": "ram",
+      "disjoint": true,
+      "disjoint_evidence": "fixture current frame, designated buffer and global identities are disjoint",
+      "key": "fixture-frame",
+      "kind": "stack",
+      "singleton": true,
+      "singleton_evidence": "fixture single object / invocation",
+      "size_bytes": 8,
+      "snapshot_id": "snapshot-v1:78a4fd3b7548e116e039a9c82cc40a50875a6136c03ef6b7b236b71bad219f7b"
+    }
+  ],
+  "plan_digest": "sha256-v1:99bb94fca2c99fa4254175c0b45b75fb0cc31673448c3964eb89dc1dfdec93ce",
+  "pointer_seeds": [
+    {
+      "node_id": "node-v1:25977894aa61ef19850bd5aa5d8da1b6d282cb56a02300dbbe4649de4bde1aa7",
+      "pointer": {
+        "address_space": "ram",
+        "any_compatible_location": false,
+        "candidates": [
+          {
+            "object_id": "object-v1:d9c6ec515a1308935681efa139be2fb31a09de01d95db34fd568dd7eaaff1bdd",
+            "offset": 7
+          }
+        ],
+        "may_be_null": false,
+        "width_bits": 64
+      }
+    },
+    {
+      "node_id": "node-v1:494d6a7e6e66734af4b981d463294cbe4e8bd398022ff5c3f0c5a1e77ccc5bc7",
+      "pointer": {
+        "address_space": "ram",
+        "any_compatible_location": false,
+        "candidates": [
+          {
+            "object_id": "object-v1:5cfb0f6c4c946dbfccaa0dc4880b9b002dfa23842efb95370da060322054dbf4",
+            "offset": 0
+          }
+        ],
+        "may_be_null": false,
+        "width_bits": 64
+      }
+    },
+    {
+      "node_id": "node-v1:f47a7b3f072ca5010ecae1ee710c790aed986b85f7b23bd15083cfe2c1b28d92",
+      "pointer": {
+        "address_space": "ram",
+        "any_compatible_location": false,
+        "candidates": [
+          {
+            "object_id": "object-v1:d9c6ec515a1308935681efa139be2fb31a09de01d95db34fd568dd7eaaff1bdd",
+            "offset": 7
+          }
+        ],
+        "may_be_null": false,
+        "width_bits": 64
+      }
+    }
+  ],
+  "policy_digest": "sha256-v1:13d8fc7cc519f68fb783023249a2d5acd5a64a0580907db277aee6541d07bf34",
+  "release_support_claim": false,
+  "repeat_equal": true,
+  "roundtrip_equal": true,
+  "schema_version": "flow-memory-receipt/1",
+  "selected_source_id": "node-v1:494d6a7e6e66734af4b981d463294cbe4e8bd398022ff5c3f0c5a1e77ccc5bc7",
+  "snapshot_digest": "sha256-v1:861e73cebdb1683776d99f7e6e9de6c670296c79fa9d4e8167099dc0a6c1f893",
+  "source_digest": "sha256-v1:90ffbe8bf974a407711120f5b642e32ba38ad324242ada235a8e0402944b4d5e",
+  "target_executed": false,
+  "target_stores": [
+    {
+      "address_node": "node-v1:58c9313a9a97b76d0568f93905a5475ead9ce16fd97b9f235ae7ce241f0330e9",
+      "alias": "must_alias",
+      "candidates": [
+        {
+          "interval": {
+            "end": 1,
+            "start": 0
+          },
+          "object_id": "object-v1:5cfb0f6c4c946dbfccaa0dc4880b9b002dfa23842efb95370da060322054dbf4"
+        }
+      ],
+      "evidence_ids": [
+        "evidence-v1:9695e18ae792449575c9ada267da296d6fc2529811de41c16a0bf2fbd0b75d97"
+      ],
+      "node_id": "node-v1:7f0731e6b98c3639e07686446e778dfc22b2773c9d16ecd7ece2ca4052c89132",
+      "precision": "exact",
+      "strong_update": true,
+      "unresolved": false,
+      "version_id": "memory-v1:fde07423d22443c5ed999dfe06af08f0cc364c33578653350ba9baf8fce4eba4",
+      "width_bits": 8
+    }
+  ]
+}

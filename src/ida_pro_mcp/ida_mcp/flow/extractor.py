@@ -1,0 +1,378 @@
+"""Internal structured microcode adapter. No public tools or native relifting.
+
+Only extract_snapshot calls IDA. The remaining contracts/helpers are pure Python.
+"""
+
+import hashlib
+import json
+import time
+from pathlib import Path
+
+from ida_pro_mcp.flow_core.contracts import (
+    Block,
+    CallInfo,
+    Diagnostic,
+    Environment,
+    FunctionInput,
+    Instruction,
+    LocationSet,
+    Operand,
+    Snapshot,
+    SnapshotIdentity,
+)
+from ida_pro_mcp.flow_core.serialization import ContractError, digest
+from ida_pro_mcp.flow_core.states import ByteRange, StorageLocation
+
+VERSION = "microcode-extractor/1"
+RULES = {
+    "version": 1,
+    "input": "structured_microcode",
+    "native_effects": "preserve_once",
+    "void_width": None,
+    "unsupported": "opaque_diagnostic",
+    "registers": "sdk_byte_locations_no_native_rewrite",
+}
+POLICY = {
+    "mode": "extraction_only",
+    "source_origins": "observed_ea_union",
+    "chain_scope": "not_serialized",
+    "analysis": "not_implemented",
+}
+EMPTY_SUMMARIES = {"version": 1, "summaries": []}
+
+
+def anchor_profile(inventory, profile_id, abi, build_manifest):
+    """Freeze selected inventory configuration, not an ISA support claim."""
+    rows = [r for r in inventory["profiles"] if r["profile_id"] == profile_id]
+    if len(rows) != 1 or profile_id not in ("X64-LE", "A64-LE"):
+        raise ContractError("Only two measured extraction anchors are enabled")
+    row = rows[0]
+    if abi not in row["abi_ids"] or row["maturity"] != "MMAT_CALLS":
+        raise ContractError("Unmeasured ABI or maturity configuration")
+    measured = {"X64-LE": "darwin-x86_64-sysv-derived", "A64-LE": "darwin-aarch64"}
+    if abi != measured[profile_id]:
+        raise ContractError("ABI lacks anchor extraction evidence")
+    builds = [
+        b
+        for b in build_manifest
+        if b["abi_id"] == abi
+        and b["format"] == "FMT-MACHO"
+        and b["binary_sha256"] in row["fixture_hashes"]
+    ]
+    if len(builds) != 1:
+        raise ContractError("Anchor requires one matching Mach-O build receipt")
+    build = builds[0]
+    return {
+        "format_id": "FMT-MACHO",
+        "platform_tag": "darwin",
+        "abi_provenance": {
+            "kind": "measured_anchor_build",
+            "source_sha256": build["source_sha256"],
+            "compiler": build["compiler"],
+            "sdk_version": build["sdk_version"],
+            "binary_sha256": build["binary_sha256"],
+        },
+        "profile_id": profile_id,
+        "version": row["profile_version"],
+        "abi": abi,
+        "maturity": row["maturity"],
+        "bitness": row["bitness"],
+        "data_endian": "little",
+        "instruction_endian": "little",
+        "processor": "metapc" if profile_id == "X64-LE" else "ARM",
+        "required_features": row["required_features"],
+    }
+
+
+def source_eas(operand):
+    """Union observed nested origins; never reconstruct removed native origins."""
+    eas = set(operand.source_eas)
+    children = operand.children
+    if operand.call is not None:
+        children += operand.call.arguments + operand.call.return_operands
+    for child in children:
+        eas.update(source_eas(child))
+    return tuple(sorted(eas))
+
+
+def make_snapshot(function, environment, profile, namespace, binary_sha256):
+    if not namespace.strip():
+        raise ContractError("Explicit owner namespace required")
+    if (environment.format_id, environment.platform_tag, environment.abi) != (
+        profile["format_id"],
+        profile["platform_tag"],
+        profile["abi"],
+    ):
+        raise ContractError("Snapshot profile/format/platform mismatch")
+    identity = SnapshotIdentity(
+        namespace,
+        "sha256-v1:" + binary_sha256,
+        digest({"function": function.to_data(), "interpretation": RULES}),
+        function.function_id,
+        profile["maturity"],
+        digest(profile),
+        digest(RULES),
+        digest(EMPTY_SUMMARIES),
+        digest(POLICY),
+        digest(function),
+        environment,
+    )
+    return Snapshot(identity, function, identity.snapshot_id)
+
+
+def extract_snapshot(
+    function_ea,
+    *,
+    namespace,
+    function_key,
+    profile,
+    deadline=None,
+    cancelled=lambda: False,
+):
+    """Main-thread SDK scope returning immutable, roundtrippable pure Snapshot.
+
+    Deadlines poll before/after generation and during serialization; native
+    generation is not forcibly preempted. Unsupported inputs remain diagnostic.
+    """
+    import ida_pro
+
+    if not ida_pro.is_main_thread():
+        raise RuntimeError("Microcode extraction requires the IDA main thread")
+    import ida_funcs
+    import ida_hexrays as hx
+    import ida_ida
+    import ida_idaapi
+    import ida_kernwin
+    import ida_nalt
+
+    def check():
+        if cancelled() or (deadline is not None and time.monotonic() >= deadline):
+            raise InterruptedError("Cooperative extraction cancellation")
+
+    check()
+    if not namespace.strip() or not function_key.strip():
+        raise ContractError("Explicit owner namespace and stable function key required")
+    if profile["maturity"] != "MMAT_CALLS":
+        raise ContractError("Unmeasured maturity; no mixed-maturity extraction")
+    measured = {
+        "X64-LE": ("metapc", "darwin-x86_64-sysv-derived"),
+        "A64-LE": ("ARM", "darwin-aarch64"),
+    }
+    if (
+        measured.get(profile.get("profile_id"))
+        != (profile.get("processor"), profile.get("abi"))
+        or profile.get("bitness") != 64
+        or profile.get("data_endian") != "little"
+        or profile.get("instruction_endian") != "little"
+        or profile.get("format_id") != "FMT-MACHO"
+        or profile.get("platform_tag") != "darwin"
+    ):
+        raise ContractError("Unmeasured extraction profile configuration")
+    # Structured loader metadata, not processor names or display-text heuristics.
+    if ida_ida.inf_get_filetype() != ida_ida.f_MACHO:
+        raise ContractError(
+            "Binary format mismatch: measured Darwin anchors require FMT-MACHO"
+        )
+    bits = 64 if ida_ida.inf_is_64bit() else 32
+    endian = "big" if ida_ida.inf_is_be() else "little"
+    if (ida_ida.inf_get_procname(), bits, endian) != (
+        profile["processor"],
+        profile["bitness"],
+        profile["data_endian"],
+    ):
+        raise ContractError("Profile/environment mismatch")
+    function = ida_funcs.get_func(function_ea)
+    if function is None or function.start_ea != function_ea:
+        raise ContractError("Select a function entry")
+    if not hx.init_hexrays_plugin():
+        raise RuntimeError("Hex-Rays initialization unavailable")
+    failure = hx.hexrays_failure_t()
+    mba = hx.gen_microcode(hx.mba_ranges_t(function), failure, None, 0, hx.MMAT_CALLS)
+    if mba is None:
+        raise RuntimeError(
+            f"gen_microcode failed: code={failure.code}, ea={failure.errea}"
+        )
+    if mba.maturity != hx.MMAT_CALLS:
+        raise ContractError("Unexpected native maturity")
+    check()
+    diagnostics = [
+        Diagnostic(
+            "native_origins_incomplete",
+            "Observed nested microcode EA union only; optimized-away native origins cannot be reconstructed",
+            "information",
+        ),
+        Diagnostic(
+            "chains_not_serialized",
+            "SDK use-def/UD-DU availability measured in P0, not MemorySSA or serialized chains",
+            "information",
+        ),
+    ]
+    opcodes = {
+        getattr(hx, name): name
+        for name in dir(hx)
+        if name.startswith("m_") and isinstance(getattr(hx, name), int)
+    }
+    kinds = {
+        getattr(hx, name): name
+        for name in dir(hx)
+        if name.startswith("mop_") and isinstance(getattr(hx, name), int)
+    }
+
+    def locations(value):
+        last = int(value.reg.last()) if not value.reg.empty() else -1
+        if last > 65535:
+            raise ContractError("SDK register set exceeds extraction budget")
+        registers = tuple(i for i in range(last + 1) if value.reg.has(i))
+        all_memory = bool(value.mem.all_values())
+        ranges = (
+            ()
+            if all_memory
+            else tuple(
+                ByteRange(int(value.mem.getivl(i).off), int(value.mem.getivl(i).end()))
+                for i in range(value.mem.nivls())
+            )
+        )
+        return LocationSet(registers, ranges, all_memory)
+
+    def opaque(kind, bits, role, detail):
+        diagnostic = Diagnostic("unsupported_operand", detail)
+        diagnostics.append(diagnostic)
+        return Operand(
+            "unknown", bits, role=role, native_kind=kind, diagnostic=diagnostic
+        )
+
+    def operand(op, role, depth=0):
+        check()
+        kind = kinds.get(op.t, f"mop_code_{int(op.t)}")
+        bits = int(op.size) * 8 if op.size > 0 else None
+        if depth >= 64:
+            return opaque(kind, bits, role, "Nested operand depth budget exceeded")
+        common = {"role": role, "native_kind": kind}
+        if op.t == hx.mop_z:
+            return Operand("void", None, **common)
+        if op.t == hx.mop_b:
+            return Operand("block", None, block_index=int(op.b), **common)
+        if op.t == hx.mop_v:
+            # Preserve a native global location; the opcode determines read vs target.
+            return Operand("global", bits, address=int(op.g), **common)
+        if op.t == hx.mop_f:
+            ci = op.f
+            size = int(ci.return_type.get_size())
+            unresolved = [
+                "external_memory_effects_not_modeled",
+                "return_type_code_and_size_only",
+                "return_argloc_not_serialized",
+            ]
+            if size <= 0 or size >= (1 << 63):
+                unresolved.append("return_width_unknown_or_void")
+                return_width = None
+            else:
+                return_width = size * 8
+            call = CallInfo(
+                None if ci.callee == ida_idaapi.BADADDR else int(ci.callee),
+                int(ci.cc),
+                tuple(operand(a, "argument", depth + 1) for a in ci.args),
+                tuple(operand(a, "return", depth + 1) for a in ci.retregs),
+                return_width,
+                locations(ci.return_regs),
+                locations(ci.spoiled),
+                int(ci.return_type.get_realtype()),
+                bool(ci.return_type.is_void()),
+                tuple(sorted(unresolved)),
+            )
+            diagnostics.append(
+                Diagnostic(
+                    "call_effects_unresolved",
+                    "Call info is structural only; memory effects and full return type/argloc not normalized",
+                )
+            )
+            return Operand("callinfo", None, call=call, **common)
+        if bits is None:
+            return opaque(kind, None, role, "Non-void value operand has no SDK width")
+        if op.t == hx.mop_n:
+            return Operand(
+                "constant",
+                bits,
+                constant=int(op.nnn.value) & ((1 << bits) - 1),
+                **common,
+            )
+        if op.t in (hx.mop_r, hx.mop_S):
+            space = "microregister" if op.t == hx.mop_r else "stack"
+            offset = int(op.r) if op.t == hx.mop_r else int(op.s.off)
+            return Operand(
+                "storage",
+                bits,
+                storage=StorageLocation(space, space, offset * 8, bits),
+                **common,
+            )
+        if op.t == hx.mop_d:
+            nested = instruction(op.d, 0, depth + 1)
+            return Operand(
+                "expression",
+                bits,
+                operation=nested.opcode,
+                children=nested.operands,
+                source_eas=nested.source_eas,
+                synthetic=nested.synthetic,
+                **common,
+            )
+        return opaque(kind, bits, role, f"No structural normalization rule for {kind}")
+
+    def instruction(ins, index, depth=0):
+        check()
+        opcode = opcodes.get(ins.opcode, f"unknown_microcode_{int(ins.opcode)}")
+        if opcode.startswith("unknown_") or opcode in ("m_ext", "m_und"):
+            diagnostics.append(Diagnostic("opaque_microcode", opcode))
+        operands = tuple(
+            operand(o, role, depth)
+            for o, role in zip((ins.l, ins.r, ins.d), ("left", "right", "destination"))
+        )
+        eas = set() if ins.ea == ida_idaapi.BADADDR else {int(ins.ea)}
+        for op in operands:
+            eas.update(source_eas(op))
+        return Instruction(
+            index, opcode, operands, tuple(sorted(eas)), ins.ea == ida_idaapi.BADADDR
+        )
+
+    blocks = []
+    for index in range(mba.qty):
+        check()
+        block = mba.get_mblock(index)
+        rows = []
+        ins = block.head
+        while ins is not None:
+            rows.append(instruction(ins, len(rows)))
+            ins = ins.next
+        blocks.append(
+            Block(
+                index,
+                tuple(sorted(block.pred(i) for i in range(block.npred()))),
+                tuple(rows),
+                tuple(sorted(block.succ(i) for i in range(block.nsucc()))),
+            )
+        )
+    # Caller supplies a stable structural key, independent of display names/EAs.
+    pure = FunctionInput(
+        function_key,
+        0,
+        tuple(blocks),
+        tuple(sorted(set(diagnostics), key=lambda d: (d.code, d.detail, d.severity))),
+    )
+    env = Environment(
+        ida_kernwin.get_kernel_version(),
+        hx.get_hexrays_version(),
+        ida_ida.inf_get_procname(),
+        profile["abi"],
+        bits,
+        endian,
+        profile["instruction_endian"],
+        "ram",
+        VERSION,
+        "FMT-MACHO",
+        profile["platform_tag"],
+    )
+    binary = hashlib.sha256(
+        Path(ida_nalt.get_input_file_path()).read_bytes()
+    ).hexdigest()
+    snapshot = make_snapshot(pure, env, profile, namespace, binary)
+    return Snapshot.from_data(json.loads(json.dumps(snapshot.to_data())))

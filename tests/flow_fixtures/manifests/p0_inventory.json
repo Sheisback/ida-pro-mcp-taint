@@ -1,0 +1,1446 @@
+{
+  "schema_version": "flow-p0-inventory/1",
+  "scope": "P0 extraction evidence, not public analysis support",
+  "profiles": [
+    {
+      "profile_id": "X86-LE",
+      "profile_version": 1,
+      "required": true,
+      "bitness": 32,
+      "data_endian": "LE",
+      "instruction_endian": null,
+      "isa_revision": null,
+      "mode": "X86",
+      "extensions": [],
+      "revision_status": "blocked_pending_fixture",
+      "abi_ids": [
+        "sysv-i386"
+      ],
+      "abi_evidence": null,
+      "clobber_policy": "use extracted SDK callinfo; do not reapply native ABI effects; unresolved effects remain unknown",
+      "artifacts": {
+        "processor": {
+          "artifact": "procs/pc.dylib",
+          "present": true,
+          "sha256": "1410717e83df4e0e2f9982a4ae4a92df06e61d0d7c0f8aa8ec3df796d34fa8e1",
+          "meaning": "file presence only; not entitlement or analysis support"
+        },
+        "decompiler": {
+          "artifact": "plugins/hexx86.dylib",
+          "present": false,
+          "sha256": null,
+          "meaning": "file presence only; not entitlement or analysis support"
+        }
+      },
+      "entitlement": {
+        "status": "unverified",
+        "scope": "artifact presence is insufficient"
+      },
+      "sample_status": "missing",
+      "probe_status": "unverified",
+      "probe_receipt": null,
+      "maturity": null,
+      "maturity_decision": "blocked_until_comparison",
+      "format_rows": [],
+      "required_operations": [
+        "constant",
+        "copy",
+        "integer",
+        "extension",
+        "truncate",
+        "compare",
+        "branch",
+        "return",
+        "load",
+        "store",
+        "call_boundary"
+      ],
+      "required_features": [
+        "scalar",
+        "branch",
+        "range_memory",
+        "abi",
+        "isa_specific_contract"
+      ],
+      "normal_status": "unverified",
+      "fallback_status": "unverified",
+      "blockers": [
+        {
+          "owner": "profile-expansion",
+          "reason": "no native fixture/gen_microcode receipt for this exact bitness/endian/mode",
+          "next_probe": "build named ABI/revision fixture and run both maturities on licensed IDA"
+        },
+        {
+          "owner": "profile-expansion",
+          "reason": "normal scalar/branch/range-memory/ABI and ISA-specific semantic oracles not implemented",
+          "next_probe": "run profile conformance corpus after common core implementation"
+        }
+      ],
+      "fixture_hashes": [],
+      "compiler_manifest": null,
+      "oracle_ids": [],
+      "abi_status": {
+        "sysv-i386": "unverified"
+      },
+      "ida_build": "9.3 (kernel API); Hex-Rays 9.3.0.260213 (observed)"
+    },
+    {
+      "profile_id": "X64-LE",
+      "profile_version": 1,
+      "required": true,
+      "bitness": 64,
+      "data_endian": "LE",
+      "instruction_endian": "LE",
+      "isa_revision": "x86-64 baseline",
+      "mode": "X64",
+      "extensions": [],
+      "revision_status": "frozen_anchor",
+      "abi_ids": [
+        "windows-x64",
+        "sysv-amd64",
+        "darwin-x86_64-sysv-derived"
+      ],
+      "abi_evidence": "build.json and extracted callinfo; not ABI semantic conformance",
+      "clobber_policy": "use extracted SDK callinfo; do not reapply native ABI effects; unresolved effects remain unknown",
+      "artifacts": {
+        "processor": {
+          "artifact": "procs/pc.dylib",
+          "present": true,
+          "sha256": "1410717e83df4e0e2f9982a4ae4a92df06e61d0d7c0f8aa8ec3df796d34fa8e1",
+          "meaning": "file presence only; not entitlement or analysis support"
+        },
+        "decompiler": {
+          "artifact": "plugins/hexx64.dylib",
+          "present": true,
+          "sha256": "d7404ceefee6303703bd5b1068bdd4cf75503e5d4b3efb4447e5b9add010b343",
+          "meaning": "file presence only; not entitlement or analysis support"
+        }
+      },
+      "entitlement": {
+        "status": "observed_generation_success",
+        "scope": "this fixture and environment only"
+      },
+      "sample_status": "probed",
+      "probe_status": "success",
+      "probe_receipt": "x64.json",
+      "maturity": "MMAT_CALLS",
+      "maturity_decision": "retain pre-global-optimization CFG and local effects; both bindings available",
+      "format_rows": [
+        "FMT-MACHO"
+      ],
+      "required_operations": [
+        "constant",
+        "copy",
+        "integer",
+        "extension",
+        "truncate",
+        "compare",
+        "branch",
+        "return",
+        "load",
+        "store",
+        "call_boundary"
+      ],
+      "required_features": [
+        "scalar",
+        "branch",
+        "range_memory",
+        "abi",
+        "isa_specific_contract"
+      ],
+      "normal_status": "unverified",
+      "fallback_status": "unverified",
+      "blockers": [
+        {
+          "owner": "profile-expansion",
+          "reason": "normal scalar/branch/range-memory/ABI and ISA-specific semantic oracles not implemented",
+          "next_probe": "run profile conformance corpus after common core implementation"
+        },
+        {
+          "owner": "profile-expansion",
+          "reason": "anchor uses Darwin ABI; other mandatory ABI subrows not yet probed",
+          "next_probe": "Windows x64 PE and SysV ELF or AAPCS64 ELF fixture static probes"
+        }
+      ],
+      "fixture_hashes": [
+        "015c684b75facbf3e1f8f5928adee695de44d927f2a4b93c5be10261af72350c"
+      ],
+      "compiler_manifest": "build.json",
+      "oracle_ids": [
+        "P0-STRUCTURED-EXTRACTION",
+        "P0-REPEAT",
+        "P0-CANCEL"
+      ],
+      "abi_status": {
+        "windows-x64": "unverified",
+        "sysv-amd64": "unverified",
+        "darwin-x86_64-sysv-derived": "extraction_observed_not_conformance"
+      },
+      "ida_build": "9.3 (kernel API); Hex-Rays 9.3.0.260213 (observed)"
+    },
+    {
+      "profile_id": "ARM32-LE",
+      "profile_version": 1,
+      "required": true,
+      "bitness": 32,
+      "data_endian": "LE",
+      "instruction_endian": null,
+      "isa_revision": null,
+      "mode": "ARM32",
+      "extensions": [],
+      "revision_status": "blocked_pending_fixture",
+      "abi_ids": [
+        "aapcs32"
+      ],
+      "abi_evidence": null,
+      "clobber_policy": "use extracted SDK callinfo; do not reapply native ABI effects; unresolved effects remain unknown",
+      "artifacts": {
+        "processor": {
+          "artifact": "procs/arm.dylib",
+          "present": true,
+          "sha256": "64d0850ec65a44125c40f32688d351aaacf95e005f43677e35ce0682ea0b95ea",
+          "meaning": "file presence only; not entitlement or analysis support"
+        },
+        "decompiler": {
+          "artifact": "plugins/hexarm.dylib",
+          "present": true,
+          "sha256": "2567d8eec91126d4455cd1cd688b139728c87444512754dce50328e03f6aef62",
+          "meaning": "file presence only; not entitlement or analysis support"
+        }
+      },
+      "entitlement": {
+        "status": "unverified",
+        "scope": "artifact presence is insufficient"
+      },
+      "sample_status": "missing",
+      "probe_status": "unverified",
+      "probe_receipt": null,
+      "maturity": null,
+      "maturity_decision": "blocked_until_comparison",
+      "format_rows": [],
+      "required_operations": [
+        "constant",
+        "copy",
+        "integer",
+        "extension",
+        "truncate",
+        "compare",
+        "branch",
+        "return",
+        "load",
+        "store",
+        "call_boundary"
+      ],
+      "required_features": [
+        "scalar",
+        "branch",
+        "range_memory",
+        "abi",
+        "isa_specific_contract"
+      ],
+      "normal_status": "unverified",
+      "fallback_status": "unverified",
+      "blockers": [
+        {
+          "owner": "profile-expansion",
+          "reason": "no native fixture/gen_microcode receipt for this exact bitness/endian/mode",
+          "next_probe": "build named ABI/revision fixture and run both maturities on licensed IDA"
+        },
+        {
+          "owner": "profile-expansion",
+          "reason": "normal scalar/branch/range-memory/ABI and ISA-specific semantic oracles not implemented",
+          "next_probe": "run profile conformance corpus after common core implementation"
+        }
+      ],
+      "fixture_hashes": [],
+      "compiler_manifest": null,
+      "oracle_ids": [],
+      "abi_status": {
+        "aapcs32": "unverified"
+      },
+      "ida_build": "9.3 (kernel API); Hex-Rays 9.3.0.260213 (observed)"
+    },
+    {
+      "profile_id": "ARM32-BE",
+      "profile_version": 1,
+      "required": true,
+      "bitness": 32,
+      "data_endian": "BE",
+      "instruction_endian": null,
+      "isa_revision": null,
+      "mode": "ARM32",
+      "extensions": [],
+      "revision_status": "blocked_pending_fixture",
+      "abi_ids": [
+        "aapcs32"
+      ],
+      "abi_evidence": null,
+      "clobber_policy": "use extracted SDK callinfo; do not reapply native ABI effects; unresolved effects remain unknown",
+      "artifacts": {
+        "processor": {
+          "artifact": "procs/arm.dylib",
+          "present": true,
+          "sha256": "64d0850ec65a44125c40f32688d351aaacf95e005f43677e35ce0682ea0b95ea",
+          "meaning": "file presence only; not entitlement or analysis support"
+        },
+        "decompiler": {
+          "artifact": "plugins/hexarm.dylib",
+          "present": true,
+          "sha256": "2567d8eec91126d4455cd1cd688b139728c87444512754dce50328e03f6aef62",
+          "meaning": "file presence only; not entitlement or analysis support"
+        }
+      },
+      "entitlement": {
+        "status": "unverified",
+        "scope": "artifact presence is insufficient"
+      },
+      "sample_status": "missing",
+      "probe_status": "unverified",
+      "probe_receipt": null,
+      "maturity": null,
+      "maturity_decision": "blocked_until_comparison",
+      "format_rows": [],
+      "required_operations": [
+        "constant",
+        "copy",
+        "integer",
+        "extension",
+        "truncate",
+        "compare",
+        "branch",
+        "return",
+        "load",
+        "store",
+        "call_boundary"
+      ],
+      "required_features": [
+        "scalar",
+        "branch",
+        "range_memory",
+        "abi",
+        "isa_specific_contract"
+      ],
+      "normal_status": "unverified",
+      "fallback_status": "unverified",
+      "blockers": [
+        {
+          "owner": "profile-expansion",
+          "reason": "no native fixture/gen_microcode receipt for this exact bitness/endian/mode",
+          "next_probe": "build named ABI/revision fixture and run both maturities on licensed IDA"
+        },
+        {
+          "owner": "profile-expansion",
+          "reason": "normal scalar/branch/range-memory/ABI and ISA-specific semantic oracles not implemented",
+          "next_probe": "run profile conformance corpus after common core implementation"
+        }
+      ],
+      "fixture_hashes": [],
+      "compiler_manifest": null,
+      "oracle_ids": [],
+      "abi_status": {
+        "aapcs32": "unverified"
+      },
+      "ida_build": "9.3 (kernel API); Hex-Rays 9.3.0.260213 (observed)"
+    },
+    {
+      "profile_id": "THUMB-LE",
+      "profile_version": 1,
+      "required": true,
+      "bitness": 32,
+      "data_endian": "LE",
+      "instruction_endian": null,
+      "isa_revision": null,
+      "mode": "THUMB",
+      "extensions": [],
+      "revision_status": "blocked_pending_fixture",
+      "abi_ids": [
+        "aapcs32"
+      ],
+      "abi_evidence": null,
+      "clobber_policy": "use extracted SDK callinfo; do not reapply native ABI effects; unresolved effects remain unknown",
+      "artifacts": {
+        "processor": {
+          "artifact": "procs/arm.dylib",
+          "present": true,
+          "sha256": "64d0850ec65a44125c40f32688d351aaacf95e005f43677e35ce0682ea0b95ea",
+          "meaning": "file presence only; not entitlement or analysis support"
+        },
+        "decompiler": {
+          "artifact": "plugins/hexarm.dylib",
+          "present": true,
+          "sha256": "2567d8eec91126d4455cd1cd688b139728c87444512754dce50328e03f6aef62",
+          "meaning": "file presence only; not entitlement or analysis support"
+        }
+      },
+      "entitlement": {
+        "status": "unverified",
+        "scope": "artifact presence is insufficient"
+      },
+      "sample_status": "missing",
+      "probe_status": "unverified",
+      "probe_receipt": null,
+      "maturity": null,
+      "maturity_decision": "blocked_until_comparison",
+      "format_rows": [],
+      "required_operations": [
+        "constant",
+        "copy",
+        "integer",
+        "extension",
+        "truncate",
+        "compare",
+        "branch",
+        "return",
+        "load",
+        "store",
+        "call_boundary"
+      ],
+      "required_features": [
+        "scalar",
+        "branch",
+        "range_memory",
+        "abi",
+        "isa_specific_contract"
+      ],
+      "normal_status": "unverified",
+      "fallback_status": "unverified",
+      "blockers": [
+        {
+          "owner": "profile-expansion",
+          "reason": "no native fixture/gen_microcode receipt for this exact bitness/endian/mode",
+          "next_probe": "build named ABI/revision fixture and run both maturities on licensed IDA"
+        },
+        {
+          "owner": "profile-expansion",
+          "reason": "normal scalar/branch/range-memory/ABI and ISA-specific semantic oracles not implemented",
+          "next_probe": "run profile conformance corpus after common core implementation"
+        }
+      ],
+      "fixture_hashes": [],
+      "compiler_manifest": null,
+      "oracle_ids": [],
+      "abi_status": {
+        "aapcs32": "unverified"
+      },
+      "ida_build": "9.3 (kernel API); Hex-Rays 9.3.0.260213 (observed)"
+    },
+    {
+      "profile_id": "THUMB-BE",
+      "profile_version": 1,
+      "required": true,
+      "bitness": 32,
+      "data_endian": "BE",
+      "instruction_endian": null,
+      "isa_revision": null,
+      "mode": "THUMB",
+      "extensions": [],
+      "revision_status": "blocked_pending_fixture",
+      "abi_ids": [
+        "aapcs32"
+      ],
+      "abi_evidence": null,
+      "clobber_policy": "use extracted SDK callinfo; do not reapply native ABI effects; unresolved effects remain unknown",
+      "artifacts": {
+        "processor": {
+          "artifact": "procs/arm.dylib",
+          "present": true,
+          "sha256": "64d0850ec65a44125c40f32688d351aaacf95e005f43677e35ce0682ea0b95ea",
+          "meaning": "file presence only; not entitlement or analysis support"
+        },
+        "decompiler": {
+          "artifact": "plugins/hexarm.dylib",
+          "present": true,
+          "sha256": "2567d8eec91126d4455cd1cd688b139728c87444512754dce50328e03f6aef62",
+          "meaning": "file presence only; not entitlement or analysis support"
+        }
+      },
+      "entitlement": {
+        "status": "unverified",
+        "scope": "artifact presence is insufficient"
+      },
+      "sample_status": "missing",
+      "probe_status": "unverified",
+      "probe_receipt": null,
+      "maturity": null,
+      "maturity_decision": "blocked_until_comparison",
+      "format_rows": [],
+      "required_operations": [
+        "constant",
+        "copy",
+        "integer",
+        "extension",
+        "truncate",
+        "compare",
+        "branch",
+        "return",
+        "load",
+        "store",
+        "call_boundary"
+      ],
+      "required_features": [
+        "scalar",
+        "branch",
+        "range_memory",
+        "abi",
+        "isa_specific_contract"
+      ],
+      "normal_status": "unverified",
+      "fallback_status": "unverified",
+      "blockers": [
+        {
+          "owner": "profile-expansion",
+          "reason": "no native fixture/gen_microcode receipt for this exact bitness/endian/mode",
+          "next_probe": "build named ABI/revision fixture and run both maturities on licensed IDA"
+        },
+        {
+          "owner": "profile-expansion",
+          "reason": "normal scalar/branch/range-memory/ABI and ISA-specific semantic oracles not implemented",
+          "next_probe": "run profile conformance corpus after common core implementation"
+        }
+      ],
+      "fixture_hashes": [],
+      "compiler_manifest": null,
+      "oracle_ids": [],
+      "abi_status": {
+        "aapcs32": "unverified"
+      },
+      "ida_build": "9.3 (kernel API); Hex-Rays 9.3.0.260213 (observed)"
+    },
+    {
+      "profile_id": "A64-LE",
+      "profile_version": 1,
+      "required": true,
+      "bitness": 64,
+      "data_endian": "LE",
+      "instruction_endian": "LE",
+      "isa_revision": "Armv8-A base",
+      "mode": "A64",
+      "extensions": [],
+      "revision_status": "frozen_anchor",
+      "abi_ids": [
+        "aapcs64",
+        "darwin-aarch64"
+      ],
+      "abi_evidence": "build.json and extracted callinfo; not ABI semantic conformance",
+      "clobber_policy": "use extracted SDK callinfo; do not reapply native ABI effects; unresolved effects remain unknown",
+      "artifacts": {
+        "processor": {
+          "artifact": "procs/arm.dylib",
+          "present": true,
+          "sha256": "64d0850ec65a44125c40f32688d351aaacf95e005f43677e35ce0682ea0b95ea",
+          "meaning": "file presence only; not entitlement or analysis support"
+        },
+        "decompiler": {
+          "artifact": "plugins/hexarm.dylib",
+          "present": true,
+          "sha256": "2567d8eec91126d4455cd1cd688b139728c87444512754dce50328e03f6aef62",
+          "meaning": "file presence only; not entitlement or analysis support"
+        }
+      },
+      "entitlement": {
+        "status": "observed_generation_success",
+        "scope": "this fixture and environment only"
+      },
+      "sample_status": "probed",
+      "probe_status": "success",
+      "probe_receipt": "a64.json",
+      "maturity": "MMAT_CALLS",
+      "maturity_decision": "retain pre-global-optimization CFG and local effects; both bindings available",
+      "format_rows": [
+        "FMT-MACHO"
+      ],
+      "required_operations": [
+        "constant",
+        "copy",
+        "integer",
+        "extension",
+        "truncate",
+        "compare",
+        "branch",
+        "return",
+        "load",
+        "store",
+        "call_boundary"
+      ],
+      "required_features": [
+        "scalar",
+        "branch",
+        "range_memory",
+        "abi",
+        "isa_specific_contract"
+      ],
+      "normal_status": "unverified",
+      "fallback_status": "unverified",
+      "blockers": [
+        {
+          "owner": "profile-expansion",
+          "reason": "normal scalar/branch/range-memory/ABI and ISA-specific semantic oracles not implemented",
+          "next_probe": "run profile conformance corpus after common core implementation"
+        },
+        {
+          "owner": "profile-expansion",
+          "reason": "anchor uses Darwin ABI; other mandatory ABI subrows not yet probed",
+          "next_probe": "Windows x64 PE and SysV ELF or AAPCS64 ELF fixture static probes"
+        }
+      ],
+      "fixture_hashes": [
+        "755a8fed2e53d2b6da42067c816a2667c4a307e0a8cdcaca34da9e6e6c3c0b07"
+      ],
+      "compiler_manifest": "build.json",
+      "oracle_ids": [
+        "P0-STRUCTURED-EXTRACTION",
+        "P0-REPEAT",
+        "P0-CANCEL"
+      ],
+      "abi_status": {
+        "aapcs64": "unverified",
+        "darwin-aarch64": "extraction_observed_not_conformance"
+      },
+      "ida_build": "9.3 (kernel API); Hex-Rays 9.3.0.260213 (observed)"
+    },
+    {
+      "profile_id": "MIPS32-LE",
+      "profile_version": 1,
+      "required": true,
+      "bitness": 32,
+      "data_endian": "LE",
+      "instruction_endian": null,
+      "isa_revision": null,
+      "mode": "MIPS32",
+      "extensions": [],
+      "revision_status": "blocked_pending_fixture",
+      "abi_ids": [
+        "mips-o32"
+      ],
+      "abi_evidence": null,
+      "clobber_policy": "use extracted SDK callinfo; do not reapply native ABI effects; unresolved effects remain unknown",
+      "artifacts": {
+        "processor": {
+          "artifact": "procs/mips.dylib",
+          "present": true,
+          "sha256": "899e17cab3dc52e5e71ddff1fa543ddf60e83a5386af12ba102f68fca5450663",
+          "meaning": "file presence only; not entitlement or analysis support"
+        },
+        "decompiler": {
+          "artifact": "plugins/hexmips.dylib",
+          "present": true,
+          "sha256": "92442e74e0f6bd8883da87dee780a094e560a6bc9109a55a11aca294ebe36071",
+          "meaning": "file presence only; not entitlement or analysis support"
+        }
+      },
+      "entitlement": {
+        "status": "unverified",
+        "scope": "artifact presence is insufficient"
+      },
+      "sample_status": "missing",
+      "probe_status": "unverified",
+      "probe_receipt": null,
+      "maturity": null,
+      "maturity_decision": "blocked_until_comparison",
+      "format_rows": [],
+      "required_operations": [
+        "constant",
+        "copy",
+        "integer",
+        "extension",
+        "truncate",
+        "compare",
+        "branch",
+        "return",
+        "load",
+        "store",
+        "call_boundary"
+      ],
+      "required_features": [
+        "scalar",
+        "branch",
+        "range_memory",
+        "abi",
+        "isa_specific_contract"
+      ],
+      "normal_status": "unverified",
+      "fallback_status": "unverified",
+      "blockers": [
+        {
+          "owner": "profile-expansion",
+          "reason": "no native fixture/gen_microcode receipt for this exact bitness/endian/mode",
+          "next_probe": "build named ABI/revision fixture and run both maturities on licensed IDA"
+        },
+        {
+          "owner": "profile-expansion",
+          "reason": "normal scalar/branch/range-memory/ABI and ISA-specific semantic oracles not implemented",
+          "next_probe": "run profile conformance corpus after common core implementation"
+        }
+      ],
+      "fixture_hashes": [],
+      "compiler_manifest": null,
+      "oracle_ids": [],
+      "abi_status": {
+        "mips-o32": "unverified"
+      },
+      "ida_build": "9.3 (kernel API); Hex-Rays 9.3.0.260213 (observed)"
+    },
+    {
+      "profile_id": "MIPS32-BE",
+      "profile_version": 1,
+      "required": true,
+      "bitness": 32,
+      "data_endian": "BE",
+      "instruction_endian": null,
+      "isa_revision": null,
+      "mode": "MIPS32",
+      "extensions": [],
+      "revision_status": "blocked_pending_fixture",
+      "abi_ids": [
+        "mips-o32"
+      ],
+      "abi_evidence": null,
+      "clobber_policy": "use extracted SDK callinfo; do not reapply native ABI effects; unresolved effects remain unknown",
+      "artifacts": {
+        "processor": {
+          "artifact": "procs/mips.dylib",
+          "present": true,
+          "sha256": "899e17cab3dc52e5e71ddff1fa543ddf60e83a5386af12ba102f68fca5450663",
+          "meaning": "file presence only; not entitlement or analysis support"
+        },
+        "decompiler": {
+          "artifact": "plugins/hexmips.dylib",
+          "present": true,
+          "sha256": "92442e74e0f6bd8883da87dee780a094e560a6bc9109a55a11aca294ebe36071",
+          "meaning": "file presence only; not entitlement or analysis support"
+        }
+      },
+      "entitlement": {
+        "status": "unverified",
+        "scope": "artifact presence is insufficient"
+      },
+      "sample_status": "missing",
+      "probe_status": "unverified",
+      "probe_receipt": null,
+      "maturity": null,
+      "maturity_decision": "blocked_until_comparison",
+      "format_rows": [],
+      "required_operations": [
+        "constant",
+        "copy",
+        "integer",
+        "extension",
+        "truncate",
+        "compare",
+        "branch",
+        "return",
+        "load",
+        "store",
+        "call_boundary"
+      ],
+      "required_features": [
+        "scalar",
+        "branch",
+        "range_memory",
+        "abi",
+        "isa_specific_contract"
+      ],
+      "normal_status": "unverified",
+      "fallback_status": "unverified",
+      "blockers": [
+        {
+          "owner": "profile-expansion",
+          "reason": "no native fixture/gen_microcode receipt for this exact bitness/endian/mode",
+          "next_probe": "build named ABI/revision fixture and run both maturities on licensed IDA"
+        },
+        {
+          "owner": "profile-expansion",
+          "reason": "normal scalar/branch/range-memory/ABI and ISA-specific semantic oracles not implemented",
+          "next_probe": "run profile conformance corpus after common core implementation"
+        }
+      ],
+      "fixture_hashes": [],
+      "compiler_manifest": null,
+      "oracle_ids": [],
+      "abi_status": {
+        "mips-o32": "unverified"
+      },
+      "ida_build": "9.3 (kernel API); Hex-Rays 9.3.0.260213 (observed)"
+    },
+    {
+      "profile_id": "MIPS64-LE",
+      "profile_version": 1,
+      "required": true,
+      "bitness": 64,
+      "data_endian": "LE",
+      "instruction_endian": null,
+      "isa_revision": null,
+      "mode": "MIPS64",
+      "extensions": [],
+      "revision_status": "blocked_pending_fixture",
+      "abi_ids": [
+        "mips-n64"
+      ],
+      "abi_evidence": null,
+      "clobber_policy": "use extracted SDK callinfo; do not reapply native ABI effects; unresolved effects remain unknown",
+      "artifacts": {
+        "processor": {
+          "artifact": "procs/mips.dylib",
+          "present": true,
+          "sha256": "899e17cab3dc52e5e71ddff1fa543ddf60e83a5386af12ba102f68fca5450663",
+          "meaning": "file presence only; not entitlement or analysis support"
+        },
+        "decompiler": {
+          "artifact": "plugins/hexmips.dylib",
+          "present": true,
+          "sha256": "92442e74e0f6bd8883da87dee780a094e560a6bc9109a55a11aca294ebe36071",
+          "meaning": "file presence only; not entitlement or analysis support"
+        }
+      },
+      "entitlement": {
+        "status": "unverified",
+        "scope": "artifact presence is insufficient"
+      },
+      "sample_status": "missing",
+      "probe_status": "unverified",
+      "probe_receipt": null,
+      "maturity": null,
+      "maturity_decision": "blocked_until_comparison",
+      "format_rows": [],
+      "required_operations": [
+        "constant",
+        "copy",
+        "integer",
+        "extension",
+        "truncate",
+        "compare",
+        "branch",
+        "return",
+        "load",
+        "store",
+        "call_boundary"
+      ],
+      "required_features": [
+        "scalar",
+        "branch",
+        "range_memory",
+        "abi",
+        "isa_specific_contract"
+      ],
+      "normal_status": "unverified",
+      "fallback_status": "unverified",
+      "blockers": [
+        {
+          "owner": "profile-expansion",
+          "reason": "no native fixture/gen_microcode receipt for this exact bitness/endian/mode",
+          "next_probe": "build named ABI/revision fixture and run both maturities on licensed IDA"
+        },
+        {
+          "owner": "profile-expansion",
+          "reason": "normal scalar/branch/range-memory/ABI and ISA-specific semantic oracles not implemented",
+          "next_probe": "run profile conformance corpus after common core implementation"
+        }
+      ],
+      "fixture_hashes": [],
+      "compiler_manifest": null,
+      "oracle_ids": [],
+      "abi_status": {
+        "mips-n64": "unverified"
+      },
+      "ida_build": "9.3 (kernel API); Hex-Rays 9.3.0.260213 (observed)"
+    },
+    {
+      "profile_id": "MIPS64-BE",
+      "profile_version": 1,
+      "required": true,
+      "bitness": 64,
+      "data_endian": "BE",
+      "instruction_endian": null,
+      "isa_revision": null,
+      "mode": "MIPS64",
+      "extensions": [],
+      "revision_status": "blocked_pending_fixture",
+      "abi_ids": [
+        "mips-n64"
+      ],
+      "abi_evidence": null,
+      "clobber_policy": "use extracted SDK callinfo; do not reapply native ABI effects; unresolved effects remain unknown",
+      "artifacts": {
+        "processor": {
+          "artifact": "procs/mips.dylib",
+          "present": true,
+          "sha256": "899e17cab3dc52e5e71ddff1fa543ddf60e83a5386af12ba102f68fca5450663",
+          "meaning": "file presence only; not entitlement or analysis support"
+        },
+        "decompiler": {
+          "artifact": "plugins/hexmips.dylib",
+          "present": true,
+          "sha256": "92442e74e0f6bd8883da87dee780a094e560a6bc9109a55a11aca294ebe36071",
+          "meaning": "file presence only; not entitlement or analysis support"
+        }
+      },
+      "entitlement": {
+        "status": "unverified",
+        "scope": "artifact presence is insufficient"
+      },
+      "sample_status": "missing",
+      "probe_status": "unverified",
+      "probe_receipt": null,
+      "maturity": null,
+      "maturity_decision": "blocked_until_comparison",
+      "format_rows": [],
+      "required_operations": [
+        "constant",
+        "copy",
+        "integer",
+        "extension",
+        "truncate",
+        "compare",
+        "branch",
+        "return",
+        "load",
+        "store",
+        "call_boundary"
+      ],
+      "required_features": [
+        "scalar",
+        "branch",
+        "range_memory",
+        "abi",
+        "isa_specific_contract"
+      ],
+      "normal_status": "unverified",
+      "fallback_status": "unverified",
+      "blockers": [
+        {
+          "owner": "profile-expansion",
+          "reason": "no native fixture/gen_microcode receipt for this exact bitness/endian/mode",
+          "next_probe": "build named ABI/revision fixture and run both maturities on licensed IDA"
+        },
+        {
+          "owner": "profile-expansion",
+          "reason": "normal scalar/branch/range-memory/ABI and ISA-specific semantic oracles not implemented",
+          "next_probe": "run profile conformance corpus after common core implementation"
+        }
+      ],
+      "fixture_hashes": [],
+      "compiler_manifest": null,
+      "oracle_ids": [],
+      "abi_status": {
+        "mips-n64": "unverified"
+      },
+      "ida_build": "9.3 (kernel API); Hex-Rays 9.3.0.260213 (observed)"
+    },
+    {
+      "profile_id": "PPC32-LE",
+      "profile_version": 1,
+      "required": true,
+      "bitness": 32,
+      "data_endian": "LE",
+      "instruction_endian": null,
+      "isa_revision": null,
+      "mode": "PPC32",
+      "extensions": [],
+      "revision_status": "blocked_pending_fixture",
+      "abi_ids": [
+        "sysv-ppc32"
+      ],
+      "abi_evidence": null,
+      "clobber_policy": "use extracted SDK callinfo; do not reapply native ABI effects; unresolved effects remain unknown",
+      "artifacts": {
+        "processor": {
+          "artifact": "procs/ppc.dylib",
+          "present": true,
+          "sha256": "457a3e1d279b707f0af4eea00103c4477832239897973f7520e3b5598730e951",
+          "meaning": "file presence only; not entitlement or analysis support"
+        },
+        "decompiler": {
+          "artifact": "plugins/hexppc.dylib",
+          "present": true,
+          "sha256": "d2754b00923ad2da73f1eceb0c24b330dba5505de1b11cad55146e49b22a5cc3",
+          "meaning": "file presence only; not entitlement or analysis support"
+        }
+      },
+      "entitlement": {
+        "status": "unverified",
+        "scope": "artifact presence is insufficient"
+      },
+      "sample_status": "missing",
+      "probe_status": "unverified",
+      "probe_receipt": null,
+      "maturity": null,
+      "maturity_decision": "blocked_until_comparison",
+      "format_rows": [],
+      "required_operations": [
+        "constant",
+        "copy",
+        "integer",
+        "extension",
+        "truncate",
+        "compare",
+        "branch",
+        "return",
+        "load",
+        "store",
+        "call_boundary"
+      ],
+      "required_features": [
+        "scalar",
+        "branch",
+        "range_memory",
+        "abi",
+        "isa_specific_contract"
+      ],
+      "normal_status": "unverified",
+      "fallback_status": "unverified",
+      "blockers": [
+        {
+          "owner": "profile-expansion",
+          "reason": "no native fixture/gen_microcode receipt for this exact bitness/endian/mode",
+          "next_probe": "build named ABI/revision fixture and run both maturities on licensed IDA"
+        },
+        {
+          "owner": "profile-expansion",
+          "reason": "normal scalar/branch/range-memory/ABI and ISA-specific semantic oracles not implemented",
+          "next_probe": "run profile conformance corpus after common core implementation"
+        }
+      ],
+      "fixture_hashes": [],
+      "compiler_manifest": null,
+      "oracle_ids": [],
+      "abi_status": {
+        "sysv-ppc32": "unverified"
+      },
+      "ida_build": "9.3 (kernel API); Hex-Rays 9.3.0.260213 (observed)"
+    },
+    {
+      "profile_id": "PPC32-BE",
+      "profile_version": 1,
+      "required": true,
+      "bitness": 32,
+      "data_endian": "BE",
+      "instruction_endian": null,
+      "isa_revision": null,
+      "mode": "PPC32",
+      "extensions": [],
+      "revision_status": "blocked_pending_fixture",
+      "abi_ids": [
+        "sysv-ppc32"
+      ],
+      "abi_evidence": null,
+      "clobber_policy": "use extracted SDK callinfo; do not reapply native ABI effects; unresolved effects remain unknown",
+      "artifacts": {
+        "processor": {
+          "artifact": "procs/ppc.dylib",
+          "present": true,
+          "sha256": "457a3e1d279b707f0af4eea00103c4477832239897973f7520e3b5598730e951",
+          "meaning": "file presence only; not entitlement or analysis support"
+        },
+        "decompiler": {
+          "artifact": "plugins/hexppc.dylib",
+          "present": true,
+          "sha256": "d2754b00923ad2da73f1eceb0c24b330dba5505de1b11cad55146e49b22a5cc3",
+          "meaning": "file presence only; not entitlement or analysis support"
+        }
+      },
+      "entitlement": {
+        "status": "unverified",
+        "scope": "artifact presence is insufficient"
+      },
+      "sample_status": "missing",
+      "probe_status": "unverified",
+      "probe_receipt": null,
+      "maturity": null,
+      "maturity_decision": "blocked_until_comparison",
+      "format_rows": [],
+      "required_operations": [
+        "constant",
+        "copy",
+        "integer",
+        "extension",
+        "truncate",
+        "compare",
+        "branch",
+        "return",
+        "load",
+        "store",
+        "call_boundary"
+      ],
+      "required_features": [
+        "scalar",
+        "branch",
+        "range_memory",
+        "abi",
+        "isa_specific_contract"
+      ],
+      "normal_status": "unverified",
+      "fallback_status": "unverified",
+      "blockers": [
+        {
+          "owner": "profile-expansion",
+          "reason": "no native fixture/gen_microcode receipt for this exact bitness/endian/mode",
+          "next_probe": "build named ABI/revision fixture and run both maturities on licensed IDA"
+        },
+        {
+          "owner": "profile-expansion",
+          "reason": "normal scalar/branch/range-memory/ABI and ISA-specific semantic oracles not implemented",
+          "next_probe": "run profile conformance corpus after common core implementation"
+        }
+      ],
+      "fixture_hashes": [],
+      "compiler_manifest": null,
+      "oracle_ids": [],
+      "abi_status": {
+        "sysv-ppc32": "unverified"
+      },
+      "ida_build": "9.3 (kernel API); Hex-Rays 9.3.0.260213 (observed)"
+    },
+    {
+      "profile_id": "PPC64-LE",
+      "profile_version": 1,
+      "required": true,
+      "bitness": 64,
+      "data_endian": "LE",
+      "instruction_endian": null,
+      "isa_revision": null,
+      "mode": "PPC64",
+      "extensions": [],
+      "revision_status": "blocked_pending_fixture",
+      "abi_ids": [
+        "elfv2-ppc64"
+      ],
+      "abi_evidence": null,
+      "clobber_policy": "use extracted SDK callinfo; do not reapply native ABI effects; unresolved effects remain unknown",
+      "artifacts": {
+        "processor": {
+          "artifact": "procs/ppc.dylib",
+          "present": true,
+          "sha256": "457a3e1d279b707f0af4eea00103c4477832239897973f7520e3b5598730e951",
+          "meaning": "file presence only; not entitlement or analysis support"
+        },
+        "decompiler": {
+          "artifact": "plugins/hexppc.dylib",
+          "present": true,
+          "sha256": "d2754b00923ad2da73f1eceb0c24b330dba5505de1b11cad55146e49b22a5cc3",
+          "meaning": "file presence only; not entitlement or analysis support"
+        }
+      },
+      "entitlement": {
+        "status": "unverified",
+        "scope": "artifact presence is insufficient"
+      },
+      "sample_status": "missing",
+      "probe_status": "unverified",
+      "probe_receipt": null,
+      "maturity": null,
+      "maturity_decision": "blocked_until_comparison",
+      "format_rows": [],
+      "required_operations": [
+        "constant",
+        "copy",
+        "integer",
+        "extension",
+        "truncate",
+        "compare",
+        "branch",
+        "return",
+        "load",
+        "store",
+        "call_boundary"
+      ],
+      "required_features": [
+        "scalar",
+        "branch",
+        "range_memory",
+        "abi",
+        "isa_specific_contract"
+      ],
+      "normal_status": "unverified",
+      "fallback_status": "unverified",
+      "blockers": [
+        {
+          "owner": "profile-expansion",
+          "reason": "no native fixture/gen_microcode receipt for this exact bitness/endian/mode",
+          "next_probe": "build named ABI/revision fixture and run both maturities on licensed IDA"
+        },
+        {
+          "owner": "profile-expansion",
+          "reason": "normal scalar/branch/range-memory/ABI and ISA-specific semantic oracles not implemented",
+          "next_probe": "run profile conformance corpus after common core implementation"
+        }
+      ],
+      "fixture_hashes": [],
+      "compiler_manifest": null,
+      "oracle_ids": [],
+      "abi_status": {
+        "elfv2-ppc64": "unverified"
+      },
+      "ida_build": "9.3 (kernel API); Hex-Rays 9.3.0.260213 (observed)"
+    },
+    {
+      "profile_id": "PPC64-BE",
+      "profile_version": 1,
+      "required": true,
+      "bitness": 64,
+      "data_endian": "BE",
+      "instruction_endian": null,
+      "isa_revision": null,
+      "mode": "PPC64",
+      "extensions": [],
+      "revision_status": "blocked_pending_fixture",
+      "abi_ids": [
+        "elfv2-ppc64"
+      ],
+      "abi_evidence": null,
+      "clobber_policy": "use extracted SDK callinfo; do not reapply native ABI effects; unresolved effects remain unknown",
+      "artifacts": {
+        "processor": {
+          "artifact": "procs/ppc.dylib",
+          "present": true,
+          "sha256": "457a3e1d279b707f0af4eea00103c4477832239897973f7520e3b5598730e951",
+          "meaning": "file presence only; not entitlement or analysis support"
+        },
+        "decompiler": {
+          "artifact": "plugins/hexppc.dylib",
+          "present": true,
+          "sha256": "d2754b00923ad2da73f1eceb0c24b330dba5505de1b11cad55146e49b22a5cc3",
+          "meaning": "file presence only; not entitlement or analysis support"
+        }
+      },
+      "entitlement": {
+        "status": "unverified",
+        "scope": "artifact presence is insufficient"
+      },
+      "sample_status": "missing",
+      "probe_status": "unverified",
+      "probe_receipt": null,
+      "maturity": null,
+      "maturity_decision": "blocked_until_comparison",
+      "format_rows": [],
+      "required_operations": [
+        "constant",
+        "copy",
+        "integer",
+        "extension",
+        "truncate",
+        "compare",
+        "branch",
+        "return",
+        "load",
+        "store",
+        "call_boundary"
+      ],
+      "required_features": [
+        "scalar",
+        "branch",
+        "range_memory",
+        "abi",
+        "isa_specific_contract"
+      ],
+      "normal_status": "unverified",
+      "fallback_status": "unverified",
+      "blockers": [
+        {
+          "owner": "profile-expansion",
+          "reason": "no native fixture/gen_microcode receipt for this exact bitness/endian/mode",
+          "next_probe": "build named ABI/revision fixture and run both maturities on licensed IDA"
+        },
+        {
+          "owner": "profile-expansion",
+          "reason": "normal scalar/branch/range-memory/ABI and ISA-specific semantic oracles not implemented",
+          "next_probe": "run profile conformance corpus after common core implementation"
+        }
+      ],
+      "fixture_hashes": [],
+      "compiler_manifest": null,
+      "oracle_ids": [],
+      "abi_status": {
+        "elfv2-ppc64": "unverified"
+      },
+      "ida_build": "9.3 (kernel API); Hex-Rays 9.3.0.260213 (observed)"
+    },
+    {
+      "profile_id": "RV32-LE",
+      "profile_version": 1,
+      "required": true,
+      "bitness": 32,
+      "data_endian": "LE",
+      "instruction_endian": null,
+      "isa_revision": null,
+      "mode": "RV32",
+      "extensions": [],
+      "revision_status": "blocked_pending_fixture",
+      "abi_ids": [
+        "riscv-ilp32"
+      ],
+      "abi_evidence": null,
+      "clobber_policy": "use extracted SDK callinfo; do not reapply native ABI effects; unresolved effects remain unknown",
+      "artifacts": {
+        "processor": {
+          "artifact": "procs/riscv.dylib",
+          "present": true,
+          "sha256": "13b153cd2e9152f84a8a622fb75d83f62598fad00c493fb33c315fdb4904e076",
+          "meaning": "file presence only; not entitlement or analysis support"
+        },
+        "decompiler": {
+          "artifact": "plugins/hexrv.dylib",
+          "present": true,
+          "sha256": "92fe01df4abd730c7c3e5f6483a79577b4b971b381766717baa25f9557418714",
+          "meaning": "file presence only; not entitlement or analysis support"
+        }
+      },
+      "entitlement": {
+        "status": "unverified",
+        "scope": "artifact presence is insufficient"
+      },
+      "sample_status": "missing",
+      "probe_status": "unverified",
+      "probe_receipt": null,
+      "maturity": null,
+      "maturity_decision": "blocked_until_comparison",
+      "format_rows": [],
+      "required_operations": [
+        "constant",
+        "copy",
+        "integer",
+        "extension",
+        "truncate",
+        "compare",
+        "branch",
+        "return",
+        "load",
+        "store",
+        "call_boundary"
+      ],
+      "required_features": [
+        "scalar",
+        "branch",
+        "range_memory",
+        "abi",
+        "isa_specific_contract"
+      ],
+      "normal_status": "unverified",
+      "fallback_status": "unverified",
+      "blockers": [
+        {
+          "owner": "profile-expansion",
+          "reason": "no native fixture/gen_microcode receipt for this exact bitness/endian/mode",
+          "next_probe": "build named ABI/revision fixture and run both maturities on licensed IDA"
+        },
+        {
+          "owner": "profile-expansion",
+          "reason": "normal scalar/branch/range-memory/ABI and ISA-specific semantic oracles not implemented",
+          "next_probe": "run profile conformance corpus after common core implementation"
+        }
+      ],
+      "fixture_hashes": [],
+      "compiler_manifest": null,
+      "oracle_ids": [],
+      "abi_status": {
+        "riscv-ilp32": "unverified"
+      },
+      "ida_build": "9.3 (kernel API); Hex-Rays 9.3.0.260213 (observed)"
+    },
+    {
+      "profile_id": "RV64-LE",
+      "profile_version": 1,
+      "required": true,
+      "bitness": 64,
+      "data_endian": "LE",
+      "instruction_endian": null,
+      "isa_revision": null,
+      "mode": "RV64",
+      "extensions": [],
+      "revision_status": "blocked_pending_fixture",
+      "abi_ids": [
+        "riscv-lp64"
+      ],
+      "abi_evidence": null,
+      "clobber_policy": "use extracted SDK callinfo; do not reapply native ABI effects; unresolved effects remain unknown",
+      "artifacts": {
+        "processor": {
+          "artifact": "procs/riscv.dylib",
+          "present": true,
+          "sha256": "13b153cd2e9152f84a8a622fb75d83f62598fad00c493fb33c315fdb4904e076",
+          "meaning": "file presence only; not entitlement or analysis support"
+        },
+        "decompiler": {
+          "artifact": "plugins/hexrv.dylib",
+          "present": true,
+          "sha256": "92fe01df4abd730c7c3e5f6483a79577b4b971b381766717baa25f9557418714",
+          "meaning": "file presence only; not entitlement or analysis support"
+        }
+      },
+      "entitlement": {
+        "status": "unverified",
+        "scope": "artifact presence is insufficient"
+      },
+      "sample_status": "missing",
+      "probe_status": "unverified",
+      "probe_receipt": null,
+      "maturity": null,
+      "maturity_decision": "blocked_until_comparison",
+      "format_rows": [],
+      "required_operations": [
+        "constant",
+        "copy",
+        "integer",
+        "extension",
+        "truncate",
+        "compare",
+        "branch",
+        "return",
+        "load",
+        "store",
+        "call_boundary"
+      ],
+      "required_features": [
+        "scalar",
+        "branch",
+        "range_memory",
+        "abi",
+        "isa_specific_contract"
+      ],
+      "normal_status": "unverified",
+      "fallback_status": "unverified",
+      "blockers": [
+        {
+          "owner": "profile-expansion",
+          "reason": "no native fixture/gen_microcode receipt for this exact bitness/endian/mode",
+          "next_probe": "build named ABI/revision fixture and run both maturities on licensed IDA"
+        },
+        {
+          "owner": "profile-expansion",
+          "reason": "normal scalar/branch/range-memory/ABI and ISA-specific semantic oracles not implemented",
+          "next_probe": "run profile conformance corpus after common core implementation"
+        }
+      ],
+      "fixture_hashes": [],
+      "compiler_manifest": null,
+      "oracle_ids": [],
+      "abi_status": {
+        "riscv-lp64": "unverified"
+      },
+      "ida_build": "9.3 (kernel API); Hex-Rays 9.3.0.260213 (observed)"
+    }
+  ],
+  "format_targets": {
+    "FMT-ELF": [
+      "X64-LE",
+      "A64-LE"
+    ],
+    "FMT-PE": [
+      "X64-LE"
+    ],
+    "FMT-MACHO": [
+      "X64-LE",
+      "A64-LE"
+    ],
+    "FMT-RAW": [
+      "ARM32-LE"
+    ]
+  },
+  "raw_configuration_status": "blocked: load/entry addresses require a built raw fixture",
+  "documentation": [
+    {
+      "url": "https://python.docs.hex-rays.com/ida_hexrays/index.html",
+      "observed_sdk": "9.3.0.260213",
+      "binding_evidence": "installed python/ida_hexrays.py"
+    }
+  ]
+}

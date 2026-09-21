@@ -1,0 +1,211 @@
+{
+  "analysis_status": "partial",
+  "arch": "x86_64",
+  "assumptions": [
+    "Valid fixture objects; sequential recovered CFG; ordinary flat user-space C data accesses, no TLS/MMIO"
+  ],
+  "cache_key": "sha256-v1:688b18b33e4d877f82d70dfb3e397631e0b12c56ed73e7e98525992faa3eb5e8",
+  "dependencies": [
+    {
+      "evidence_ids": [
+        "evidence-v1:29e2cdcdebcccfaf60a639032433fdc537b3c97af90b848382537518ffe5db64",
+        "evidence-v1:3742c080d52b05f557dec9eeb5f861f458caf659995f53ebc8eb29bd01da1877"
+      ],
+      "interval": {
+        "end": 1,
+        "start": 0
+      },
+      "kind": "memory_data_dependency",
+      "object_id": "object-v1:6fb3289a520c8d4274962ad3a8b1638b3c0c853d8171d6ce11145a9008000988",
+      "precision": "exact",
+      "rule_id": "byte-reaching-store-v1",
+      "source": "node-v1:f5a31c8bd3eb80c35adbc6d5eaaeaf0f60db885289894b9edf1d94beb76109ef",
+      "target": "node-v1:89eeacc238eaa7fe878ba872eac1bdf1e9f475330a3eff1156360316f0626588"
+    }
+  ],
+  "diagnostics": [
+    "partial_scalar_input"
+  ],
+  "extraction_file": "tests/flow_fixtures/manifests/memory/x86_64_memory_alias.json",
+  "extraction_file_sha256": "5d51de47dbf1dc8e3f41ba2bad1c68a09f04498c217289ebfcb54ff532a151e7",
+  "fresh_static_ida_extraction": true,
+  "function": "memory_alias",
+  "generator_sha256": "f3bca447461394912ee7f249f3076be261e358fab03c88b8b7fe01e2a0c9c153",
+  "graph_digest": "sha256-v1:ff047badfb8b78a787b9e32fb38de424b10f059b2dc181101b09e17c8239c3a3",
+  "implementation_sha256": {
+    "analysis.py": "8bc2d342ec6060d8c1e0d4f9912e707e7ff24a014f45ddf8af10778743a21b45",
+    "cfg.py": "167a4491b93278888cda50641c8c1c4d5cc444ab5b57b8f078e76931c7f7749f",
+    "contracts.py": "e59f1fbdf0db9b3cffd1ba5f16a6c3ab0b1df583db340cf6f28a14a797d26c9c",
+    "memory.py": "7960fce27069016664271da7d3d6e69a5be586f6dc17d6ea0a899ed1e56363af",
+    "memory_analysis.py": "423ee681ad72e8321c01b3c216e28355b1d62579460223870fd8e13b278e6aef",
+    "ssa.py": "7f7b702f7ebd801e6e38563b187bd0bc10ad102294060033f9139ef673cdf43a",
+    "states.py": "4a03c1eec0e86893a58faf81b06853ffd75de7daf40d3eec3b7ace2b5187ee78"
+  },
+  "iterations": 2,
+  "load_observations": [
+    {
+      "access": {
+        "address_node": "node-v1:1566d3d6e1369cf0a4d069aff344dc69aba7df8419818bbcf2f3275d19d2dd7c",
+        "alias": "must_alias",
+        "candidates": [
+          {
+            "interval": {
+              "end": 1,
+              "start": 0
+            },
+            "object_id": "object-v1:6fb3289a520c8d4274962ad3a8b1638b3c0c853d8171d6ce11145a9008000988"
+          }
+        ],
+        "evidence_ids": [
+          "evidence-v1:3742c080d52b05f557dec9eeb5f861f458caf659995f53ebc8eb29bd01da1877"
+        ],
+        "node_id": "node-v1:89eeacc238eaa7fe878ba872eac1bdf1e9f475330a3eff1156360316f0626588",
+        "precision": "exact",
+        "strong_update": false,
+        "unresolved": false,
+        "version_id": "memory-v1:759a2dfa92df61870b17e30799c9849d9367e9a8e21dfd4ea0304619c2f9da2e",
+        "width_bits": 8
+      },
+      "fact": {
+        "address_labels": {
+          "any_control_source": false,
+          "any_explicit_source": false,
+          "control": [],
+          "explicit": [],
+          "unknown_provenance": false
+        },
+        "labels": {
+          "any_control_source": false,
+          "any_explicit_source": false,
+          "control": [],
+          "explicit": [],
+          "unknown_provenance": false
+        },
+        "node_id": "node-v1:89eeacc238eaa7fe878ba872eac1bdf1e9f475330a3eff1156360316f0626588",
+        "pointer": null,
+        "value": {
+          "value": 37,
+          "width_bits": 8
+        }
+      },
+      "node_id": "node-v1:89eeacc238eaa7fe878ba872eac1bdf1e9f475330a3eff1156360316f0626588"
+    }
+  ],
+  "memory_order_step_count": 3,
+  "memory_phi_count": 2,
+  "memory_seeds": [
+    {
+      "interval": {
+        "end": 1,
+        "start": 0
+      },
+      "labels": {
+        "any_control_source": false,
+        "any_explicit_source": false,
+        "control": [],
+        "explicit": [
+          "X"
+        ],
+        "unknown_provenance": false
+      },
+      "object_id": "object-v1:6fb3289a520c8d4274962ad3a8b1638b3c0c853d8171d6ce11145a9008000988",
+      "point": "entry",
+      "value": {
+        "value": null,
+        "width_bits": 8
+      }
+    }
+  ],
+  "memory_version_count": 5,
+  "node_count": 11,
+  "objects": [
+    {
+      "address_space": "ram",
+      "disjoint": true,
+      "disjoint_evidence": "fixture current frame, designated buffer and global identities are disjoint",
+      "key": "fixture-frame",
+      "kind": "stack",
+      "singleton": true,
+      "singleton_evidence": "fixture single object / invocation",
+      "size_bytes": 8,
+      "snapshot_id": "snapshot-v1:26820a46c4ca8055afac2d98866c6030d5744785b93087e1586655e4a5684d16"
+    },
+    {
+      "address_space": "ram",
+      "disjoint": true,
+      "disjoint_evidence": "fixture current frame, designated buffer and global identities are disjoint",
+      "key": "fixture-buffer",
+      "kind": "argument",
+      "singleton": true,
+      "singleton_evidence": "fixture single object / invocation",
+      "size_bytes": 1,
+      "snapshot_id": "snapshot-v1:26820a46c4ca8055afac2d98866c6030d5744785b93087e1586655e4a5684d16"
+    }
+  ],
+  "plan_digest": "sha256-v1:062af4d9c6c8d76fce15b43ac6ab79b0ce2d04e27d90c163be9bf0630bc7583c",
+  "pointer_seeds": [
+    {
+      "node_id": "node-v1:1566d3d6e1369cf0a4d069aff344dc69aba7df8419818bbcf2f3275d19d2dd7c",
+      "pointer": {
+        "address_space": "ram",
+        "any_compatible_location": false,
+        "candidates": [
+          {
+            "object_id": "object-v1:6fb3289a520c8d4274962ad3a8b1638b3c0c853d8171d6ce11145a9008000988",
+            "offset": 0
+          }
+        ],
+        "may_be_null": false,
+        "width_bits": 64
+      }
+    },
+    {
+      "node_id": "node-v1:4181bb71bcf58fcfbb04896f74653463fbb1d0dd3bbd7a8009e01ede7386a909",
+      "pointer": {
+        "address_space": "ram",
+        "any_compatible_location": false,
+        "candidates": [
+          {
+            "object_id": "object-v1:54d61d42e68bb3b5c308cb7bd725fc166878f0800bd912d2300f7fb4e2af138c",
+            "offset": 0
+          }
+        ],
+        "may_be_null": false,
+        "width_bits": 64
+      }
+    }
+  ],
+  "policy_digest": "sha256-v1:13d8fc7cc519f68fb783023249a2d5acd5a64a0580907db277aee6541d07bf34",
+  "release_support_claim": false,
+  "repeat_equal": true,
+  "roundtrip_equal": true,
+  "schema_version": "flow-memory-receipt/1",
+  "selected_source_id": "node-v1:1566d3d6e1369cf0a4d069aff344dc69aba7df8419818bbcf2f3275d19d2dd7c",
+  "snapshot_digest": "sha256-v1:3fc310024cd533782508b27dc37b90cb3f3d1b578eb004353711d003dce73c94",
+  "source_digest": "sha256-v1:f001fa5e15ea9e0ab32aaaf32511549964cf6caeb0c8832a910114d2d01fe115",
+  "target_executed": false,
+  "target_stores": [
+    {
+      "address_node": "node-v1:1566d3d6e1369cf0a4d069aff344dc69aba7df8419818bbcf2f3275d19d2dd7c",
+      "alias": "must_alias",
+      "candidates": [
+        {
+          "interval": {
+            "end": 1,
+            "start": 0
+          },
+          "object_id": "object-v1:6fb3289a520c8d4274962ad3a8b1638b3c0c853d8171d6ce11145a9008000988"
+        }
+      ],
+      "evidence_ids": [
+        "evidence-v1:29e2cdcdebcccfaf60a639032433fdc537b3c97af90b848382537518ffe5db64"
+      ],
+      "node_id": "node-v1:f5a31c8bd3eb80c35adbc6d5eaaeaf0f60db885289894b9edf1d94beb76109ef",
+      "precision": "exact",
+      "strong_update": true,
+      "unresolved": false,
+      "version_id": "memory-v1:231cce9c455e83fb2b11a4c3fc49839567e99981e5c35e62afada7e42247982a",
+      "width_bits": 8
+    }
+  ]
+}

@@ -1,0 +1,526 @@
+{
+  "schema_version": "flow-p0-probe/1",
+  "implementation_sha256": "2b924038da8ca62ce98704ed22600ad8fba413c35318e1e153d036212937596e",
+  "environment": {
+    "ida_version": "9.3",
+    "python_version": "3.11.15",
+    "hexrays_version": "9.3.0.260213",
+    "processor": "metapc",
+    "bits": 64,
+    "data_endian": "LE"
+  },
+  "initialization": true,
+  "target_executed": false,
+  "binary": {
+    "name": "typed_fixture_x64.exe",
+    "sha256": "484b8ca4fae4d292f0db5b73c7a8d03b8a28c89a9ae8dea0d7cf487ce9096de5"
+  },
+  "function_name": "sum_point",
+  "probes": [
+    {
+      "status": "success",
+      "failure_code": 0,
+      "maturity": "MMAT_CALLS",
+      "actual_maturity": 4,
+      "python_owns_mba": true,
+      "function_ea": 5368714384,
+      "block_count": 3,
+      "instruction_count": 2,
+      "blocks": [
+        {
+          "id": 0,
+          "successors": [
+            1
+          ],
+          "predecessors": [],
+          "instructions": []
+        },
+        {
+          "id": 1,
+          "successors": [
+            2
+          ],
+          "predecessors": [
+            0
+          ],
+          "instructions": [
+            {
+              "opcode": "m_mov",
+              "ea": 5368714388,
+              "operands": [
+                {
+                  "kind": "mop_r",
+                  "size": 8,
+                  "register": 24
+                },
+                {
+                  "kind": "mop_z",
+                  "size": -1
+                },
+                {
+                  "kind": "mop_S",
+                  "size": 8,
+                  "stack_offset": 16
+                }
+              ]
+            },
+            {
+              "opcode": "m_add",
+              "ea": 5368714418,
+              "operands": [
+                {
+                  "kind": "mop_d",
+                  "size": 4,
+                  "instruction": {
+                    "opcode": "m_add",
+                    "ea": 5368714405,
+                    "operands": [
+                      {
+                        "kind": "mop_d",
+                        "size": 4,
+                        "instruction": {
+                          "opcode": "m_ldx",
+                          "ea": 5368714402,
+                          "operands": [
+                            {
+                              "kind": "mop_r",
+                              "size": 2,
+                              "register": 256
+                            },
+                            {
+                              "kind": "mop_d",
+                              "size": 8,
+                              "instruction": {
+                                "opcode": "m_add",
+                                "ea": 5368714402,
+                                "operands": [
+                                  {
+                                    "kind": "mop_r",
+                                    "size": 8,
+                                    "register": 24
+                                  },
+                                  {
+                                    "kind": "mop_n",
+                                    "size": 8,
+                                    "value": 4
+                                  },
+                                  {
+                                    "kind": "mop_z",
+                                    "size": 8
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "kind": "mop_z",
+                              "size": 4
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "kind": "mop_d",
+                        "size": 4,
+                        "instruction": {
+                          "opcode": "m_ldx",
+                          "ea": 5368714396,
+                          "operands": [
+                            {
+                              "kind": "mop_r",
+                              "size": 2,
+                              "register": 256
+                            },
+                            {
+                              "kind": "mop_r",
+                              "size": 8,
+                              "register": 24
+                            },
+                            {
+                              "kind": "mop_z",
+                              "size": 4
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "kind": "mop_z",
+                        "size": 4
+                      }
+                    ]
+                  }
+                },
+                {
+                  "kind": "mop_d",
+                  "size": 4,
+                  "instruction": {
+                    "opcode": "m_xds",
+                    "ea": 5368714415,
+                    "operands": [
+                      {
+                        "kind": "mop_d",
+                        "size": 1,
+                        "instruction": {
+                          "opcode": "m_ldx",
+                          "ea": 5368714411,
+                          "operands": [
+                            {
+                              "kind": "mop_r",
+                              "size": 2,
+                              "register": 256
+                            },
+                            {
+                              "kind": "mop_d",
+                              "size": 8,
+                              "instruction": {
+                                "opcode": "m_add",
+                                "ea": 5368714411,
+                                "operands": [
+                                  {
+                                    "kind": "mop_r",
+                                    "size": 8,
+                                    "register": 24
+                                  },
+                                  {
+                                    "kind": "mop_n",
+                                    "size": 8,
+                                    "value": 8
+                                  },
+                                  {
+                                    "kind": "mop_z",
+                                    "size": 8
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "kind": "mop_z",
+                              "size": 1
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "kind": "mop_z",
+                        "size": -1
+                      },
+                      {
+                        "kind": "mop_z",
+                        "size": 4
+                      }
+                    ]
+                  }
+                },
+                {
+                  "kind": "mop_r",
+                  "size": 4,
+                  "register": 8
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "successors": [],
+          "predecessors": [
+            1
+          ],
+          "instructions": []
+        }
+      ],
+      "opcode_counts": {
+        "m_add": 4,
+        "m_ldx": 3,
+        "m_mov": 1,
+        "m_xds": 1
+      },
+      "operand_kind_counts": {
+        "mop_S": 1,
+        "mop_d": 7,
+        "mop_n": 2,
+        "mop_r": 8,
+        "mop_z": 9
+      },
+      "use_def_checks": {
+        "build_def_list:MAY_ACCESS:nonempty": 2,
+        "build_def_list:MAY_ACCESS:ok": 2,
+        "build_def_list:MUST_ACCESS:nonempty": 2,
+        "build_def_list:MUST_ACCESS:ok": 2,
+        "build_use_list:MAY_ACCESS:nonempty": 2,
+        "build_use_list:MAY_ACCESS:ok": 2,
+        "build_use_list:MUST_ACCESS:nonempty": 2,
+        "build_use_list:MUST_ACCESS:ok": 2
+      },
+      "graph_build_result": 0,
+      "chains": {
+        "get_ud": {
+          "status": "available",
+          "block_count": 3
+        },
+        "get_du": {
+          "status": "available",
+          "block_count": 3
+        }
+      },
+      "warnings": [],
+      "source_map": {
+        "top_level_with_ea": 2,
+        "top_level_synthetic": 0,
+        "unique_eas": [
+          5368714388,
+          5368714418
+        ],
+        "reconstruction": "observed_microcode_ea_only_not_full_native_origin_sets"
+      },
+      "digest": "774f671b4263f3f2e4ae966dc1bebb1900fcbbcc43fa37076828d50ecefde683",
+      "repeat_equal": true
+    },
+    {
+      "status": "success",
+      "failure_code": 0,
+      "maturity": "MMAT_GLBOPT3",
+      "actual_maturity": 7,
+      "python_owns_mba": true,
+      "function_ea": 5368714384,
+      "block_count": 3,
+      "instruction_count": 1,
+      "blocks": [
+        {
+          "id": 0,
+          "successors": [
+            1
+          ],
+          "predecessors": [],
+          "instructions": []
+        },
+        {
+          "id": 1,
+          "successors": [
+            2
+          ],
+          "predecessors": [
+            0
+          ],
+          "instructions": [
+            {
+              "opcode": "m_add",
+              "ea": 5368714418,
+              "operands": [
+                {
+                  "kind": "mop_d",
+                  "size": 4,
+                  "instruction": {
+                    "opcode": "m_add",
+                    "ea": 5368714405,
+                    "operands": [
+                      {
+                        "kind": "mop_d",
+                        "size": 4,
+                        "instruction": {
+                          "opcode": "m_ldx",
+                          "ea": 5368714402,
+                          "operands": [
+                            {
+                              "kind": "mop_r",
+                              "size": 2,
+                              "register": 256
+                            },
+                            {
+                              "kind": "mop_d",
+                              "size": 8,
+                              "instruction": {
+                                "opcode": "m_add",
+                                "ea": 5368714402,
+                                "operands": [
+                                  {
+                                    "kind": "mop_r",
+                                    "size": 8,
+                                    "register": 24
+                                  },
+                                  {
+                                    "kind": "mop_n",
+                                    "size": 8,
+                                    "value": 4
+                                  },
+                                  {
+                                    "kind": "mop_z",
+                                    "size": 8
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "kind": "mop_z",
+                              "size": 4
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "kind": "mop_d",
+                        "size": 4,
+                        "instruction": {
+                          "opcode": "m_ldx",
+                          "ea": 5368714396,
+                          "operands": [
+                            {
+                              "kind": "mop_r",
+                              "size": 2,
+                              "register": 256
+                            },
+                            {
+                              "kind": "mop_r",
+                              "size": 8,
+                              "register": 24
+                            },
+                            {
+                              "kind": "mop_z",
+                              "size": 4
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "kind": "mop_z",
+                        "size": 4
+                      }
+                    ]
+                  }
+                },
+                {
+                  "kind": "mop_d",
+                  "size": 4,
+                  "instruction": {
+                    "opcode": "m_xds",
+                    "ea": 5368714415,
+                    "operands": [
+                      {
+                        "kind": "mop_d",
+                        "size": 1,
+                        "instruction": {
+                          "opcode": "m_ldx",
+                          "ea": 5368714411,
+                          "operands": [
+                            {
+                              "kind": "mop_r",
+                              "size": 2,
+                              "register": 256
+                            },
+                            {
+                              "kind": "mop_d",
+                              "size": 8,
+                              "instruction": {
+                                "opcode": "m_add",
+                                "ea": 5368714411,
+                                "operands": [
+                                  {
+                                    "kind": "mop_r",
+                                    "size": 8,
+                                    "register": 24
+                                  },
+                                  {
+                                    "kind": "mop_n",
+                                    "size": 8,
+                                    "value": 8
+                                  },
+                                  {
+                                    "kind": "mop_z",
+                                    "size": 8
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "kind": "mop_z",
+                              "size": 1
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "kind": "mop_z",
+                        "size": -1
+                      },
+                      {
+                        "kind": "mop_z",
+                        "size": 4
+                      }
+                    ]
+                  }
+                },
+                {
+                  "kind": "mop_r",
+                  "size": 4,
+                  "register": 8
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "successors": [],
+          "predecessors": [
+            1
+          ],
+          "instructions": []
+        }
+      ],
+      "opcode_counts": {
+        "m_add": 4,
+        "m_ldx": 3,
+        "m_xds": 1
+      },
+      "operand_kind_counts": {
+        "mop_d": 7,
+        "mop_n": 2,
+        "mop_r": 7,
+        "mop_z": 8
+      },
+      "use_def_checks": {
+        "build_def_list:MAY_ACCESS:nonempty": 1,
+        "build_def_list:MAY_ACCESS:ok": 1,
+        "build_def_list:MUST_ACCESS:nonempty": 1,
+        "build_def_list:MUST_ACCESS:ok": 1,
+        "build_use_list:MAY_ACCESS:nonempty": 1,
+        "build_use_list:MAY_ACCESS:ok": 1,
+        "build_use_list:MUST_ACCESS:nonempty": 1,
+        "build_use_list:MUST_ACCESS:ok": 1
+      },
+      "graph_build_result": 0,
+      "chains": {
+        "get_ud": {
+          "status": "available",
+          "block_count": 3
+        },
+        "get_du": {
+          "status": "available",
+          "block_count": 3
+        }
+      },
+      "warnings": [],
+      "source_map": {
+        "top_level_with_ea": 1,
+        "top_level_synthetic": 0,
+        "unique_eas": [
+          5368714418
+        ],
+        "reconstruction": "observed_microcode_ea_only_not_full_native_origin_sets"
+      },
+      "digest": "f132e0db64fa4ae5d69d74704c2d90733449c61e441e24effff957d1c01a037f",
+      "repeat_equal": true
+    }
+  ],
+  "cancellation": {
+    "pre_cancel": true,
+    "expired_deadline": true,
+    "during_native_call": "not_preemptible_by_python_poll",
+    "during_serialization": "cooperative_poll",
+    "native_cancel_tested": false
+  },
+  "lifetime": {
+    "json_roundtrip": true,
+    "repeat_after_gc": true,
+    "native_leak_freedom": "not_proven"
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "oracle_id": "S1-SUM-POINT",
+  "function_id": "sum_point",
+  "oracle_origin": "hand-authored C layout and source expression",
+  "policy": "explicit provenance, seed pointed memory not pointer",
+  "layout": {
+    "object": "Point",
+    "size_bytes": 12,
+    "alignment_bytes": 4,
+    "fields": {
+      "x": [
+        0,
+        4
+      ],
+      "y": [
+        4,
+        8
+      ],
+      "tag": [
+        8,
+        9
+      ]
+    },
+    "padding": [
+      [
+        9,
+        12
+      ]
+    ]
+  },
+  "seeds": {
+    "arg0.memory[0,4)": "X"
+  },
+  "preconditions": [
+    "valid aligned readable Point object",
+    "int32 fields use 32 bits; char uses 8 bits",
+    "both intermediate x+y and final (x+y)+tag representable in signed int32; original source permits UB outside this domain",
+    "signedness of char follows concrete ABI/compiler; tested fixtures use signed char",
+    "no concurrent writes"
+  ],
+  "widths": {
+    "pointer": 64,
+    "x": 32,
+    "y": 32,
+    "tag": 8,
+    "return": 32
+  },
+  "expected_relations": [
+    "load [0,4) carries X",
+    "add using x load and final return carry X",
+    "return data-depends on x, y and tag values; y/tag sources remain distinct",
+    "tag load is one byte then sign-extended for these compiled fixtures"
+  ],
+  "forbidden_relations": [
+    "x seed taints y.memory[4,8) merely due to common object",
+    "x seed taints tag.memory[8,9) or padding[9,12)",
+    "p pointer value becomes X from pointee seed",
+    "padding read contributes to return",
+    "absence of an X seed on y/tag means return has no value dependency on them"
+  ],
+  "comparison": "byte-range/load-width/observable return dependence, never register or graph-shape equality",
+  "status": "specified_oracle_not_engine_validation"
+}
