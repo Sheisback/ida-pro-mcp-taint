@@ -18,6 +18,7 @@ from ida_pro_mcp.ida_mcp.api_core import (
 from ida_pro_mcp.ida_mcp.discovery import register_instance, unregister_instance
 from ida_pro_mcp.ida_mcp.http import IdaMcpHttpRequestHandler
 from ida_pro_mcp.ida_mcp.mainthread import get_pump
+from ida_pro_mcp.ida_mcp.flow import runtime as _FLOW_RUNTIME
 from ida_pro_mcp.ida_mcp.profile import apply_profile, load_profile
 from ida_pro_mcp.ida_mcp.rpc import set_download_base_url, tool
 from ida_pro_mcp.idalib_session_manager import get_session_manager
@@ -127,33 +128,36 @@ def idb_open(
         )
 
     try:
-        manager = get_session_manager()
-        resolved_path = Path(input_path).resolve()
-        load_started_at = time.monotonic()
-        opened_session_id = manager.open_binary(
-            resolved_path,
-            run_auto_analysis=run_auto_analysis,
-            session_id=preferred_session_id or None,
-        )
-        session = manager.activate_session(opened_session_id)
-        warmup: ServerWarmupResult | None = None
-        if build_caches or init_hexrays:
-            warmup = server_warmup(
-                wait_auto_analysis=False,
-                build_caches=build_caches,
-                init_hexrays=init_hexrays,
+        with _FLOW_RUNTIME.database_switch():
+            manager = get_session_manager()
+            resolved_path = Path(input_path).resolve()
+            load_started_at = time.monotonic()
+            opened_session_id = manager.open_binary(
+                resolved_path,
+                run_auto_analysis=run_auto_analysis,
+                session_id=preferred_session_id or None,
             )
-        _LIFECYCLE.set_idle_ttl(float(idle_ttl_sec), time.monotonic() - load_started_at)
-        if _REGISTERED_PORT is None and _BOUND_HOST and _BOUND_PORT:
-            _register_in_discovery(_BOUND_HOST, _BOUND_PORT, session.input_path)
-        return {
-            "success": True,
-            "session": session.to_dict(),
-            "warmup": warmup,
-            "message": (
-                f"Binary opened: {session.input_path.name} ({opened_session_id})"
-            ),
-        }
+            session = manager.activate_session(opened_session_id)
+            warmup: ServerWarmupResult | None = None
+            if build_caches or init_hexrays:
+                warmup = server_warmup(
+                    wait_auto_analysis=False,
+                    build_caches=build_caches,
+                    init_hexrays=init_hexrays,
+                )
+            _LIFECYCLE.set_idle_ttl(
+                float(idle_ttl_sec), time.monotonic() - load_started_at
+            )
+            if _REGISTERED_PORT is None and _BOUND_HOST and _BOUND_PORT:
+                _register_in_discovery(_BOUND_HOST, _BOUND_PORT, session.input_path)
+            return {
+                "success": True,
+                "session": session.to_dict(),
+                "warmup": warmup,
+                "message": (
+                    f"Binary opened: {session.input_path.name} ({opened_session_id})"
+                ),
+            }
     except (FileNotFoundError, RuntimeError, ValueError) as e:
         return {"error": str(e)}
     except Exception as e:
@@ -255,13 +259,16 @@ def main():
         logger.info("Worker lifecycle requesting shutdown: %s", reason)
         # MCP_SERVER.stop() must be called from outside the serve_forever
         # thread; our watchdog thread qualifies.
+        _FLOW_RUNTIME.shutdown(timeout=2.0)
         _PUMP.stop()
         try:
             MCP_SERVER.stop()
         except Exception:
             logger.exception("MCP_SERVER.stop() failed during lifecycle shutdown")
 
-    _LIFECYCLE.set_busy_probe(lambda: _PUMP.busy_status() is not None)
+    _LIFECYCLE.set_busy_probe(
+        lambda: _PUMP.busy_status() is not None or _FLOW_RUNTIME.active_job_count() > 0
+    )
     _LIFECYCLE.start(on_shutdown=_on_lifecycle_exit)
     _install_dispatch_hook()
 
@@ -269,9 +276,11 @@ def main():
         logger.info("Signal %s received; shutting down", signum)
         # The main thread runs the pump, not serve_forever, so stopping the
         # server from a helper thread is both safe and required.
+        _FLOW_RUNTIME.begin_close()
         _PUMP.stop()
 
         def _stop():
+            _FLOW_RUNTIME.shutdown(timeout=2.0)
             try:
                 MCP_SERVER.stop()
             except Exception:
@@ -313,7 +322,7 @@ def main():
     trace.install_tracer()
     logger.info("Tracing tools/call to IDB netnode %s", trace.IDB_NETNODE_NAME)
 
-    if not "IDA_MCP_URL" in os.environ:
+    if "IDA_MCP_URL" not in os.environ:
         set_download_base_url(f"http://{args.host}:{args.port}")
 
     try:
@@ -331,6 +340,7 @@ def main():
     finally:
         # Reached once the pump stops: signal handler, watchdog, or an error.
         logger.info("Server loop exited; cleaning up")
+        _FLOW_RUNTIME.shutdown(timeout=2.0)
         _PUMP.stop()
         try:
             MCP_SERVER.stop()

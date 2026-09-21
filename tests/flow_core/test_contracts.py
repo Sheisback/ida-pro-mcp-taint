@@ -485,6 +485,9 @@ import ida_pro_mcp.flow_core.memory
 import ida_pro_mcp.flow_core.memory_analysis
 import ida_pro_mcp.flow_core.heap
 import ida_pro_mcp.flow_core.heap_analysis
+import ida_pro_mcp.flow_core.runtime_contracts
+import ida_pro_mcp.flow_core.persistence
+import ida_pro_mcp.flow_core.runtime
 """
     subprocess.run([sys.executable, "-c", script], check=True, cwd=ROOT)
 

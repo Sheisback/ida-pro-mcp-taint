@@ -17,17 +17,12 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Pure core and extraction contracts (no IDA or credentials)
+      - name: Pure contracts and import isolation (no IDA or credentials)
         env:
           PYTHONPATH: src
         run: uv run --no-project --with pytest python -m pytest tests/flow_core -q
-      - name: Lint core, adapters, and tests
-        run: >-
-          uv run ruff check
-          src/ida_pro_mcp/flow_core
-          src/ida_pro_mcp/ida_mcp/flow/extractor.py
-          src/ida_pro_mcp/ida_mcp/flow/p0_probe.py
-          tests/flow_core
+      - name: Lint core and tests
+        run: uv run ruff check src/ida_pro_mcp/flow_core tests/flow_core src/ida_pro_mcp/ida_mcp/flow/runtime.py src/ida_pro_mcp/idalib_server.py
       - name: Build wheel
         run: uv build --wheel --out-dir dist-flow-core
       - name: Import core from wheel without application dependencies

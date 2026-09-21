@@ -25,6 +25,9 @@ def check(directory: Path):
                 "ida_pro_mcp/flow_core/memory_analysis.py",
                 "ida_pro_mcp/flow_core/heap.py",
                 "ida_pro_mcp/flow_core/heap_analysis.py",
+                "ida_pro_mcp/flow_core/runtime_contracts.py",
+                "ida_pro_mcp/flow_core/persistence.py",
+                "ida_pro_mcp/flow_core/runtime.py",
             }
             if not expected <= set(wheel.namelist()):
                 raise RuntimeError("Core files missing from wheel")
@@ -42,6 +45,9 @@ from ida_pro_mcp.flow_core.analysis import analyze
 from ida_pro_mcp.flow_core.memory_analysis import analyze_memory
 from ida_pro_mcp.flow_core.heap import build_heap_plan
 from ida_pro_mcp.flow_core.heap_analysis import analyze_heap
+from ida_pro_mcp.flow_core.persistence import Store
+from ida_pro_mcp.flow_core.runtime import Runtime
+from ida_pro_mcp.flow_core.runtime_contracts import RuntimeScope
 from ida_pro_mcp.flow_core.contracts import ResultAxes
 from ida_pro_mcp.flow_core.states import BitValue
 from ida_pro_mcp.flow_core import canonical_json
