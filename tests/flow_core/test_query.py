@@ -372,6 +372,25 @@ def test_public_native_receipt_current_and_untruncated():
     )
     assert receipt["target_executed"] is False
     assert {a["profile"] for a in receipt["anchors"]} == {"X64-LE", "A64-LE"}
+    implementation_paths = {
+        "src/ida_pro_mcp/ida_mcp/api_flow.py",
+        "src/ida_pro_mcp/ida_mcp/zeromcp/mcp.py",
+        "src/ida_pro_mcp/ida_mcp.py",
+        "src/ida_pro_mcp/idalib_server.py",
+        "src/ida_pro_mcp/idalib_supervisor.py",
+        "src/ida_pro_mcp/installer.py",
+        "profiles/flow-readonly.txt",
+        "tests/flow_core/native_api_smoke.py",
+        *(
+            str(path.relative_to(root))
+            for path in (root / "src/ida_pro_mcp/flow_core").glob("*.py")
+        ),
+        *(
+            str(path.relative_to(root))
+            for path in (root / "src/ida_pro_mcp/ida_mcp/flow").glob("*.py")
+        ),
+    }
+    assert set(receipt["implementation_sha256"]) == implementation_paths
     for path, expected in receipt["implementation_sha256"].items():
         assert hashlib.sha256((root / path).read_bytes()).hexdigest() == expected
     binaries = {
@@ -396,8 +415,9 @@ def test_public_native_receipt_current_and_untruncated():
         assert anchor["memory_dependency"]["object_id"].startswith("object-v1:")
         assert anchor["memory_dependency"]["rule_id"] == "byte-reaching-store-v1"
         assert anchor["memory_dependency"]["evidence_ids"]
-        assert anchor["memory_dependency"]["derivation_evidence"]["rule_id"] == (
-            anchor["memory_dependency"]["rule_id"]
+        assert (
+            anchor["memory_dependency"]["derivation_evidence"]["rule_id"]
+            == (anchor["memory_dependency"]["rule_id"])
         )
         assert (
             anchor["memory_dependency"]["interval"]["end"]

@@ -24,6 +24,8 @@ def check(directory: Path):
                 "ida_pro_mcp/flow_core/cfg.py",
                 "ida_pro_mcp/flow_core/ssa.py",
                 "ida_pro_mcp/flow_core/analysis.py",
+                "ida_pro_mcp/flow_core/implicit_cfg.py",
+                "ida_pro_mcp/flow_core/implicit_analysis.py",
                 "ida_pro_mcp/flow_core/memory.py",
                 "ida_pro_mcp/flow_core/memory_analysis.py",
                 "ida_pro_mcp/flow_core/memory_graph.py",
@@ -52,6 +54,8 @@ class RejectIDA(importlib.abc.MetaPathFinder):
 sys.meta_path.insert(0, RejectIDA())
 from ida_pro_mcp.flow_core.ssa import build_ssa
 from ida_pro_mcp.flow_core.analysis import analyze
+from ida_pro_mcp.flow_core.implicit_cfg import ImplicitCFGPolicy
+from ida_pro_mcp.flow_core.implicit_analysis import ImplicitPolicy
 from ida_pro_mcp.flow_core.memory_analysis import analyze_memory
 from ida_pro_mcp.flow_core.memory_graph import build_memory_graph
 from ida_pro_mcp.flow_core.heap import build_heap_plan
@@ -71,6 +75,8 @@ from ida_pro_mcp.flow_core.states import BitValue
 from ida_pro_mcp.flow_core import canonical_json
 assert BitValue.from_json(canonical_json(BitValue(8, 7))) == BitValue(8, 7)
 assert ResultAxes().analysis == "partial"
+assert ImplicitCFGPolicy.from_json(canonical_json(ImplicitCFGPolicy())) == ImplicitCFGPolicy()
+assert ImplicitPolicy.from_json(canonical_json(ImplicitPolicy())) == ImplicitPolicy()
 assert SummaryCatalog(()).summaries == ()
 assert CallContext().frames == ()
 assert CallState().objects == ()
