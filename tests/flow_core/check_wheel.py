@@ -40,6 +40,8 @@ def check(directory: Path):
                 "ida_pro_mcp/flow_core/query.py",
                 "ida_pro_mcp/flow_core/host_identity.py",
                 "ida_pro_mcp/flow_core/profile_registry.py",
+                "ida_pro_mcp/flow_core/constraints.py",
+                "ida_pro_mcp/flow_core/proof.py",
             }
             if not expected <= set(wheel.namelist()):
                 raise RuntimeError("Core files missing from wheel")
@@ -68,11 +70,13 @@ from ida_pro_mcp.flow_core.runtime import Runtime
 from ida_pro_mcp.flow_core.query import Queries
 from ida_pro_mcp.flow_core.host_identity import identity
 from ida_pro_mcp.flow_core.profile_registry import REGISTRY
+from ida_pro_mcp.flow_core.constraints import ConstraintBindings, ConstraintExpression, ConstraintQuery, ConstraintVariable, DeclaredCoverage, PathConstraint, ProofBounds, ProofBudget, variable_domain_digest
+from ida_pro_mcp.flow_core.proof import ProofResult, ReferenceProofEngine, classify_proof
 from ida_pro_mcp.flow_core.build_identity import BUILD_ID
 from ida_pro_mcp.flow_core.runtime_contracts import RuntimeScope
 from ida_pro_mcp.flow_core.contracts import ResultAxes
 from ida_pro_mcp.flow_core.states import BitValue
-from ida_pro_mcp.flow_core import canonical_json
+from ida_pro_mcp.flow_core import canonical_json, digest, stable_id
 assert BitValue.from_json(canonical_json(BitValue(8, 7))) == BitValue(8, 7)
 assert ResultAxes().analysis == "partial"
 assert ImplicitCFGPolicy.from_json(canonical_json(ImplicitCFGPolicy())) == ImplicitCFGPolicy()
@@ -80,6 +84,38 @@ assert ImplicitPolicy.from_json(canonical_json(ImplicitPolicy())) == ImplicitPol
 assert SummaryCatalog(()).summaries == ()
 assert CallContext().frames == ()
 assert CallState().objects == ()
+variables = (ConstraintVariable("x", 2, (0, 1)),)
+constraint = PathConstraint(
+    "c:wheel",
+    ConstraintExpression("variable", 2, variable="x"),
+    "eq",
+    ConstraintExpression("constant", 2, value=1),
+    None,
+    True,
+    "rule:wheel",
+    "origin:wheel",
+    (stable_id("evidence", "wheel"),),
+)
+binding_digest = digest("wheel")
+query = ConstraintQuery(
+    ConstraintBindings(stable_id("snapshot", "wheel"), binding_digest, binding_digest, binding_digest),
+    variables,
+    (constraint,),
+    (),
+    ProofBounds(1, 1),
+    ProofBudget(2, 6, 1000),
+    DeclaredCoverage(
+        "fixed_width_bitvectors",
+        ("x",),
+        variable_domain_digest(variables),
+        ("c:wheel",),
+        ("eq",),
+    ),
+)
+assert ConstraintQuery.from_json(canonical_json(query)) == query
+proof = classify_proof(query, ReferenceProofEngine())
+assert proof.status == "feasible"
+assert ProofResult.from_json(canonical_json(proof)) == proof
 assert BUILD_ID.startswith("flow-build-sha256-v1:")
 assert BUILD_ID == sys.argv[2]
 assert len(REGISTRY.profiles) == 17
