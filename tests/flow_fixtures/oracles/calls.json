@@ -22,7 +22,8 @@
     "call_context_right",
     "call_recursive",
     "call_candidate_increment",
-    "call_indirect"
+    "call_indirect",
+    "call_output_user"
   ],
   "observation_helpers": [
     "call_heap_h01",
@@ -48,7 +49,8 @@
         "call_output",
         "call_global",
         "call_alloc",
-        "call_free"
+        "call_free",
+        "call_output_user"
       ],
       "seeds": {
         "identity.arg0": "X",
@@ -68,7 +70,8 @@
           "call_fill writes arg1 to destination.memory[0,n)",
           "call_output writes arg1 to output.memory[0,4)",
           "call_global writes arg0 to call_global_value",
-          "call_free changes reachable allocation lifetime without inventing a data return"
+          "call_free changes reachable allocation lifetime without inventing a data return",
+          "call_output_user forwards arg0/arg1 to the native call_output call; output.memory receives arg1"
         ]
       },
       "expected_relations": [

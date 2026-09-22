@@ -2,15 +2,16 @@
   "schema_version": "flow-public-smoke/1",
   "target_executed": false,
   "implementation_sha256": {
-    "src/ida_pro_mcp/ida_mcp/api_flow.py": "cac3bd5545dcd2c0181164b163bed0d5873fe20e939b074aef0e0084c0b0458d",
+    "src/ida_pro_mcp/ida_mcp/api_flow.py": "135b57be0fcb6adc9475e2fa2bf3b0af0d6386ba4cc9899d9a38271241de70b2",
     "src/ida_pro_mcp/ida_mcp/zeromcp/mcp.py": "05a4f9d1422d5d9c91969838cb56815acb0323097038aa981628ab3e540882db",
     "src/ida_pro_mcp/ida_mcp.py": "5a1c25460646a2577af58f3ee3e4c3069b2182ff0217883416f1d0d138c54e67",
     "src/ida_pro_mcp/idalib_server.py": "51d609aaf549e815054c3f3f240a6de2222c8ba599f0944e9576a88eea169f40",
     "src/ida_pro_mcp/idalib_supervisor.py": "905c01c11152fb4cdbf5ff65af88cf2f137d4e1c9a65202724ac5ac330e41ee5",
     "src/ida_pro_mcp/installer.py": "3bfa5d6998f8e61c9cb6a74ff49b976dddc96a70d27f65741672c617f681efe4",
-    "profiles/flow-readonly.txt": "a72fc6069821b901485b6a4e4097c8eb74cd21659e3761d985cdcd32ce63b463",
-    "tests/flow_core/native_api_smoke.py": "68fec45a28bc407df098d41e1e7db575644734de9857a630efb21ecb42d8ca33",
+    "profiles/flow-readonly.txt": "c7c2f8ef8e5760dc997849f76378c8a2a8983e547c0f98fd0c98a90047d8e389",
+    "tests/flow_core/native_api_smoke.py": "5c55f85cb2c6f92c91afa5ff9a2a66e000ff2c30242504bee89c6986bc9e07e3",
     "src/ida_pro_mcp/flow_core/__init__.py": "1e03446910ecbbe1cd389ca6eeebec64f35d9d520a3006bc748f53bccff87e73",
+    "src/ida_pro_mcp/flow_core/_reviewed_fixture_data.py": "2c61b67a426d83951b963d9732320ba928fbdf245d6eaf5e3edae6f2830ae6e6",
     "src/ida_pro_mcp/flow_core/analysis.py": "15014e2d8fef814bec748f86e919d79ecea3e738b35cf440a07ebd81e4acb0f7",
     "src/ida_pro_mcp/flow_core/build_identity.py": "4c803c4eb9f84b34ff787e7370e618fbda3e89dd423205eef77805df0b6605e2",
     "src/ida_pro_mcp/flow_core/call_composition.py": "54d3b5cf6d35022bb4499fec5a65ab7bf73cb9facb931dc0fc5f75455ab959a5",
@@ -26,13 +27,15 @@
     "src/ida_pro_mcp/flow_core/memory.py": "7960fce27069016664271da7d3d6e69a5be586f6dc17d6ea0a899ed1e56363af",
     "src/ida_pro_mcp/flow_core/memory_analysis.py": "7071ff4027e24249aca7cc653e220f0d2bbe8b3cbe9dddb61279bfaa0c7f80d5",
     "src/ida_pro_mcp/flow_core/memory_graph.py": "c878d56291fbbf8391551206ea0406271c9e7de68f207776049a24cc2d434755",
+    "src/ida_pro_mcp/flow_core/path_conditions.py": "1a47eff9aa375e9cee7829573d051d4338a170e4a634f1011d614beb9a1ece9a",
     "src/ida_pro_mcp/flow_core/persistence.py": "ad1332048875c463bfb826f76292182e8177d97c091c44430fd830e0d9e0f77d",
     "src/ida_pro_mcp/flow_core/profile_registry.py": "7f358be2a4dfcf4122f6b9b309409d593e3b58a48daedb9587e5d29870c40e28",
-    "src/ida_pro_mcp/flow_core/profile_routing.py": "1713199e253e0daa6843631365a283840cdbca1c11925ca1ed4e653a883b812c",
+    "src/ida_pro_mcp/flow_core/profile_routing.py": "98e5338409e344af9541ae503a132dceda060427fa1af6d639f48ffe660d24bb",
     "src/ida_pro_mcp/flow_core/profile_semantic_receipts.py": "d7c9899c3947a19bbae5fd3c99b261765e7b8a472e9729871360e723bd5c13ae",
     "src/ida_pro_mcp/flow_core/profile_semantics.py": "d32c1bb1ba3432094ce9f59bde26c3b0d9fce70fa6dfb5f7da7950a763087a7d",
     "src/ida_pro_mcp/flow_core/proof.py": "f6b0de3f3f712f686e38d9745f906edbfb5c4dae6423cb7812b950d467c8c0b4",
     "src/ida_pro_mcp/flow_core/query.py": "e093244e47c71a05b869b0430671691bad82f661fc076a9fcddb0c0544dbc75e",
+    "src/ida_pro_mcp/flow_core/reviewed_fixtures.py": "2552ca64e79d307fa1d2d08dbb9c1bf9f33ecbe842a9ac962abfc2c55f401f39",
     "src/ida_pro_mcp/flow_core/runtime.py": "4971eb622cd08bfcf86aabbf41f5aa4087b85e85401c04b3cc61efe8b8854748",
     "src/ida_pro_mcp/flow_core/runtime_contracts.py": "a7f58c57d75a6427fc9e3d503b06623fd483ca8abadeb63679658c26112bde8c",
     "src/ida_pro_mcp/flow_core/rv32_capture.py": "6d813d6aad2115676871220716fcc3a4ff41b83751769274b9ead0ed3aa21331",
@@ -44,12 +47,14 @@
     "src/ida_pro_mcp/flow_core/summaries.py": "acf58464917a9c31440c523654d10a3eb1d9584277596197393af6df9b72452d",
     "src/ida_pro_mcp/flow_core/support_receipts.py": "1f2ad71420f4ceb0b8c192d8ac0afdc81b5e5c91df7a5738caee63a2316696e6",
     "src/ida_pro_mcp/ida_mcp/flow/__init__.py": "e2ad972c65cc8799c94393f9784d2dfbed1afed393d43d7e999cf18562241f46",
+    "src/ida_pro_mcp/ida_mcp/flow/call_state.py": "a0f70c1283c0aae1d88292225fd2a0a058e0781d741d39f156d1229a214f3c22",
     "src/ida_pro_mcp/ida_mcp/flow/extractor.py": "9d21f5ba7163d47442e1581905dbd775511bfbbb96263627c0f1186920d301ef",
     "src/ida_pro_mcp/ida_mcp/flow/p0_probe.py": "abfbf92cf84b960ab6af71235d51fffa88005ee9eeee13412b8f7354c4d3b3e3",
     "src/ida_pro_mcp/ida_mcp/flow/profile_routing.py": "6d9931e3c48033a90bb5d47aac1bd5534041c4ef18e9c4261f57e5105c1136ff",
+    "src/ida_pro_mcp/ida_mcp/flow/reviewed_runtime.py": "8fee3fdb3df58a8fcef8c5218c7f52124019c935f21b34dcbe9102996205676d",
     "src/ida_pro_mcp/ida_mcp/flow/runtime.py": "159cf86fb84eb9b3e05d0db920fd912caa9cb630f8de4b0825e28e6e3ae814de",
     "src/ida_pro_mcp/ida_mcp/flow/rv32_extractor.py": "fa6a235b3e607dd0f0da48310808de25cc16bf4160a5487aff51ccb1d0979aaa",
-    "src/ida_pro_mcp/ida_mcp/flow/service.py": "cfa2051d2e10a267c546902eece7bb3d863e88fb546fd9a87b07b6983b386e33",
+    "src/ida_pro_mcp/ida_mcp/flow/service.py": "f0063795f94ed33499a840c89645fff8478b66c2758c45b692fc20bc195a346d",
     "src/ida_pro_mcp/ida_mcp/flow/summary_catalog.py": "47ac4aa7cd2545a4e2ecf95d65182b551f29c78e59d20b6a40c0738b11ababbd"
   },
   "anchors": [
@@ -60,7 +65,7 @@
       "binary_sha256": "e98ee1f96dead5f8988573b9e8ce2e1466f30f8d5881af4b71a66b7b6e73436a",
       "job": {
         "schema_version": "flow-job/1",
-        "id": "job_beb66aed4eeb42b3ac39392d4db6c827",
+        "id": "job_9470d90e1fa34726a8ffe3225791cee7",
         "state": "complete",
         "revision": 4,
         "progress": {},
@@ -68,23 +73,29 @@
         "error": null,
         "result": {
           "analysis": "partial",
-          "call_composition_artifact": "artifact_fa8061db1b43468b81735853f6af8fa6",
+          "call_composition_artifact": "artifact_eecc4b630ce9482dbd541dcfce390ffe",
           "call_composition_count": 0,
-          "graph_artifact": "artifact_c0248fb740dd4723831cde6c276d6d4e",
-          "graph_digest": "sha256-v1:c6b999514ec17f51bc084cde2506f0dcac32a8e77ca49ce62d35a2e9558dec48",
+          "callee_closure": {
+            "boundaries": [],
+            "max_depth": 8,
+            "max_functions": 64,
+            "visited_rvas": []
+          },
+          "graph_artifact": "artifact_abbcb8db4ddd4b6b96132910ee400b3e",
+          "graph_digest": "sha256-v1:865198b4ac8ac7199d4c29e1765ac5a9d42cb7aa35944954cc747a29d3d80629",
           "maturity": "MMAT_CALLS",
           "memory_diagnostics": [
             "partial_scalar_input"
           ],
-          "memory_plan_artifact": "artifact_79276e8c43fd47679b0cc119c4190358",
-          "memory_result_artifact": "artifact_028e4a904d8441ca997fb03f7856e02b",
+          "memory_plan_artifact": "artifact_b0ac9aff41ca4f85b5830e0b525ccafc",
+          "memory_result_artifact": "artifact_b2915f1e048d49be91356fdf94c287f0",
           "profile": "X64-LE",
-          "snapshot_artifact": "artifact_3777f6e9addd477abbd7d40626f60004",
-          "snapshot_id": "snapshot-v1:542e6a1457beac7d06fbec99d6d9a465d5d85ceaa3b53ed8c972f1546c5184c7",
-          "ssa_artifact": "artifact_83d161b2428b45d191500e1ea8baa23d",
+          "snapshot_artifact": "artifact_5f1601443bab45de97d909daf01f1988",
+          "snapshot_id": "snapshot-v1:8b1aa241025d90bf6ca61e3ef4d63f53bfe48ac69f1b5ab678528d05f9ea2bf4",
+          "ssa_artifact": "artifact_c255e630994d4f4398c2f585264c2452",
           "summary_digest": "sha256-v1:79f01e4de0cc97f8807a0447d2a2b0c8e72e4c93a5062efbc31db393b08abcfc",
           "summary_limitations": [
-            "Reviewed summaries bind only by full pinned identity; the default runtime catalog is empty.",
+            "Reviewed summaries cover only the packaged owned fixtures, with fresh full-identity callee validation; arbitrary libraries remain unresolved.",
             "Indirect, external, recursive, and context-limited calls retain unresolved effects."
           ],
           "target_executed": false
@@ -97,7 +108,7 @@
       "calls": [
         {
           "tool": "flow_get_capabilities",
-          "response_chars": 3006,
+          "response_chars": 3076,
           "error": null
         },
         {
@@ -107,12 +118,12 @@
         },
         {
           "tool": "flow_get_job",
-          "response_chars": 177,
+          "response_chars": 176,
           "error": null
         },
         {
           "tool": "flow_get_job",
-          "response_chars": 1240,
+          "response_chars": 1385,
           "error": null
         },
         {
@@ -122,7 +133,7 @@
         },
         {
           "tool": "flow_cancel_job",
-          "response_chars": 1240,
+          "response_chars": 1385,
           "error": null
         },
         {
@@ -132,17 +143,17 @@
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 6014,
+          "response_chars": 5581,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 5425,
+          "response_chars": 6442,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 6652,
+          "response_chars": 6068,
           "error": null
         },
         {
@@ -157,62 +168,62 @@
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 6096,
+          "response_chars": 5663,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5507,
+          "response_chars": 6524,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 6734,
+          "response_chars": 6150,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5555,
+          "response_chars": 5826,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5884,
+          "response_chars": 5614,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5334,
+          "response_chars": 5609,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 4179,
+          "response_chars": 3903,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 4605,
+          "response_chars": 4230,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 4609,
+          "response_chars": 4269,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 3951,
+          "response_chars": 4610,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 2221,
+          "response_chars": 2277,
           "error": null
         },
         {
           "tool": "flow_trace_backward",
-          "response_chars": 2627,
+          "response_chars": 7712,
           "error": null
         },
         {
@@ -237,11 +248,11 @@
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 2565,
+          "response_chars": 2528,
           "error": null
         },
         {
-          "tool": "flow_create_path_proof",
+          "tool": "flow_check_path",
           "response_chars": 104,
           "error": null
         },
@@ -252,12 +263,12 @@
         },
         {
           "tool": "flow_get_job",
-          "response_chars": 393,
+          "response_chars": 436,
           "error": null
         },
         {
-          "tool": "flow_get_path_proof",
-          "response_chars": 2461,
+          "tool": "flow_check_path",
+          "response_chars": 3103,
           "error": null
         },
         {
@@ -326,7 +337,7 @@
         },
         {
           "tool": "flow_get_job",
-          "response_chars": 1240,
+          "response_chars": 1385,
           "error": null
         }
       ],
@@ -339,13 +350,12 @@
         "flow_get_job",
         "flow_cancel_job",
         "flow_create_implicit_analysis",
-        "flow_create_path_proof",
+        "flow_check_path",
         "flow_get_function_ssa",
         "flow_get_cfg",
         "flow_get_graph",
         "flow_get_evidence",
         "flow_get_implicit_analysis",
-        "flow_get_path_proof",
         "flow_get_call_compositions",
         "flow_trace_forward",
         "flow_trace_backward",
@@ -355,38 +365,38 @@
         "idb_list"
       ],
       "adoption_detach_preserved_job": true,
-      "flow_build_id": "flow-build-sha256-v1:0622f2c9380b3f45329cc656147f97e9a6a8492b7899293d82389b4ade00a5f3",
+      "flow_build_id": "flow-build-sha256-v1:866d11d882a2d8ea57e87d6a58f872d1cc57d5cf26a98a69158aed0fa3875a2f",
       "readonly_direct_call_denied": true,
       "memory_source_selected_exact_access": true,
       "memory_dependency": {
         "interval": {
-          "start": 0,
-          "end": 1
+          "start": 6,
+          "end": 7
         },
         "precision": "exact",
-        "object_id": "object-v1:cc6f8f7af761774e5104d3945d68be7a532dd64c157823e078e07e4e2576f20b",
+        "object_id": "object-v1:5c513ab8a54755502e00fab12c0d93a92122e267a18d2b9cd7f3b40de65bded0",
         "rule_id": "byte-reaching-store-v1",
         "evidence_ids": [
-          "evidence-v1:509756b663616ad2a7b2d11ed75fba3ac9f7a8090a9e914f281aa3f31edfc8e9",
-          "evidence-v1:6f615c9f5899f8273f658e1c1fd92c71871bc3e4de77ebb4becee4be65e1b9eb",
-          "evidence-v1:b40a6a3e8e9d4b814d4ee534607f4d136d7d0a85bad2e41d7afbe902052944af"
+          "evidence-v1:4e7ae7a967f0b18311c1c49c5b8e4dc8aa21837d0bebd775b74d8acf9aca9c66",
+          "evidence-v1:7f2f1d10161448a8d145b8837d6f3b73ead73b221f3ad9a2694252f1d2730bcb",
+          "evidence-v1:c12ae406b8f8953dcaf1c50dd58389810146c821fa224496af170a0873273fea"
         ],
         "derivation_evidence": {
-          "evidence_id": "evidence-v1:6f615c9f5899f8273f658e1c1fd92c71871bc3e4de77ebb4becee4be65e1b9eb",
-          "snapshot_id": "snapshot-v1:542e6a1457beac7d06fbec99d6d9a465d5d85ceaa3b53ed8c972f1546c5184c7",
+          "evidence_id": "evidence-v1:7f2f1d10161448a8d145b8837d6f3b73ead73b221f3ad9a2694252f1d2730bcb",
+          "snapshot_id": "snapshot-v1:8b1aa241025d90bf6ca61e3ef4d63f53bfe48ac69f1b5ab678528d05f9ea2bf4",
           "rule_id": "byte-reaching-store-v1",
           "sites": [],
           "source_eas": [],
           "synthetic": true,
           "origins": [
-            "node-v1:7d78d0572999fea7eb19d66bdd91679904b936625b33a6b55b903be37a272f19",
-            "node-v1:daa66b5dc027521e6a7e5246b10e769eedfcaf759b547962305ea2b488956e8f"
+            "node-v1:6dc98bf943b6763084ad0b911ba40e0a7cfff56bf27fbbd46879041715f7b228",
+            "node-v1:6e2f678f7f53d98478470be683e003545fe84a8e9457f95d81e9300bbbf80799"
           ],
           "assumptions": [
             "automatic object identity is structural and conservative; no ABI argument numbering",
             "experimental Mach-O flat user-space address model; no TLS or MMIO semantics"
           ],
-          "memory_object_id": "object-v1:cc6f8f7af761774e5104d3945d68be7a532dd64c157823e078e07e4e2576f20b"
+          "memory_object_id": "object-v1:5c513ab8a54755502e00fab12c0d93a92122e267a18d2b9cd7f3b40de65bded0"
         }
       },
       "input_preserved": true,
@@ -399,7 +409,7 @@
       "binary_sha256": "fe9acefb7f883e942ebf836ae36b411b3ae110d20ff5dc442d9539334ef0c1cf",
       "job": {
         "schema_version": "flow-job/1",
-        "id": "job_a6e295993f4646a49a2e91fcd6a69dcb",
+        "id": "job_f1c3e0b4e43947f587754b8918f532fc",
         "state": "complete",
         "revision": 4,
         "progress": {},
@@ -407,23 +417,29 @@
         "error": null,
         "result": {
           "analysis": "partial",
-          "call_composition_artifact": "artifact_6167d37e947547c4a7f6c4909528fd22",
+          "call_composition_artifact": "artifact_d662a354d65a4556a57ce79d873eee16",
           "call_composition_count": 0,
-          "graph_artifact": "artifact_ac90e928088a4dc38e77e1399df2769f",
-          "graph_digest": "sha256-v1:ece1cc446480027dfa47b26a0ec4d285a72a7d2cfc9f5041e918c75adacf87e8",
+          "callee_closure": {
+            "boundaries": [],
+            "max_depth": 8,
+            "max_functions": 64,
+            "visited_rvas": []
+          },
+          "graph_artifact": "artifact_124dcfbb09e44f7f81ae121238707dda",
+          "graph_digest": "sha256-v1:48267c4556d26f5e3ba9383a8b3ce2ad2f0b4057db72892ee6d7da5bf872eb6b",
           "maturity": "MMAT_CALLS",
           "memory_diagnostics": [
             "partial_scalar_input"
           ],
-          "memory_plan_artifact": "artifact_eeddeba2101b4267bcb44ecd4157749b",
-          "memory_result_artifact": "artifact_0f1986fe9cf747ae96a3ca06da1b1c0c",
+          "memory_plan_artifact": "artifact_abda21b0fd4f4c50ac7fb2e3836d296f",
+          "memory_result_artifact": "artifact_c06ad86e5f644decabe481c8e0dd3971",
           "profile": "A64-LE",
-          "snapshot_artifact": "artifact_14ea695e909b4f6fb5b9cc252ac081fc",
-          "snapshot_id": "snapshot-v1:4efe1eac8b7641b25a11982a337bd2e473d3ea874f5b626992890895540c741b",
-          "ssa_artifact": "artifact_50a88af92f47404084d00503c8d249b3",
+          "snapshot_artifact": "artifact_4cde59f6d16f447f8da92bd16f976ce2",
+          "snapshot_id": "snapshot-v1:be8d270373b3301496c20fad4cd981813e3ed845e6ab8cbb0b415adfcd040296",
+          "ssa_artifact": "artifact_195ee32c0a7a42419a8b0bdb596851bb",
           "summary_digest": "sha256-v1:79f01e4de0cc97f8807a0447d2a2b0c8e72e4c93a5062efbc31db393b08abcfc",
           "summary_limitations": [
-            "Reviewed summaries bind only by full pinned identity; the default runtime catalog is empty.",
+            "Reviewed summaries cover only the packaged owned fixtures, with fresh full-identity callee validation; arbitrary libraries remain unresolved.",
             "Indirect, external, recursive, and context-limited calls retain unresolved effects."
           ],
           "target_executed": false
@@ -436,7 +452,7 @@
       "calls": [
         {
           "tool": "flow_get_capabilities",
-          "response_chars": 3003,
+          "response_chars": 3073,
           "error": null
         },
         {
@@ -458,7 +474,7 @@
         },
         {
           "tool": "flow_get_job",
-          "response_chars": 1240,
+          "response_chars": 1385,
           "error": null
         },
         {
@@ -468,7 +484,7 @@
         },
         {
           "tool": "flow_cancel_job",
-          "response_chars": 1240,
+          "response_chars": 1385,
           "error": null
         },
         {
@@ -478,22 +494,22 @@
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 6048,
+          "response_chars": 5727,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 6204,
+          "response_chars": 5644,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 5582,
+          "response_chars": 5870,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 3018,
+          "response_chars": 3611,
           "error": null
         },
         {
@@ -503,57 +519,57 @@
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 6130,
+          "response_chars": 5809,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 6286,
+          "response_chars": 5726,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5664,
+          "response_chars": 5952,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5153,
+          "response_chars": 6018,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5315,
+          "response_chars": 5317,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5593,
+          "response_chars": 5866,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5583,
+          "response_chars": 5319,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 3495,
+          "response_chars": 3212,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 4584,
+          "response_chars": 3879,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 4207,
+          "response_chars": 4256,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 3861,
+          "response_chars": 4517,
           "error": null
         },
         {
@@ -573,6 +589,11 @@
         },
         {
           "tool": "flow_get_job",
+          "response_chars": 177,
+          "error": null
+        },
+        {
+          "tool": "flow_get_job",
           "response_chars": 467,
           "error": null
         },
@@ -583,11 +604,11 @@
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 2960,
+          "response_chars": 3252,
           "error": null
         },
         {
-          "tool": "flow_create_path_proof",
+          "tool": "flow_check_path",
           "response_chars": 104,
           "error": null
         },
@@ -598,12 +619,12 @@
         },
         {
           "tool": "flow_get_job",
-          "response_chars": 393,
+          "response_chars": 436,
           "error": null
         },
         {
-          "tool": "flow_get_path_proof",
-          "response_chars": 2461,
+          "tool": "flow_check_path",
+          "response_chars": 3103,
           "error": null
         },
         {
@@ -764,12 +785,12 @@
         },
         {
           "tool": "flow_continue_trace",
-          "response_chars": 1195,
+          "response_chars": 542,
           "error": null
         },
         {
           "tool": "flow_continue_trace",
-          "response_chars": 1195,
+          "response_chars": 542,
           "error": null
         },
         {
@@ -781,12 +802,12 @@
         },
         {
           "tool": "flow_continue_trace",
-          "response_chars": 542,
+          "response_chars": 1195,
           "error": null
         },
         {
           "tool": "flow_continue_trace",
-          "response_chars": 542,
+          "response_chars": 1195,
           "error": null
         },
         {
@@ -825,7 +846,7 @@
         },
         {
           "tool": "flow_get_job",
-          "response_chars": 1240,
+          "response_chars": 1385,
           "error": null
         }
       ],
@@ -838,13 +859,12 @@
         "flow_get_job",
         "flow_cancel_job",
         "flow_create_implicit_analysis",
-        "flow_create_path_proof",
+        "flow_check_path",
         "flow_get_function_ssa",
         "flow_get_cfg",
         "flow_get_graph",
         "flow_get_evidence",
         "flow_get_implicit_analysis",
-        "flow_get_path_proof",
         "flow_get_call_compositions",
         "flow_trace_forward",
         "flow_trace_backward",
@@ -854,7 +874,7 @@
         "idb_list"
       ],
       "adoption_detach_preserved_job": true,
-      "flow_build_id": "flow-build-sha256-v1:0622f2c9380b3f45329cc656147f97e9a6a8492b7899293d82389b4ade00a5f3",
+      "flow_build_id": "flow-build-sha256-v1:866d11d882a2d8ea57e87d6a58f872d1cc57d5cf26a98a69158aed0fa3875a2f",
       "readonly_direct_call_denied": true,
       "memory_source_selected_exact_access": true,
       "memory_dependency": {
@@ -863,29 +883,29 @@
           "end": 1
         },
         "precision": "exact",
-        "object_id": "object-v1:a2d86ab8910a70cd24050d14e59fad436bca3458116978b3f91e254aec81ed4b",
+        "object_id": "object-v1:139190d27a99dce3d874d652992f4ae1875f2bb87789ab7ab9f1531854d2d86e",
         "rule_id": "byte-reaching-store-v1",
         "evidence_ids": [
-          "evidence-v1:5f93c9f6f64f60e77ebabaa53e2009af630e630d237b5130af967bf06bf42141",
-          "evidence-v1:7910ae4f9117cc8dc45fad0a0dab24a16a2f17703e369ce083d3bae713d209c8",
-          "evidence-v1:a59a69ab486f7de148569b8ad8a07720f571fd3dd986cd8b88b7e1929b4fc53c"
+          "evidence-v1:1bed18ac8fe3c86d1ca78f2c4f7f4d2e2209ab2232443c9c82e9ca813ada8214",
+          "evidence-v1:c73fb1280425edff1b70a93b0a78835af275798219be3354425362d66290775e",
+          "evidence-v1:d9f11be85ade25ac1bd551f05baf9b83c559a3e7fa37f73eb785c47871e8dfa4"
         ],
         "derivation_evidence": {
-          "evidence_id": "evidence-v1:5f93c9f6f64f60e77ebabaa53e2009af630e630d237b5130af967bf06bf42141",
-          "snapshot_id": "snapshot-v1:4efe1eac8b7641b25a11982a337bd2e473d3ea874f5b626992890895540c741b",
+          "evidence_id": "evidence-v1:d9f11be85ade25ac1bd551f05baf9b83c559a3e7fa37f73eb785c47871e8dfa4",
+          "snapshot_id": "snapshot-v1:be8d270373b3301496c20fad4cd981813e3ed845e6ab8cbb0b415adfcd040296",
           "rule_id": "byte-reaching-store-v1",
           "sites": [],
           "source_eas": [],
           "synthetic": true,
           "origins": [
-            "node-v1:63c91af083b8c5ba07f77bd1684a66cb4046bf6c8098f1a087b4b45055715c25",
-            "node-v1:80877ec7752a97b63a140b7c870357d528ed66686162859afdd7dd98defaa690"
+            "node-v1:04368f67a5f68ec4ce0460870a8b3faf38ccc9833ec79013550b0d5f84db1ebb",
+            "node-v1:cf9b4f3d073b3096440f529b2bdd7001a088a1490e3eebc2f46623ab5cee52e8"
           ],
           "assumptions": [
             "automatic object identity is structural and conservative; no ABI argument numbering",
             "experimental Mach-O flat user-space address model; no TLS or MMIO semantics"
           ],
-          "memory_object_id": "object-v1:a2d86ab8910a70cd24050d14e59fad436bca3458116978b3f91e254aec81ed4b"
+          "memory_object_id": "object-v1:139190d27a99dce3d874d652992f4ae1875f2bb87789ab7ab9f1531854d2d86e"
         }
       },
       "input_preserved": true,

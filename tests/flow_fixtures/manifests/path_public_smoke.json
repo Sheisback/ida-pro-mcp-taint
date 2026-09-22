@@ -1,0 +1,3968 @@
+{
+  "anchors": [
+    {
+      "abi": "darwin-x86_64-sysv-derived",
+      "arch": "x86_64",
+      "binary_sha256": [
+        "476911ac8271316c46cfb8c8911324b027365693f87ccff6a929bc951f6901a6",
+        "476911ac8271316c46cfb8c8911324b027365693f87ccff6a929bc951f6901a6"
+      ],
+      "build_id": "flow-build-sha256-v1:866d11d882a2d8ea57e87d6a58f872d1cc57d5cf26a98a69158aed0fa3875a2f",
+      "calls": [
+        {
+          "response_chars": 3076,
+          "tool": "flow_get_capabilities",
+          "truncated": false
+        },
+        {
+          "response_chars": 104,
+          "tool": "flow_create_snapshot",
+          "truncated": false
+        },
+        {
+          "response_chars": 176,
+          "tool": "flow_get_job",
+          "truncated": false
+        },
+        {
+          "response_chars": 1385,
+          "tool": "flow_get_job",
+          "truncated": false
+        },
+        {
+          "response_chars": 2544,
+          "tool": "flow_get_cfg",
+          "truncated": false
+        },
+        {
+          "response_chars": 15651,
+          "tool": "flow_get_graph",
+          "truncated": false
+        },
+        {
+          "response_chars": 8631,
+          "tool": "flow_get_graph",
+          "truncated": false
+        },
+        {
+          "response_chars": 104,
+          "tool": "flow_check_path",
+          "truncated": false
+        },
+        {
+          "response_chars": 177,
+          "tool": "flow_get_job",
+          "truncated": false
+        },
+        {
+          "response_chars": 393,
+          "tool": "flow_get_job",
+          "truncated": false
+        },
+        {
+          "response_chars": 3341,
+          "tool": "flow_check_path",
+          "truncated": false
+        },
+        {
+          "response_chars": 2072,
+          "tool": "flow_check_path",
+          "truncated": false
+        },
+        {
+          "response_chars": 930,
+          "tool": "flow_check_path",
+          "truncated": false
+        },
+        {
+          "response_chars": 956,
+          "tool": "flow_check_path",
+          "truncated": false
+        },
+        {
+          "response_chars": 695,
+          "tool": "flow_check_path",
+          "truncated": false
+        },
+        {
+          "response_chars": 104,
+          "tool": "flow_check_path",
+          "truncated": false
+        },
+        {
+          "response_chars": 177,
+          "tool": "flow_get_job",
+          "truncated": false
+        },
+        {
+          "response_chars": 176,
+          "tool": "flow_get_job",
+          "truncated": false
+        },
+        {
+          "response_chars": 393,
+          "tool": "flow_get_job",
+          "truncated": false
+        },
+        {
+          "response_chars": 3340,
+          "tool": "flow_check_path",
+          "truncated": false
+        },
+        {
+          "response_chars": 2072,
+          "tool": "flow_check_path",
+          "truncated": false
+        },
+        {
+          "response_chars": 930,
+          "tool": "flow_check_path",
+          "truncated": false
+        },
+        {
+          "response_chars": 954,
+          "tool": "flow_check_path",
+          "truncated": false
+        },
+        {
+          "response_chars": 695,
+          "tool": "flow_check_path",
+          "truncated": false
+        }
+      ],
+      "cfg": [
+        {
+          "block": 0,
+          "dominators": [
+            0
+          ],
+          "frontier": [],
+          "immediate": null,
+          "predecessors": [],
+          "successors": [
+            1
+          ]
+        },
+        {
+          "block": 1,
+          "dominators": [
+            0,
+            1
+          ],
+          "frontier": [],
+          "immediate": 0,
+          "predecessors": [
+            0
+          ],
+          "successors": [
+            2,
+            4
+          ]
+        },
+        {
+          "block": 2,
+          "dominators": [
+            0,
+            1,
+            2
+          ],
+          "frontier": [
+            3
+          ],
+          "immediate": 1,
+          "predecessors": [
+            1
+          ],
+          "successors": [
+            3
+          ]
+        },
+        {
+          "block": 3,
+          "dominators": [
+            0,
+            1,
+            3
+          ],
+          "frontier": [],
+          "immediate": 1,
+          "predecessors": [
+            2,
+            4
+          ],
+          "successors": [
+            5
+          ]
+        },
+        {
+          "block": 4,
+          "dominators": [
+            0,
+            1,
+            4
+          ],
+          "frontier": [
+            3
+          ],
+          "immediate": 1,
+          "predecessors": [
+            1
+          ],
+          "successors": [
+            3
+          ]
+        },
+        {
+          "block": 5,
+          "dominators": [
+            0,
+            1,
+            3,
+            5
+          ],
+          "frontier": [],
+          "immediate": 3,
+          "predecessors": [
+            3
+          ],
+          "successors": []
+        }
+      ],
+      "compiler": "Apple clang version 21.0.0 (clang-2100.0.123.102)\nTarget: arm64-apple-darwin27.0.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin",
+      "copied_binary_sha256": "476911ac8271316c46cfb8c8911324b027365693f87ccff6a929bc951f6901a6",
+      "environment": {
+        "bits": 64,
+        "endian": "little",
+        "hexrays_initialization": {
+          "reason": "init_hexrays_plugin returned True",
+          "status": "available"
+        },
+        "hexrays_version": "9.3.0.260213",
+        "ida_version": "9.3",
+        "processor": "metapc",
+        "python_version": "3.11.16"
+      },
+      "flags": [
+        "-arch",
+        "x86_64",
+        "-O1",
+        "-fomit-frame-pointer",
+        "-fno-stack-protector",
+        "-Wl,-no_uuid"
+      ],
+      "fresh_builds": 2,
+      "graph": [
+        {
+          "constant": null,
+          "evidence_ids": [
+            "evidence-v1:b1d933de249418fb92f93c243d10de60adb1f06d4732d38d50631e1f1a2c1a04"
+          ],
+          "inputs": [],
+          "key": {
+            "function_id": "function-entry:4294968336",
+            "site": null,
+            "snapshot_id": "snapshot-v1:c6ac5b6e2e58943cd3c2b570c59dcfdac885b9b2e34bc4ce40dce658f6b9efe8",
+            "synthetic": "memory:entry:microregister:microregister:448:8"
+          },
+          "kind": "InputValue",
+          "memory": null,
+          "memory_operands": null,
+          "node_id": "node-v1:16260e04f12d568544fc66aad0d774b616efafdc99f76fd8bc543c375fadb8e6",
+          "operation": null,
+          "phi_block": null,
+          "phi_inputs": [],
+          "signed": null,
+          "type": "node",
+          "width_bits": 8
+        },
+        {
+          "constant": null,
+          "evidence_ids": [
+            "evidence-v1:b47ccbe6aca41ce9041b0f0ad5b726ffde8c2a1de38f168db86e0b3930e7e846"
+          ],
+          "inputs": [],
+          "key": {
+            "function_id": "function-entry:4294968336",
+            "site": null,
+            "snapshot_id": "snapshot-v1:c6ac5b6e2e58943cd3c2b570c59dcfdac885b9b2e34bc4ce40dce658f6b9efe8",
+            "synthetic": "memory:ssa:b3:n14"
+          },
+          "kind": "Branch",
+          "memory": null,
+          "memory_operands": null,
+          "node_id": "node-v1:2bde3a8433c2acf27ad23febe439e088a3e498b9a3570233dc37b1d0614cac11",
+          "operation": null,
+          "phi_block": null,
+          "phi_inputs": [],
+          "signed": null,
+          "type": "node",
+          "width_bits": null
+        },
+        {
+          "constant": 1,
+          "evidence_ids": [
+            "evidence-v1:239d76d947a7640bf6c712807e1e3dc216f592bd596282aca059274136e960cd"
+          ],
+          "inputs": [],
+          "key": {
+            "function_id": "function-entry:4294968336",
+            "site": null,
+            "snapshot_id": "snapshot-v1:c6ac5b6e2e58943cd3c2b570c59dcfdac885b9b2e34bc4ce40dce658f6b9efe8",
+            "synthetic": "memory:ssa:b1:n4"
+          },
+          "kind": "Constant",
+          "memory": null,
+          "memory_operands": null,
+          "node_id": "node-v1:3f969c01df336dc7d00c1cf5228e10f853527674f55ea6ed46f1e91664f5c7b2",
+          "operation": null,
+          "phi_block": null,
+          "phi_inputs": [],
+          "signed": null,
+          "type": "node",
+          "width_bits": 8
+        },
+        {
+          "constant": null,
+          "evidence_ids": [
+            "evidence-v1:46824e4769be64455ab609b80f4a4cdca3ac4536426b3f66c8ec309eaa6da6fa"
+          ],
+          "inputs": [
+            "node-v1:f23a5399a4d8f833414eec230212db874926899ea9eaa56fb7d442a657eb0ab6",
+            "node-v1:65f3dea9c97e8fab407b79d8a43e890d5d116b7e34047c6b587b259de3594ecb"
+          ],
+          "key": {
+            "function_id": "function-entry:4294968336",
+            "site": null,
+            "snapshot_id": "snapshot-v1:c6ac5b6e2e58943cd3c2b570c59dcfdac885b9b2e34bc4ce40dce658f6b9efe8",
+            "synthetic": "memory:ssa:b4:n17"
+          },
+          "kind": "Store",
+          "memory": {
+            "address_space": "ram",
+            "endian": "little",
+            "interval": {
+              "end": 1,
+              "start": 0
+            },
+            "object_id": "object-v1:7a8538a07cb349fb35b614d36561e4b656c454fb7a412ed35e95b9d5b1bb3757",
+            "version_id": "memory-v1:d92288e8b2eef835bca6eb1f02474abbac6570117c0d73449c5032d3a2ae2166"
+          },
+          "memory_operands": {
+            "address": "node-v1:65f3dea9c97e8fab407b79d8a43e890d5d116b7e34047c6b587b259de3594ecb",
+            "data": "node-v1:f23a5399a4d8f833414eec230212db874926899ea9eaa56fb7d442a657eb0ab6",
+            "segment": null
+          },
+          "node_id": "node-v1:412712119601fca156403949662ecb2901cf93fdcc1ad8e455ade954598551f4",
+          "operation": null,
+          "phi_block": null,
+          "phi_inputs": [],
+          "signed": null,
+          "type": "node",
+          "width_bits": 8
+        },
+        {
+          "constant": 0,
+          "evidence_ids": [
+            "evidence-v1:239d76d947a7640bf6c712807e1e3dc216f592bd596282aca059274136e960cd"
+          ],
+          "inputs": [],
+          "key": {
+            "function_id": "function-entry:4294968336",
+            "site": null,
+            "snapshot_id": "snapshot-v1:c6ac5b6e2e58943cd3c2b570c59dcfdac885b9b2e34bc4ce40dce658f6b9efe8",
+            "synthetic": "memory:ssa:b1:n6"
+          },
+          "kind": "Constant",
+          "memory": null,
+          "memory_operands": null,
+          "node_id": "node-v1:593fc4ad4291553396375c6701e700a0cd517123c041996335662028bb4407db",
+          "operation": null,
+          "phi_block": null,
+          "phi_inputs": [],
+          "signed": null,
+          "type": "node",
+          "width_bits": 8
+        },
+        {
+          "constant": 4294971392,
+          "evidence_ids": [
+            "evidence-v1:ec497b1169e054afe04d84f8e96fe48f900a350e3df359cd2195d9193ea808b6"
+          ],
+          "inputs": [],
+          "key": {
+            "function_id": "function-entry:4294968336",
+            "site": null,
+            "snapshot_id": "snapshot-v1:c6ac5b6e2e58943cd3c2b570c59dcfdac885b9b2e34bc4ce40dce658f6b9efe8",
+            "synthetic": "memory:ssa:b4:n16"
+          },
+          "kind": "Constant",
+          "memory": null,
+          "memory_operands": null,
+          "node_id": "node-v1:65f3dea9c97e8fab407b79d8a43e890d5d116b7e34047c6b587b259de3594ecb",
+          "operation": "global_address",
+          "phi_block": null,
+          "phi_inputs": [],
+          "signed": null,
+          "type": "node",
+          "width_bits": 64
+        },
+        {
+          "constant": 4294971393,
+          "evidence_ids": [
+            "evidence-v1:fa2fc1c63488df094c0c0cfb3849735d185d9266c7950d8e72811c3274787c34"
+          ],
+          "inputs": [],
+          "key": {
+            "function_id": "function-entry:4294968336",
+            "site": null,
+            "snapshot_id": "snapshot-v1:c6ac5b6e2e58943cd3c2b570c59dcfdac885b9b2e34bc4ce40dce658f6b9efe8",
+            "synthetic": "memory:ssa:b2:n11"
+          },
+          "kind": "Constant",
+          "memory": null,
+          "memory_operands": null,
+          "node_id": "node-v1:69a6542d9e8cc97b16f349aaa54a534e6e77a0ee234371579cd1c31d358b87ce",
+          "operation": "global_address",
+          "phi_block": null,
+          "phi_inputs": [],
+          "signed": null,
+          "type": "node",
+          "width_bits": 64
+        },
+        {
+          "constant": null,
+          "evidence_ids": [
+            "evidence-v1:b1d933de249418fb92f93c243d10de60adb1f06d4732d38d50631e1f1a2c1a04"
+          ],
+          "inputs": [],
+          "key": {
+            "function_id": "function-entry:4294968336",
+            "site": null,
+            "snapshot_id": "snapshot-v1:c6ac5b6e2e58943cd3c2b570c59dcfdac885b9b2e34bc4ce40dce658f6b9efe8",
+            "synthetic": "memory:entry:microregister:microregister:128:320"
+          },
+          "kind": "InputValue",
+          "memory": null,
+          "memory_operands": null,
+          "node_id": "node-v1:72db7a63bff40a305b64db329201919d8bf3df9ef62f69d18afca0f9f2d49068",
+          "operation": null,
+          "phi_block": null,
+          "phi_inputs": [],
+          "signed": null,
+          "type": "node",
+          "width_bits": 320
+        },
+        {
+          "constant": null,
+          "evidence_ids": [
+            "evidence-v1:a3fb385605c676ce68683eefafd78024be093e1b36180310c031a266927c8165"
+          ],
+          "inputs": [
+            "node-v1:adc92b72d8df9e259f150d18d590ef06ca3c07e6d31dd77dcc49c2e00b78b136",
+            "node-v1:593fc4ad4291553396375c6701e700a0cd517123c041996335662028bb4407db"
+          ],
+          "key": {
+            "function_id": "function-entry:4294968336",
+            "site": null,
+            "snapshot_id": "snapshot-v1:c6ac5b6e2e58943cd3c2b570c59dcfdac885b9b2e34bc4ce40dce658f6b9efe8",
+            "synthetic": "memory:ssa:b1:n7"
+          },
+          "kind": "Compare",
+          "memory": null,
+          "memory_operands": null,
+          "node_id": "node-v1:7bae3dfe5f5ada164c164dea6b240b5e23c722bfd31e4f6aaf78bc0a87422d1f",
+          "operation": "ne",
+          "phi_block": null,
+          "phi_inputs": [],
+          "signed": null,
+          "type": "node",
+          "width_bits": 1
+        },
+        {
+          "constant": null,
+          "evidence_ids": [
+            "evidence-v1:f296d634bc9d7f8a2325277cec3f607c447e615dc21666297e7c01571fa0e994"
+          ],
+          "inputs": [
+            "node-v1:7bae3dfe5f5ada164c164dea6b240b5e23c722bfd31e4f6aaf78bc0a87422d1f"
+          ],
+          "key": {
+            "function_id": "function-entry:4294968336",
+            "site": null,
+            "snapshot_id": "snapshot-v1:c6ac5b6e2e58943cd3c2b570c59dcfdac885b9b2e34bc4ce40dce658f6b9efe8",
+            "synthetic": "memory:ssa:b1:n8"
+          },
+          "kind": "Branch",
+          "memory": null,
+          "memory_operands": null,
+          "node_id": "node-v1:84f74958a6d4a1234c81d694acf99d84aa33597882e97f35738fc1c3ce650544",
+          "operation": null,
+          "phi_block": null,
+          "phi_inputs": [],
+          "signed": null,
+          "type": "node",
+          "width_bits": null
+        },
+        {
+          "constant": null,
+          "evidence_ids": [
+            "evidence-v1:b1d933de249418fb92f93c243d10de60adb1f06d4732d38d50631e1f1a2c1a04"
+          ],
+          "inputs": [],
+          "key": {
+            "function_id": "function-entry:4294968336",
+            "site": null,
+            "snapshot_id": "snapshot-v1:c6ac5b6e2e58943cd3c2b570c59dcfdac885b9b2e34bc4ce40dce658f6b9efe8",
+            "synthetic": "memory:entry:microregister:microregister:64:64"
+          },
+          "kind": "InputValue",
+          "memory": null,
+          "memory_operands": null,
+          "node_id": "node-v1:85e35e9c64df1fc09ab9f990b494355a5b219db87270a5492c2723addcdbf809",
+          "operation": null,
+          "phi_block": null,
+          "phi_inputs": [],
+          "signed": null,
+          "type": "node",
+          "width_bits": 64
+        },
+        {
+          "constant": 7,
+          "evidence_ids": [
+            "evidence-v1:af300c904265416adcee22dd33936d8d20c15ebfd9b05776245a1590b9f3694b"
+          ],
+          "inputs": [],
+          "key": {
+            "function_id": "function-entry:4294968336",
+            "site": null,
+            "snapshot_id": "snapshot-v1:c6ac5b6e2e58943cd3c2b570c59dcfdac885b9b2e34bc4ce40dce658f6b9efe8",
+            "synthetic": "memory:ssa:b2:n9"
+          },
+          "kind": "Constant",
+          "memory": null,
+          "memory_operands": null,
+          "node_id": "node-v1:8b68e7c6666a4934a3d764900be6549422b4c3c24541a0f8be049259bf67e105",
+          "operation": null,
+          "phi_block": null,
+          "phi_inputs": [],
+          "signed": null,
+          "type": "node",
+          "width_bits": 8
+        },
+        {
+          "constant": null,
+          "evidence_ids": [
+            "evidence-v1:37959ba198fd1bf07d9626109837fbfe6e15f6aabf1da189ef48a14271001da5"
+          ],
+          "inputs": [
+            "node-v1:16260e04f12d568544fc66aad0d774b616efafdc99f76fd8bc543c375fadb8e6",
+            "node-v1:3f969c01df336dc7d00c1cf5228e10f853527674f55ea6ed46f1e91664f5c7b2"
+          ],
+          "key": {
+            "function_id": "function-entry:4294968336",
+            "site": null,
+            "snapshot_id": "snapshot-v1:c6ac5b6e2e58943cd3c2b570c59dcfdac885b9b2e34bc4ce40dce658f6b9efe8",
+            "synthetic": "memory:ssa:b1:n5"
+          },
+          "kind": "Binary",
+          "memory": null,
+          "memory_operands": null,
+          "node_id": "node-v1:adc92b72d8df9e259f150d18d590ef06ca3c07e6d31dd77dcc49c2e00b78b136",
+          "operation": "and",
+          "phi_block": null,
+          "phi_inputs": [],
+          "signed": null,
+          "type": "node",
+          "width_bits": 8
+        },
+        {
+          "constant": null,
+          "evidence_ids": [
+            "evidence-v1:10f9cae7167e46d03933fc99e0d1155cb9680726fcb39442e57e41ea16c1c206"
+          ],
+          "inputs": [
+            "node-v1:16260e04f12d568544fc66aad0d774b616efafdc99f76fd8bc543c375fadb8e6"
+          ],
+          "key": {
+            "function_id": "function-entry:4294968336",
+            "site": null,
+            "snapshot_id": "snapshot-v1:c6ac5b6e2e58943cd3c2b570c59dcfdac885b9b2e34bc4ce40dce658f6b9efe8",
+            "synthetic": "memory:ssa:b3:n13"
+          },
+          "kind": "Unary",
+          "memory": null,
+          "memory_operands": null,
+          "node_id": "node-v1:c00b7e002f03857c26f3f4d81ab006c57d825dad89752fa3cf8ef06836f24401",
+          "operation": "zext",
+          "phi_block": null,
+          "phi_inputs": [],
+          "signed": false,
+          "type": "node",
+          "width_bits": 64
+        },
+        {
+          "constant": null,
+          "evidence_ids": [
+            "evidence-v1:01afd8b635ab687729e5265623512404769d763a04952034a60f156158b67cdb"
+          ],
+          "inputs": [
+            "node-v1:8b68e7c6666a4934a3d764900be6549422b4c3c24541a0f8be049259bf67e105"
+          ],
+          "key": {
+            "function_id": "function-entry:4294968336",
+            "site": null,
+            "snapshot_id": "snapshot-v1:c6ac5b6e2e58943cd3c2b570c59dcfdac885b9b2e34bc4ce40dce658f6b9efe8",
+            "synthetic": "memory:ssa:b2:n10"
+          },
+          "kind": "Copy",
+          "memory": null,
+          "memory_operands": null,
+          "node_id": "node-v1:c3875ff349aed2f1b076e23a9c00319d29087d757d7b76a9921ba0ed6cd182cf",
+          "operation": null,
+          "phi_block": null,
+          "phi_inputs": [],
+          "signed": null,
+          "type": "node",
+          "width_bits": 8
+        },
+        {
+          "constant": null,
+          "evidence_ids": [
+            "evidence-v1:9e776ae13d5a289e0a02e08f040c5187e6fc9eef3edb32e3278207510c5d6f86"
+          ],
+          "inputs": [],
+          "key": {
+            "function_id": "function-entry:4294968336",
+            "site": null,
+            "snapshot_id": "snapshot-v1:c6ac5b6e2e58943cd3c2b570c59dcfdac885b9b2e34bc4ce40dce658f6b9efe8",
+            "synthetic": "memory:ssa:b4:n18"
+          },
+          "kind": "Branch",
+          "memory": null,
+          "memory_operands": null,
+          "node_id": "node-v1:e0a1b61a82722658329e544c73614896f9e135d4512a5a18184e53d1ea8d0ae6",
+          "operation": null,
+          "phi_block": null,
+          "phi_inputs": [],
+          "signed": null,
+          "type": "node",
+          "width_bits": null
+        },
+        {
+          "constant": null,
+          "evidence_ids": [
+            "evidence-v1:faff460f739762e676476057ba9413e95d0db79e2bbaf4bd1febfe8d77c20355"
+          ],
+          "inputs": [
+            "node-v1:c3875ff349aed2f1b076e23a9c00319d29087d757d7b76a9921ba0ed6cd182cf",
+            "node-v1:69a6542d9e8cc97b16f349aaa54a534e6e77a0ee234371579cd1c31d358b87ce"
+          ],
+          "key": {
+            "function_id": "function-entry:4294968336",
+            "site": null,
+            "snapshot_id": "snapshot-v1:c6ac5b6e2e58943cd3c2b570c59dcfdac885b9b2e34bc4ce40dce658f6b9efe8",
+            "synthetic": "memory:ssa:b2:n12"
+          },
+          "kind": "Store",
+          "memory": {
+            "address_space": "ram",
+            "endian": "little",
+            "interval": {
+              "end": 1,
+              "start": 0
+            },
+            "object_id": "object-v1:7965ee1b21389dab9da8a00cccf65d621e6f9341e6187b213ca005d457b2d876",
+            "version_id": "memory-v1:b774d8df7f2080010061615a57060b8cf5431c1ff2f8a00db07e65bb065f6c82"
+          },
+          "memory_operands": {
+            "address": "node-v1:69a6542d9e8cc97b16f349aaa54a534e6e77a0ee234371579cd1c31d358b87ce",
+            "data": "node-v1:c3875ff349aed2f1b076e23a9c00319d29087d757d7b76a9921ba0ed6cd182cf",
+            "segment": null
+          },
+          "node_id": "node-v1:f0485ee6e34146ee5bf72f034140d92f97a2632234c65bae4437240cfcdae658",
+          "operation": null,
+          "phi_block": null,
+          "phi_inputs": [],
+          "signed": null,
+          "type": "node",
+          "width_bits": 8
+        },
+        {
+          "constant": null,
+          "evidence_ids": [
+            "evidence-v1:3ed916b9de56d71d409a9eed034b07aae8170dc43bb2aaae0f785681bebfc13b"
+          ],
+          "inputs": [
+            "node-v1:16260e04f12d568544fc66aad0d774b616efafdc99f76fd8bc543c375fadb8e6"
+          ],
+          "key": {
+            "function_id": "function-entry:4294968336",
+            "site": null,
+            "snapshot_id": "snapshot-v1:c6ac5b6e2e58943cd3c2b570c59dcfdac885b9b2e34bc4ce40dce658f6b9efe8",
+            "synthetic": "memory:ssa:b4:n15"
+          },
+          "kind": "Copy",
+          "memory": null,
+          "memory_operands": null,
+          "node_id": "node-v1:f23a5399a4d8f833414eec230212db874926899ea9eaa56fb7d442a657eb0ab6",
+          "operation": null,
+          "phi_block": null,
+          "phi_inputs": [],
+          "signed": null,
+          "type": "node",
+          "width_bits": 8
+        },
+        {
+          "axes": {
+            "alias": "unknown",
+            "analysis": "partial",
+            "precision": "exact",
+            "proof": "not_requested",
+            "provenance": "computed",
+            "traversal": "frontier_exhausted"
+          },
+          "edge_id": "edge-v1:0b538c148a0d9528b3c27c795af1bc50b8e82abb3284d44ff544eba7260f1cbc",
+          "evidence_ids": [
+            "evidence-v1:46824e4769be64455ab609b80f4a4cdca3ac4536426b3f66c8ec309eaa6da6fa"
+          ],
+          "interval": null,
+          "kind": "address_dependency",
+          "memory_object_id": null,
+          "memory_rule_id": null,
+          "predecessor": null,
+          "source": "node-v1:65f3dea9c97e8fab407b79d8a43e890d5d116b7e34047c6b587b259de3594ecb",
+          "target": "node-v1:412712119601fca156403949662ecb2901cf93fdcc1ad8e455ade954598551f4",
+          "type": "edge",
+          "width_bits": null
+        },
+        {
+          "axes": {
+            "alias": "unknown",
+            "analysis": "partial",
+            "precision": "exact",
+            "proof": "not_requested",
+            "provenance": "computed",
+            "traversal": "frontier_exhausted"
+          },
+          "edge_id": "edge-v1:0dc0d048da4592c53b0d33ac53a874d86ede02696baa47eacb442c8b99867697",
+          "evidence_ids": [
+            "evidence-v1:a3fb385605c676ce68683eefafd78024be093e1b36180310c031a266927c8165"
+          ],
+          "interval": null,
+          "kind": "value_dependency",
+          "memory_object_id": null,
+          "memory_rule_id": null,
+          "predecessor": null,
+          "source": "node-v1:adc92b72d8df9e259f150d18d590ef06ca3c07e6d31dd77dcc49c2e00b78b136",
+          "target": "node-v1:7bae3dfe5f5ada164c164dea6b240b5e23c722bfd31e4f6aaf78bc0a87422d1f",
+          "type": "edge",
+          "width_bits": null
+        },
+        {
+          "axes": {
+            "alias": "unknown",
+            "analysis": "partial",
+            "precision": "exact",
+            "proof": "not_requested",
+            "provenance": "computed",
+            "traversal": "frontier_exhausted"
+          },
+          "edge_id": "edge-v1:135976b22ee32a18854dbacdc0cebd048fc395bbb14a209a196a92a76ba8d94c",
+          "evidence_ids": [
+            "evidence-v1:10f9cae7167e46d03933fc99e0d1155cb9680726fcb39442e57e41ea16c1c206"
+          ],
+          "interval": null,
+          "kind": "value_dependency",
+          "memory_object_id": null,
+          "memory_rule_id": null,
+          "predecessor": null,
+          "source": "node-v1:16260e04f12d568544fc66aad0d774b616efafdc99f76fd8bc543c375fadb8e6",
+          "target": "node-v1:c00b7e002f03857c26f3f4d81ab006c57d825dad89752fa3cf8ef06836f24401",
+          "type": "edge",
+          "width_bits": null
+        },
+        {
+          "axes": {
+            "alias": "unknown",
+            "analysis": "partial",
+            "precision": "exact",
+            "proof": "not_requested",
+            "provenance": "computed",
+            "traversal": "frontier_exhausted"
+          },
+          "edge_id": "edge-v1:1a461189b76774aef51e77291637f423c473572cc9d8d9a0072e7bfdabddb85b",
+          "evidence_ids": [
+            "evidence-v1:3ed916b9de56d71d409a9eed034b07aae8170dc43bb2aaae0f785681bebfc13b"
+          ],
+          "interval": null,
+          "kind": "value_dependency",
+          "memory_object_id": null,
+          "memory_rule_id": null,
+          "predecessor": null,
+          "source": "node-v1:16260e04f12d568544fc66aad0d774b616efafdc99f76fd8bc543c375fadb8e6",
+          "target": "node-v1:f23a5399a4d8f833414eec230212db874926899ea9eaa56fb7d442a657eb0ab6",
+          "type": "edge",
+          "width_bits": null
+        },
+        {
+          "axes": {
+            "alias": "unknown",
+            "analysis": "partial",
+            "precision": "exact",
+            "proof": "not_requested",
+            "provenance": "computed",
+            "traversal": "frontier_exhausted"
+          },
+          "edge_id": "edge-v1:56f2ae12b41220d6241d8129d980e8a9ea730659ad9bcf5e42921e80d92d6b10",
+          "evidence_ids": [
+            "evidence-v1:01afd8b635ab687729e5265623512404769d763a04952034a60f156158b67cdb"
+          ],
+          "interval": null,
+          "kind": "value_dependency",
+          "memory_object_id": null,
+          "memory_rule_id": null,
+          "predecessor": null,
+          "source": "node-v1:8b68e7c6666a4934a3d764900be6549422b4c3c24541a0f8be049259bf67e105",
+          "target": "node-v1:c3875ff349aed2f1b076e23a9c00319d29087d757d7b76a9921ba0ed6cd182cf",
+          "type": "edge",
+          "width_bits": null
+        },
+        {
+          "axes": {
+            "alias": "unknown",
+            "analysis": "partial",
+            "precision": "exact",
+            "proof": "not_requested",
+            "provenance": "computed",
+            "traversal": "frontier_exhausted"
+          },
+          "edge_id": "edge-v1:64251e925c6008c2f24f64200f0598162ffe0e89b2f127af91a41465edf0cc40",
+          "evidence_ids": [
+            "evidence-v1:a3fb385605c676ce68683eefafd78024be093e1b36180310c031a266927c8165"
+          ],
+          "interval": null,
+          "kind": "value_dependency",
+          "memory_object_id": null,
+          "memory_rule_id": null,
+          "predecessor": null,
+          "source": "node-v1:593fc4ad4291553396375c6701e700a0cd517123c041996335662028bb4407db",
+          "target": "node-v1:7bae3dfe5f5ada164c164dea6b240b5e23c722bfd31e4f6aaf78bc0a87422d1f",
+          "type": "edge",
+          "width_bits": null
+        },
+        {
+          "axes": {
+            "alias": "unknown",
+            "analysis": "partial",
+            "precision": "exact",
+            "proof": "not_requested",
+            "provenance": "computed",
+            "traversal": "frontier_exhausted"
+          },
+          "edge_id": "edge-v1:69bbd69ac357c563c14caebe4f0c699648b72cfdca98aa648d01dba7d13481eb",
+          "evidence_ids": [
+            "evidence-v1:f296d634bc9d7f8a2325277cec3f607c447e615dc21666297e7c01571fa0e994"
+          ],
+          "interval": null,
+          "kind": "value_dependency",
+          "memory_object_id": null,
+          "memory_rule_id": null,
+          "predecessor": null,
+          "source": "node-v1:7bae3dfe5f5ada164c164dea6b240b5e23c722bfd31e4f6aaf78bc0a87422d1f",
+          "target": "node-v1:84f74958a6d4a1234c81d694acf99d84aa33597882e97f35738fc1c3ce650544",
+          "type": "edge",
+          "width_bits": null
+        },
+        {
+          "axes": {
+            "alias": "unknown",
+            "analysis": "partial",
+            "precision": "exact",
+            "proof": "not_requested",
+            "provenance": "computed",
+            "traversal": "frontier_exhausted"
+          },
+          "edge_id": "edge-v1:92f580de05baeeb293230092ef872977737f14cff77a2443fb942d501e2b5b07",
+          "evidence_ids": [
+            "evidence-v1:37959ba198fd1bf07d9626109837fbfe6e15f6aabf1da189ef48a14271001da5"
+          ],
+          "interval": null,
+          "kind": "value_dependency",
+          "memory_object_id": null,
+          "memory_rule_id": null,
+          "predecessor": null,
+          "source": "node-v1:16260e04f12d568544fc66aad0d774b616efafdc99f76fd8bc543c375fadb8e6",
+          "target": "node-v1:adc92b72d8df9e259f150d18d590ef06ca3c07e6d31dd77dcc49c2e00b78b136",
+          "type": "edge",
+          "width_bits": null
+        },
+        {
+          "axes": {
+            "alias": "unknown",
+            "analysis": "partial",
+            "precision": "exact",
+            "proof": "not_requested",
+            "provenance": "computed",
+            "traversal": "frontier_exhausted"
+          },
+          "edge_id": "edge-v1:9c293dd9f217710342f2f22b6c1f363492153ad0adf42453f60372c2e7e6f826",
+          "evidence_ids": [
+            "evidence-v1:46824e4769be64455ab609b80f4a4cdca3ac4536426b3f66c8ec309eaa6da6fa"
+          ],
+          "interval": null,
+          "kind": "memory_data_dependency",
+          "memory_object_id": null,
+          "memory_rule_id": null,
+          "predecessor": null,
+          "source": "node-v1:f23a5399a4d8f833414eec230212db874926899ea9eaa56fb7d442a657eb0ab6",
+          "target": "node-v1:412712119601fca156403949662ecb2901cf93fdcc1ad8e455ade954598551f4",
+          "type": "edge",
+          "width_bits": null
+        },
+        {
+          "axes": {
+            "alias": "unknown",
+            "analysis": "partial",
+            "precision": "exact",
+            "proof": "not_requested",
+            "provenance": "computed",
+            "traversal": "frontier_exhausted"
+          },
+          "edge_id": "edge-v1:adf40c40360e2ce73eb0ec73de06f5e6e09c32b499db2649e95a6db9386f35c1",
+          "evidence_ids": [
+            "evidence-v1:faff460f739762e676476057ba9413e95d0db79e2bbaf4bd1febfe8d77c20355"
+          ],
+          "interval": null,
+          "kind": "memory_data_dependency",
+          "memory_object_id": null,
+          "memory_rule_id": null,
+          "predecessor": null,
+          "source": "node-v1:c3875ff349aed2f1b076e23a9c00319d29087d757d7b76a9921ba0ed6cd182cf",
+          "target": "node-v1:f0485ee6e34146ee5bf72f034140d92f97a2632234c65bae4437240cfcdae658",
+          "type": "edge",
+          "width_bits": null
+        },
+        {
+          "axes": {
+            "alias": "unknown",
+            "analysis": "partial",
+            "precision": "exact",
+            "proof": "not_requested",
+            "provenance": "computed",
+            "traversal": "frontier_exhausted"
+          },
+          "edge_id": "edge-v1:b2270c211b282697073bbd55ffaddff6c5994a28d6b1a4e4667c28df1dc42939",
+          "evidence_ids": [
+            "evidence-v1:37959ba198fd1bf07d9626109837fbfe6e15f6aabf1da189ef48a14271001da5"
+          ],
+          "interval": null,
+          "kind": "value_dependency",
+          "memory_object_id": null,
+          "memory_rule_id": null,
+          "predecessor": null,
+          "source": "node-v1:3f969c01df336dc7d00c1cf5228e10f853527674f55ea6ed46f1e91664f5c7b2",
+          "target": "node-v1:adc92b72d8df9e259f150d18d590ef06ca3c07e6d31dd77dcc49c2e00b78b136",
+          "type": "edge",
+          "width_bits": null
+        },
+        {
+          "axes": {
+            "alias": "unknown",
+            "analysis": "partial",
+            "precision": "exact",
+            "proof": "not_requested",
+            "provenance": "computed",
+            "traversal": "frontier_exhausted"
+          },
+          "edge_id": "edge-v1:bfd71044cf637b8378118065d8883713702a69483ddc83418059e21d908d159a",
+          "evidence_ids": [
+            "evidence-v1:faff460f739762e676476057ba9413e95d0db79e2bbaf4bd1febfe8d77c20355"
+          ],
+          "interval": null,
+          "kind": "address_dependency",
+          "memory_object_id": null,
+          "memory_rule_id": null,
+          "predecessor": null,
+          "source": "node-v1:69a6542d9e8cc97b16f349aaa54a534e6e77a0ee234371579cd1c31d358b87ce",
+          "target": "node-v1:f0485ee6e34146ee5bf72f034140d92f97a2632234c65bae4437240cfcdae658",
+          "type": "edge",
+          "width_bits": null
+        }
+      ],
+      "graph_metadata": {
+        "axes": {
+          "alias": "unknown",
+          "analysis": "partial",
+          "precision": "opaque",
+          "proof": "not_requested",
+          "provenance": "computed",
+          "traversal": "frontier_exhausted"
+        },
+        "diagnostics": [
+          {
+            "code": "chains_not_serialized",
+            "detail": "SDK use-def/UD-DU availability measured in P0, not MemorySSA or serialized chains",
+            "severity": "information"
+          },
+          {
+            "code": "native_origins_incomplete",
+            "detail": "Observed nested microcode EA union only; optimized-away native origins cannot be reconstructed",
+            "severity": "information"
+          }
+        ],
+        "environment": {
+          "abi": "darwin-x86_64-sysv-derived",
+          "address_space": "ram",
+          "bitness": 64,
+          "data_endian": "little",
+          "extractor_version": "microcode-extractor/1",
+          "format_id": "FMT-MACHO",
+          "hexrays_build": "9.3.0.260213",
+          "ida_build": "9.3",
+          "instruction_endian": "little",
+          "platform_tag": "darwin",
+          "processor": "metapc"
+        },
+        "graph_digest": "sha256-v1:416f79c3c7007953afa63f6a00454381cd0db37fb217ad2df1516fff08fa9157",
+        "limitations": [
+          "This page is intra-function value and byte-range reachability; use the dedicated implicit, bounded-proof, and call-composition artifacts for those distinct semantics.",
+          "Supported-anchor memory edges assume successful flat user-space accesses; TLS/MMIO and null/fault feasibility are unresolved."
+        ],
+        "maturity": "MMAT_CALLS",
+        "memory_dependency_count": 2,
+        "opaque_memory_dependency_count": 0,
+        "profile_digest": "sha256-v1:e4633e61f0a2e21ddf355ce6c1766bf7ad02e32a2cf294407f36524d3c1e024f",
+        "rule_digest": "sha256-v1:d8ab490fec53f884af8f3a670b9fe752ce44017f30c58e63a2bfac2dc3b7f863",
+        "snapshot_id": "snapshot-v1:c6ac5b6e2e58943cd3c2b570c59dcfdac885b9b2e34bc4ce40dce658f6b9efe8",
+        "summary_digest": "sha256-v1:79f01e4de0cc97f8807a0447d2a2b0c8e72e4c93a5062efbc31db393b08abcfc"
+      },
+      "profile": "X64-LE",
+      "proofs": [
+        {
+          "items": [
+            {
+              "abstract_sat": false,
+              "assignments_checked": 1,
+              "assumptions": [
+                {
+                  "evidence_ids": [],
+                  "key": "cfg_prefix",
+                  "kind": "analysis",
+                  "value": "[0,1,2]"
+                },
+                {
+                  "evidence_ids": [],
+                  "key": "scope",
+                  "kind": "analysis",
+                  "value": "reaches_last_block_before_execution"
+                }
+              ],
+              "bindings": {
+                "graph_digest": "sha256-v1:416f79c3c7007953afa63f6a00454381cd0db37fb217ad2df1516fff08fa9157",
+                "profile_digest": "sha256-v1:e4633e61f0a2e21ddf355ce6c1766bf7ad02e32a2cf294407f36524d3c1e024f",
+                "ruleset_digest": "sha256-v1:d8ab490fec53f884af8f3a670b9fe752ce44017f30c58e63a2bfac2dc3b7f863",
+                "snapshot_id": "snapshot-v1:c6ac5b6e2e58943cd3c2b570c59dcfdac885b9b2e34bc4ce40dce658f6b9efe8",
+                "summary_digests": [
+                  "sha256-v1:79f01e4de0cc97f8807a0447d2a2b0c8e72e4c93a5062efbc31db393b08abcfc"
+                ]
+              },
+              "bitvector_semantics": "fixed_width_modular_twos_complement_v1",
+              "bounds": {
+                "call_bound": 0,
+                "loop_bound": 0
+              },
+              "budget": {
+                "max_assignments": 65536,
+                "max_evaluations": 1000000,
+                "max_expression_depth": 32,
+                "timeout_ms": 1000
+              },
+              "complete_domain": false,
+              "coverage": {
+                "bounded_only": true,
+                "constraint_ids": [
+                  "path-001"
+                ],
+                "domains_are_exact": true,
+                "operators": [
+                  "bit_and",
+                  "ne"
+                ],
+                "theory": "fixed_width_bitvectors",
+                "variable_domain_digest": "sha256-v1:8538bf7b1c96926556b73cb13212005cecc68eaf615bb469ea476ab6c4dcfed0",
+                "variable_names": [
+                  "node-v1:16260e04f12d568544fc66aad0d774b616efafdc99f76fd8bc543c375fadb8e6"
+                ]
+              },
+              "engine_answer_digest": "sha256-v1:5af5ce5bdbf85005138d71973b473b5a7caf15d478fe15137bc5d1b93ef2eb75",
+              "engine_version": "finite-reference-v1",
+              "model_kind": "exact",
+              "query_digest": "sha256-v1:32cb7a3d056ab292c485f3c6e3531987685a857cf77436509d3b1c7356eff2ad",
+              "raw_disposition": "sat",
+              "refutation_constraint_ids": [],
+              "schema_version": 1,
+              "scope": "within_bounds",
+              "status": "feasible",
+              "type": "proof"
+            },
+            {
+              "constraint_id": "path-001",
+              "evidence_ids": [
+                "evidence-v1:a3fb385605c676ce68683eefafd78024be093e1b36180310c031a266927c8165",
+                "evidence-v1:f296d634bc9d7f8a2325277cec3f607c447e615dc21666297e7c01571fa0e994"
+              ],
+              "expected": false,
+              "left": {
+                "kind": "binary",
+                "operands": [
+                  {
+                    "kind": "constant",
+                    "operands": [],
+                    "operator": null,
+                    "value": 1,
+                    "variable": null,
+                    "width_bits": 8
+                  },
+                  {
+                    "kind": "variable",
+                    "operands": [],
+                    "operator": null,
+                    "value": null,
+                    "variable": "node-v1:16260e04f12d568544fc66aad0d774b616efafdc99f76fd8bc543c375fadb8e6",
+                    "width_bits": 8
+                  }
+                ],
+                "operator": "bit_and",
+                "value": null,
+                "variable": null,
+                "width_bits": 8
+              },
+              "origin_id": "node-v1:84f74958a6d4a1234c81d694acf99d84aa33597882e97f35738fc1c3ce650544",
+              "predicate": "ne",
+              "right": {
+                "kind": "constant",
+                "operands": [],
+                "operator": null,
+                "value": 0,
+                "variable": null,
+                "width_bits": 8
+              },
+              "rule_id": "program-path-v1",
+              "signedness": null,
+              "type": "path_constraint"
+            },
+            {
+              "domain": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25,
+                26,
+                27,
+                28,
+                29,
+                30,
+                31,
+                32,
+                33,
+                34,
+                35,
+                36,
+                37,
+                38,
+                39,
+                40,
+                41,
+                42,
+                43,
+                44,
+                45,
+                46,
+                47,
+                48,
+                49,
+                50,
+                51,
+                52,
+                53,
+                54,
+                55,
+                56,
+                57,
+                58,
+                59,
+                60,
+                61,
+                62,
+                63,
+                64,
+                65,
+                66,
+                67,
+                68,
+                69,
+                70,
+                71,
+                72,
+                73,
+                74,
+                75,
+                76,
+                77,
+                78,
+                79,
+                80,
+                81,
+                82,
+                83,
+                84,
+                85,
+                86,
+                87,
+                88,
+                89,
+                90,
+                91,
+                92,
+                93,
+                94,
+                95,
+                96,
+                97,
+                98,
+                99,
+                100,
+                101,
+                102,
+                103,
+                104,
+                105,
+                106,
+                107,
+                108,
+                109,
+                110,
+                111,
+                112,
+                113,
+                114,
+                115,
+                116,
+                117,
+                118,
+                119,
+                120,
+                121,
+                122,
+                123,
+                124,
+                125,
+                126,
+                127,
+                128,
+                129,
+                130,
+                131,
+                132,
+                133,
+                134,
+                135,
+                136,
+                137,
+                138,
+                139,
+                140,
+                141,
+                142,
+                143,
+                144,
+                145,
+                146,
+                147,
+                148,
+                149,
+                150,
+                151,
+                152,
+                153,
+                154,
+                155,
+                156,
+                157,
+                158,
+                159,
+                160,
+                161,
+                162,
+                163,
+                164,
+                165,
+                166,
+                167,
+                168,
+                169,
+                170,
+                171,
+                172,
+                173,
+                174,
+                175,
+                176,
+                177,
+                178,
+                179,
+                180,
+                181,
+                182,
+                183,
+                184,
+                185,
+                186,
+                187,
+                188,
+                189,
+                190,
+                191,
+                192,
+                193,
+                194,
+                195,
+                196,
+                197,
+                198,
+                199,
+                200,
+                201,
+                202,
+                203,
+                204,
+                205,
+                206,
+                207,
+                208,
+                209,
+                210,
+                211,
+                212,
+                213,
+                214,
+                215,
+                216,
+                217,
+                218,
+                219,
+                220,
+                221,
+                222,
+                223,
+                224,
+                225,
+                226,
+                227,
+                228,
+                229,
+                230,
+                231,
+                232,
+                233,
+                234,
+                235,
+                236,
+                237,
+                238,
+                239,
+                240,
+                241,
+                242,
+                243,
+                244,
+                245,
+                246,
+                247,
+                248,
+                249,
+                250,
+                251,
+                252,
+                253,
+                254,
+                255
+              ],
+              "name": "node-v1:16260e04f12d568544fc66aad0d774b616efafdc99f76fd8bc543c375fadb8e6",
+              "type": "path_variable",
+              "width_bits": 8
+            },
+            {
+              "evidence_ids": [],
+              "key": "cfg_prefix",
+              "kind": "analysis",
+              "type": "path_assumption",
+              "value": "[0,1,2]"
+            },
+            {
+              "evidence_ids": [],
+              "key": "scope",
+              "kind": "analysis",
+              "type": "path_assumption",
+              "value": "reaches_last_block_before_execution"
+            },
+            {
+              "name": "node-v1:16260e04f12d568544fc66aad0d774b616efafdc99f76fd8bc543c375fadb8e6",
+              "type": "witness_assignment",
+              "value": 0,
+              "width_bits": 8
+            },
+            {
+              "actual": false,
+              "constraint_id": "path-001",
+              "expected": false,
+              "left_value": 0,
+              "predicate": "ne",
+              "right_value": 0,
+              "satisfied": true,
+              "type": "witness_evaluation",
+              "width_bits": 8
+            },
+            {
+              "evidence_id": "evidence-v1:a3fb385605c676ce68683eefafd78024be093e1b36180310c031a266927c8165",
+              "type": "evidence"
+            },
+            {
+              "evidence_id": "evidence-v1:f296d634bc9d7f8a2325277cec3f607c447e615dc21666297e7c01571fa0e994",
+              "type": "evidence"
+            }
+          ],
+          "metadata": {
+            "model_kind": "exact",
+            "no_auto_vulnerability_verdict": true,
+            "query_cache_key": "sha256-v1:57a399dc7e7cc6f030f38f988471241098476dc73bfb952604481e8627062e50",
+            "query_digest": "sha256-v1:32cb7a3d056ab292c485f3c6e3531987685a857cf77436509d3b1c7356eff2ad",
+            "scope": "within_bounds",
+            "source_artifact": "artifact_c28cd39d32f740779b43970fcf2e91b6",
+            "status": "feasible",
+            "target_executed": false,
+            "witness_valid": true
+          },
+          "result": {
+            "model_kind": "exact",
+            "no_auto_vulnerability_verdict": true,
+            "path_proof_artifact": "artifact_eeaecf6d0f37417ca4e89d5f757b98f0",
+            "scope": "within_bounds",
+            "status": "feasible",
+            "target_executed": false,
+            "unresolved": []
+          },
+          "selector": {
+            "bindings": {
+              "graph_digest": "sha256-v1:416f79c3c7007953afa63f6a00454381cd0db37fb217ad2df1516fff08fa9157",
+              "profile_digest": "sha256-v1:e4633e61f0a2e21ddf355ce6c1766bf7ad02e32a2cf294407f36524d3c1e024f",
+              "ruleset_digest": "sha256-v1:d8ab490fec53f884af8f3a670b9fe752ce44017f30c58e63a2bfac2dc3b7f863",
+              "snapshot_id": "snapshot-v1:c6ac5b6e2e58943cd3c2b570c59dcfdac885b9b2e34bc4ce40dce658f6b9efe8",
+              "summary_digests": [
+                "sha256-v1:79f01e4de0cc97f8807a0447d2a2b0c8e72e4c93a5062efbc31db393b08abcfc"
+              ]
+            },
+            "blocks": [
+              0,
+              1,
+              2
+            ],
+            "schema_version": 1
+          }
+        },
+        {
+          "items": [
+            {
+              "abstract_sat": false,
+              "assignments_checked": 2,
+              "assumptions": [
+                {
+                  "evidence_ids": [],
+                  "key": "cfg_prefix",
+                  "kind": "analysis",
+                  "value": "[0,1,4]"
+                },
+                {
+                  "evidence_ids": [],
+                  "key": "scope",
+                  "kind": "analysis",
+                  "value": "reaches_last_block_before_execution"
+                }
+              ],
+              "bindings": {
+                "graph_digest": "sha256-v1:416f79c3c7007953afa63f6a00454381cd0db37fb217ad2df1516fff08fa9157",
+                "profile_digest": "sha256-v1:e4633e61f0a2e21ddf355ce6c1766bf7ad02e32a2cf294407f36524d3c1e024f",
+                "ruleset_digest": "sha256-v1:d8ab490fec53f884af8f3a670b9fe752ce44017f30c58e63a2bfac2dc3b7f863",
+                "snapshot_id": "snapshot-v1:c6ac5b6e2e58943cd3c2b570c59dcfdac885b9b2e34bc4ce40dce658f6b9efe8",
+                "summary_digests": [
+                  "sha256-v1:79f01e4de0cc97f8807a0447d2a2b0c8e72e4c93a5062efbc31db393b08abcfc"
+                ]
+              },
+              "bitvector_semantics": "fixed_width_modular_twos_complement_v1",
+              "bounds": {
+                "call_bound": 0,
+                "loop_bound": 0
+              },
+              "budget": {
+                "max_assignments": 65536,
+                "max_evaluations": 1000000,
+                "max_expression_depth": 32,
+                "timeout_ms": 1000
+              },
+              "complete_domain": false,
+              "coverage": {
+                "bounded_only": true,
+                "constraint_ids": [
+                  "path-001"
+                ],
+                "domains_are_exact": true,
+                "operators": [
+                  "bit_and",
+                  "ne"
+                ],
+                "theory": "fixed_width_bitvectors",
+                "variable_domain_digest": "sha256-v1:8538bf7b1c96926556b73cb13212005cecc68eaf615bb469ea476ab6c4dcfed0",
+                "variable_names": [
+                  "node-v1:16260e04f12d568544fc66aad0d774b616efafdc99f76fd8bc543c375fadb8e6"
+                ]
+              },
+              "engine_answer_digest": "sha256-v1:08d869cb3ba75c592becb2efbc3b4b814c29d91e3187f017b36670fbd54a1d75",
+              "engine_version": "finite-reference-v1",
+              "model_kind": "exact",
+              "query_digest": "sha256-v1:f621d01bbaf0cb0daf35380cfec445ed79a6b6df5a290d95aa9d72f81d185237",
+              "raw_disposition": "sat",
+              "refutation_constraint_ids": [],
+              "schema_version": 1,
+              "scope": "within_bounds",
+              "status": "feasible",
+              "type": "proof"
+            },
+            {
+              "constraint_id": "path-001",
+              "evidence_ids": [
+                "evidence-v1:a3fb385605c676ce68683eefafd78024be093e1b36180310c031a266927c8165",
+                "evidence-v1:f296d634bc9d7f8a2325277cec3f607c447e615dc21666297e7c01571fa0e994"
+              ],
+              "expected": true,
+              "left": {
+                "kind": "binary",
+                "operands": [
+                  {
+                    "kind": "constant",
+                    "operands": [],
+                    "operator": null,
+                    "value": 1,
+                    "variable": null,
+                    "width_bits": 8
+                  },
+                  {
+                    "kind": "variable",
+                    "operands": [],
+                    "operator": null,
+                    "value": null,
+                    "variable": "node-v1:16260e04f12d568544fc66aad0d774b616efafdc99f76fd8bc543c375fadb8e6",
+                    "width_bits": 8
+                  }
+                ],
+                "operator": "bit_and",
+                "value": null,
+                "variable": null,
+                "width_bits": 8
+              },
+              "origin_id": "node-v1:84f74958a6d4a1234c81d694acf99d84aa33597882e97f35738fc1c3ce650544",
+              "predicate": "ne",
+              "right": {
+                "kind": "constant",
+                "operands": [],
+                "operator": null,
+                "value": 0,
+                "variable": null,
+                "width_bits": 8
+              },
+              "rule_id": "program-path-v1",
+              "signedness": null,
+              "type": "path_constraint"
+            },
+            {
+              "domain": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25,
+                26,
+                27,
+                28,
+                29,
+                30,
+                31,
+                32,
+                33,
+                34,
+                35,
+                36,
+                37,
+                38,
+                39,
+                40,
+                41,
+                42,
+                43,
+                44,
+                45,
+                46,
+                47,
+                48,
+                49,
+                50,
+                51,
+                52,
+                53,
+                54,
+                55,
+                56,
+                57,
+                58,
+                59,
+                60,
+                61,
+                62,
+                63,
+                64,
+                65,
+                66,
+                67,
+                68,
+                69,
+                70,
+                71,
+                72,
+                73,
+                74,
+                75,
+                76,
+                77,
+                78,
+                79,
+                80,
+                81,
+                82,
+                83,
+                84,
+                85,
+                86,
+                87,
+                88,
+                89,
+                90,
+                91,
+                92,
+                93,
+                94,
+                95,
+                96,
+                97,
+                98,
+                99,
+                100,
+                101,
+                102,
+                103,
+                104,
+                105,
+                106,
+                107,
+                108,
+                109,
+                110,
+                111,
+                112,
+                113,
+                114,
+                115,
+                116,
+                117,
+                118,
+                119,
+                120,
+                121,
+                122,
+                123,
+                124,
+                125,
+                126,
+                127,
+                128,
+                129,
+                130,
+                131,
+                132,
+                133,
+                134,
+                135,
+                136,
+                137,
+                138,
+                139,
+                140,
+                141,
+                142,
+                143,
+                144,
+                145,
+                146,
+                147,
+                148,
+                149,
+                150,
+                151,
+                152,
+                153,
+                154,
+                155,
+                156,
+                157,
+                158,
+                159,
+                160,
+                161,
+                162,
+                163,
+                164,
+                165,
+                166,
+                167,
+                168,
+                169,
+                170,
+                171,
+                172,
+                173,
+                174,
+                175,
+                176,
+                177,
+                178,
+                179,
+                180,
+                181,
+                182,
+                183,
+                184,
+                185,
+                186,
+                187,
+                188,
+                189,
+                190,
+                191,
+                192,
+                193,
+                194,
+                195,
+                196,
+                197,
+                198,
+                199,
+                200,
+                201,
+                202,
+                203,
+                204,
+                205,
+                206,
+                207,
+                208,
+                209,
+                210,
+                211,
+                212,
+                213,
+                214,
+                215,
+                216,
+                217,
+                218,
+                219,
+                220,
+                221,
+                222,
+                223,
+                224,
+                225,
+                226,
+                227,
+                228,
+                229,
+                230,
+                231,
+                232,
+                233,
+                234,
+                235,
+                236,
+                237,
+                238,
+                239,
+                240,
+                241,
+                242,
+                243,
+                244,
+                245,
+                246,
+                247,
+                248,
+                249,
+                250,
+                251,
+                252,
+                253,
+                254,
+                255
+              ],
+              "name": "node-v1:16260e04f12d568544fc66aad0d774b616efafdc99f76fd8bc543c375fadb8e6",
+              "type": "path_variable",
+              "width_bits": 8
+            },
+            {
+              "evidence_ids": [],
+              "key": "cfg_prefix",
+              "kind": "analysis",
+              "type": "path_assumption",
+              "value": "[0,1,4]"
+            },
+            {
+              "evidence_ids": [],
+              "key": "scope",
+              "kind": "analysis",
+              "type": "path_assumption",
+              "value": "reaches_last_block_before_execution"
+            },
+            {
+              "name": "node-v1:16260e04f12d568544fc66aad0d774b616efafdc99f76fd8bc543c375fadb8e6",
+              "type": "witness_assignment",
+              "value": 1,
+              "width_bits": 8
+            },
+            {
+              "actual": true,
+              "constraint_id": "path-001",
+              "expected": true,
+              "left_value": 1,
+              "predicate": "ne",
+              "right_value": 0,
+              "satisfied": true,
+              "type": "witness_evaluation",
+              "width_bits": 8
+            },
+            {
+              "evidence_id": "evidence-v1:a3fb385605c676ce68683eefafd78024be093e1b36180310c031a266927c8165",
+              "type": "evidence"
+            },
+            {
+              "evidence_id": "evidence-v1:f296d634bc9d7f8a2325277cec3f607c447e615dc21666297e7c01571fa0e994",
+              "type": "evidence"
+            }
+          ],
+          "metadata": {
+            "model_kind": "exact",
+            "no_auto_vulnerability_verdict": true,
+            "query_cache_key": "sha256-v1:c861cb75e1c265aca92117c772dd83cb216b99151f7e912f90f036d8d3c8dbf2",
+            "query_digest": "sha256-v1:f621d01bbaf0cb0daf35380cfec445ed79a6b6df5a290d95aa9d72f81d185237",
+            "scope": "within_bounds",
+            "source_artifact": "artifact_c28cd39d32f740779b43970fcf2e91b6",
+            "status": "feasible",
+            "target_executed": false,
+            "witness_valid": true
+          },
+          "result": {
+            "model_kind": "exact",
+            "no_auto_vulnerability_verdict": true,
+            "path_proof_artifact": "artifact_01ecf7a78e5943cc87e50ac474fc3fe8",
+            "scope": "within_bounds",
+            "status": "feasible",
+            "target_executed": false,
+            "unresolved": []
+          },
+          "selector": {
+            "bindings": {
+              "graph_digest": "sha256-v1:416f79c3c7007953afa63f6a00454381cd0db37fb217ad2df1516fff08fa9157",
+              "profile_digest": "sha256-v1:e4633e61f0a2e21ddf355ce6c1766bf7ad02e32a2cf294407f36524d3c1e024f",
+              "ruleset_digest": "sha256-v1:d8ab490fec53f884af8f3a670b9fe752ce44017f30c58e63a2bfac2dc3b7f863",
+              "snapshot_id": "snapshot-v1:c6ac5b6e2e58943cd3c2b570c59dcfdac885b9b2e34bc4ce40dce658f6b9efe8",
+              "summary_digests": [
+                "sha256-v1:79f01e4de0cc97f8807a0447d2a2b0c8e72e4c93a5062efbc31db393b08abcfc"
+              ]
+            },
+            "blocks": [
+              0,
+              1,
+              4
+            ],
+            "schema_version": 1
+          }
+        }
+      ],
+      "registered_tools": [
+        "flow_cancel_job",
+        "flow_cancel_trace",
+        "flow_check_path",
+        "flow_continue_trace",
+        "flow_create_implicit_analysis",
+        "flow_create_snapshot",
+        "flow_get_call_compositions",
+        "flow_get_capabilities",
+        "flow_get_cfg",
+        "flow_get_evidence",
+        "flow_get_function_ssa",
+        "flow_get_graph",
+        "flow_get_implicit_analysis",
+        "flow_get_job",
+        "flow_trace_backward",
+        "flow_trace_forward",
+        "idb_list",
+        "idb_open",
+        "list_funcs",
+        "lookup_funcs",
+        "server_health"
+      ],
+      "sdk_version": "26.4",
+      "target_executed": false
+    },
+    {
+      "abi": "darwin-aarch64",
+      "arch": "arm64",
+      "binary_sha256": [
+        "be88453ecb0148750181128f43bb5b0d66019b85f720af19a65d73296157005a",
+        "be88453ecb0148750181128f43bb5b0d66019b85f720af19a65d73296157005a"
+      ],
+      "build_id": "flow-build-sha256-v1:866d11d882a2d8ea57e87d6a58f872d1cc57d5cf26a98a69158aed0fa3875a2f",
+      "calls": [
+        {
+          "response_chars": 3073,
+          "tool": "flow_get_capabilities",
+          "truncated": false
+        },
+        {
+          "response_chars": 104,
+          "tool": "flow_create_snapshot",
+          "truncated": false
+        },
+        {
+          "response_chars": 176,
+          "tool": "flow_get_job",
+          "truncated": false
+        },
+        {
+          "response_chars": 1385,
+          "tool": "flow_get_job",
+          "truncated": false
+        },
+        {
+          "response_chars": 2415,
+          "tool": "flow_get_cfg",
+          "truncated": false
+        },
+        {
+          "response_chars": 15869,
+          "tool": "flow_get_graph",
+          "truncated": false
+        },
+        {
+          "response_chars": 7942,
+          "tool": "flow_get_graph",
+          "truncated": false
+        },
+        {
+          "response_chars": 104,
+          "tool": "flow_check_path",
+          "truncated": false
+        },
+        {
+          "response_chars": 177,
+          "tool": "flow_get_job",
+          "truncated": false
+        },
+        {
+          "response_chars": 393,
+          "tool": "flow_get_job",
+          "truncated": false
+        },
+        {
+          "response_chars": 3362,
+          "tool": "flow_check_path",
+          "truncated": false
+        },
+        {
+          "response_chars": 2072,
+          "tool": "flow_check_path",
+          "truncated": false
+        },
+        {
+          "response_chars": 930,
+          "tool": "flow_check_path",
+          "truncated": false
+        },
+        {
+          "response_chars": 956,
+          "tool": "flow_check_path",
+          "truncated": false
+        },
+        {
+          "response_chars": 695,
+          "tool": "flow_check_path",
+          "truncated": false
+        },
+        {
+          "response_chars": 104,
+          "tool": "flow_check_path",
+          "truncated": false
+        },
+        {
+          "response_chars": 177,
+          "tool": "flow_get_job",
+          "truncated": false
+        },
+        {
+          "response_chars": 393,
+          "tool": "flow_get_job",
+          "truncated": false
+        },
+        {
+          "response_chars": 3361,
+          "tool": "flow_check_path",
+          "truncated": false
+        },
+        {
+          "response_chars": 2072,
+          "tool": "flow_check_path",
+          "truncated": false
+        },
+        {
+          "response_chars": 930,
+          "tool": "flow_check_path",
+          "truncated": false
+        },
+        {
+          "response_chars": 954,
+          "tool": "flow_check_path",
+          "truncated": false
+        },
+        {
+          "response_chars": 695,
+          "tool": "flow_check_path",
+          "truncated": false
+        }
+      ],
+      "cfg": [
+        {
+          "block": 0,
+          "dominators": [
+            0
+          ],
+          "frontier": [],
+          "immediate": null,
+          "predecessors": [],
+          "successors": [
+            1
+          ]
+        },
+        {
+          "block": 1,
+          "dominators": [
+            0,
+            1
+          ],
+          "frontier": [],
+          "immediate": 0,
+          "predecessors": [
+            0
+          ],
+          "successors": [
+            2,
+            3
+          ]
+        },
+        {
+          "block": 2,
+          "dominators": [
+            0,
+            1,
+            2
+          ],
+          "frontier": [
+            4
+          ],
+          "immediate": 1,
+          "predecessors": [
+            1
+          ],
+          "successors": [
+            4
+          ]
+        },
+        {
+          "block": 3,
+          "dominators": [
+            0,
+            1,
+            3
+          ],
+          "frontier": [
+            4
+          ],
+          "immediate": 1,
+          "predecessors": [
+            1
+          ],
+          "successors": [
+            4
+          ]
+        },
+        {
+          "block": 4,
+          "dominators": [
+            0,
+            1,
+            4
+          ],
+          "frontier": [],
+          "immediate": 1,
+          "predecessors": [
+            2,
+            3
+          ],
+          "successors": []
+        }
+      ],
+      "compiler": "Apple clang version 21.0.0 (clang-2100.0.123.102)\nTarget: arm64-apple-darwin27.0.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin",
+      "copied_binary_sha256": "be88453ecb0148750181128f43bb5b0d66019b85f720af19a65d73296157005a",
+      "environment": {
+        "bits": 64,
+        "endian": "little",
+        "hexrays_initialization": {
+          "reason": "init_hexrays_plugin returned True",
+          "status": "available"
+        },
+        "hexrays_version": "9.3.0.260213",
+        "ida_version": "9.3",
+        "processor": "ARM",
+        "python_version": "3.11.16"
+      },
+      "flags": [
+        "-arch",
+        "arm64",
+        "-O1",
+        "-fomit-frame-pointer",
+        "-fno-stack-protector",
+        "-Wl,-no_uuid"
+      ],
+      "fresh_builds": 2,
+      "graph": [
+        {
+          "constant": null,
+          "evidence_ids": [
+            "evidence-v1:058fe1ffdb07efe4a7e672fb90b317c8b86fc40004bc53c5f3e62244704857c4"
+          ],
+          "inputs": [
+            "node-v1:a27518c17ef2094bb6656b0eb40c37c722e08f2e527e9fc8e1d22671b20e6a85",
+            "node-v1:b50e29a4ccae5a2536a8ec7fb78d8cb9a56889fbf126b0e4ad862075bfbba54e"
+          ],
+          "key": {
+            "function_id": "function-entry:4294968232",
+            "site": null,
+            "snapshot_id": "snapshot-v1:dbfaabb5f9eb6f6a1f08d7779042b123deac26af0dbc8de9d27e9e2f08bdca13",
+            "synthetic": "memory:ssa:b2:n12"
+          },
+          "kind": "Store",
+          "memory": {
+            "address_space": "ram",
+            "endian": "little",
+            "interval": {
+              "end": 1,
+              "start": 0
+            },
+            "object_id": "object-v1:5e739e04d3a64a6461d05b8670e66e2cc3d483884476e79fb63b5148a0ce4669",
+            "version_id": "memory-v1:256f2cc5168b8d912e1e5a3b1ada8de657b5f1660bd85e5ee6de1487bc9a91f5"
+          },
+          "memory_operands": {
+            "address": "node-v1:b50e29a4ccae5a2536a8ec7fb78d8cb9a56889fbf126b0e4ad862075bfbba54e",
+            "data": "node-v1:a27518c17ef2094bb6656b0eb40c37c722e08f2e527e9fc8e1d22671b20e6a85",
+            "segment": null
+          },
+          "node_id": "node-v1:0498a991b6f229812fe7fe2117355bb947fab931f7a267f012f83aebe959cd14",
+          "operation": null,
+          "phi_block": null,
+          "phi_inputs": [],
+          "signed": null,
+          "type": "node",
+          "width_bits": 8
+        },
+        {
+          "constant": 7,
+          "evidence_ids": [
+            "evidence-v1:ebc4713e03bec0d274be7f37e3fd05c24c84b03c2408e43d017ff18e5bf74072"
+          ],
+          "inputs": [],
+          "key": {
+            "function_id": "function-entry:4294968232",
+            "site": null,
+            "snapshot_id": "snapshot-v1:dbfaabb5f9eb6f6a1f08d7779042b123deac26af0dbc8de9d27e9e2f08bdca13",
+            "synthetic": "memory:ssa:b2:n9"
+          },
+          "kind": "Constant",
+          "memory": null,
+          "memory_operands": null,
+          "node_id": "node-v1:2b193e20d9af31a79f7ee325a2b753de3e8368067c72070901a07fa1e16f08c2",
+          "operation": null,
+          "phi_block": null,
+          "phi_inputs": [],
+          "signed": null,
+          "type": "node",
+          "width_bits": 8
+        },
+        {
+          "constant": null,
+          "evidence_ids": [
+            "evidence-v1:de1448d8d598f7636520897ebe22a8e455a63d0872431f4e7e25d4bc2bba832a"
+          ],
+          "inputs": [
+            "node-v1:b3e6bace399266212cda051647ab80870dbeb656ed1f4d07a671c0e18b50b15e",
+            "node-v1:706eeea41e04e39eb185b2826186e51b9efa20c164d8dba7720394f45c32fb17"
+          ],
+          "key": {
+            "function_id": "function-entry:4294968232",
+            "site": null,
+            "snapshot_id": "snapshot-v1:dbfaabb5f9eb6f6a1f08d7779042b123deac26af0dbc8de9d27e9e2f08bdca13",
+            "synthetic": "memory:ssa:b3:n16"
+          },
+          "kind": "Store",
+          "memory": {
+            "address_space": "ram",
+            "endian": "little",
+            "interval": {
+              "end": 1,
+              "start": 0
+            },
+            "object_id": "object-v1:bae30d286dca7d7f529ca224de6dd92f73b4d18b27d7aa72a81f4427bf4378e9",
+            "version_id": "memory-v1:03451479f0d2618491b7b9aef53f745bceb930fb8ff6d0e114eeaccdd66937e8"
+          },
+          "memory_operands": {
+            "address": "node-v1:706eeea41e04e39eb185b2826186e51b9efa20c164d8dba7720394f45c32fb17",
+            "data": "node-v1:b3e6bace399266212cda051647ab80870dbeb656ed1f4d07a671c0e18b50b15e",
+            "segment": null
+          },
+          "node_id": "node-v1:3a8c5b49000a58fd87010f6d8c211dadad3624b108c434a408c9487dd8f74217",
+          "operation": null,
+          "phi_block": null,
+          "phi_inputs": [],
+          "signed": null,
+          "type": "node",
+          "width_bits": 8
+        },
+        {
+          "constant": null,
+          "evidence_ids": [
+            "evidence-v1:944af70c581820fafb8ca4e3ea3d5d88e3c7bf231f6d9f5567e7efa3bdc22000"
+          ],
+          "inputs": [],
+          "key": {
+            "function_id": "function-entry:4294968232",
+            "site": null,
+            "snapshot_id": "snapshot-v1:dbfaabb5f9eb6f6a1f08d7779042b123deac26af0dbc8de9d27e9e2f08bdca13",
+            "synthetic": "memory:entry:microregister:microregister:72:24"
+          },
+          "kind": "InputValue",
+          "memory": null,
+          "memory_operands": null,
+          "node_id": "node-v1:431a10c271ffc4f9072971fb1c372acae309b572ca5be7bd67c3fc2db9c294a1",
+          "operation": null,
+          "phi_block": null,
+          "phi_inputs": [],
+          "signed": null,
+          "type": "node",
+          "width_bits": 24
+        },
+        {
+          "constant": null,
+          "evidence_ids": [
+            "evidence-v1:d6bc1b0bc55c5baf217a097a0bd8d051fa3fe4aca9306fc4fb6550924a36f63d"
+          ],
+          "inputs": [
+            "node-v1:d03b7520ccbb095818098c100c1c39940dadec6b111eaa847b253e958f894c38",
+            "node-v1:431a10c271ffc4f9072971fb1c372acae309b572ca5be7bd67c3fc2db9c294a1"
+          ],
+          "key": {
+            "function_id": "function-entry:4294968232",
+            "site": null,
+            "snapshot_id": "snapshot-v1:dbfaabb5f9eb6f6a1f08d7779042b123deac26af0dbc8de9d27e9e2f08bdca13",
+            "synthetic": "memory:ssa:b1:n3"
+          },
+          "kind": "Binary",
+          "memory": null,
+          "memory_operands": null,
+          "node_id": "node-v1:4410d2f9a8e671259f4390ee661f46f4793197f4cb9570a03475e4d4017583b3",
+          "operation": "concat_low",
+          "phi_block": null,
+          "phi_inputs": [],
+          "signed": null,
+          "type": "node",
+          "width_bits": 32
+        },
+        {
+          "constant": 1,
+          "evidence_ids": [
+            "evidence-v1:06b828ff9a06926fea7cd41c50a9f167685ca0aa8ac03700230c3995dbef7a98"
+          ],
+          "inputs": [],
+          "key": {
+            "function_id": "function-entry:4294968232",
+            "site": null,
+            "snapshot_id": "snapshot-v1:dbfaabb5f9eb6f6a1f08d7779042b123deac26af0dbc8de9d27e9e2f08bdca13",
+            "synthetic": "memory:ssa:b1:n4"
+          },
+          "kind": "Constant",
+          "memory": null,
+          "memory_operands": null,
+          "node_id": "node-v1:6765ba53274801ddfe899d6fc3092356ba2c3c053377618fd80d87a369bb20c9",
+          "operation": null,
+          "phi_block": null,
+          "phi_inputs": [],
+          "signed": null,
+          "type": "node",
+          "width_bits": 32
+        },
+        {
+          "constant": 4294983680,
+          "evidence_ids": [
+            "evidence-v1:6404fe81e7d9d5d059055c239cddffbdd99eca0c50109a2b11ac3ef66fd13e52"
+          ],
+          "inputs": [],
+          "key": {
+            "function_id": "function-entry:4294968232",
+            "site": null,
+            "snapshot_id": "snapshot-v1:dbfaabb5f9eb6f6a1f08d7779042b123deac26af0dbc8de9d27e9e2f08bdca13",
+            "synthetic": "memory:ssa:b3:n15"
+          },
+          "kind": "Constant",
+          "memory": null,
+          "memory_operands": null,
+          "node_id": "node-v1:706eeea41e04e39eb185b2826186e51b9efa20c164d8dba7720394f45c32fb17",
+          "operation": "global_address",
+          "phi_block": null,
+          "phi_inputs": [],
+          "signed": null,
+          "type": "node",
+          "width_bits": 64
+        },
+        {
+          "constant": null,
+          "evidence_ids": [
+            "evidence-v1:7d5156461e99822f5e9ca23e064bf1bf47380b978599dcd8e62fe1fb78aa2cc1"
+          ],
+          "inputs": [
+            "node-v1:a4f3448c29efd45d4344d04a01096314fd16edb552982016046463a4452bfb27"
+          ],
+          "key": {
+            "function_id": "function-entry:4294968232",
+            "site": null,
+            "snapshot_id": "snapshot-v1:dbfaabb5f9eb6f6a1f08d7779042b123deac26af0dbc8de9d27e9e2f08bdca13",
+            "synthetic": "memory:ssa:b1:n8"
+          },
+          "kind": "Branch",
+          "memory": null,
+          "memory_operands": null,
+          "node_id": "node-v1:7ebd50118f8c2b8a30d5b77cba664c9634c7d96ea10f1ebb9c32ff3866d1f883",
+          "operation": null,
+          "phi_block": null,
+          "phi_inputs": [],
+          "signed": null,
+          "type": "node",
+          "width_bits": null
+        },
+        {
+          "constant": null,
+          "evidence_ids": [
+            "evidence-v1:7cca135bf1d2f8905f41165f464b3b352521e6af34e291111719070d3303b85a"
+          ],
+          "inputs": [
+            "node-v1:2b193e20d9af31a79f7ee325a2b753de3e8368067c72070901a07fa1e16f08c2"
+          ],
+          "key": {
+            "function_id": "function-entry:4294968232",
+            "site": null,
+            "snapshot_id": "snapshot-v1:dbfaabb5f9eb6f6a1f08d7779042b123deac26af0dbc8de9d27e9e2f08bdca13",
+            "synthetic": "memory:ssa:b2:n10"
+          },
+          "kind": "Copy",
+          "memory": null,
+          "memory_operands": null,
+          "node_id": "node-v1:a27518c17ef2094bb6656b0eb40c37c722e08f2e527e9fc8e1d22671b20e6a85",
+          "operation": null,
+          "phi_block": null,
+          "phi_inputs": [],
+          "signed": null,
+          "type": "node",
+          "width_bits": 8
+        },
+        {
+          "constant": null,
+          "evidence_ids": [
+            "evidence-v1:2d9d6c6e9419b9381d5a57b16cb8f06568471697f69de31292efc80d784d24a4"
+          ],
+          "inputs": [
+            "node-v1:4410d2f9a8e671259f4390ee661f46f4793197f4cb9570a03475e4d4017583b3",
+            "node-v1:6765ba53274801ddfe899d6fc3092356ba2c3c053377618fd80d87a369bb20c9"
+          ],
+          "key": {
+            "function_id": "function-entry:4294968232",
+            "site": null,
+            "snapshot_id": "snapshot-v1:dbfaabb5f9eb6f6a1f08d7779042b123deac26af0dbc8de9d27e9e2f08bdca13",
+            "synthetic": "memory:ssa:b1:n5"
+          },
+          "kind": "Binary",
+          "memory": null,
+          "memory_operands": null,
+          "node_id": "node-v1:a394695cf5dae74eabb7d8f23b5898fb1e7641880f8717e0a6e0885ba1bae20a",
+          "operation": "and",
+          "phi_block": null,
+          "phi_inputs": [],
+          "signed": null,
+          "type": "node",
+          "width_bits": 32
+        },
+        {
+          "constant": null,
+          "evidence_ids": [
+            "evidence-v1:e751488e925bdcc1b84bfd64ec122cb3d8bbc5dc0bf0680c0191eeb995d7b8b5"
+          ],
+          "inputs": [
+            "node-v1:a394695cf5dae74eabb7d8f23b5898fb1e7641880f8717e0a6e0885ba1bae20a",
+            "node-v1:f94d76e2d9140b4eba0aaea32dfb79921271aa4e967b18a1f5098dc18f2f383a"
+          ],
+          "key": {
+            "function_id": "function-entry:4294968232",
+            "site": null,
+            "snapshot_id": "snapshot-v1:dbfaabb5f9eb6f6a1f08d7779042b123deac26af0dbc8de9d27e9e2f08bdca13",
+            "synthetic": "memory:ssa:b1:n7"
+          },
+          "kind": "Compare",
+          "memory": null,
+          "memory_operands": null,
+          "node_id": "node-v1:a4f3448c29efd45d4344d04a01096314fd16edb552982016046463a4452bfb27",
+          "operation": "ne",
+          "phi_block": null,
+          "phi_inputs": [],
+          "signed": null,
+          "type": "node",
+          "width_bits": 1
+        },
+        {
+          "constant": null,
+          "evidence_ids": [
+            "evidence-v1:58e02d780eda0609229fed6fe37e00def840b7a2bca6fc17c774fb3f625fc2fe"
+          ],
+          "inputs": [
+            "node-v1:d03b7520ccbb095818098c100c1c39940dadec6b111eaa847b253e958f894c38"
+          ],
+          "key": {
+            "function_id": "function-entry:4294968232",
+            "site": null,
+            "snapshot_id": "snapshot-v1:dbfaabb5f9eb6f6a1f08d7779042b123deac26af0dbc8de9d27e9e2f08bdca13",
+            "synthetic": "memory:ssa:b3:n14"
+          },
+          "kind": "Copy",
+          "memory": null,
+          "memory_operands": null,
+          "node_id": "node-v1:b3e6bace399266212cda051647ab80870dbeb656ed1f4d07a671c0e18b50b15e",
+          "operation": null,
+          "phi_block": null,
+          "phi_inputs": [],
+          "signed": null,
+          "type": "node",
+          "width_bits": 8
+        },
+        {
+          "constant": 4294983681,
+          "evidence_ids": [
+            "evidence-v1:085c01eb9c2a4873d38a63aabfa33ed5219c0613e227ab26b28b75836fd5c2b2"
+          ],
+          "inputs": [],
+          "key": {
+            "function_id": "function-entry:4294968232",
+            "site": null,
+            "snapshot_id": "snapshot-v1:dbfaabb5f9eb6f6a1f08d7779042b123deac26af0dbc8de9d27e9e2f08bdca13",
+            "synthetic": "memory:ssa:b2:n11"
+          },
+          "kind": "Constant",
+          "memory": null,
+          "memory_operands": null,
+          "node_id": "node-v1:b50e29a4ccae5a2536a8ec7fb78d8cb9a56889fbf126b0e4ad862075bfbba54e",
+          "operation": "global_address",
+          "phi_block": null,
+          "phi_inputs": [],
+          "signed": null,
+          "type": "node",
+          "width_bits": 64
+        },
+        {
+          "constant": null,
+          "evidence_ids": [
+            "evidence-v1:944af70c581820fafb8ca4e3ea3d5d88e3c7bf231f6d9f5567e7efa3bdc22000"
+          ],
+          "inputs": [],
+          "key": {
+            "function_id": "function-entry:4294968232",
+            "site": null,
+            "snapshot_id": "snapshot-v1:dbfaabb5f9eb6f6a1f08d7779042b123deac26af0dbc8de9d27e9e2f08bdca13",
+            "synthetic": "memory:entry:microregister:microregister:64:8"
+          },
+          "kind": "InputValue",
+          "memory": null,
+          "memory_operands": null,
+          "node_id": "node-v1:d03b7520ccbb095818098c100c1c39940dadec6b111eaa847b253e958f894c38",
+          "operation": null,
+          "phi_block": null,
+          "phi_inputs": [],
+          "signed": null,
+          "type": "node",
+          "width_bits": 8
+        },
+        {
+          "constant": null,
+          "evidence_ids": [
+            "evidence-v1:69b10dffec84bd80fc1bcf9de7f02fa2499634784c6fd18a19c38489c46fd7d7"
+          ],
+          "inputs": [],
+          "key": {
+            "function_id": "function-entry:4294968232",
+            "site": null,
+            "snapshot_id": "snapshot-v1:dbfaabb5f9eb6f6a1f08d7779042b123deac26af0dbc8de9d27e9e2f08bdca13",
+            "synthetic": "memory:ssa:b2:n13"
+          },
+          "kind": "Branch",
+          "memory": null,
+          "memory_operands": null,
+          "node_id": "node-v1:d8f90569fba90e2df886423701d61dbf49ffb14a3f2ca81c37d34029be506a95",
+          "operation": null,
+          "phi_block": null,
+          "phi_inputs": [],
+          "signed": null,
+          "type": "node",
+          "width_bits": null
+        },
+        {
+          "constant": 0,
+          "evidence_ids": [
+            "evidence-v1:06b828ff9a06926fea7cd41c50a9f167685ca0aa8ac03700230c3995dbef7a98"
+          ],
+          "inputs": [],
+          "key": {
+            "function_id": "function-entry:4294968232",
+            "site": null,
+            "snapshot_id": "snapshot-v1:dbfaabb5f9eb6f6a1f08d7779042b123deac26af0dbc8de9d27e9e2f08bdca13",
+            "synthetic": "memory:ssa:b1:n6"
+          },
+          "kind": "Constant",
+          "memory": null,
+          "memory_operands": null,
+          "node_id": "node-v1:f94d76e2d9140b4eba0aaea32dfb79921271aa4e967b18a1f5098dc18f2f383a",
+          "operation": null,
+          "phi_block": null,
+          "phi_inputs": [],
+          "signed": null,
+          "type": "node",
+          "width_bits": 32
+        },
+        {
+          "axes": {
+            "alias": "unknown",
+            "analysis": "partial",
+            "precision": "exact",
+            "proof": "not_requested",
+            "provenance": "computed",
+            "traversal": "frontier_exhausted"
+          },
+          "edge_id": "edge-v1:192314b76611a6bc6939876a8d5ef4e6ed0d875527c726d184abfc290dffbd9f",
+          "evidence_ids": [
+            "evidence-v1:d6bc1b0bc55c5baf217a097a0bd8d051fa3fe4aca9306fc4fb6550924a36f63d"
+          ],
+          "interval": null,
+          "kind": "value_dependency",
+          "memory_object_id": null,
+          "memory_rule_id": null,
+          "predecessor": null,
+          "source": "node-v1:d03b7520ccbb095818098c100c1c39940dadec6b111eaa847b253e958f894c38",
+          "target": "node-v1:4410d2f9a8e671259f4390ee661f46f4793197f4cb9570a03475e4d4017583b3",
+          "type": "edge",
+          "width_bits": null
+        },
+        {
+          "axes": {
+            "alias": "unknown",
+            "analysis": "partial",
+            "precision": "exact",
+            "proof": "not_requested",
+            "provenance": "computed",
+            "traversal": "frontier_exhausted"
+          },
+          "edge_id": "edge-v1:242055c47e949a8182996988b260b5a66dd0feab379d17be00b1a447063b7fbe",
+          "evidence_ids": [
+            "evidence-v1:de1448d8d598f7636520897ebe22a8e455a63d0872431f4e7e25d4bc2bba832a"
+          ],
+          "interval": null,
+          "kind": "address_dependency",
+          "memory_object_id": null,
+          "memory_rule_id": null,
+          "predecessor": null,
+          "source": "node-v1:706eeea41e04e39eb185b2826186e51b9efa20c164d8dba7720394f45c32fb17",
+          "target": "node-v1:3a8c5b49000a58fd87010f6d8c211dadad3624b108c434a408c9487dd8f74217",
+          "type": "edge",
+          "width_bits": null
+        },
+        {
+          "axes": {
+            "alias": "unknown",
+            "analysis": "partial",
+            "precision": "exact",
+            "proof": "not_requested",
+            "provenance": "computed",
+            "traversal": "frontier_exhausted"
+          },
+          "edge_id": "edge-v1:3dfdb3b059e361dbc95ed4aec1ef5caace1567ef738de646d77c30ae556eedeb",
+          "evidence_ids": [
+            "evidence-v1:2d9d6c6e9419b9381d5a57b16cb8f06568471697f69de31292efc80d784d24a4"
+          ],
+          "interval": null,
+          "kind": "value_dependency",
+          "memory_object_id": null,
+          "memory_rule_id": null,
+          "predecessor": null,
+          "source": "node-v1:4410d2f9a8e671259f4390ee661f46f4793197f4cb9570a03475e4d4017583b3",
+          "target": "node-v1:a394695cf5dae74eabb7d8f23b5898fb1e7641880f8717e0a6e0885ba1bae20a",
+          "type": "edge",
+          "width_bits": null
+        },
+        {
+          "axes": {
+            "alias": "unknown",
+            "analysis": "partial",
+            "precision": "exact",
+            "proof": "not_requested",
+            "provenance": "computed",
+            "traversal": "frontier_exhausted"
+          },
+          "edge_id": "edge-v1:430d7577fae060aa5900e41d8d84568ff23ccd63318ff2872c0b8bcf41bca07b",
+          "evidence_ids": [
+            "evidence-v1:7d5156461e99822f5e9ca23e064bf1bf47380b978599dcd8e62fe1fb78aa2cc1"
+          ],
+          "interval": null,
+          "kind": "value_dependency",
+          "memory_object_id": null,
+          "memory_rule_id": null,
+          "predecessor": null,
+          "source": "node-v1:a4f3448c29efd45d4344d04a01096314fd16edb552982016046463a4452bfb27",
+          "target": "node-v1:7ebd50118f8c2b8a30d5b77cba664c9634c7d96ea10f1ebb9c32ff3866d1f883",
+          "type": "edge",
+          "width_bits": null
+        },
+        {
+          "axes": {
+            "alias": "unknown",
+            "analysis": "partial",
+            "precision": "exact",
+            "proof": "not_requested",
+            "provenance": "computed",
+            "traversal": "frontier_exhausted"
+          },
+          "edge_id": "edge-v1:6010a355b838518d34ef5a1459b59b0878a960254e1ad55a4dff94f4afda2010",
+          "evidence_ids": [
+            "evidence-v1:058fe1ffdb07efe4a7e672fb90b317c8b86fc40004bc53c5f3e62244704857c4"
+          ],
+          "interval": null,
+          "kind": "address_dependency",
+          "memory_object_id": null,
+          "memory_rule_id": null,
+          "predecessor": null,
+          "source": "node-v1:b50e29a4ccae5a2536a8ec7fb78d8cb9a56889fbf126b0e4ad862075bfbba54e",
+          "target": "node-v1:0498a991b6f229812fe7fe2117355bb947fab931f7a267f012f83aebe959cd14",
+          "type": "edge",
+          "width_bits": null
+        },
+        {
+          "axes": {
+            "alias": "unknown",
+            "analysis": "partial",
+            "precision": "exact",
+            "proof": "not_requested",
+            "provenance": "computed",
+            "traversal": "frontier_exhausted"
+          },
+          "edge_id": "edge-v1:7ffe94a9338d9723d592713bc65c685a5d2edaec3934f8b8c078fe33cd6adffd",
+          "evidence_ids": [
+            "evidence-v1:2d9d6c6e9419b9381d5a57b16cb8f06568471697f69de31292efc80d784d24a4"
+          ],
+          "interval": null,
+          "kind": "value_dependency",
+          "memory_object_id": null,
+          "memory_rule_id": null,
+          "predecessor": null,
+          "source": "node-v1:6765ba53274801ddfe899d6fc3092356ba2c3c053377618fd80d87a369bb20c9",
+          "target": "node-v1:a394695cf5dae74eabb7d8f23b5898fb1e7641880f8717e0a6e0885ba1bae20a",
+          "type": "edge",
+          "width_bits": null
+        },
+        {
+          "axes": {
+            "alias": "unknown",
+            "analysis": "partial",
+            "precision": "exact",
+            "proof": "not_requested",
+            "provenance": "computed",
+            "traversal": "frontier_exhausted"
+          },
+          "edge_id": "edge-v1:868b07307f465a524fb4a77dd2c401a14d0c214d70f8c59938f84cacfe7d74fe",
+          "evidence_ids": [
+            "evidence-v1:de1448d8d598f7636520897ebe22a8e455a63d0872431f4e7e25d4bc2bba832a"
+          ],
+          "interval": null,
+          "kind": "memory_data_dependency",
+          "memory_object_id": null,
+          "memory_rule_id": null,
+          "predecessor": null,
+          "source": "node-v1:b3e6bace399266212cda051647ab80870dbeb656ed1f4d07a671c0e18b50b15e",
+          "target": "node-v1:3a8c5b49000a58fd87010f6d8c211dadad3624b108c434a408c9487dd8f74217",
+          "type": "edge",
+          "width_bits": null
+        },
+        {
+          "axes": {
+            "alias": "unknown",
+            "analysis": "partial",
+            "precision": "exact",
+            "proof": "not_requested",
+            "provenance": "computed",
+            "traversal": "frontier_exhausted"
+          },
+          "edge_id": "edge-v1:94a549c0e4689fa2c062c57cd8cd60cc474a5ae2d020f027eae20725e22eddb9",
+          "evidence_ids": [
+            "evidence-v1:58e02d780eda0609229fed6fe37e00def840b7a2bca6fc17c774fb3f625fc2fe"
+          ],
+          "interval": null,
+          "kind": "value_dependency",
+          "memory_object_id": null,
+          "memory_rule_id": null,
+          "predecessor": null,
+          "source": "node-v1:d03b7520ccbb095818098c100c1c39940dadec6b111eaa847b253e958f894c38",
+          "target": "node-v1:b3e6bace399266212cda051647ab80870dbeb656ed1f4d07a671c0e18b50b15e",
+          "type": "edge",
+          "width_bits": null
+        },
+        {
+          "axes": {
+            "alias": "unknown",
+            "analysis": "partial",
+            "precision": "exact",
+            "proof": "not_requested",
+            "provenance": "computed",
+            "traversal": "frontier_exhausted"
+          },
+          "edge_id": "edge-v1:a561950a8b827fdddaa92d56709cb3a42742929742c57db3443fbc1ee8b42976",
+          "evidence_ids": [
+            "evidence-v1:058fe1ffdb07efe4a7e672fb90b317c8b86fc40004bc53c5f3e62244704857c4"
+          ],
+          "interval": null,
+          "kind": "memory_data_dependency",
+          "memory_object_id": null,
+          "memory_rule_id": null,
+          "predecessor": null,
+          "source": "node-v1:a27518c17ef2094bb6656b0eb40c37c722e08f2e527e9fc8e1d22671b20e6a85",
+          "target": "node-v1:0498a991b6f229812fe7fe2117355bb947fab931f7a267f012f83aebe959cd14",
+          "type": "edge",
+          "width_bits": null
+        },
+        {
+          "axes": {
+            "alias": "unknown",
+            "analysis": "partial",
+            "precision": "exact",
+            "proof": "not_requested",
+            "provenance": "computed",
+            "traversal": "frontier_exhausted"
+          },
+          "edge_id": "edge-v1:af5e0db1c171ab5e108f7fbac9623bc168b2bc3f8098056134c2bf027752e07a",
+          "evidence_ids": [
+            "evidence-v1:e751488e925bdcc1b84bfd64ec122cb3d8bbc5dc0bf0680c0191eeb995d7b8b5"
+          ],
+          "interval": null,
+          "kind": "value_dependency",
+          "memory_object_id": null,
+          "memory_rule_id": null,
+          "predecessor": null,
+          "source": "node-v1:f94d76e2d9140b4eba0aaea32dfb79921271aa4e967b18a1f5098dc18f2f383a",
+          "target": "node-v1:a4f3448c29efd45d4344d04a01096314fd16edb552982016046463a4452bfb27",
+          "type": "edge",
+          "width_bits": null
+        },
+        {
+          "axes": {
+            "alias": "unknown",
+            "analysis": "partial",
+            "precision": "exact",
+            "proof": "not_requested",
+            "provenance": "computed",
+            "traversal": "frontier_exhausted"
+          },
+          "edge_id": "edge-v1:cbf6bfe60f7b532572a4bdb9e737a0ee144815a2b03d9afad7c85b78d8504262",
+          "evidence_ids": [
+            "evidence-v1:d6bc1b0bc55c5baf217a097a0bd8d051fa3fe4aca9306fc4fb6550924a36f63d"
+          ],
+          "interval": null,
+          "kind": "value_dependency",
+          "memory_object_id": null,
+          "memory_rule_id": null,
+          "predecessor": null,
+          "source": "node-v1:431a10c271ffc4f9072971fb1c372acae309b572ca5be7bd67c3fc2db9c294a1",
+          "target": "node-v1:4410d2f9a8e671259f4390ee661f46f4793197f4cb9570a03475e4d4017583b3",
+          "type": "edge",
+          "width_bits": null
+        },
+        {
+          "axes": {
+            "alias": "unknown",
+            "analysis": "partial",
+            "precision": "exact",
+            "proof": "not_requested",
+            "provenance": "computed",
+            "traversal": "frontier_exhausted"
+          },
+          "edge_id": "edge-v1:e07e73aac1dfb2f74ddfdb610fe031339073849366b257d8b4d65e96c28b70eb",
+          "evidence_ids": [
+            "evidence-v1:e751488e925bdcc1b84bfd64ec122cb3d8bbc5dc0bf0680c0191eeb995d7b8b5"
+          ],
+          "interval": null,
+          "kind": "value_dependency",
+          "memory_object_id": null,
+          "memory_rule_id": null,
+          "predecessor": null,
+          "source": "node-v1:a394695cf5dae74eabb7d8f23b5898fb1e7641880f8717e0a6e0885ba1bae20a",
+          "target": "node-v1:a4f3448c29efd45d4344d04a01096314fd16edb552982016046463a4452bfb27",
+          "type": "edge",
+          "width_bits": null
+        },
+        {
+          "axes": {
+            "alias": "unknown",
+            "analysis": "partial",
+            "precision": "exact",
+            "proof": "not_requested",
+            "provenance": "computed",
+            "traversal": "frontier_exhausted"
+          },
+          "edge_id": "edge-v1:f5706c5454b7b152d33e32b7bca2b1b8089b762d5597cc732603a9d2274246a1",
+          "evidence_ids": [
+            "evidence-v1:7cca135bf1d2f8905f41165f464b3b352521e6af34e291111719070d3303b85a"
+          ],
+          "interval": null,
+          "kind": "value_dependency",
+          "memory_object_id": null,
+          "memory_rule_id": null,
+          "predecessor": null,
+          "source": "node-v1:2b193e20d9af31a79f7ee325a2b753de3e8368067c72070901a07fa1e16f08c2",
+          "target": "node-v1:a27518c17ef2094bb6656b0eb40c37c722e08f2e527e9fc8e1d22671b20e6a85",
+          "type": "edge",
+          "width_bits": null
+        }
+      ],
+      "graph_metadata": {
+        "axes": {
+          "alias": "unknown",
+          "analysis": "partial",
+          "precision": "opaque",
+          "proof": "not_requested",
+          "provenance": "computed",
+          "traversal": "frontier_exhausted"
+        },
+        "diagnostics": [
+          {
+            "code": "chains_not_serialized",
+            "detail": "SDK use-def/UD-DU availability measured in P0, not MemorySSA or serialized chains",
+            "severity": "information"
+          },
+          {
+            "code": "native_origins_incomplete",
+            "detail": "Observed nested microcode EA union only; optimized-away native origins cannot be reconstructed",
+            "severity": "information"
+          }
+        ],
+        "environment": {
+          "abi": "darwin-aarch64",
+          "address_space": "ram",
+          "bitness": 64,
+          "data_endian": "little",
+          "extractor_version": "microcode-extractor/1",
+          "format_id": "FMT-MACHO",
+          "hexrays_build": "9.3.0.260213",
+          "ida_build": "9.3",
+          "instruction_endian": "little",
+          "platform_tag": "darwin",
+          "processor": "ARM"
+        },
+        "graph_digest": "sha256-v1:68f440784b94439207c647318e929d8220a1b2d476fe02fb455f1ce5f32019bf",
+        "limitations": [
+          "This page is intra-function value and byte-range reachability; use the dedicated implicit, bounded-proof, and call-composition artifacts for those distinct semantics.",
+          "Supported-anchor memory edges assume successful flat user-space accesses; TLS/MMIO and null/fault feasibility are unresolved."
+        ],
+        "maturity": "MMAT_CALLS",
+        "memory_dependency_count": 2,
+        "opaque_memory_dependency_count": 0,
+        "profile_digest": "sha256-v1:0e4feefe27049aa1195bcb2814fd2655daf727d05457404289969c6b46e752dc",
+        "rule_digest": "sha256-v1:d8ab490fec53f884af8f3a670b9fe752ce44017f30c58e63a2bfac2dc3b7f863",
+        "snapshot_id": "snapshot-v1:dbfaabb5f9eb6f6a1f08d7779042b123deac26af0dbc8de9d27e9e2f08bdca13",
+        "summary_digest": "sha256-v1:79f01e4de0cc97f8807a0447d2a2b0c8e72e4c93a5062efbc31db393b08abcfc"
+      },
+      "profile": "A64-LE",
+      "proofs": [
+        {
+          "items": [
+            {
+              "abstract_sat": false,
+              "assignments_checked": 1,
+              "assumptions": [
+                {
+                  "evidence_ids": [],
+                  "key": "cfg_prefix",
+                  "kind": "analysis",
+                  "value": "[0,1,2]"
+                },
+                {
+                  "evidence_ids": [],
+                  "key": "scope",
+                  "kind": "analysis",
+                  "value": "reaches_last_block_before_execution"
+                }
+              ],
+              "bindings": {
+                "graph_digest": "sha256-v1:68f440784b94439207c647318e929d8220a1b2d476fe02fb455f1ce5f32019bf",
+                "profile_digest": "sha256-v1:0e4feefe27049aa1195bcb2814fd2655daf727d05457404289969c6b46e752dc",
+                "ruleset_digest": "sha256-v1:d8ab490fec53f884af8f3a670b9fe752ce44017f30c58e63a2bfac2dc3b7f863",
+                "snapshot_id": "snapshot-v1:dbfaabb5f9eb6f6a1f08d7779042b123deac26af0dbc8de9d27e9e2f08bdca13",
+                "summary_digests": [
+                  "sha256-v1:79f01e4de0cc97f8807a0447d2a2b0c8e72e4c93a5062efbc31db393b08abcfc"
+                ]
+              },
+              "bitvector_semantics": "fixed_width_modular_twos_complement_v1",
+              "bounds": {
+                "call_bound": 0,
+                "loop_bound": 0
+              },
+              "budget": {
+                "max_assignments": 65536,
+                "max_evaluations": 1000000,
+                "max_expression_depth": 32,
+                "timeout_ms": 1000
+              },
+              "complete_domain": false,
+              "coverage": {
+                "bounded_only": true,
+                "constraint_ids": [
+                  "path-001"
+                ],
+                "domains_are_exact": true,
+                "operators": [
+                  "bit_and",
+                  "ne"
+                ],
+                "theory": "fixed_width_bitvectors",
+                "variable_domain_digest": "sha256-v1:a9c628bc94ffc29fe6fd5491dae286f953181f161c3a77caba06ebe773648f7e",
+                "variable_names": [
+                  "node-v1:d03b7520ccbb095818098c100c1c39940dadec6b111eaa847b253e958f894c38"
+                ]
+              },
+              "engine_answer_digest": "sha256-v1:bd02076c1e9f2eca13be49443ab567e6c6c2ece5ce8874a3c069c9e02bb9cfbb",
+              "engine_version": "finite-reference-v1",
+              "model_kind": "exact",
+              "query_digest": "sha256-v1:1abae33bc8e23a96f94d48f4bab642ff1dcc9dca235fa3e0694d46eb0054176c",
+              "raw_disposition": "sat",
+              "refutation_constraint_ids": [],
+              "schema_version": 1,
+              "scope": "within_bounds",
+              "status": "feasible",
+              "type": "proof"
+            },
+            {
+              "constraint_id": "path-001",
+              "evidence_ids": [
+                "evidence-v1:7d5156461e99822f5e9ca23e064bf1bf47380b978599dcd8e62fe1fb78aa2cc1",
+                "evidence-v1:e751488e925bdcc1b84bfd64ec122cb3d8bbc5dc0bf0680c0191eeb995d7b8b5"
+              ],
+              "expected": false,
+              "left": {
+                "kind": "binary",
+                "operands": [
+                  {
+                    "kind": "constant",
+                    "operands": [],
+                    "operator": null,
+                    "value": 1,
+                    "variable": null,
+                    "width_bits": 8
+                  },
+                  {
+                    "kind": "variable",
+                    "operands": [],
+                    "operator": null,
+                    "value": null,
+                    "variable": "node-v1:d03b7520ccbb095818098c100c1c39940dadec6b111eaa847b253e958f894c38",
+                    "width_bits": 8
+                  }
+                ],
+                "operator": "bit_and",
+                "value": null,
+                "variable": null,
+                "width_bits": 8
+              },
+              "origin_id": "node-v1:7ebd50118f8c2b8a30d5b77cba664c9634c7d96ea10f1ebb9c32ff3866d1f883",
+              "predicate": "ne",
+              "right": {
+                "kind": "constant",
+                "operands": [],
+                "operator": null,
+                "value": 0,
+                "variable": null,
+                "width_bits": 8
+              },
+              "rule_id": "program-path-byte-mask-projection-v1",
+              "signedness": null,
+              "type": "path_constraint"
+            },
+            {
+              "domain": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25,
+                26,
+                27,
+                28,
+                29,
+                30,
+                31,
+                32,
+                33,
+                34,
+                35,
+                36,
+                37,
+                38,
+                39,
+                40,
+                41,
+                42,
+                43,
+                44,
+                45,
+                46,
+                47,
+                48,
+                49,
+                50,
+                51,
+                52,
+                53,
+                54,
+                55,
+                56,
+                57,
+                58,
+                59,
+                60,
+                61,
+                62,
+                63,
+                64,
+                65,
+                66,
+                67,
+                68,
+                69,
+                70,
+                71,
+                72,
+                73,
+                74,
+                75,
+                76,
+                77,
+                78,
+                79,
+                80,
+                81,
+                82,
+                83,
+                84,
+                85,
+                86,
+                87,
+                88,
+                89,
+                90,
+                91,
+                92,
+                93,
+                94,
+                95,
+                96,
+                97,
+                98,
+                99,
+                100,
+                101,
+                102,
+                103,
+                104,
+                105,
+                106,
+                107,
+                108,
+                109,
+                110,
+                111,
+                112,
+                113,
+                114,
+                115,
+                116,
+                117,
+                118,
+                119,
+                120,
+                121,
+                122,
+                123,
+                124,
+                125,
+                126,
+                127,
+                128,
+                129,
+                130,
+                131,
+                132,
+                133,
+                134,
+                135,
+                136,
+                137,
+                138,
+                139,
+                140,
+                141,
+                142,
+                143,
+                144,
+                145,
+                146,
+                147,
+                148,
+                149,
+                150,
+                151,
+                152,
+                153,
+                154,
+                155,
+                156,
+                157,
+                158,
+                159,
+                160,
+                161,
+                162,
+                163,
+                164,
+                165,
+                166,
+                167,
+                168,
+                169,
+                170,
+                171,
+                172,
+                173,
+                174,
+                175,
+                176,
+                177,
+                178,
+                179,
+                180,
+                181,
+                182,
+                183,
+                184,
+                185,
+                186,
+                187,
+                188,
+                189,
+                190,
+                191,
+                192,
+                193,
+                194,
+                195,
+                196,
+                197,
+                198,
+                199,
+                200,
+                201,
+                202,
+                203,
+                204,
+                205,
+                206,
+                207,
+                208,
+                209,
+                210,
+                211,
+                212,
+                213,
+                214,
+                215,
+                216,
+                217,
+                218,
+                219,
+                220,
+                221,
+                222,
+                223,
+                224,
+                225,
+                226,
+                227,
+                228,
+                229,
+                230,
+                231,
+                232,
+                233,
+                234,
+                235,
+                236,
+                237,
+                238,
+                239,
+                240,
+                241,
+                242,
+                243,
+                244,
+                245,
+                246,
+                247,
+                248,
+                249,
+                250,
+                251,
+                252,
+                253,
+                254,
+                255
+              ],
+              "name": "node-v1:d03b7520ccbb095818098c100c1c39940dadec6b111eaa847b253e958f894c38",
+              "type": "path_variable",
+              "width_bits": 8
+            },
+            {
+              "evidence_ids": [],
+              "key": "cfg_prefix",
+              "kind": "analysis",
+              "type": "path_assumption",
+              "value": "[0,1,2]"
+            },
+            {
+              "evidence_ids": [],
+              "key": "scope",
+              "kind": "analysis",
+              "type": "path_assumption",
+              "value": "reaches_last_block_before_execution"
+            },
+            {
+              "name": "node-v1:d03b7520ccbb095818098c100c1c39940dadec6b111eaa847b253e958f894c38",
+              "type": "witness_assignment",
+              "value": 0,
+              "width_bits": 8
+            },
+            {
+              "actual": false,
+              "constraint_id": "path-001",
+              "expected": false,
+              "left_value": 0,
+              "predicate": "ne",
+              "right_value": 0,
+              "satisfied": true,
+              "type": "witness_evaluation",
+              "width_bits": 8
+            },
+            {
+              "evidence_id": "evidence-v1:7d5156461e99822f5e9ca23e064bf1bf47380b978599dcd8e62fe1fb78aa2cc1",
+              "type": "evidence"
+            },
+            {
+              "evidence_id": "evidence-v1:e751488e925bdcc1b84bfd64ec122cb3d8bbc5dc0bf0680c0191eeb995d7b8b5",
+              "type": "evidence"
+            }
+          ],
+          "metadata": {
+            "model_kind": "exact",
+            "no_auto_vulnerability_verdict": true,
+            "query_cache_key": "sha256-v1:52d7dbf59a7b47da1b6f90efb096649dd8c491914ad9f7ec540dcc10f25bc5c1",
+            "query_digest": "sha256-v1:1abae33bc8e23a96f94d48f4bab642ff1dcc9dca235fa3e0694d46eb0054176c",
+            "scope": "within_bounds",
+            "source_artifact": "artifact_7817e0dc1a38494abde313fc8a6263ee",
+            "status": "feasible",
+            "target_executed": false,
+            "witness_valid": true
+          },
+          "result": {
+            "model_kind": "exact",
+            "no_auto_vulnerability_verdict": true,
+            "path_proof_artifact": "artifact_4945665a9be64901832a578155f25f7a",
+            "scope": "within_bounds",
+            "status": "feasible",
+            "target_executed": false,
+            "unresolved": []
+          },
+          "selector": {
+            "bindings": {
+              "graph_digest": "sha256-v1:68f440784b94439207c647318e929d8220a1b2d476fe02fb455f1ce5f32019bf",
+              "profile_digest": "sha256-v1:0e4feefe27049aa1195bcb2814fd2655daf727d05457404289969c6b46e752dc",
+              "ruleset_digest": "sha256-v1:d8ab490fec53f884af8f3a670b9fe752ce44017f30c58e63a2bfac2dc3b7f863",
+              "snapshot_id": "snapshot-v1:dbfaabb5f9eb6f6a1f08d7779042b123deac26af0dbc8de9d27e9e2f08bdca13",
+              "summary_digests": [
+                "sha256-v1:79f01e4de0cc97f8807a0447d2a2b0c8e72e4c93a5062efbc31db393b08abcfc"
+              ]
+            },
+            "blocks": [
+              0,
+              1,
+              2
+            ],
+            "schema_version": 1
+          }
+        },
+        {
+          "items": [
+            {
+              "abstract_sat": false,
+              "assignments_checked": 2,
+              "assumptions": [
+                {
+                  "evidence_ids": [],
+                  "key": "cfg_prefix",
+                  "kind": "analysis",
+                  "value": "[0,1,3]"
+                },
+                {
+                  "evidence_ids": [],
+                  "key": "scope",
+                  "kind": "analysis",
+                  "value": "reaches_last_block_before_execution"
+                }
+              ],
+              "bindings": {
+                "graph_digest": "sha256-v1:68f440784b94439207c647318e929d8220a1b2d476fe02fb455f1ce5f32019bf",
+                "profile_digest": "sha256-v1:0e4feefe27049aa1195bcb2814fd2655daf727d05457404289969c6b46e752dc",
+                "ruleset_digest": "sha256-v1:d8ab490fec53f884af8f3a670b9fe752ce44017f30c58e63a2bfac2dc3b7f863",
+                "snapshot_id": "snapshot-v1:dbfaabb5f9eb6f6a1f08d7779042b123deac26af0dbc8de9d27e9e2f08bdca13",
+                "summary_digests": [
+                  "sha256-v1:79f01e4de0cc97f8807a0447d2a2b0c8e72e4c93a5062efbc31db393b08abcfc"
+                ]
+              },
+              "bitvector_semantics": "fixed_width_modular_twos_complement_v1",
+              "bounds": {
+                "call_bound": 0,
+                "loop_bound": 0
+              },
+              "budget": {
+                "max_assignments": 65536,
+                "max_evaluations": 1000000,
+                "max_expression_depth": 32,
+                "timeout_ms": 1000
+              },
+              "complete_domain": false,
+              "coverage": {
+                "bounded_only": true,
+                "constraint_ids": [
+                  "path-001"
+                ],
+                "domains_are_exact": true,
+                "operators": [
+                  "bit_and",
+                  "ne"
+                ],
+                "theory": "fixed_width_bitvectors",
+                "variable_domain_digest": "sha256-v1:a9c628bc94ffc29fe6fd5491dae286f953181f161c3a77caba06ebe773648f7e",
+                "variable_names": [
+                  "node-v1:d03b7520ccbb095818098c100c1c39940dadec6b111eaa847b253e958f894c38"
+                ]
+              },
+              "engine_answer_digest": "sha256-v1:380178f864a69114fa5242f72e19372e218d97f267a54f7e71137df7389b47b8",
+              "engine_version": "finite-reference-v1",
+              "model_kind": "exact",
+              "query_digest": "sha256-v1:f04a792ed5c353b54051f086f2d20f06eae45c6965b1082ec572784f59d2fd39",
+              "raw_disposition": "sat",
+              "refutation_constraint_ids": [],
+              "schema_version": 1,
+              "scope": "within_bounds",
+              "status": "feasible",
+              "type": "proof"
+            },
+            {
+              "constraint_id": "path-001",
+              "evidence_ids": [
+                "evidence-v1:7d5156461e99822f5e9ca23e064bf1bf47380b978599dcd8e62fe1fb78aa2cc1",
+                "evidence-v1:e751488e925bdcc1b84bfd64ec122cb3d8bbc5dc0bf0680c0191eeb995d7b8b5"
+              ],
+              "expected": true,
+              "left": {
+                "kind": "binary",
+                "operands": [
+                  {
+                    "kind": "constant",
+                    "operands": [],
+                    "operator": null,
+                    "value": 1,
+                    "variable": null,
+                    "width_bits": 8
+                  },
+                  {
+                    "kind": "variable",
+                    "operands": [],
+                    "operator": null,
+                    "value": null,
+                    "variable": "node-v1:d03b7520ccbb095818098c100c1c39940dadec6b111eaa847b253e958f894c38",
+                    "width_bits": 8
+                  }
+                ],
+                "operator": "bit_and",
+                "value": null,
+                "variable": null,
+                "width_bits": 8
+              },
+              "origin_id": "node-v1:7ebd50118f8c2b8a30d5b77cba664c9634c7d96ea10f1ebb9c32ff3866d1f883",
+              "predicate": "ne",
+              "right": {
+                "kind": "constant",
+                "operands": [],
+                "operator": null,
+                "value": 0,
+                "variable": null,
+                "width_bits": 8
+              },
+              "rule_id": "program-path-byte-mask-projection-v1",
+              "signedness": null,
+              "type": "path_constraint"
+            },
+            {
+              "domain": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25,
+                26,
+                27,
+                28,
+                29,
+                30,
+                31,
+                32,
+                33,
+                34,
+                35,
+                36,
+                37,
+                38,
+                39,
+                40,
+                41,
+                42,
+                43,
+                44,
+                45,
+                46,
+                47,
+                48,
+                49,
+                50,
+                51,
+                52,
+                53,
+                54,
+                55,
+                56,
+                57,
+                58,
+                59,
+                60,
+                61,
+                62,
+                63,
+                64,
+                65,
+                66,
+                67,
+                68,
+                69,
+                70,
+                71,
+                72,
+                73,
+                74,
+                75,
+                76,
+                77,
+                78,
+                79,
+                80,
+                81,
+                82,
+                83,
+                84,
+                85,
+                86,
+                87,
+                88,
+                89,
+                90,
+                91,
+                92,
+                93,
+                94,
+                95,
+                96,
+                97,
+                98,
+                99,
+                100,
+                101,
+                102,
+                103,
+                104,
+                105,
+                106,
+                107,
+                108,
+                109,
+                110,
+                111,
+                112,
+                113,
+                114,
+                115,
+                116,
+                117,
+                118,
+                119,
+                120,
+                121,
+                122,
+                123,
+                124,
+                125,
+                126,
+                127,
+                128,
+                129,
+                130,
+                131,
+                132,
+                133,
+                134,
+                135,
+                136,
+                137,
+                138,
+                139,
+                140,
+                141,
+                142,
+                143,
+                144,
+                145,
+                146,
+                147,
+                148,
+                149,
+                150,
+                151,
+                152,
+                153,
+                154,
+                155,
+                156,
+                157,
+                158,
+                159,
+                160,
+                161,
+                162,
+                163,
+                164,
+                165,
+                166,
+                167,
+                168,
+                169,
+                170,
+                171,
+                172,
+                173,
+                174,
+                175,
+                176,
+                177,
+                178,
+                179,
+                180,
+                181,
+                182,
+                183,
+                184,
+                185,
+                186,
+                187,
+                188,
+                189,
+                190,
+                191,
+                192,
+                193,
+                194,
+                195,
+                196,
+                197,
+                198,
+                199,
+                200,
+                201,
+                202,
+                203,
+                204,
+                205,
+                206,
+                207,
+                208,
+                209,
+                210,
+                211,
+                212,
+                213,
+                214,
+                215,
+                216,
+                217,
+                218,
+                219,
+                220,
+                221,
+                222,
+                223,
+                224,
+                225,
+                226,
+                227,
+                228,
+                229,
+                230,
+                231,
+                232,
+                233,
+                234,
+                235,
+                236,
+                237,
+                238,
+                239,
+                240,
+                241,
+                242,
+                243,
+                244,
+                245,
+                246,
+                247,
+                248,
+                249,
+                250,
+                251,
+                252,
+                253,
+                254,
+                255
+              ],
+              "name": "node-v1:d03b7520ccbb095818098c100c1c39940dadec6b111eaa847b253e958f894c38",
+              "type": "path_variable",
+              "width_bits": 8
+            },
+            {
+              "evidence_ids": [],
+              "key": "cfg_prefix",
+              "kind": "analysis",
+              "type": "path_assumption",
+              "value": "[0,1,3]"
+            },
+            {
+              "evidence_ids": [],
+              "key": "scope",
+              "kind": "analysis",
+              "type": "path_assumption",
+              "value": "reaches_last_block_before_execution"
+            },
+            {
+              "name": "node-v1:d03b7520ccbb095818098c100c1c39940dadec6b111eaa847b253e958f894c38",
+              "type": "witness_assignment",
+              "value": 1,
+              "width_bits": 8
+            },
+            {
+              "actual": true,
+              "constraint_id": "path-001",
+              "expected": true,
+              "left_value": 1,
+              "predicate": "ne",
+              "right_value": 0,
+              "satisfied": true,
+              "type": "witness_evaluation",
+              "width_bits": 8
+            },
+            {
+              "evidence_id": "evidence-v1:7d5156461e99822f5e9ca23e064bf1bf47380b978599dcd8e62fe1fb78aa2cc1",
+              "type": "evidence"
+            },
+            {
+              "evidence_id": "evidence-v1:e751488e925bdcc1b84bfd64ec122cb3d8bbc5dc0bf0680c0191eeb995d7b8b5",
+              "type": "evidence"
+            }
+          ],
+          "metadata": {
+            "model_kind": "exact",
+            "no_auto_vulnerability_verdict": true,
+            "query_cache_key": "sha256-v1:943cbb937aeb7c2fa42c66ea1a37d29795124ac52fbd6285cdfb245777833e0a",
+            "query_digest": "sha256-v1:f04a792ed5c353b54051f086f2d20f06eae45c6965b1082ec572784f59d2fd39",
+            "scope": "within_bounds",
+            "source_artifact": "artifact_7817e0dc1a38494abde313fc8a6263ee",
+            "status": "feasible",
+            "target_executed": false,
+            "witness_valid": true
+          },
+          "result": {
+            "model_kind": "exact",
+            "no_auto_vulnerability_verdict": true,
+            "path_proof_artifact": "artifact_af8f27c022294ceaaedfb579e4f41736",
+            "scope": "within_bounds",
+            "status": "feasible",
+            "target_executed": false,
+            "unresolved": []
+          },
+          "selector": {
+            "bindings": {
+              "graph_digest": "sha256-v1:68f440784b94439207c647318e929d8220a1b2d476fe02fb455f1ce5f32019bf",
+              "profile_digest": "sha256-v1:0e4feefe27049aa1195bcb2814fd2655daf727d05457404289969c6b46e752dc",
+              "ruleset_digest": "sha256-v1:d8ab490fec53f884af8f3a670b9fe752ce44017f30c58e63a2bfac2dc3b7f863",
+              "snapshot_id": "snapshot-v1:dbfaabb5f9eb6f6a1f08d7779042b123deac26af0dbc8de9d27e9e2f08bdca13",
+              "summary_digests": [
+                "sha256-v1:79f01e4de0cc97f8807a0447d2a2b0c8e72e4c93a5062efbc31db393b08abcfc"
+              ]
+            },
+            "blocks": [
+              0,
+              1,
+              3
+            ],
+            "schema_version": 1
+          }
+        }
+      ],
+      "registered_tools": [
+        "flow_cancel_job",
+        "flow_cancel_trace",
+        "flow_check_path",
+        "flow_continue_trace",
+        "flow_create_implicit_analysis",
+        "flow_create_snapshot",
+        "flow_get_call_compositions",
+        "flow_get_capabilities",
+        "flow_get_cfg",
+        "flow_get_evidence",
+        "flow_get_function_ssa",
+        "flow_get_graph",
+        "flow_get_implicit_analysis",
+        "flow_get_job",
+        "flow_trace_backward",
+        "flow_trace_forward",
+        "idb_list",
+        "idb_open",
+        "list_funcs",
+        "lookup_funcs",
+        "server_health"
+      ],
+      "sdk_version": "26.4",
+      "target_executed": false
+    }
+  ],
+  "build_id": "flow-build-sha256-v1:866d11d882a2d8ea57e87d6a58f872d1cc57d5cf26a98a69158aed0fa3875a2f",
+  "implementation_sha256": {
+    "profiles/flow-readonly.txt": "c7c2f8ef8e5760dc997849f76378c8a2a8983e547c0f98fd0c98a90047d8e389",
+    "src/ida_pro_mcp/flow_core/__init__.py": "1e03446910ecbbe1cd389ca6eeebec64f35d9d520a3006bc748f53bccff87e73",
+    "src/ida_pro_mcp/flow_core/_reviewed_fixture_data.py": "2c61b67a426d83951b963d9732320ba928fbdf245d6eaf5e3edae6f2830ae6e6",
+    "src/ida_pro_mcp/flow_core/analysis.py": "15014e2d8fef814bec748f86e919d79ecea3e738b35cf440a07ebd81e4acb0f7",
+    "src/ida_pro_mcp/flow_core/build_identity.py": "4c803c4eb9f84b34ff787e7370e618fbda3e89dd423205eef77805df0b6605e2",
+    "src/ida_pro_mcp/flow_core/call_composition.py": "54d3b5cf6d35022bb4499fec5a65ab7bf73cb9facb931dc0fc5f75455ab959a5",
+    "src/ida_pro_mcp/flow_core/cfg.py": "167a4491b93278888cda50641c8c1c4d5cc444ab5b57b8f078e76931c7f7749f",
+    "src/ida_pro_mcp/flow_core/constraints.py": "84a5daf29589a312a3b553f17341aed2431297278da9cbd849517e25775e0346",
+    "src/ida_pro_mcp/flow_core/contracts.py": "ff0968563d0b08458dc092774c1c8ce3352d4adffc7a9eb52b5cc3be6ea4a6da",
+    "src/ida_pro_mcp/flow_core/heap.py": "f2b46370a327e8b32ec3fc13328aabe1e1035a7d0660b90e68a5caa809565d7e",
+    "src/ida_pro_mcp/flow_core/heap_analysis.py": "0e3bd9eed08d9f03860127cf5876f66ae8d0b0606074c00d6144bf3a73b63cc5",
+    "src/ida_pro_mcp/flow_core/host_identity.py": "1fb3c741900852e9d1e56e081b49993feb8304409d354f07a47edb051ce80964",
+    "src/ida_pro_mcp/flow_core/implicit_analysis.py": "68a8bbabd12bbbfc509627fd13b2a314781a6e8f6a7fa2392bdf9805ed987f47",
+    "src/ida_pro_mcp/flow_core/implicit_cfg.py": "34906dceafc36dcae2118f6eac55ed68f5c0a47557cb94c258dfd9bf48ac08de",
+    "src/ida_pro_mcp/flow_core/interproc.py": "f14587342ed8ac2e21ec2c03013b1899f45f7d21cc90c19bf0c6929af11e3a14",
+    "src/ida_pro_mcp/flow_core/memory.py": "7960fce27069016664271da7d3d6e69a5be586f6dc17d6ea0a899ed1e56363af",
+    "src/ida_pro_mcp/flow_core/memory_analysis.py": "7071ff4027e24249aca7cc653e220f0d2bbe8b3cbe9dddb61279bfaa0c7f80d5",
+    "src/ida_pro_mcp/flow_core/memory_graph.py": "c878d56291fbbf8391551206ea0406271c9e7de68f207776049a24cc2d434755",
+    "src/ida_pro_mcp/flow_core/path_conditions.py": "1a47eff9aa375e9cee7829573d051d4338a170e4a634f1011d614beb9a1ece9a",
+    "src/ida_pro_mcp/flow_core/persistence.py": "ad1332048875c463bfb826f76292182e8177d97c091c44430fd830e0d9e0f77d",
+    "src/ida_pro_mcp/flow_core/profile_registry.py": "7f358be2a4dfcf4122f6b9b309409d593e3b58a48daedb9587e5d29870c40e28",
+    "src/ida_pro_mcp/flow_core/profile_routing.py": "98e5338409e344af9541ae503a132dceda060427fa1af6d639f48ffe660d24bb",
+    "src/ida_pro_mcp/flow_core/profile_semantic_receipts.py": "d7c9899c3947a19bbae5fd3c99b261765e7b8a472e9729871360e723bd5c13ae",
+    "src/ida_pro_mcp/flow_core/profile_semantics.py": "d32c1bb1ba3432094ce9f59bde26c3b0d9fce70fa6dfb5f7da7950a763087a7d",
+    "src/ida_pro_mcp/flow_core/proof.py": "f6b0de3f3f712f686e38d9745f906edbfb5c4dae6423cb7812b950d467c8c0b4",
+    "src/ida_pro_mcp/flow_core/query.py": "e093244e47c71a05b869b0430671691bad82f661fc076a9fcddb0c0544dbc75e",
+    "src/ida_pro_mcp/flow_core/reviewed_fixtures.py": "2552ca64e79d307fa1d2d08dbb9c1bf9f33ecbe842a9ac962abfc2c55f401f39",
+    "src/ida_pro_mcp/flow_core/runtime.py": "4971eb622cd08bfcf86aabbf41f5aa4087b85e85401c04b3cc61efe8b8854748",
+    "src/ida_pro_mcp/flow_core/runtime_contracts.py": "a7f58c57d75a6427fc9e3d503b06623fd483ca8abadeb63679658c26112bde8c",
+    "src/ida_pro_mcp/flow_core/rv32_capture.py": "6d813d6aad2115676871220716fcc3a4ff41b83751769274b9ead0ed3aa21331",
+    "src/ida_pro_mcp/flow_core/rv32_lowering.py": "a7f4a8e225cf38b41d7df736ae86a9d93050e2ad8c161be02886f691a5659c3f",
+    "src/ida_pro_mcp/flow_core/semantic_equivalence.py": "4bb4e25dbeeba9b8471137114931e269365ec719c56c53e306881cddbb19507d",
+    "src/ida_pro_mcp/flow_core/serialization.py": "e3901094566002edb58c887c4cbd2db21050b30f4bc1c92cb466268534baf214",
+    "src/ida_pro_mcp/flow_core/ssa.py": "9f37017efc701977cfefba34a3fdd586be23f63b56a17765a3282e2759dd02d1",
+    "src/ida_pro_mcp/flow_core/states.py": "4a03c1eec0e86893a58faf81b06853ffd75de7daf40d3eec3b7ace2b5187ee78",
+    "src/ida_pro_mcp/flow_core/summaries.py": "acf58464917a9c31440c523654d10a3eb1d9584277596197393af6df9b72452d",
+    "src/ida_pro_mcp/flow_core/support_receipts.py": "1f2ad71420f4ceb0b8c192d8ac0afdc81b5e5c91df7a5738caee63a2316696e6",
+    "src/ida_pro_mcp/ida_mcp.py": "5a1c25460646a2577af58f3ee3e4c3069b2182ff0217883416f1d0d138c54e67",
+    "src/ida_pro_mcp/ida_mcp/api_flow.py": "135b57be0fcb6adc9475e2fa2bf3b0af0d6386ba4cc9899d9a38271241de70b2",
+    "src/ida_pro_mcp/ida_mcp/flow/__init__.py": "e2ad972c65cc8799c94393f9784d2dfbed1afed393d43d7e999cf18562241f46",
+    "src/ida_pro_mcp/ida_mcp/flow/call_state.py": "a0f70c1283c0aae1d88292225fd2a0a058e0781d741d39f156d1229a214f3c22",
+    "src/ida_pro_mcp/ida_mcp/flow/extractor.py": "9d21f5ba7163d47442e1581905dbd775511bfbbb96263627c0f1186920d301ef",
+    "src/ida_pro_mcp/ida_mcp/flow/p0_probe.py": "abfbf92cf84b960ab6af71235d51fffa88005ee9eeee13412b8f7354c4d3b3e3",
+    "src/ida_pro_mcp/ida_mcp/flow/profile_routing.py": "6d9931e3c48033a90bb5d47aac1bd5534041c4ef18e9c4261f57e5105c1136ff",
+    "src/ida_pro_mcp/ida_mcp/flow/reviewed_runtime.py": "8fee3fdb3df58a8fcef8c5218c7f52124019c935f21b34dcbe9102996205676d",
+    "src/ida_pro_mcp/ida_mcp/flow/runtime.py": "159cf86fb84eb9b3e05d0db920fd912caa9cb630f8de4b0825e28e6e3ae814de",
+    "src/ida_pro_mcp/ida_mcp/flow/rv32_extractor.py": "fa6a235b3e607dd0f0da48310808de25cc16bf4160a5487aff51ccb1d0979aaa",
+    "src/ida_pro_mcp/ida_mcp/flow/service.py": "f0063795f94ed33499a840c89645fff8478b66c2758c45b692fc20bc195a346d",
+    "src/ida_pro_mcp/ida_mcp/flow/summary_catalog.py": "47ac4aa7cd2545a4e2ecf95d65182b551f29c78e59d20b6a40c0738b11ababbd",
+    "src/ida_pro_mcp/ida_mcp/zeromcp/mcp.py": "05a4f9d1422d5d9c91969838cb56815acb0323097038aa981628ab3e540882db",
+    "src/ida_pro_mcp/idalib_server.py": "51d609aaf549e815054c3f3f240a6de2222c8ba599f0944e9576a88eea169f40",
+    "src/ida_pro_mcp/idalib_supervisor.py": "905c01c11152fb4cdbf5ff65af88cf2f137d4e1c9a65202724ac5ac330e41ee5",
+    "src/ida_pro_mcp/installer.py": "3bfa5d6998f8e61c9cb6a74ff49b976dddc96a70d27f65741672c617f681efe4"
+  },
+  "schema_version": "flow-path-public-smoke/1",
+  "script": "tests/flow_core/native_path_smoke.py",
+  "script_sha256": "3f760d3119c25caf0e27157b5a7343cffef94cb50da6057278d92216d9817fe8",
+  "source": "tests/flow_fixtures/path_anchor.c",
+  "source_sha256": "6ea19de713b28c4f1ff666b4d5b821083ff49763866d98140ded945673c5b61f",
+  "target_executed": false
+}

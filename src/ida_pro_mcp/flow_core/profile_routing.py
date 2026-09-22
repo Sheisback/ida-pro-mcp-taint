@@ -21,6 +21,7 @@ from .profile_registry import (
     MeasuredReceipt,
     ProfileRegistry,
 )
+from .reviewed_fixtures import REVIEWED_FIXTURES, ReviewedFixture
 from .serialization import ContractError, Model, digest
 from .states import Endian, check_digest, nonempty, require
 
@@ -167,7 +168,12 @@ class FrozenProfileEvidence(Model):
 
 @dataclass(frozen=True)
 class ResolvedProfile:
-    evidence: FrozenProfileEvidence | RegistryProfileEvidence | AnalystProfileEvidence
+    evidence: (
+        FrozenProfileEvidence
+        | RegistryProfileEvidence
+        | AnalystProfileEvidence
+        | ReviewedFixture
+    )
     profile: dict
     registry: ProfileRegistry
 
@@ -708,12 +714,14 @@ def resolve_open_database_profile(
 
     matches = tuple(
         item
-        for item in FROZEN_PROFILE_EVIDENCE
+        for item in (*FROZEN_PROFILE_EVIDENCE, *REVIEWED_FIXTURES)
         if item.binary_digest == observed.binary_digest
     )
     if matches:
         require(len(matches) == 1, "ambiguous_profile_evidence")
-        evidence: FrozenProfileEvidence | RegistryProfileEvidence = matches[0]
+        evidence: FrozenProfileEvidence | RegistryProfileEvidence | ReviewedFixture = (
+            matches[0]
+        )
         require(
             (
                 observed.processor,

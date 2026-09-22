@@ -87,3 +87,58 @@ RV32 cannot be selected until normal evidence exists.
 If IDA, a processor/decompiler module, license entitlement, or GUI acceptance
 is unavailable, report that exact blocker and leave the corresponding claim
 unverified.
+
+## Program-derived bounded path checks
+
+`flow_check_path` is the sole registered path-proof tool. Submit with
+`graph_artifact`, `request_key`, and `path` containing:
+
+```json
+{"bindings":{"snapshot_id":"snapshot-v1:…","graph_digest":"sha256-v1:…","profile_digest":"sha256-v1:…","ruleset_digest":"sha256-v1:…","summary_digests":["sha256-v1:…"]},"blocks":[0,1],"schema_version":1}
+```
+
+The selector requires explicit `schema_version: 1`; omission is rejected.
+Use owned graph metadata and CFG block indices. The sequence must begin at the
+function entry and follow actual CFG edges. Poll `flow_get_job` (or cancel via
+`flow_cancel_job`). Page its `path_proof_artifact` by calling `flow_check_path`
+with **only** `artifact_id`, optional `cursor`, and `limit`. Pages include the
+internally derived constraints, variable domains, assumptions, proof and witness
+evidence; normal immutable paging and character limits apply.
+
+The bounded scope is *reaching the final selected block before executing it*.
+The initial supported correspondence is an acyclic scalar prefix with structured
+conditional comparisons, constants, copies, selected modular arithmetic, and
+complete input domains up to 8 bits. Bounds are internally fixed at zero loop
+unrolls and zero calls. Unsupported effects (including memory, calls, selects,
+phi/loop dependencies), wide symbolic domains, missing branch correspondence,
+and prefixes without modeled branches return `unknown`/`incomplete`, not a
+negative proof. Solver budgets can also yield Unknown. Exact SAT still requires
+independent witness replay; exact exhaustive UNSAT is confined to this prefix.
+
+Caller-authored equations, variables, predicates, origins, domains, assumptions,
+and bounds are not accepted, even when accompanied by an existing evidence ID.
+All artifact/profile/ruleset/summary bindings must match. The former
+`flow_create_path_proof` and `flow_get_path_proof` names are not registered public
+tools; archived smoke receipts containing them do not validate this surface.
+No target execution, runnable input generation, or vulnerability verdict occurs.
+
+### Reproduce the static public path acceptance receipt
+
+Run `PYTHONPATH=src:. uv run python tests/flow_core/native_path_smoke.py
+ tests/flow_fixtures/manifests/path_public_smoke.json` as one command on the
+licensed Apple-clang/IDA host. The script pins the compiler and SDK versions,
+compiles the repository-owned `path_anchor.c` twice per architecture, requires
+identical hashes, and analyzes disposable x86_64/AArch64 copies. It never runs a
+target. Public CFG successors select the paths; both byte-bit outcomes must have
+exact feasible proofs with independently replayable witnesses. The pure receipt
+gate checks current implementation/source/script hashes, BUILD_ID, response
+limits, actual input domains and witness predicates. A changed source/build needs
+a genuine rerun, not relabelled receipt hashes.
+
+The scalar correspondence explicitly maps SSA bitwise operator names to canonical
+bit-vector operators. A byte mask on `concat_low(byte, high_bits)` may be projected
+for equality/inequality only when the mask and compared constant fit the low
+byte. This exact identity does not assume high input bits are zero or truncate
+the domain of a wide input. Wider masks and signed projections remain Unknown.
+Informational extraction diagnostics do not imply missing semantics; unsupported
+function diagnostics still prevent a definite result.

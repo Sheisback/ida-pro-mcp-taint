@@ -26,6 +26,7 @@ FUNCTIONS = (
     "call_global",
     "call_alloc",
     "call_free",
+    "call_output_user",
     "call_context_left",
     "call_context_right",
     "call_recursive",

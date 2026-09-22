@@ -18,6 +18,11 @@ from ida_pro_mcp.flow_core.implicit_analysis import (
     ImplicitResult,
     analyze_implicit,
 )
+from ida_pro_mcp.flow_core.path_conditions import (
+    PathSelector,
+    path_bindings,
+    prove_path,
+)
 from ida_pro_mcp.flow_core.memory_graph import build_memory_graph
 from ida_pro_mcp.flow_core.persistence import require
 from ida_pro_mcp.flow_core.profile_routing import (
@@ -26,8 +31,6 @@ from ida_pro_mcp.flow_core.profile_routing import (
 )
 from ida_pro_mcp.flow_core.proof import (
     ProofResult,
-    ReferenceProofEngine,
-    classify_proof,
     validate_proof_result,
 )
 from ida_pro_mcp.flow_core.query import Queries, artifact_page, evidence_chunks
@@ -38,7 +41,9 @@ from ida_pro_mcp.flow_core.ssa import SSAProgram
 from ..sync import idasync
 from . import extractor, runtime
 from .profile_routing import observe_open_database
-from .summary_catalog import EMPTY_CATALOG, CallBinding, bind_call, compose_binding
+from .summary_catalog import CallBinding
+from .call_state import compose_program_calls
+from .reviewed_runtime import catalog_for_runtime, extract_callee_closure
 
 
 _ROUTING_SELECTION_SCHEMA = "flow-routing-selection/1"
@@ -54,15 +59,9 @@ def _state_root():
     ).absolute()
 
 
-def reviewed_catalog(_info=None):
-    """Resolve the internal immutable catalog used for this runtime scope.
-
-    The shipped runtime starts empty; licensed static-receipt generation supplies
-    an explicit reviewed fixture catalog without adding a public tool or a
-    function-name lookup path.
-    """
-
-    return EMPTY_CATALOG
+def reviewed_catalog(info=None):
+    """Select only source-packaged full-identity-pinned owned-fixture reviews."""
+    return catalog_for_runtime(info)
 
 
 def _runtime_scope(info: dict[str, Any], namespace: str):
@@ -284,26 +283,30 @@ def _extract(ctx, request):
         reviewed_catalog(before).catalog_digest == request["summary_digest"],
         "stale_summary_catalog",
     )
-    snapshot = extractor.extract_snapshot(
-        request["ea"],
-        namespace=request["namespace"],
-        function_key=request["function_key"],
-        profile=request["profile"],
-        summary_digest=request["summary_digest"],
-        deadline=ctx.deadline,
-        cancelled=ctx.cancel.is_set,
-        include_calls=True,
-        registry=before["registry"],
+    snapshot = cast(
+        extractor.ExtractedFunction,
+        extractor.extract_snapshot(
+            request["ea"],
+            namespace=request["namespace"],
+            function_key=request["function_key"],
+            profile=request["profile"],
+            summary_digest=request["summary_digest"],
+            deadline=ctx.deadline,
+            cancelled=ctx.cancel.is_set,
+            include_calls=True,
+            registry=before["registry"],
+        ),
     )
+    callees, closure = extract_callee_closure(ctx, snapshot, before)
     require(
         _fingerprint(_context_for_request(request)) == request["fingerprint"],
         "stale_database",
     )
-    return snapshot, request
+    return (snapshot, callees, closure), request
 
 
 def _analyze(ctx, extracted):
-    function, request = extracted
+    (function, callees, closure), request = extracted
     snapshot = function.snapshot
     memory = build_memory_graph(snapshot)
     program = memory.program
@@ -320,13 +323,7 @@ def _analyze(ctx, extracted):
         == catalog.catalog_digest,
         "stale_summary_catalog",
     )
-    calls = []
-    for observation in function.calls:
-        binding = bind_call(function, observation, catalog, {})
-        composition = compose_binding(function, binding, catalog)
-        calls.append(
-            {"binding": binding.to_data(), "composition": composition.to_data()}
-        )
+    calls = compose_program_calls(function, program, catalog, callees, ctx.check)
     sid = current.store.put_artifact("snapshot", snapshot)
     gid = current.store.put_artifact("graph", memory.graph)
     pid = current.store.put_artifact("analysis", program.to_data())
@@ -348,6 +345,7 @@ def _analyze(ctx, extracted):
         "memory_result_artifact": rid,
         "call_composition_artifact": cid,
         "call_composition_count": len(calls),
+        "callee_closure": closure,
         "snapshot_id": snapshot.snapshot_id,
         "graph_digest": program.graph.graph_digest,
         "analysis": program.graph.axes.analysis,
@@ -356,7 +354,7 @@ def _analyze(ctx, extracted):
         "maturity": "MMAT_CALLS",
         "summary_digest": snapshot.identity.summary_digest,
         "summary_limitations": [
-            "Reviewed summaries bind only by full pinned identity; the default runtime catalog is empty.",
+            "Reviewed summaries cover only the packaged owned fixtures, with fresh full-identity callee validation; arbitrary libraries remain unresolved.",
             "Indirect, external, recursive, and context-limited calls retain unresolved effects.",
         ],
         "target_executed": False,
@@ -413,19 +411,7 @@ def _analyze_implicit(ctx, extracted):
 
 
 def _expected_path_bindings(graph: Graph) -> ConstraintBindings:
-    require(
-        isinstance(graph.snapshot, Snapshot),
-        "path_proof_requires_normal_snapshot",
-    )
-    assert isinstance(graph.snapshot, Snapshot)
-    identity = graph.snapshot.identity
-    return ConstraintBindings(
-        graph.snapshot.snapshot_id,
-        graph.graph_digest,
-        identity.profile_digest,
-        identity.rule_digest,
-        (identity.summary_digest,),
-    )
+    return path_bindings(graph)
 
 
 def _validate_path_query(graph: Graph, query: ConstraintQuery) -> None:
@@ -444,6 +430,7 @@ def _validate_path_query(graph: Graph, query: ConstraintQuery) -> None:
         for evidence_id in assumption.evidence_ids
     }
     require(claimed <= available, "path_query_foreign_evidence")
+    require(False, "path_query_not_program_derived")
 
 
 @idasync
@@ -452,16 +439,19 @@ def _extract_path_proof(ctx, request):
     graph = cast(
         Graph, Graph.from_data(current.store.artifact(request["graph_artifact"]))
     )
-    query = cast(ConstraintQuery, ConstraintQuery.from_data(request["query"]))
-    _validate_path_query(graph, query)
+    selector = cast(PathSelector, PathSelector.from_data(request["query"]))
+    require(
+        selector.bindings == _expected_path_bindings(graph),
+        "path_query_artifact_mismatch",
+    )
     ctx.check()
-    return graph, query, request
+    return graph, selector, request
 
 
 def _analyze_path_proof(ctx, extracted):
-    _graph, query, request = extracted
+    graph, selector, request = extracted
     ctx.check()
-    result = classify_proof(query, ReferenceProofEngine(cancelled=ctx.cancel.is_set))
+    query, result = prove_path(graph, selector, cancelled=ctx.cancel.is_set)
     validate_proof_result(query, result)
     ctx.check()
     current = _request_runtime(request)
@@ -564,6 +554,7 @@ def create_implicit(ssa_artifact, seeds, request_key, max_evaluations=100000):
 
 def create_path_proof(graph_artifact, query, request_key):
     require(type(query) is dict, "invalid_path_query")
+    PathSelector.from_data(query)
     info = context()
     engine = get_runtime(info)
     request = {
@@ -775,6 +766,15 @@ def _proof_page(raw):
     unresolved = summary.pop("unresolved")
     evidence_ids = summary.pop("evidence_ids")
     items = [{"type": "proof", **summary}]
+    items.extend(
+        {"type": "path_constraint", **item.to_data()} for item in query.constraints
+    )
+    items.extend(
+        {"type": "path_variable", **item.to_data()} for item in query.variables
+    )
+    items.extend(
+        {"type": "path_assumption", **item.to_data()} for item in query.assumptions
+    )
     if witness is not None:
         items.extend(
             {"type": "witness_assignment", **item} for item in witness["assignments"]

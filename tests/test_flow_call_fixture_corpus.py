@@ -33,6 +33,7 @@ SUMMARY_FUNCTIONS = {
     "call_free",
 }
 SUPPORT_FUNCTIONS = {
+    "call_output_user",
     "call_context_left",
     "call_context_right",
     "call_recursive",
@@ -141,6 +142,7 @@ def test_build_only_manifests_pin_two_reproducible_architectures():
         "extraction_arm64.json",
         "x86_64_analysis.json",
         "arm64_analysis.json",
+        "public_runtime.json",
     }
     builds = read(MANIFESTS / "build.json")
     assert {build["arch"] for build in builds} == {"x86_64", "arm64"}
@@ -183,6 +185,138 @@ def test_build_only_manifests_pin_two_reproducible_architectures():
         ]
 
 
+def test_public_reviewed_runtime_receipt_matches_actual_owned_call_evidence():
+    receipt = read(MANIFESTS / "public_runtime.json")
+    assert receipt["schema_version"] == "flow-reviewed-public-smoke/1"
+    assert receipt["target_executed"] is False
+    assert receipt["output_helper_native_caller"] is True
+    assert receipt["limitations"] == [
+        "Reviewed output memory effects retain unresolved pointer uncertainty; no definite memory write or vulnerability verdict is inferred."
+    ]
+    builds = {row["arch"]: row for row in read(MANIFESTS / "build.json")}
+    assert len(receipt["fixtures"]) == 2
+    assert {row["arch"] for row in receipt["fixtures"]} == set(builds)
+    expected = {
+        "call_context_left": (["identity"], [], False),
+        "call_output_user": (["output"], [], False),
+        "call_heap_h01": (["alloc", "free"], ["allocate", "free"], False),
+        "call_heap_h03": (["alloc"], ["allocate", "opaque"], True),
+        "call_recursive": (["identity"], ["opaque"], True),
+        "call_indirect": ([], ["opaque"], True),
+    }
+    for fixture in receipt["fixtures"]:
+        arch = fixture["arch"]
+        extraction = read(MANIFESTS / f"extraction_{arch}.json")
+        catalog = SummaryCatalog.from_data(extraction["catalog"])
+        assert fixture["binary_sha256"] == builds[arch]["binary_sha256"]
+        assert fixture["target_executed"] is False
+        assert len(fixture["cases"]) == len(expected)
+        assert {case["function"] for case in fixture["cases"]} == set(expected)
+        assert {
+            "flow_get_capabilities",
+            "flow_create_snapshot",
+            "flow_get_job",
+            "flow_cancel_job",
+            "flow_get_call_compositions",
+        } == set(fixture["tool_calls"])
+        assert fixture["tool_calls"].count("flow_get_call_compositions") == 2 * sum(
+            case["page_count"] for case in fixture["cases"]
+        )
+        functions = {row["name"]: row for row in extraction["functions"]}
+        for case in fixture["cases"]:
+            kinds, effects, unknown = expected[case["function"]]
+            assert case["reviewed_kinds"] == kinds
+            assert case["heap_effects"] == effects
+            assert case["memory_effects"] == (
+                ["reachable_havoc"]
+                if unknown
+                else ["output"]
+                if case["function"] == "call_output_user"
+                else []
+            )
+            assert case["target_executed"] is False
+            metadata = case["metadata"]
+            assert metadata["catalog_digest"] == catalog.catalog_digest
+            assert metadata["target_executed"] is False
+            assert metadata["no_auto_vulnerability_verdict"] is True
+            assert metadata["call_count"] == len(
+                functions[case["function"]]["baseline"]["calls"]
+            )
+            assert (metadata["unknown_remainder_count"] > 0) is unknown
+            assert metadata["status"] == (
+                "complete_in_scope"
+                if case["function"] == "call_context_left"
+                else "partial"
+            )
+            assert type(case["page_count"]) is int
+            assert case["page_count"] >= metadata["call_count"] > 0
+            closure = case["closure"]
+            assert closure["max_depth"] == 8 and closure["max_functions"] == 64
+            assert len(closure["visited_rvas"]) <= closure["max_functions"]
+            reasons = {boundary["reason"] for boundary in closure["boundaries"]}
+            if case["function"] == "call_recursive":
+                assert "recursive_boundary" in reasons
+            if case["function"] == "call_indirect":
+                assert "unresolved_indirect" in reasons
+            if case["function"] == "call_heap_h01":
+                assert case["page_count"] > 1
+                assert "external_or_unreviewed_callee" in reasons
+                state = case["state_evidence"]
+                allocated, freed = state["allocation"], state["free"]
+                assert allocated["transitions"] and freed["transitions"]
+                oid = allocated["transitions"][0]["object_id"]
+                assert freed["pointer"]["candidates"] == [
+                    {"object_id": oid, "offset": 0}
+                ]
+                assert freed["transitions"][0]["object_id"] == oid
+                assert "live" in freed["transitions"][0]["before"]["possible"]
+                assert "freed" in freed["transitions"][0]["after"]["possible"]
+                assert freed["transitions"][0]["strong_update"] is False
+            if case["function"] == "call_heap_h03":
+                state = case["state_evidence"]
+                allocated, opaque = state["allocation"], state["opaque"]
+                assert opaque["transitions"]
+                assert (
+                    opaque["transitions"][0]["object_id"]
+                    == allocated["transitions"][0]["object_id"]
+                )
+                assert opaque["transitions"][0]["before"]["escape"] != "local"
+                assert opaque["transitions"][0]["after"] == {
+                    "possible": ["freed", "live", "not_allocated"],
+                    "escape": "unknown",
+                }
+            if case["function"] == "call_output_user":
+                state = case["state_evidence"]
+                assert len(state["output_targets"]) == 1
+                target = state["output_targets"][0]
+                assert target["interval"] == {"start": 0, "end": 4}
+                assert len(state["output_bytes"]) == 4
+                assert [byte["offset"] for byte in state["output_bytes"]] == [
+                    0,
+                    1,
+                    2,
+                    3,
+                ]
+                assert all(
+                    byte["object_id"] == target["object_id"]
+                    and byte["labels"]["explicit"]
+                    for byte in state["output_bytes"]
+                )
+
+
+def test_public_reviewed_runtime_receipt_is_current():
+    from ida_pro_mcp.flow_core.build_identity import BUILD_ID
+
+    receipt = read(MANIFESTS / "public_runtime.json")
+    assert receipt["build_id"] == BUILD_ID
+    producer = ROOT / "tests/flow_core/native_reviewed_runtime_smoke.py"
+    assert (
+        receipt["producer_sha256"] == hashlib.sha256(producer.read_bytes()).hexdigest()
+    )
+    for fixture in receipt["fixtures"]:
+        assert fixture["worker_build_id"] == BUILD_ID
+
+
 def test_static_ida_call_receipts_pin_catalog_runtime_and_replay():
     builds = {build["arch"]: build for build in read(MANIFESTS / "build.json")}
     extractor_hash = hashlib.sha256(EXTRACTOR.read_bytes()).hexdigest()
@@ -204,15 +338,23 @@ def test_static_ida_call_receipts_pin_catalog_runtime_and_replay():
         assert extraction["repeat_equal"] and extraction["roundtrip_equal"]
         catalog = SummaryCatalog.from_data(extraction["catalog"])
         assert catalog.catalog_digest == extraction["catalog_digest"]
-        assert {summary.display_name for summary in catalog.summaries} == SUMMARY_FUNCTIONS
-        assert {record["name"] for record in extraction["functions"]} == expected_functions
+        assert {
+            summary.display_name for summary in catalog.summaries
+        } == SUMMARY_FUNCTIONS
+        assert {
+            record["name"] for record in extraction["functions"]
+        } == expected_functions
         for record in extraction["functions"]:
             baseline = record["baseline"]
             runtime = record["runtime"]
-            assert baseline["snapshot"]["identity"]["summary_digest"] == extraction[
-                "baseline_summary_digest"
-            ]
-            assert runtime["snapshot"]["identity"]["summary_digest"] == catalog.catalog_digest
+            assert (
+                baseline["snapshot"]["identity"]["summary_digest"]
+                == extraction["baseline_summary_digest"]
+            )
+            assert (
+                runtime["snapshot"]["identity"]["summary_digest"]
+                == catalog.catalog_digest
+            )
             assert digest(Snapshot.from_data(runtime["snapshot"])) == digest(
                 runtime["snapshot"]
             )
@@ -221,34 +363,35 @@ def test_static_ida_call_receipts_pin_catalog_runtime_and_replay():
                 assert plan.catalog_digest == catalog.catalog_digest
                 assert plan.site.instruction_rva == binding["site"]["instruction_rva"]
             assert len(record["bindings"]) == len(record["compositions"])
-            for binding, composition in zip(
-                record["bindings"], record["compositions"]
-            ):
+            for binding, composition in zip(record["bindings"], record["compositions"]):
                 result = CallCompositionResult.from_data(composition)
-                assert result.plan_digest == CallPlan.from_data(
-                    binding["plan"]
-                ).plan_digest
+                assert (
+                    result.plan_digest
+                    == CallPlan.from_data(binding["plan"]).plan_digest
+                )
                 assert digest(result) == digest(composition)
-        assert extraction["closure"]["visited_rvas"] == extraction["closure"][
-            "root_rvas"
-        ]
+        assert (
+            extraction["closure"]["visited_rvas"] == extraction["closure"]["root_rvas"]
+        )
         assert extraction["closure"]["boundaries"]
 
         replay = read(MANIFESTS / f"{arch}_analysis.json")
         assert replay["schema_version"] == "flow-call-replay/2"
         assert replay["generator_sha256"] == replay_hash
-        assert replay["extraction_file_sha256"] == hashlib.sha256(
-            extraction_path.read_bytes()
-        ).hexdigest()
+        assert (
+            replay["extraction_file_sha256"]
+            == hashlib.sha256(extraction_path.read_bytes()).hexdigest()
+        )
         assert replay["catalog_digest"] == catalog.catalog_digest
         assert replay["c02_contexts"]["distinct"] is True
         assert "missing_reviewed_summary" in replay["c03_remainder_reasons"]
         assert replay["c04_reviewed_branches"] == []
         assert replay["c04_unknown_remainder"] is True
         assert replay["actual_composition_count"] == replay["call_plan_count"]
-        assert len(replay["actual_composition_digests"]) == replay[
-            "actual_composition_count"
-        ]
+        assert (
+            len(replay["actual_composition_digests"])
+            == replay["actual_composition_count"]
+        )
         cases = replay["semantic_cases"]
         assert cases["C01"]["identity_return_labels"] == ["X"]
         assert cases["C01"]["copy_destination_values"] == [0, 1, 2, 3]
@@ -262,9 +405,7 @@ def test_static_ida_call_receipts_pin_catalog_runtime_and_replay():
         assert cases["C02"]["right_return_labels"] == ["RIGHT"]
         assert cases["C03"]["recursive_status"] == "partial"
         assert cases["C03"]["recursive_unknown_provenance"] is True
-        assert "missing_reviewed_summary" in cases["C03"][
-            "recursive_diagnostics"
-        ]
+        assert "missing_reviewed_summary" in cases["C03"]["recursive_diagnostics"]
         assert cases["C04"]["reviewed_branches"] == []
         assert cases["C04"]["status"] == "partial"
         assert cases["C04"]["return_labels"] == []

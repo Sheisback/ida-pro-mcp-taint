@@ -432,6 +432,7 @@ def test_public_native_receipt_current_and_untruncated():
             "flow_cancel_job",
             "flow_get_cfg",
             "flow_get_evidence",
+            "flow_check_path",
         } <= calls
         assert max(call["response_chars"] for call in anchor["calls"]) < 40000
         if anchor["profile"] == "A64-LE":
@@ -440,7 +441,7 @@ def test_public_native_receipt_current_and_untruncated():
                 and call["error"] == {"code": "wrong_database_or_unknown_id"}
                 for call in anchor["calls"]
             )
-        assert (
-            "flow_check_path" not in anchor["tools"]
-            and "idb_save" not in anchor["tools"]
+        assert "flow_check_path" in anchor["tools"]
+        assert not {"flow_create_path_proof", "flow_get_path_proof", "idb_save"} & set(
+            anchor["tools"]
         )

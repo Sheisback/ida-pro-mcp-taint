@@ -14,17 +14,7 @@ import tempfile
 import time
 
 from ida_pro_mcp import idalib_supervisor as sm
-from ida_pro_mcp.flow_core.constraints import (
-    ConstraintBindings,
-    ConstraintExpression,
-    ConstraintQuery,
-    ConstraintVariable,
-    DeclaredCoverage,
-    PathConstraint,
-    ProofBounds,
-    ProofBudget,
-    variable_domain_digest,
-)
+
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -314,43 +304,21 @@ def main(build_dir, output):
             graph_metadata = call(
                 "flow_get_graph", artifact_id=result["graph_artifact"], limit=1
             )["metadata"]
-            variables = (ConstraintVariable("x", 1, (0, 1)),)
-            constraint = PathConstraint(
-                "public-static-eq",
-                ConstraintExpression("variable", 1, variable="x"),
-                "eq",
-                ConstraintExpression("constant", 1, value=1),
-                None,
-                True,
-                "rule:public-declared-path-v1",
-                "origin:public-static-smoke",
-                (memory_evidence["evidence_id"],),
-            )
-            query = ConstraintQuery(
-                ConstraintBindings(
-                    result["snapshot_id"],
-                    result["graph_digest"],
-                    graph_metadata["profile_digest"],
-                    graph_metadata["rule_digest"],
-                    (result["summary_digest"],),
-                ),
-                variables,
-                (constraint,),
-                (),
-                ProofBounds(1, 0),
-                ProofBudget(2, 8, 1000),
-                DeclaredCoverage(
-                    "fixed_width_bitvectors",
-                    ("x",),
-                    variable_domain_digest(variables),
-                    ("public-static-eq",),
-                    ("eq",),
-                ),
-            )
+            # Select an owned entry prefix, never attach arbitrary equations to evidence.
             proof_submission = call(
-                "flow_create_path_proof",
+                "flow_check_path",
                 graph_artifact=result["graph_artifact"],
-                query=query.to_data(),
+                path={
+                    "bindings": {
+                        "snapshot_id": result["snapshot_id"],
+                        "graph_digest": result["graph_digest"],
+                        "profile_digest": graph_metadata["profile_digest"],
+                        "ruleset_digest": graph_metadata["rule_digest"],
+                        "summary_digests": [result["summary_digest"]],
+                    },
+                    "blocks": [0],
+                    "schema_version": 1,
+                },
                 request_key="proof",
             )
             for _ in range(200):
@@ -366,13 +334,13 @@ def main(build_dir, output):
                 time.sleep(0.05)
             assert proof_job["state"] == "complete", proof_job
             proof_page = call(
-                "flow_get_path_proof",
+                "flow_check_path",
                 artifact_id=proof_job["result"]["path_proof_artifact"],
                 limit=200,
             )
-            assert proof_page["metadata"]["status"] == "feasible"
+            assert proof_page["metadata"]["status"] == "unknown"
             assert proof_page["metadata"]["scope"] == "within_bounds"
-            assert proof_page["metadata"]["witness_valid"] is True
+            assert proof_page["metadata"]["witness_valid"] is False
             assert proof_page["metadata"]["no_auto_vulnerability_verdict"] is True
             for direction, selected in (("forward", source), ("backward", returned)):
                 args = dict(

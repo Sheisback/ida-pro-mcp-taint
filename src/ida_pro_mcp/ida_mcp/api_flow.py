@@ -169,6 +169,7 @@ def flow_get_capabilities() -> FlowCapabilities:
     resolved: dict[str, str] | None = None
     route_format: str | None = None
     route_error = "Hex-Rays initialization unavailable"
+    reviewed_calls = False
     try:
         if os.name == "posix" and ready:
             if version is None:
@@ -185,6 +186,7 @@ def flow_get_capabilities() -> FlowCapabilities:
                 ida_ida.inf_get_database_change_count(),
             )
             resolved = cast(dict[str, str], info["routing"])
+            reviewed_calls = bool(_service().reviewed_catalog(info).summaries)
             route_format = observed.format_id
             target_supported = True
         else:
@@ -269,6 +271,16 @@ def flow_get_capabilities() -> FlowCapabilities:
             "status": support_status,
             "reason": support_reason,
         }
+    features["interprocedural"] = {
+        "status": "available" if target_supported and reviewed_calls else "unavailable",
+        "reason": (
+            "Packaged owned-fixture reviewed summaries with fresh full-identity "
+            "callee checks and bounded closure; unresolved remainders stay partial"
+            if target_supported and reviewed_calls
+            else "No reviewed summary catalog for this runtime scope; call observations "
+            "remain available as conservative Unknown compositions"
+        ),
+    }
     return {
         "schema_version": SCHEMA_VERSION,
         "build_id": BUILD_ID,
@@ -288,8 +300,8 @@ def flow_get_capabilities() -> FlowCapabilities:
         "limitations": [
             "No ISA, ABI, maturity, or decompiler entitlement has been validated by this tool.",
             "This capability query performs no snapshot, SSA, taint, proof, call composition, or target execution.",
-            "Implicit results publish explicit partial/frontier evidence; bounded proof results apply only to the artifact-bound declared constraint model.",
-            "Interprocedural call compositions preserve unknown remainders; the default runtime summary catalog is empty and never implies whole-program completeness.",
+            "Implicit results publish explicit partial/frontier evidence; bounded proof results apply only to program-derived CFG-prefix constraints; unsupported correspondence remains Unknown.",
+            "Reviewed call effects are restricted to packaged owned fixtures; arbitrary libraries and unresolved callees remain Unknown, never whole-program completeness.",
             "No flow tool emits an automatic vulnerability or safety verdict.",
             "Supported-anchor memory edges model successful flat user-space accesses; TLS/MMIO and null/fault path feasibility remain unresolved.",
             "MCP tools/call tracing can write the working IDB netnode; host close/save policy may persist it.",
@@ -376,15 +388,44 @@ def flow_create_implicit_analysis(
 
 @tool
 @_flow_api
-def flow_create_path_proof(
+def flow_check_path(
+    graph_artifact: str | None = None,
+    path: dict | None = None,
+    request_key: str | None = None,
+    artifact_id: str | None = None,
+    cursor: str | None = None,
+    limit: int = 50,
+) -> FlowJobSubmission | FlowArtifactPage | FlowError:
+    """Submit a program-derived CFG-prefix proof OR page its immutable evidence.
+
+    Submit with graph_artifact, path, request_key. path contains bindings
+    (snapshot/graph/profile/ruleset/summary digests), entry-rooted blocks, and
+    required schema_version=1. The final block is reached, not executed.
+    Caller equations are rejected; unsupported semantics yield Unknown.
+    Poll flow_get_job; page its path_proof_artifact with artifact_id/cursor/limit.
+    Submission and paging arguments are mutually exclusive. No target execution
+    or automatic vulnerability verdict occurs.
+    """
+    if artifact_id is not None:
+        if any(value is not None for value in (graph_artifact, path, request_key)):
+            raise ValueError("mixed_path_request")
+        return _service().analysis_page(artifact_id, "path_proof", cursor, limit)
+    if (
+        graph_artifact is None
+        or path is None
+        or request_key is None
+        or cursor is not None
+        or limit != 50
+    ):
+        raise ValueError("invalid_path_submission")
+    return _service().create_path_proof(graph_artifact, path, request_key)
+
+
+@_flow_api
+def _flow_create_path_proof(
     graph_artifact: str, query: dict, request_key: str
 ) -> FlowJobSubmission | FlowError:
-    """Queue an artifact-bound finite proof of a declared bounded constraint model.
-
-    Exact SAT requires independent witness replay; only exhaustive exact bounded
-    UNSAT can become infeasible. Sound-overapproximate or incomplete evidence is
-    Unknown. Results are constraint-model facts, never vulnerability verdicts.
-    """
+    """Unregistered compatibility helper; accepts selectors, not caller equations."""
     return _service().create_path_proof(graph_artifact, query, request_key)
 
 
@@ -436,9 +477,8 @@ def flow_get_implicit_analysis(
     return _service().analysis_page(artifact_id, "implicit", cursor, limit)
 
 
-@tool
 @_flow_api
-def flow_get_path_proof(
+def _flow_get_path_proof(
     artifact_id: str, cursor: str | None = None, limit: int = 50
 ) -> FlowArtifactPage | FlowError:
     """Page a bounded proof result with exact/overapprox/incomplete distinctions."""

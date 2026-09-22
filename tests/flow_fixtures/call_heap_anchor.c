@@ -39,6 +39,10 @@ KEEP void call_fill(volatile u8 *destination, u8 value, usize length) {
 
 KEEP void call_output(volatile u32 *output, u32 value) { output[0] = value; }
 
+KEEP void call_output_user(volatile u32 *output, u32 value) {
+    call_output(output, value);
+}
+
 KEEP u32 call_global(u32 value) {
     call_global_value = value;
     return call_global_value;

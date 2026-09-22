@@ -852,7 +852,7 @@ def receipt(arch):
         "release_support_claim": False,
         "limitations": extraction["limitations"]
         + [
-            "C01 copy/fill/output/global summaries have no native callers in this fixture; their fully pinned reviewed entrypoint plans are composed without claiming extracted call origins."
+            "C01 copy/fill/global summaries have no native callers in this fixture; their fully pinned reviewed entrypoint plans are composed without claiming extracted call origins."
         ],
     }
 

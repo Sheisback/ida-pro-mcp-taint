@@ -42,6 +42,11 @@ def check(directory: Path):
                 "ida_pro_mcp/flow_core/profile_registry.py",
                 "ida_pro_mcp/flow_core/constraints.py",
                 "ida_pro_mcp/flow_core/proof.py",
+                "ida_pro_mcp/flow_core/path_conditions.py",
+                "ida_pro_mcp/flow_core/reviewed_fixtures.py",
+                "ida_pro_mcp/flow_core/_reviewed_fixture_data.py",
+                "ida_pro_mcp/ida_mcp/flow/reviewed_runtime.py",
+                "ida_pro_mcp/ida_mcp/flow/call_state.py",
             }
             if not expected <= set(wheel.namelist()):
                 raise RuntimeError("Core files missing from wheel")
@@ -73,6 +78,8 @@ from ida_pro_mcp.flow_core.profile_registry import PROFILE_IDS, REGISTRY
 from ida_pro_mcp.flow_core.constraints import ConstraintBindings, ConstraintExpression, ConstraintQuery, ConstraintVariable, DeclaredCoverage, PathConstraint, ProofBounds, ProofBudget, variable_domain_digest
 from ida_pro_mcp.flow_core.proof import ProofResult, ReferenceProofEngine, classify_proof
 from ida_pro_mcp.flow_core.build_identity import BUILD_ID
+from ida_pro_mcp.flow_core.path_conditions import PathSelector
+from ida_pro_mcp.flow_core.reviewed_fixtures import REVIEWED_FIXTURES, reviewed_fixture
 from ida_pro_mcp.flow_core.runtime_contracts import RuntimeScope
 from ida_pro_mcp.flow_core.contracts import ResultAxes
 from ida_pro_mcp.flow_core.states import BitValue
@@ -113,6 +120,14 @@ query = ConstraintQuery(
     ),
 )
 assert ConstraintQuery.from_json(canonical_json(query)) == query
+selector = PathSelector(query.bindings, (0, 1))
+assert PathSelector.from_json(canonical_json(selector)) == selector
+assert len(REVIEWED_FIXTURES) == 2
+assert {fixture.profile_id for fixture in REVIEWED_FIXTURES} == {"X64-LE", "A64-LE"}
+for fixture in REVIEWED_FIXTURES:
+    assert fixture.catalog.summaries
+    assert SummaryCatalog.from_json(canonical_json(fixture.catalog)) == fixture.catalog
+    assert reviewed_fixture(fixture.binary_digest) == fixture
 proof = classify_proof(query, ReferenceProofEngine())
 assert proof.status == "feasible"
 assert ProofResult.from_json(canonical_json(proof)) == proof

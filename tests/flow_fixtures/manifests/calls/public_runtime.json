@@ -1,0 +1,1346 @@
+{
+  "build_id": "flow-build-sha256-v1:866d11d882a2d8ea57e87d6a58f872d1cc57d5cf26a98a69158aed0fa3875a2f",
+  "fixtures": [
+    {
+      "arch": "x86_64",
+      "binary_sha256": "fbbd92db7b4adbc2fa79f114478c86e6c5ac507e3f19ccb90d55e148c216cc63",
+      "cases": [
+        {
+          "closure": {
+            "boundaries": [],
+            "max_depth": 8,
+            "max_functions": 64,
+            "visited_rvas": [
+              1184,
+              1536
+            ]
+          },
+          "function": "call_context_left",
+          "heap_effects": [],
+          "memory_effects": [],
+          "metadata": {
+            "call_count": 1,
+            "catalog_digest": "sha256-v1:149f4938953f840998457aa2037c5f03fd08889f43519ef2212fe6091477505a",
+            "no_auto_vulnerability_verdict": true,
+            "partial_count": 0,
+            "status": "complete_in_scope",
+            "target_executed": false,
+            "unknown_remainder_count": 0
+          },
+          "page_count": 1,
+          "reviewed_kinds": [
+            "identity"
+          ],
+          "state_evidence": {},
+          "target_executed": false
+        },
+        {
+          "closure": {
+            "boundaries": [],
+            "max_depth": 8,
+            "max_functions": 64,
+            "visited_rvas": [
+              1360,
+              1392
+            ]
+          },
+          "function": "call_output_user",
+          "heap_effects": [],
+          "memory_effects": [
+            "output"
+          ],
+          "metadata": {
+            "call_count": 1,
+            "catalog_digest": "sha256-v1:149f4938953f840998457aa2037c5f03fd08889f43519ef2212fe6091477505a",
+            "no_auto_vulnerability_verdict": true,
+            "partial_count": 1,
+            "status": "partial",
+            "target_executed": false,
+            "unknown_remainder_count": 0
+          },
+          "page_count": 13,
+          "reviewed_kinds": [
+            "output"
+          ],
+          "state_evidence": {
+            "output_bytes": [
+              {
+                "labels": {
+                  "any_control_source": false,
+                  "any_explicit_source": false,
+                  "control": [],
+                  "explicit": [
+                    "ssa-entry:node-v1:af4301f152b6333d11533e545a02aeaea3f170b18412d77d4b605dd75479198d"
+                  ],
+                  "unknown_provenance": true
+                },
+                "object_id": "object-v1:0b67f4ea30b5ae4c7874ed70155ee2d499e28fb9ed92526cd037cbbf603667d4",
+                "offset": 0,
+                "value": {
+                  "value": null,
+                  "width_bits": 8
+                }
+              },
+              {
+                "labels": {
+                  "any_control_source": false,
+                  "any_explicit_source": false,
+                  "control": [],
+                  "explicit": [
+                    "ssa-entry:node-v1:af4301f152b6333d11533e545a02aeaea3f170b18412d77d4b605dd75479198d"
+                  ],
+                  "unknown_provenance": true
+                },
+                "object_id": "object-v1:0b67f4ea30b5ae4c7874ed70155ee2d499e28fb9ed92526cd037cbbf603667d4",
+                "offset": 1,
+                "value": {
+                  "value": null,
+                  "width_bits": 8
+                }
+              },
+              {
+                "labels": {
+                  "any_control_source": false,
+                  "any_explicit_source": false,
+                  "control": [],
+                  "explicit": [
+                    "ssa-entry:node-v1:af4301f152b6333d11533e545a02aeaea3f170b18412d77d4b605dd75479198d"
+                  ],
+                  "unknown_provenance": true
+                },
+                "object_id": "object-v1:0b67f4ea30b5ae4c7874ed70155ee2d499e28fb9ed92526cd037cbbf603667d4",
+                "offset": 2,
+                "value": {
+                  "value": null,
+                  "width_bits": 8
+                }
+              },
+              {
+                "labels": {
+                  "any_control_source": false,
+                  "any_explicit_source": false,
+                  "control": [],
+                  "explicit": [
+                    "ssa-entry:node-v1:af4301f152b6333d11533e545a02aeaea3f170b18412d77d4b605dd75479198d"
+                  ],
+                  "unknown_provenance": true
+                },
+                "object_id": "object-v1:0b67f4ea30b5ae4c7874ed70155ee2d499e28fb9ed92526cd037cbbf603667d4",
+                "offset": 3,
+                "value": {
+                  "value": null,
+                  "width_bits": 8
+                }
+              }
+            ],
+            "output_targets": [
+              {
+                "interval": {
+                  "end": 4,
+                  "start": 0
+                },
+                "object_id": "object-v1:0b67f4ea30b5ae4c7874ed70155ee2d499e28fb9ed92526cd037cbbf603667d4"
+              }
+            ]
+          },
+          "target_executed": false
+        },
+        {
+          "closure": {
+            "boundaries": [
+              {
+                "callee_rva": 2230,
+                "caller_rva": 1472,
+                "instruction_rva": 1488,
+                "reason": "external_or_unreviewed_callee"
+              },
+              {
+                "callee_rva": 2224,
+                "caller_rva": 1504,
+                "instruction_rva": 1520,
+                "reason": "external_or_unreviewed_callee"
+              }
+            ],
+            "max_depth": 8,
+            "max_functions": 64,
+            "visited_rvas": [
+              1472,
+              1504,
+              1760
+            ]
+          },
+          "function": "call_heap_h01",
+          "heap_effects": [
+            "allocate",
+            "free"
+          ],
+          "memory_effects": [],
+          "metadata": {
+            "call_count": 2,
+            "catalog_digest": "sha256-v1:149f4938953f840998457aa2037c5f03fd08889f43519ef2212fe6091477505a",
+            "no_auto_vulnerability_verdict": true,
+            "partial_count": 2,
+            "status": "partial",
+            "target_executed": false,
+            "unknown_remainder_count": 0
+          },
+          "page_count": 22,
+          "reviewed_kinds": [
+            "alloc",
+            "free"
+          ],
+          "state_evidence": {
+            "allocation": {
+              "evidence_id": "evidence-v1:92dbd6741955d4be6ceb141148c3e4627aa2c3995668699f5cf5137f4a569988",
+              "kind": "allocate",
+              "pointer": {
+                "address_space": "ram",
+                "any_compatible_location": false,
+                "candidates": [
+                  {
+                    "object_id": "object-v1:14a36582e2815ca97eaac8bd0cac1980d8b5949e120e9e036fd642157bb28e7b",
+                    "offset": 0
+                  }
+                ],
+                "may_be_null": true,
+                "width_bits": 64
+              },
+              "precision": "may_alias",
+              "transitions": [
+                {
+                  "after": {
+                    "escape": "local",
+                    "possible": [
+                      "live",
+                      "not_allocated"
+                    ]
+                  },
+                  "before": {
+                    "escape": "local",
+                    "possible": [
+                      "not_allocated"
+                    ]
+                  },
+                  "object_id": "object-v1:14a36582e2815ca97eaac8bd0cac1980d8b5949e120e9e036fd642157bb28e7b",
+                  "strong_update": false
+                }
+              ],
+              "unresolved": false
+            },
+            "free": {
+              "evidence_id": "evidence-v1:d14d77f9361d8c55a481fbf5379c0ee3f8cf2f7b55cd312228111288b50530fc",
+              "kind": "free",
+              "pointer": {
+                "address_space": "ram",
+                "any_compatible_location": false,
+                "candidates": [
+                  {
+                    "object_id": "object-v1:14a36582e2815ca97eaac8bd0cac1980d8b5949e120e9e036fd642157bb28e7b",
+                    "offset": 0
+                  }
+                ],
+                "may_be_null": true,
+                "width_bits": 64
+              },
+              "precision": "opaque",
+              "transitions": [
+                {
+                  "after": {
+                    "escape": "local",
+                    "possible": [
+                      "freed",
+                      "live",
+                      "not_allocated"
+                    ]
+                  },
+                  "before": {
+                    "escape": "local",
+                    "possible": [
+                      "live",
+                      "not_allocated"
+                    ]
+                  },
+                  "object_id": "object-v1:14a36582e2815ca97eaac8bd0cac1980d8b5949e120e9e036fd642157bb28e7b",
+                  "strong_update": false
+                }
+              ],
+              "unresolved": true
+            }
+          },
+          "target_executed": false
+        },
+        {
+          "closure": {
+            "boundaries": [
+              {
+                "callee_rva": null,
+                "caller_rva": 2000,
+                "instruction_rva": 2079,
+                "reason": "unresolved_indirect"
+              },
+              {
+                "callee_rva": 2230,
+                "caller_rva": 1472,
+                "instruction_rva": 1488,
+                "reason": "external_or_unreviewed_callee"
+              }
+            ],
+            "max_depth": 8,
+            "max_functions": 64,
+            "visited_rvas": [
+              1472,
+              2000
+            ]
+          },
+          "function": "call_heap_h03",
+          "heap_effects": [
+            "allocate",
+            "opaque"
+          ],
+          "memory_effects": [
+            "reachable_havoc"
+          ],
+          "metadata": {
+            "call_count": 2,
+            "catalog_digest": "sha256-v1:149f4938953f840998457aa2037c5f03fd08889f43519ef2212fe6091477505a",
+            "no_auto_vulnerability_verdict": true,
+            "partial_count": 2,
+            "status": "partial",
+            "target_executed": false,
+            "unknown_remainder_count": 1
+          },
+          "page_count": 13,
+          "reviewed_kinds": [
+            "alloc"
+          ],
+          "state_evidence": {
+            "allocation": {
+              "evidence_id": "evidence-v1:f5ff8b78408fabc68d7405277d6dcb01c1e1edcb2025d9f95907232e6662f6ac",
+              "kind": "allocate",
+              "pointer": {
+                "address_space": "ram",
+                "any_compatible_location": false,
+                "candidates": [
+                  {
+                    "object_id": "object-v1:2eb6239978453db888136a210db3ee2f249d8abfc9f54c682a033d9cceb4247b",
+                    "offset": 0
+                  }
+                ],
+                "may_be_null": true,
+                "width_bits": 64
+              },
+              "precision": "may_alias",
+              "transitions": [
+                {
+                  "after": {
+                    "escape": "local",
+                    "possible": [
+                      "live",
+                      "not_allocated"
+                    ]
+                  },
+                  "before": {
+                    "escape": "local",
+                    "possible": [
+                      "not_allocated"
+                    ]
+                  },
+                  "object_id": "object-v1:2eb6239978453db888136a210db3ee2f249d8abfc9f54c682a033d9cceb4247b",
+                  "strong_update": false
+                }
+              ],
+              "unresolved": false
+            },
+            "opaque": {
+              "evidence_id": "evidence-v1:e9e6ac6e14b5af2d4f3b5bc5c152bf0314603aa821ee2198215fde627d52b125",
+              "kind": "opaque",
+              "pointer": null,
+              "precision": "opaque",
+              "transitions": [
+                {
+                  "after": {
+                    "escape": "unknown",
+                    "possible": [
+                      "freed",
+                      "live",
+                      "not_allocated"
+                    ]
+                  },
+                  "before": {
+                    "escape": "unknown",
+                    "possible": [
+                      "live",
+                      "not_allocated"
+                    ]
+                  },
+                  "object_id": "object-v1:2eb6239978453db888136a210db3ee2f249d8abfc9f54c682a033d9cceb4247b",
+                  "strong_update": false
+                }
+              ],
+              "unresolved": true
+            }
+          },
+          "target_executed": false
+        },
+        {
+          "closure": {
+            "boundaries": [
+              {
+                "callee_rva": 1600,
+                "caller_rva": 1600,
+                "instruction_rva": 1645,
+                "reason": "recursive_boundary"
+              }
+            ],
+            "max_depth": 8,
+            "max_functions": 64,
+            "visited_rvas": [
+              1184,
+              1600
+            ]
+          },
+          "function": "call_recursive",
+          "heap_effects": [
+            "opaque"
+          ],
+          "memory_effects": [
+            "reachable_havoc"
+          ],
+          "metadata": {
+            "call_count": 2,
+            "catalog_digest": "sha256-v1:149f4938953f840998457aa2037c5f03fd08889f43519ef2212fe6091477505a",
+            "no_auto_vulnerability_verdict": true,
+            "partial_count": 2,
+            "status": "partial",
+            "target_executed": false,
+            "unknown_remainder_count": 1
+          },
+          "page_count": 9,
+          "reviewed_kinds": [
+            "identity"
+          ],
+          "state_evidence": {},
+          "target_executed": false
+        },
+        {
+          "closure": {
+            "boundaries": [
+              {
+                "callee_rva": null,
+                "caller_rva": 1680,
+                "instruction_rva": 1751,
+                "reason": "unresolved_indirect"
+              }
+            ],
+            "max_depth": 8,
+            "max_functions": 64,
+            "visited_rvas": [
+              1680
+            ]
+          },
+          "function": "call_indirect",
+          "heap_effects": [
+            "opaque"
+          ],
+          "memory_effects": [
+            "reachable_havoc"
+          ],
+          "metadata": {
+            "call_count": 1,
+            "catalog_digest": "sha256-v1:149f4938953f840998457aa2037c5f03fd08889f43519ef2212fe6091477505a",
+            "no_auto_vulnerability_verdict": true,
+            "partial_count": 1,
+            "status": "partial",
+            "target_executed": false,
+            "unknown_remainder_count": 1
+          },
+          "page_count": 1,
+          "reviewed_kinds": [],
+          "state_evidence": {},
+          "target_executed": false
+        }
+      ],
+      "target_executed": false,
+      "tool_calls": [
+        "flow_get_capabilities",
+        "flow_create_snapshot",
+        "flow_get_job",
+        "flow_get_job",
+        "flow_create_snapshot",
+        "flow_cancel_job",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_create_snapshot",
+        "flow_get_job",
+        "flow_get_job",
+        "flow_create_snapshot",
+        "flow_cancel_job",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_create_snapshot",
+        "flow_get_job",
+        "flow_get_job",
+        "flow_get_job",
+        "flow_create_snapshot",
+        "flow_cancel_job",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_create_snapshot",
+        "flow_get_job",
+        "flow_get_job",
+        "flow_get_job",
+        "flow_create_snapshot",
+        "flow_cancel_job",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_create_snapshot",
+        "flow_get_job",
+        "flow_get_job",
+        "flow_get_job",
+        "flow_create_snapshot",
+        "flow_cancel_job",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_create_snapshot",
+        "flow_get_job",
+        "flow_get_job",
+        "flow_get_job",
+        "flow_create_snapshot",
+        "flow_cancel_job",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions"
+      ],
+      "worker_build_id": "flow-build-sha256-v1:866d11d882a2d8ea57e87d6a58f872d1cc57d5cf26a98a69158aed0fa3875a2f"
+    },
+    {
+      "arch": "arm64",
+      "binary_sha256": "54ee2b533c24f08fc91063f1281fb5ab8d6be341460a17277d1c4447ac96ab10",
+      "cases": [
+        {
+          "closure": {
+            "boundaries": [],
+            "max_depth": 8,
+            "max_functions": 64,
+            "visited_rvas": [
+              1168,
+              1568
+            ]
+          },
+          "function": "call_context_left",
+          "heap_effects": [],
+          "memory_effects": [],
+          "metadata": {
+            "call_count": 1,
+            "catalog_digest": "sha256-v1:07550eb24baecd87b31923fc92022e1d96b779103d86a7da79235f44a6325f52",
+            "no_auto_vulnerability_verdict": true,
+            "partial_count": 0,
+            "status": "complete_in_scope",
+            "target_executed": false,
+            "unknown_remainder_count": 0
+          },
+          "page_count": 10,
+          "reviewed_kinds": [
+            "identity"
+          ],
+          "state_evidence": {},
+          "target_executed": false
+        },
+        {
+          "closure": {
+            "boundaries": [],
+            "max_depth": 8,
+            "max_functions": 64,
+            "visited_rvas": [
+              1384,
+              1416
+            ]
+          },
+          "function": "call_output_user",
+          "heap_effects": [],
+          "memory_effects": [
+            "output"
+          ],
+          "metadata": {
+            "call_count": 1,
+            "catalog_digest": "sha256-v1:07550eb24baecd87b31923fc92022e1d96b779103d86a7da79235f44a6325f52",
+            "no_auto_vulnerability_verdict": true,
+            "partial_count": 1,
+            "status": "partial",
+            "target_executed": false,
+            "unknown_remainder_count": 0
+          },
+          "page_count": 15,
+          "reviewed_kinds": [
+            "output"
+          ],
+          "state_evidence": {
+            "output_bytes": [
+              {
+                "labels": {
+                  "any_control_source": false,
+                  "any_explicit_source": false,
+                  "control": [],
+                  "explicit": [
+                    "ssa-entry:node-v1:5632a739e91b35637e8df86039ec607f90998a88049fe6c94867829167a9244f"
+                  ],
+                  "unknown_provenance": true
+                },
+                "object_id": "object-v1:ad3bad557be211c80d57b77f5ab2428ceeff8c0bba478aca96606faee566e4d7",
+                "offset": 0,
+                "value": {
+                  "value": null,
+                  "width_bits": 8
+                }
+              },
+              {
+                "labels": {
+                  "any_control_source": false,
+                  "any_explicit_source": false,
+                  "control": [],
+                  "explicit": [
+                    "ssa-entry:node-v1:5632a739e91b35637e8df86039ec607f90998a88049fe6c94867829167a9244f"
+                  ],
+                  "unknown_provenance": true
+                },
+                "object_id": "object-v1:ad3bad557be211c80d57b77f5ab2428ceeff8c0bba478aca96606faee566e4d7",
+                "offset": 1,
+                "value": {
+                  "value": null,
+                  "width_bits": 8
+                }
+              },
+              {
+                "labels": {
+                  "any_control_source": false,
+                  "any_explicit_source": false,
+                  "control": [],
+                  "explicit": [
+                    "ssa-entry:node-v1:5632a739e91b35637e8df86039ec607f90998a88049fe6c94867829167a9244f"
+                  ],
+                  "unknown_provenance": true
+                },
+                "object_id": "object-v1:ad3bad557be211c80d57b77f5ab2428ceeff8c0bba478aca96606faee566e4d7",
+                "offset": 2,
+                "value": {
+                  "value": null,
+                  "width_bits": 8
+                }
+              },
+              {
+                "labels": {
+                  "any_control_source": false,
+                  "any_explicit_source": false,
+                  "control": [],
+                  "explicit": [
+                    "ssa-entry:node-v1:5632a739e91b35637e8df86039ec607f90998a88049fe6c94867829167a9244f"
+                  ],
+                  "unknown_provenance": true
+                },
+                "object_id": "object-v1:ad3bad557be211c80d57b77f5ab2428ceeff8c0bba478aca96606faee566e4d7",
+                "offset": 3,
+                "value": {
+                  "value": null,
+                  "width_bits": 8
+                }
+              }
+            ],
+            "output_targets": [
+              {
+                "interval": {
+                  "end": 4,
+                  "start": 0
+                },
+                "object_id": "object-v1:ad3bad557be211c80d57b77f5ab2428ceeff8c0bba478aca96606faee566e4d7"
+              }
+            ]
+          },
+          "target_executed": false
+        },
+        {
+          "closure": {
+            "boundaries": [
+              {
+                "callee_rva": 2436,
+                "caller_rva": 1496,
+                "instruction_rva": 1516,
+                "reason": "external_or_unreviewed_callee"
+              },
+              {
+                "callee_rva": 2424,
+                "caller_rva": 1532,
+                "instruction_rva": 1552,
+                "reason": "external_or_unreviewed_callee"
+              }
+            ],
+            "max_depth": 8,
+            "max_functions": 64,
+            "visited_rvas": [
+              1496,
+              1532,
+              1884
+            ]
+          },
+          "function": "call_heap_h01",
+          "heap_effects": [
+            "allocate",
+            "free"
+          ],
+          "memory_effects": [],
+          "metadata": {
+            "call_count": 2,
+            "catalog_digest": "sha256-v1:07550eb24baecd87b31923fc92022e1d96b779103d86a7da79235f44a6325f52",
+            "no_auto_vulnerability_verdict": true,
+            "partial_count": 2,
+            "status": "partial",
+            "target_executed": false,
+            "unknown_remainder_count": 0
+          },
+          "page_count": 25,
+          "reviewed_kinds": [
+            "alloc",
+            "free"
+          ],
+          "state_evidence": {
+            "allocation": {
+              "evidence_id": "evidence-v1:f24924c4c7d0ceda78c99f9d54159adb0dd979adeca6c788ea51d83d1a1bea50",
+              "kind": "allocate",
+              "pointer": {
+                "address_space": "ram",
+                "any_compatible_location": false,
+                "candidates": [
+                  {
+                    "object_id": "object-v1:58ff6581f50500a49ae12edc5d95ea65cbc4be95e5cb96aa99ecbed23129c92b",
+                    "offset": 0
+                  }
+                ],
+                "may_be_null": true,
+                "width_bits": 64
+              },
+              "precision": "may_alias",
+              "transitions": [
+                {
+                  "after": {
+                    "escape": "local",
+                    "possible": [
+                      "live",
+                      "not_allocated"
+                    ]
+                  },
+                  "before": {
+                    "escape": "local",
+                    "possible": [
+                      "not_allocated"
+                    ]
+                  },
+                  "object_id": "object-v1:58ff6581f50500a49ae12edc5d95ea65cbc4be95e5cb96aa99ecbed23129c92b",
+                  "strong_update": false
+                }
+              ],
+              "unresolved": false
+            },
+            "free": {
+              "evidence_id": "evidence-v1:b2be9b4450ef918bfbaea025781a52f1500b897163a0c875710413071c0031c6",
+              "kind": "free",
+              "pointer": {
+                "address_space": "ram",
+                "any_compatible_location": false,
+                "candidates": [
+                  {
+                    "object_id": "object-v1:58ff6581f50500a49ae12edc5d95ea65cbc4be95e5cb96aa99ecbed23129c92b",
+                    "offset": 0
+                  }
+                ],
+                "may_be_null": true,
+                "width_bits": 64
+              },
+              "precision": "opaque",
+              "transitions": [
+                {
+                  "after": {
+                    "escape": "local",
+                    "possible": [
+                      "freed",
+                      "live",
+                      "not_allocated"
+                    ]
+                  },
+                  "before": {
+                    "escape": "local",
+                    "possible": [
+                      "live",
+                      "not_allocated"
+                    ]
+                  },
+                  "object_id": "object-v1:58ff6581f50500a49ae12edc5d95ea65cbc4be95e5cb96aa99ecbed23129c92b",
+                  "strong_update": false
+                }
+              ],
+              "unresolved": true
+            }
+          },
+          "target_executed": false
+        },
+        {
+          "closure": {
+            "boundaries": [
+              {
+                "callee_rva": null,
+                "caller_rva": 2160,
+                "instruction_rva": 2248,
+                "reason": "unresolved_indirect"
+              },
+              {
+                "callee_rva": 2436,
+                "caller_rva": 1496,
+                "instruction_rva": 1516,
+                "reason": "external_or_unreviewed_callee"
+              }
+            ],
+            "max_depth": 8,
+            "max_functions": 64,
+            "visited_rvas": [
+              1496,
+              2160
+            ]
+          },
+          "function": "call_heap_h03",
+          "heap_effects": [
+            "allocate",
+            "opaque"
+          ],
+          "memory_effects": [
+            "reachable_havoc"
+          ],
+          "metadata": {
+            "call_count": 2,
+            "catalog_digest": "sha256-v1:07550eb24baecd87b31923fc92022e1d96b779103d86a7da79235f44a6325f52",
+            "no_auto_vulnerability_verdict": true,
+            "partial_count": 2,
+            "status": "partial",
+            "target_executed": false,
+            "unknown_remainder_count": 1
+          },
+          "page_count": 21,
+          "reviewed_kinds": [
+            "alloc"
+          ],
+          "state_evidence": {
+            "allocation": {
+              "evidence_id": "evidence-v1:25aff004134211ec61b933d582d20c20fcf4f63cf5e3c4732eac9d148a96477d",
+              "kind": "allocate",
+              "pointer": {
+                "address_space": "ram",
+                "any_compatible_location": false,
+                "candidates": [
+                  {
+                    "object_id": "object-v1:2027aa724df963c986b8c09abda38ac3f2f97a5202d6326d525b7e7b88d21a9e",
+                    "offset": 0
+                  }
+                ],
+                "may_be_null": true,
+                "width_bits": 64
+              },
+              "precision": "may_alias",
+              "transitions": [
+                {
+                  "after": {
+                    "escape": "local",
+                    "possible": [
+                      "live",
+                      "not_allocated"
+                    ]
+                  },
+                  "before": {
+                    "escape": "local",
+                    "possible": [
+                      "not_allocated"
+                    ]
+                  },
+                  "object_id": "object-v1:2027aa724df963c986b8c09abda38ac3f2f97a5202d6326d525b7e7b88d21a9e",
+                  "strong_update": false
+                }
+              ],
+              "unresolved": false
+            },
+            "opaque": {
+              "evidence_id": "evidence-v1:0c8287bd52b346d02164dd35cc43aed32da64f2ac228c577388ba57a056cb0c9",
+              "kind": "opaque",
+              "pointer": null,
+              "precision": "opaque",
+              "transitions": [
+                {
+                  "after": {
+                    "escape": "unknown",
+                    "possible": [
+                      "freed",
+                      "live",
+                      "not_allocated"
+                    ]
+                  },
+                  "before": {
+                    "escape": "unknown",
+                    "possible": [
+                      "live",
+                      "not_allocated"
+                    ]
+                  },
+                  "object_id": "object-v1:2027aa724df963c986b8c09abda38ac3f2f97a5202d6326d525b7e7b88d21a9e",
+                  "strong_update": false
+                }
+              ],
+              "unresolved": true
+            }
+          },
+          "target_executed": false
+        },
+        {
+          "closure": {
+            "boundaries": [
+              {
+                "callee_rva": 1648,
+                "caller_rva": 1648,
+                "instruction_rva": 1712,
+                "reason": "recursive_boundary"
+              }
+            ],
+            "max_depth": 8,
+            "max_functions": 64,
+            "visited_rvas": [
+              1168,
+              1648
+            ]
+          },
+          "function": "call_recursive",
+          "heap_effects": [
+            "opaque"
+          ],
+          "memory_effects": [
+            "reachable_havoc"
+          ],
+          "metadata": {
+            "call_count": 2,
+            "catalog_digest": "sha256-v1:07550eb24baecd87b31923fc92022e1d96b779103d86a7da79235f44a6325f52",
+            "no_auto_vulnerability_verdict": true,
+            "partial_count": 2,
+            "status": "partial",
+            "target_executed": false,
+            "unknown_remainder_count": 1
+          },
+          "page_count": 19,
+          "reviewed_kinds": [
+            "identity"
+          ],
+          "state_evidence": {},
+          "target_executed": false
+        },
+        {
+          "closure": {
+            "boundaries": [
+              {
+                "callee_rva": null,
+                "caller_rva": 1764,
+                "instruction_rva": 1820,
+                "reason": "unresolved_indirect"
+              },
+              {
+                "callee_rva": null,
+                "caller_rva": 1764,
+                "instruction_rva": 1868,
+                "reason": "unresolved_indirect"
+              }
+            ],
+            "max_depth": 8,
+            "max_functions": 64,
+            "visited_rvas": [
+              1764
+            ]
+          },
+          "function": "call_indirect",
+          "heap_effects": [
+            "opaque"
+          ],
+          "memory_effects": [
+            "reachable_havoc"
+          ],
+          "metadata": {
+            "call_count": 2,
+            "catalog_digest": "sha256-v1:07550eb24baecd87b31923fc92022e1d96b779103d86a7da79235f44a6325f52",
+            "no_auto_vulnerability_verdict": true,
+            "partial_count": 2,
+            "status": "partial",
+            "target_executed": false,
+            "unknown_remainder_count": 2
+          },
+          "page_count": 16,
+          "reviewed_kinds": [],
+          "state_evidence": {},
+          "target_executed": false
+        }
+      ],
+      "target_executed": false,
+      "tool_calls": [
+        "flow_get_capabilities",
+        "flow_create_snapshot",
+        "flow_get_job",
+        "flow_get_job",
+        "flow_create_snapshot",
+        "flow_cancel_job",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_create_snapshot",
+        "flow_get_job",
+        "flow_get_job",
+        "flow_create_snapshot",
+        "flow_cancel_job",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_create_snapshot",
+        "flow_get_job",
+        "flow_get_job",
+        "flow_get_job",
+        "flow_create_snapshot",
+        "flow_cancel_job",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_create_snapshot",
+        "flow_get_job",
+        "flow_get_job",
+        "flow_get_job",
+        "flow_create_snapshot",
+        "flow_cancel_job",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_create_snapshot",
+        "flow_get_job",
+        "flow_get_job",
+        "flow_get_job",
+        "flow_create_snapshot",
+        "flow_cancel_job",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_create_snapshot",
+        "flow_get_job",
+        "flow_get_job",
+        "flow_get_job",
+        "flow_create_snapshot",
+        "flow_cancel_job",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions",
+        "flow_get_call_compositions"
+      ],
+      "worker_build_id": "flow-build-sha256-v1:866d11d882a2d8ea57e87d6a58f872d1cc57d5cf26a98a69158aed0fa3875a2f"
+    }
+  ],
+  "limitations": [
+    "Reviewed output memory effects retain unresolved pointer uncertainty; no definite memory write or vulnerability verdict is inferred."
+  ],
+  "output_helper_native_caller": true,
+  "producer_sha256": "83432dd67c2682dfe9eea138270b1e7a905272001cd35fed38b4d24a0feb59dc",
+  "schema_version": "flow-reviewed-public-smoke/1",
+  "target_executed": false
+}

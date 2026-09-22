@@ -967,13 +967,12 @@ def test_exact_tool_schema_and_no_supervisor_database_on_workers(flow):
         "flow_get_capabilities",
         "flow_create_snapshot",
         "flow_create_implicit_analysis",
-        "flow_create_path_proof",
+        "flow_check_path",
         "flow_get_job",
         "flow_cancel_job",
         "flow_get_function_ssa",
         "flow_get_cfg",
         "flow_get_implicit_analysis",
-        "flow_get_path_proof",
         "flow_get_call_compositions",
         "flow_trace_forward",
         "flow_trace_backward",
@@ -1048,14 +1047,14 @@ def test_public_analysis_tools_forward_exact_owned_artifact_contracts(
         == "i"
     )
     assert (
-        module.flow_create_path_proof("graph", {"query": "exact"}, "key")["job_id"]
+        module._flow_create_path_proof("graph", {"query": "exact"}, "key")["job_id"]
         == "p"
     )
     assert (
         module.flow_get_implicit_analysis("i-result", "cursor", 7)["section"]
         == "implicit"
     )
-    assert module.flow_get_path_proof("p-result")["section"] == "path_proof"
+    assert module._flow_get_path_proof("p-result")["section"] == "path_proof"
     assert module.flow_get_call_compositions("c-result")["section"] == (
         "interprocedural"
     )
@@ -1178,7 +1177,8 @@ def test_analysis_adapter_preserves_partiality_proof_bounds_and_artifact_binding
             ("eq",),
         ),
     )
-    service._validate_path_query(graph, query)
+    with pytest.raises(ContractError, match="path_query_not_program_derived"):
+        service._validate_path_query(graph, query)
     proof = classify_proof(query, ReferenceProofEngine())
     proof_items, proof_metadata = service._proof_page(
         {
@@ -1380,3 +1380,126 @@ def test_implicit_analysis_stops_during_computation_without_publication(
         )
     assert reached == [phase]
     assert published == []
+
+
+def test_check_path_public_selector_schema_and_equation_rejection(flow, monkeypatch):
+    module, server = flow
+    schema = next(
+        t["inputSchema"]
+        for t in server._mcp_tools_list()["tools"]
+        if t["name"] == "flow_check_path"
+    )
+    assert set(schema["properties"]) == {
+        "graph_artifact",
+        "path",
+        "request_key",
+        "artifact_id",
+        "cursor",
+        "limit",
+    }
+    calls = []
+    monkeypatch.setattr(
+        module,
+        "_service",
+        lambda: types.SimpleNamespace(
+            create_path_proof=lambda *args: calls.append(args) or {"job_id": "path-job"}
+        ),
+    )
+    assert (
+        module.flow_check_path("graph", {"blocks": [0, 1]}, "key")["job_id"]
+        == "path-job"
+    )
+    assert calls == [("graph", {"blocks": [0, 1]}, "key")]
+
+
+def test_path_service_rejects_equations_before_runtime_access(flow, monkeypatch):
+    from ida_pro_mcp.flow_core import ContractError
+
+    module, _ = flow
+    service = module._service()
+    monkeypatch.setattr(
+        service, "context", lambda: pytest.fail("must reject before runtime access")
+    )
+    with pytest.raises(ContractError):
+        service.create_path_proof("graph", {"variables": [], "constraints": []}, "key")
+
+
+def test_check_path_pages_evidence_and_rejects_mixed_modes(flow, monkeypatch):
+    module, _ = flow
+    calls = []
+    monkeypatch.setattr(
+        module,
+        "_service",
+        lambda: types.SimpleNamespace(
+            analysis_page=lambda *args: calls.append(args) or {"section": "path_proof"}
+        ),
+    )
+    assert (
+        module.flow_check_path(artifact_id="proof", cursor="cursor", limit=1)["section"]
+        == "path_proof"
+    )
+    assert calls == [("proof", "path_proof", "cursor", 1)]
+    assert (
+        module.flow_check_path(artifact_id="proof", path={})["error"]["code"]
+        == "mixed_path_request"
+    )
+    assert module.flow_check_path()["error"]["code"] == "invalid_path_submission"
+
+
+def test_program_path_artifact_paging_is_bounded_and_replayable(flow, monkeypatch):
+    import threading
+    from ida_pro_mcp.flow_core.contracts import Snapshot
+    from ida_pro_mcp.flow_core.path_conditions import PathSelector, path_bindings
+    from ida_pro_mcp.flow_core.ssa import build_ssa
+
+    module, _ = flow
+    service = module._service()
+    snapshot = Snapshot.from_data(
+        json.loads(
+            (ROOT / "tests/flow_fixtures/manifests/extraction_x64.json").read_text()
+        )["snapshot"]
+    )
+    graph = build_ssa(snapshot).graph
+    selector = PathSelector(path_bindings(graph), (snapshot.function.entry_block,))
+    saved = {}
+
+    def put(_kind, artifact):
+        saved["artifact"] = artifact
+        return "artifact-v1:" + "0" * 64
+
+    runtime = types.SimpleNamespace(
+        store=types.SimpleNamespace(
+            put_artifact=put, artifact=lambda _id: saved["artifact"]
+        )
+    )
+    monkeypatch.setattr(service, "_request_runtime", lambda _request: runtime)
+    monkeypatch.setattr(service, "get_runtime", lambda: runtime)
+    ctx = types.SimpleNamespace(check=lambda: None, cancel=threading.Event())
+    result = service._analyze_path_proof(
+        ctx, (graph, selector, {"graph_artifact": "owned-graph"})
+    )
+    assert result["status"] == "unknown"
+    assert result["target_executed"] is False
+    first = module.flow_check_path(artifact_id=result["path_proof_artifact"], limit=1)
+    assert len(first["items"]) == 1
+    assert first == module.flow_check_path(
+        artifact_id=result["path_proof_artifact"], limit=1
+    )
+    assert first["metadata"]["model_kind"] == "incomplete"
+    assert len(json.dumps(first)) < 40000
+    assert any(
+        item["type"] == "path_constraint"
+        for item in service._proof_page(saved["artifact"])[0]
+    )
+
+
+def test_check_path_requires_explicit_selector_version_before_runtime(
+    flow, monkeypatch
+):
+    module, _ = flow
+    service = module._service()
+    monkeypatch.setattr(
+        service, "context", lambda: pytest.fail("invalid selector reached runtime")
+    )
+    result = module.flow_check_path("graph", {"bindings": {}, "blocks": [0]}, "key")
+    assert result["error"]["code"] == "Wrong fields for PathSelector"
