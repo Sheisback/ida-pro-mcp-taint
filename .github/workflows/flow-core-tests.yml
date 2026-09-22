@@ -22,8 +22,10 @@ jobs:
           PYTHONPATH: src
         run: uv run --no-project --with pytest python -m pytest tests/flow_core -q
       - name: Lint core and tests
-        run: uv run ruff check src/ida_pro_mcp/flow_core tests/flow_core src/ida_pro_mcp/ida_mcp/flow/runtime.py src/ida_pro_mcp/idalib_server.py
+        run: uvx ruff@0.15.7 check src/ida_pro_mcp/flow_core tests/flow_core src/ida_pro_mcp/ida_mcp/flow/runtime.py src/ida_pro_mcp/idalib_server.py
       - name: Build wheel
         run: uv build --wheel --out-dir dist-flow-core
       - name: Import core from wheel without application dependencies
+        env:
+          PYTHONPATH: src
         run: uv run --no-project python tests/flow_core/check_wheel.py dist-flow-core

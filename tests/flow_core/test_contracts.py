@@ -615,6 +615,12 @@ def test_fork_ci_surface_does_not_require_licensed_runner():
     assert "  pull_request:" in workflow
     assert "pull_request_target" not in workflow and "secrets." not in workflow
     assert "tests/flow_core" in workflow and "check_wheel.py" in workflow
+    assert "uvx ruff@" in workflow and "uv run ruff check" not in workflow
+    assert (
+        "- name: Import core from wheel without application dependencies\n"
+        "        env:\n"
+        "          PYTHONPATH: src\n"
+    ) in workflow
     assert "github.repository ==" not in workflow
 
 
