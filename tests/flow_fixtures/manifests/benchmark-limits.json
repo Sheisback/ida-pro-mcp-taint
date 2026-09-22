@@ -1,0 +1,167 @@
+{
+  "calibration": {
+    "hardware_id": "darwin-arm64-local",
+    "ida_build": "9.3 (kernel API); Hex-Rays 9.3.0.260213 (observed)",
+    "ida_extract": {
+      "commit": "82da34a90ef2c2a4ae6c413f44e409ef6bb42550",
+      "fixture_sha256": "015c684b75facbf3e1f8f5928adee695de44d927f2a4b93c5be10261af72350c",
+      "peak_rss_bytes": 209485824,
+      "profile": "X64-LE",
+      "receipt": "tests/flow_fixtures/manifests/benchmark-ida-x64.json",
+      "status": "measured",
+      "wall_time_ms": {
+        "max_ms": 860.0,
+        "median_ms": 820.0,
+        "p95_ms": 840.0
+      }
+    },
+    "input_preserved": true,
+    "machine": "arm64",
+    "measurements": 30,
+    "python": "3.11.15",
+    "rationale": "Frozen rounded caps retain headroom above this fresh static baseline; changes require a reviewed fresh comparison.",
+    "status": "pure_static_and_licensed_ida_measured",
+    "system": "Darwin",
+    "target_executed": false,
+    "warmups": 5,
+    "workloads": {
+      "b01": {
+        "peak_rss_bytes": 45973504,
+        "wall_time_ms": {
+          "max_ms": 545.06325,
+          "median_ms": 540.2306665,
+          "p95_ms": 543.358708
+        }
+      },
+      "b02": {
+        "cancellation_latency_ms": {
+          "max_ms": 43.598958,
+          "median_ms": 42.758729,
+          "p95_ms": 43.545375
+        },
+        "peak_rss_bytes": 35733504,
+        "wall_time_ms": {
+          "max_ms": 325.243209,
+          "median_ms": 319.626604,
+          "p95_ms": 324.947084
+        }
+      },
+      "b03": {
+        "page_latency_ms": {
+          "max_ms": 347.563709,
+          "median_ms": 160.073479,
+          "p95_ms": 342.969958
+        },
+        "page_latency_samples": 300,
+        "peak_rss_bytes": 38584320,
+        "wall_time_ms": {
+          "max_ms": 2589.641417,
+          "median_ms": 2511.8733755000003,
+          "p95_ms": 2526.521917
+        }
+      }
+    }
+  },
+  "implementation_sha256": "sha256-v1:88a556b297de7e3af4dc60c8551dad996687ce30b27cb94ffb6b5f1282713f9d",
+  "sampling": {
+    "measurements": 30,
+    "p95_method": "nearest-rank",
+    "statistics": [
+      "median_ms",
+      "p95_ms",
+      "max_ms"
+    ],
+    "warmups": 5
+  },
+  "schema_version": "flow-benchmark-limits/1",
+  "stages": {
+    "core_compute": {
+      "workloads": [
+        "b01",
+        "b02"
+      ]
+    },
+    "ida_extract": {
+      "peak_rss_bytes": 4294967296,
+      "required_receipt": "flow-ida-benchmark/1",
+      "runner": "protected licensed static IDA runner",
+      "target_execution_forbidden": true,
+      "wall_time_ms": {
+        "max_ms": 45000,
+        "median_ms": 15000,
+        "p95_ms": 30000
+      }
+    },
+    "page": {
+      "workloads": [
+        "b03"
+      ]
+    }
+  },
+  "threshold_policy": {
+    "change_requires": [
+      "reviewed rationale",
+      "fresh 5-warmup/30-measurement comparison",
+      "semantic and structural gates still pass"
+    ],
+    "frozen": true,
+    "wall_clock_only_pass_forbidden": true
+  },
+  "workloads": {
+    "b01": {
+      "description": "small/medium/large scalar SSA plus committed x64/A64 static anchors",
+      "peak_rss_bytes": 536870912,
+      "structural": {
+        "anchor_count": 2,
+        "max_edges": 1024,
+        "max_evaluations": 2048,
+        "max_nodes": 1024
+      },
+      "wall_time_ms": {
+        "max_ms": 2500,
+        "median_ms": 1000,
+        "p95_ms": 1500
+      }
+    },
+    "b02": {
+      "cancellation_latency_ms": {
+        "max_ms": 500,
+        "median_ms": 150,
+        "p95_ms": 300
+      },
+      "description": "alias/loop stress, conservative frontier, and replayable cancellation",
+      "peak_rss_bytes": 536870912,
+      "structural": {
+        "max_alias_candidates": 2,
+        "max_intervals": 16,
+        "max_iterations": 8,
+        "min_frontier": 1
+      },
+      "wall_time_ms": {
+        "max_ms": 2000,
+        "median_ms": 750,
+        "p95_ms": 1250
+      }
+    },
+    "b03": {
+      "description": "bounded pages, same-request concurrency, and restart replay",
+      "page_latency_ms": {
+        "max_ms": 1500,
+        "median_ms": 250,
+        "p95_ms": 750
+      },
+      "peak_rss_bytes": 536870912,
+      "structural": {
+        "concurrent_clients": 2,
+        "max_json_chars": 40000,
+        "max_pages": 16,
+        "max_reachable_nodes": 128
+      },
+      "wall_time_ms": {
+        "max_ms": 10000,
+        "median_ms": 5000,
+        "p95_ms": 7500
+      }
+    }
+  }
+}

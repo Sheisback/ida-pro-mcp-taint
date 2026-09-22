@@ -1,0 +1,109 @@
+name: flow-release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      release_sha:
+        description: Reviewed commit to aggregate; defaults to the selected ref
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  package-parity:
+    runs-on: ubuntu-latest
+    env:
+      EXPECTED_SHA: ${{ inputs.release_sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.release_sha || github.sha }}
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: '3.11'
+      - name: Verify the reviewed checkout
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - name: Run pure, GUI-bootstrap, and package regressions
+        env:
+          PYTHONPATH: src
+        run: >-
+          uv run --no-project --with pytest --with jsonschema --with tomli-w
+          python -m pytest
+          tests/flow_core tests/test_flow_capabilities.py
+          tests/test_gui_installer_bundle.py -q
+      - name: Build the release distributions
+        run: uv build --sdist --wheel --out-dir dist-release
+      - name: Verify wheel imports and source/wheel parity
+        env:
+          PYTHONPATH: src
+        run: uv run --no-project python tests/flow_core/check_wheel.py dist-release
+      - name: Create the package-parity manifest
+        env:
+          PYTHONPATH: src
+        run: >-
+          uv run --no-project --with tomli-w python
+          scripts/flow_release_gate.py package
+          --dist dist-release --checkout-sha "$EXPECTED_SHA"
+          --output dist-release/package-manifest.json
+      - name: Upload the verified distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-package
+          path: dist-release
+          if-no-files-found: error
+
+  licensed-ida:
+    uses: ./.github/workflows/idalib-tests.yml
+    with:
+      release_sha: ${{ inputs.release_sha || github.sha }}
+    secrets: inherit
+
+  release-aggregate:
+    if: always()
+    needs: [package-parity, licensed-ida]
+    runs-on: ubuntu-latest
+    env:
+      EXPECTED_SHA: ${{ inputs.release_sha || github.sha }}
+    steps:
+      - name: Require every release lane
+        env:
+          PACKAGE_RESULT: ${{ needs.package-parity.result }}
+          LICENSED_RESULT: ${{ needs.licensed-ida.result }}
+        run: |
+          test "$PACKAGE_RESULT" = success
+          test "$LICENSED_RESULT" = success
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.release_sha || github.sha }}
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: '3.11'
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-package
+          path: release-package
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: licensed-static-*
+          path: licensed-reports
+          merge-multiple: true
+      - name: Verify aggregate build identity and licensed coverage
+        env:
+          PYTHONPATH: src
+        run: >-
+          uv run --no-project python scripts/flow_release_gate.py aggregate
+          --package-manifest release-package/package-manifest.json
+          --licensed-dir licensed-reports --checkout-sha "$EXPECTED_SHA"
+          --expected-ida-version 9.0 --expected-ida-version 9.1
+          --expected-ida-version 9.2 --expected-ida-version 9.3
+          --output release-package/release-aggregate.json
+      - name: Upload the release aggregate
+        uses: actions/upload-artifact@v4
+        with:
+          name: verified-release-aggregate
+          path: release-package
+          if-no-files-found: error

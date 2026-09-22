@@ -1,53 +1,66 @@
 name: idalib-tests
 on:
   push:
-  pull_request_target:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      release_sha:
+        description: Reviewed commit to test; defaults to the selected ref
+        required: false
+        type: string
+  workflow_call:
+    inputs:
+      release_sha:
+        description: Reviewed commit shared by every release-gate job
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: read
 
 jobs:
-  approval:
-    # Only gate fork PRs. Pushes run normally, and same-repo contributors use
-    # normal push CI instead of pull_request_target.
-    if: |
-      github.event_name == 'pull_request_target' &&
-      github.event.pull_request.head.repo.full_name != github.repository
-    runs-on: ubuntu-latest
-    environment: external-pr
-    steps:
-      - name: Approval granted
-        run: echo "Approved to run fork PR tests"
-
-  idalib-tests:
-    # Run on all pushes, and on fork PRs only after the approval job passes.
-    if: |
-      always() &&
-      github.repository == 'mrexodia/ida-pro-mcp' &&
-      (
-        github.event_name == 'push' ||
-        needs.approval.result == 'success'
-      )
-    needs: approval
+  flow-ida:
+    # This protected environment must require reviewer approval. Untrusted pull
+    # request code is never checked out by this workflow.
+    environment: licensed-ida
     runs-on: ubuntu-latest
     strategy:
       matrix:
         ida-version: ['9.0', '9.1', '9.2', '9.3']
-    permissions:
-      contents: read
-      packages: read
     container:
       image: ghcr.io/mrexodia/ida-docker/ida:${{ matrix.ida-version }}
       credentials:
         username: ${{ github.repository_owner }}
         password: ${{ secrets.GITHUB_TOKEN }}
+    env:
+      EXPECTED_SHA: ${{ inputs.release_sha || github.sha }}
     steps:
       - uses: actions/checkout@v6
         with:
-          # Fork PRs are gated by the externally approved `approval` job above.
-          allow-unsafe-pr-checkout: true
-          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
-
+          ref: ${{ inputs.release_sha || github.sha }}
       - uses: astral-sh/setup-uv@v7
-
-      - name: Run tests
+      - name: Verify the reviewed checkout
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - name: Run retained licensed IDA tests
         run: |
           uv run ida-mcp-test tests/crackme03.elf -q
           uv run ida-mcp-test tests/typed_fixture.elf -q
+      - name: Record fresh static build-identity receipts
+        run: |
+          mkdir -p licensed-reports
+          uv run python scripts/flow_licensed_ci.py \
+            --fixture tests/crackme03.elf \
+            --checkout-sha "$EXPECTED_SHA" \
+            --output "licensed-reports/licensed-${{ matrix.ida-version }}-crackme03.json"
+          uv run python scripts/flow_licensed_ci.py \
+            --fixture tests/typed_fixture.elf \
+            --checkout-sha "$EXPECTED_SHA" \
+            --output "licensed-reports/licensed-${{ matrix.ida-version }}-typed-fixture.json"
+      - name: Upload licensed static receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: licensed-static-${{ matrix.ida-version }}
+          path: licensed-reports
+          if-no-files-found: error

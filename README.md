@@ -49,6 +49,11 @@ uv run "/Applications/IDA Professional 9.3.app/Contents/MacOS/idalib/python/py-a
 uv run "/path/to/idapro-9.3/idalib/python/py-activate-idalib.py"
 ```
 
+For the static flow-analysis support boundary, see the
+[compatibility matrix](docs/flow-compatibility.md) and
+[operator guide](docs/flow-operator.md). These documents distinguish exact
+recorded observations from runtime support claims.
+
 ## Installation (Claude Code)
 
 To install the latest IDA Pro MCP in Claude Code:
