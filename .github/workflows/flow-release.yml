@@ -19,10 +19,10 @@ jobs:
     env:
       EXPECTED_SHA: ${{ inputs.release_sha || github.sha }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           ref: ${{ inputs.release_sha || github.sha }}
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
         with:
           python-version: '3.11'
       - name: Verify the reviewed checkout
@@ -50,7 +50,7 @@ jobs:
           --dist dist-release --checkout-sha "$EXPECTED_SHA"
           --output dist-release/package-manifest.json
       - name: Upload the verified distributions
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: release-package
           path: dist-release
@@ -76,21 +76,29 @@ jobs:
         run: |
           test "$PACKAGE_RESULT" = success
           test "$LICENSED_RESULT" = success
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           ref: ${{ inputs.release_sha || github.sha }}
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
         with:
           python-version: '3.11'
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: release-package
           path: release-package
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           pattern: licensed-static-*
           path: licensed-reports
           merge-multiple: true
+      - name: Combine fresh B01-B03 and protected licensed measurements
+        env:
+          PYTHONPATH: src
+        run: >-
+          uv run --no-project python scripts/run_flow_benchmarks.py
+          --ida-metrics licensed-reports/benchmark-ida.json
+          --expected-ida-executable-sha256 "${{ vars.IDA_93_EXECUTABLE_SHA256 }}"
+          --output release-package/benchmark-report.json --require-ida
       - name: Verify aggregate build identity and licensed coverage
         env:
           PYTHONPATH: src
@@ -98,11 +106,17 @@ jobs:
           uv run --no-project python scripts/flow_release_gate.py aggregate
           --package-manifest release-package/package-manifest.json
           --licensed-dir licensed-reports --checkout-sha "$EXPECTED_SHA"
+          --normal-dir licensed-reports/normal
           --expected-ida-version 9.0 --expected-ida-version 9.1
           --expected-ida-version 9.2 --expected-ida-version 9.3
+          --gui-receipt licensed-reports/gui-process.json
+          --benchmark-report release-package/benchmark-report.json
+          --benchmark-limits tests/flow_fixtures/manifests/benchmark-limits.json
+          --expected-ida-executable-sha256 "${{ vars.IDA_93_EXECUTABLE_SHA256 }}"
+          --expected-gui-executable-sha256 "${{ vars.IDA_93_GUI_EXECUTABLE_SHA256 }}"
           --output release-package/release-aggregate.json
       - name: Upload the release aggregate
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: verified-release-aggregate
           path: release-package

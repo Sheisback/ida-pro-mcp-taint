@@ -1,5 +1,6 @@
 """Seeded explicit scalar provenance/value fixed point, separate from graph identity."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal
 
@@ -245,10 +246,19 @@ def _value(node, values):
 
 
 def analyze(
-    graph: Graph, seeds: tuple[Seed, ...] = (), policy: ScalarPolicy = ScalarPolicy()
+    graph: Graph,
+    seeds: tuple[Seed, ...] = (),
+    policy: ScalarPolicy = ScalarPolicy(),
+    *,
+    checkpoint: Callable[[], None] | None = None,
 ) -> AnalysisResult:
+    """Compute scalar facts; checkpoint exceptions abort without a result."""
+    if checkpoint is not None:
+        checkpoint()
     canonical_set(tuple(s.node_id for s in seeds))
     for seed in seeds:
+        if checkpoint is not None:
+            checkpoint()
         graph.validate_source(ValueSource(graph.snapshot.snapshot_id, seed.node_id))
     seed_map = {s.node_id: s.labels for s in seeds}
     facts, diagnostics = {}, set()
@@ -257,10 +267,16 @@ def analyze(
     nodes = {n.node_id: n for n in graph.nodes}
     consumers = {nid: set() for nid in nodes}
     for node in graph.nodes:
+        if checkpoint is not None:
+            checkpoint()
         for dep in node.inputs + tuple(p.node_id for p in node.phi_inputs):
+            if checkpoint is not None:
+                checkpoint()
             consumers[dep].add(node.node_id)
     pending, evaluations = set(nodes), 0
     while pending and evaluations < policy.max_evaluations:
+        if checkpoint is not None:
+            checkpoint()
         nid = min(pending)
         pending.remove(nid)
         node = nodes[nid]
@@ -279,6 +295,8 @@ def analyze(
         labels = seed_map.get(nid, Labels())
         label_deps = deps[1:] if node.kind == "Select" else deps
         for dep in label_deps:
+            if checkpoint is not None:
+                checkpoint()
             if dep in facts:
                 labels = labels.join(facts[dep].labels)
         boundary = (
@@ -314,11 +332,17 @@ def analyze(
         frontier = set(unresolved)
         todo = list(unresolved)
         while todo:
+            if checkpoint is not None:
+                checkpoint()
             for consumer in consumers[todo.pop()]:
+                if checkpoint is not None:
+                    checkpoint()
                 if consumer not in frontier:
                     frontier.add(consumer)
                     todo.append(consumer)
         for nid in frontier:
+            if checkpoint is not None:
+                checkpoint()
             node = nodes[nid]
             labels = facts[nid].labels if nid in facts else seed_map.get(nid, Labels())
             facts[nid] = Fact(

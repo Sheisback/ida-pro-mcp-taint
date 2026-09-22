@@ -584,3 +584,20 @@ def test_forged_control_block_ids_fail_closed_before_frontier_walk(
         forged = replace(control, regions=(first,) + control.regions[1:])
     with pytest.raises(ContractError, match=expected):
         result(program, (), control=forged)
+
+
+def test_checkpoints_do_not_change_certificates_or_labels():
+    program = build_ssa(snapshot((Block(0, (), (ins(0, "m_ret", reg(0)),)),)))
+    checkpoints = []
+
+    def checkpoint():
+        checkpoints.append(None)
+
+    control = analyze_implicit_cfg(program)
+    assert analyze_implicit_cfg(program, checkpoint=checkpoint) == control
+    assert checkpoints
+    checkpoints.clear()
+    expected = analyze_implicit(program)
+    assert analyze_implicit(program, checkpoint=checkpoint) == expected
+    assert analyze_implicit(program, control=control, checkpoint=checkpoint) == expected
+    assert checkpoints

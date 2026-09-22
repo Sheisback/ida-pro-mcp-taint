@@ -55,3 +55,20 @@ receipts, not general claims about every PE, Mach-O, or raw input.
 
 The source of truth for exact rows and artifact identities remains the JSON
 receipt set. This document is an operator-readable summary only.
+
+## Audit and release boundary
+
+The support audit recomputes every referenced receipt body. It validates the
+P0 result receipts with the recording contract and rebuilds the complete
+normal, format, and RV32 semantic matrix with the receipt-specific validators.
+Copied digest labels are not accepted as proof that the referenced bodies are
+intact.
+
+Passing that audit proves only that the committed static observation graph is
+internally consistent. It does not establish P6 release readiness. Strict P6
+readiness requires current, checkout-bound normal evidence for every mandatory
+profile and exact bindings for the build, fixture SHA-256, processor, ABI,
+format, maturity, and observed IDA and Hex-Rays builds. RV32 fallback evidence
+remains separate and cannot satisfy a mandatory normal row. Required benchmark
+and permitted GUI-process evidence must also be present; absence remains an
+explicit release blocker rather than a successful or skipped gate.

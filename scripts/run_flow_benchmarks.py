@@ -14,6 +14,7 @@ import json
 import math
 from pathlib import Path
 import platform
+import re
 import resource
 import runpy
 import statistics
@@ -25,6 +26,7 @@ from typing import Any, Callable, cast
 ROOT = Path(__file__).resolve().parents[1]
 WORKLOAD_PATH = ROOT / "tests/flow_core/performance_workloads.py"
 IDA_BENCHMARK_PATH = ROOT / "scripts/run_ida_flow_benchmark.py"
+IDA_EXTRACTION_ENTRY = ROOT / "scripts/flow_benchmark_extract.py"
 DEFAULT_LIMITS = ROOT / "tests/flow_fixtures/manifests/benchmark-limits.json"
 sys.path[:0] = [str(ROOT / "src"), str(ROOT / "tests/flow_core")]
 
@@ -34,6 +36,9 @@ WORKLOADS = cast(
 )
 STATS = ("median_ms", "p95_ms", "max_ms")
 VOLATILE_KEYS = frozenset({"page_latencies_ms", "cancellation_latency_ms"})
+COMMIT = re.compile(r"[0-9a-f]{40}")
+DIGEST = re.compile(r"sha256-v1:[0-9a-f]{64}")
+BUILD_ID = re.compile(r"flow-build-sha256-v1:[0-9a-f]{64}")
 
 
 def _sha256(path: Path) -> str:
@@ -42,7 +47,12 @@ def _sha256(path: Path) -> str:
 
 def implementation_sha256() -> str:
     hasher = hashlib.sha256()
-    for path in (Path(__file__).resolve(), IDA_BENCHMARK_PATH, WORKLOAD_PATH):
+    for path in (
+        Path(__file__).resolve(),
+        IDA_BENCHMARK_PATH,
+        IDA_EXTRACTION_ENTRY,
+        WORKLOAD_PATH,
+    ):
         hasher.update(path.name.encode())
         hasher.update(b"\0")
         hasher.update(path.read_bytes())
@@ -143,6 +153,51 @@ def _numeric(value: Any, path: str) -> float:
     return float(value)
 
 
+def _positive_int(value: Any, path: str) -> int:
+    if type(value) is not int or value <= 0:
+        raise ValueError(f"{path} must be a positive integer")
+    return value
+
+
+def _nonnegative_int(value: Any, path: str) -> int:
+    if type(value) is not int or value < 0:
+        raise ValueError(f"{path} must be a non-negative integer")
+    return value
+
+
+def _statistics(value: Any, path: str) -> Json:
+    if not isinstance(value, dict) or set(value) != set(STATS):
+        raise ValueError(f"{path} must contain exact timing statistics")
+    result = {key: _numeric(value[key], f"{path}.{key}") for key in STATS}
+    if not result["median_ms"] <= result["p95_ms"] <= result["max_ms"]:
+        raise ValueError(f"{path} statistics must be monotonic")
+    return result
+
+
+def _string(value: Any, path: str) -> str:
+    if type(value) is not str or not value:
+        raise ValueError(f"{path} must be a non-empty string")
+    return value
+
+
+def _expectations(
+    limits: Json,
+    *,
+    commit: str,
+    build_id: str,
+    limits_digest: str,
+    ida_executable_sha256: str,
+) -> Json:
+    expected = limits["stages"]["ida_extract"]["expectations"]
+    return {
+        "commit": commit,
+        "build_id": build_id,
+        "limits_digest": limits_digest,
+        "ida_executable_sha256": ida_executable_sha256,
+        **expected,
+    }
+
+
 def validate_limits(limits: Json) -> None:
     if limits.get("schema_version") != "flow-benchmark-limits/1":
         raise ValueError("unsupported benchmark limits schema")
@@ -182,6 +237,27 @@ def validate_limits(limits: Json) -> None:
     for statistic in STATS:
         _numeric(ida["wall_time_ms"][statistic], f"ida_extract.{statistic}")
     _numeric(ida["peak_rss_bytes"], "ida_extract.peak_rss_bytes")
+    expected = ida.get("expectations")
+    if not isinstance(expected, dict) or set(expected) != {
+        "fixture_sha256",
+        "profile",
+        "ida_build",
+        "hexrays_build",
+        "hardware_class",
+    }:
+        raise ValueError("licensed IDA expectations are incomplete")
+    if re.fullmatch(r"[0-9a-f]{64}", str(expected["fixture_sha256"])) is None:
+        raise ValueError("invalid expected fixture digest")
+    for field in ("profile", "ida_build", "hexrays_build", "hardware_class"):
+        _string(expected[field], f"ida_extract.expectations.{field}")
+    if re.fullmatch(r"[A-Z0-9]+(?:-[A-Z0-9]+)+", expected["profile"]) is None:
+        raise ValueError("invalid expected profile")
+    if re.fullmatch(r"\d+\.\d+(?:\.\d+)*", expected["ida_build"]) is None:
+        raise ValueError("invalid expected IDA build")
+    if re.fullmatch(r"\d+\.\d+(?:\.\d+)*", expected["hexrays_build"]) is None:
+        raise ValueError("invalid expected Hex-Rays build")
+    if re.fullmatch(r"[a-z0-9][a-z0-9._-]{2,127}", expected["hardware_class"]) is None:
+        raise ValueError("invalid expected hardware class")
 
 
 def _within_stats(
@@ -203,21 +279,71 @@ def _result_number(result: Json, *path: str) -> float:
 
 def evaluate_pure(report: Json, limits: Json) -> Json:
     failures: list[str] = []
-    by_name = {item["name"]: item for item in report["workloads"]}
-    if set(by_name) != {"b01", "b02", "b03"}:
+    rows = report.get("workloads")
+    if (
+        type(rows) is not list
+        or len(rows) != 3
+        or not all(type(item) is dict for item in rows)
+    ):
         failures.append("pure report must contain B01-B03 exactly once")
+        return {"status": "fail", "failures": failures}
+    names = [item.get("name") for item in rows]
+    if len(set(names)) != 3 or set(names) != {"b01", "b02", "b03"}:
+        failures.append("pure report must contain B01-B03 exactly once")
+        return {"status": "fail", "failures": failures}
+    by_name = {item["name"]: item for item in rows}
+    for name, measured in by_name.items():
+        try:
+            if set(measured) - {
+                "name",
+                "warmups",
+                "measurements",
+                "wall_time_ms",
+                "peak_rss_bytes",
+                "result",
+                "cancellation_latency_ms",
+                "page_latency_ms",
+                "page_latency_samples",
+            }:
+                raise ValueError(f"{name} contains unknown measurement fields")
+            if (
+                type(measured.get("warmups")) is not int
+                or type(measured.get("measurements")) is not int
+                or measured.get("warmups") != 5
+                or measured.get("measurements") != 30
+            ):
+                raise ValueError(f"{name} must use 5 warmups/30 measurements")
+            _statistics(measured.get("wall_time_ms"), f"{name}.wall_time_ms")
+            _positive_int(measured.get("peak_rss_bytes"), f"{name}.peak_rss_bytes")
+            if type(measured.get("result")) is not dict:
+                raise ValueError(f"{name}.result must be an object")
+            if name == "b02":
+                _statistics(
+                    measured.get("cancellation_latency_ms"),
+                    "b02.cancellation_latency_ms",
+                )
+            if name == "b03":
+                _statistics(measured.get("page_latency_ms"), "b03.page_latency_ms")
+                _positive_int(
+                    measured.get("page_latency_samples"), "b03.page_latency_samples"
+                )
+        except (KeyError, TypeError, ValueError) as exc:
+            failures.append(str(exc))
+    if failures:
         return {"status": "fail", "failures": failures}
     for name, measured in by_name.items():
         frozen = limits["workloads"][name]
         _within_stats(
             measured["wall_time_ms"], frozen["wall_time_ms"], f"{name}.wall", failures
         )
-        if measured["peak_rss_bytes"] > frozen["peak_rss_bytes"]:
+        if _positive_int(
+            measured["peak_rss_bytes"], f"{name}.peak_rss_bytes"
+        ) > _numeric(frozen["peak_rss_bytes"], f"limit.{name}.peak_rss_bytes"):
             failures.append(
                 f"{name}.peak_rss_bytes: {measured['peak_rss_bytes']} > {frozen['peak_rss_bytes']}"
             )
         result = measured["result"]
-        if not result.get("semantics_passed"):
+        if result.get("semantics_passed") is not True:
             failures.append(f"{name}: semantic oracle failed")
         if (
             result.get("target_executed") is not False
@@ -226,7 +352,21 @@ def evaluate_pure(report: Json, limits: Json) -> Json:
             failures.append(f"{name}: static safety evidence failed")
 
     b01 = by_name["b01"]["result"]
+    if type(b01.get("synthetic")) is not list or not b01["synthetic"]:
+        failures.append("b01.synthetic must contain measured graphs")
+        return {"status": "fail", "failures": failures}
+    if type(b01.get("anchors")) is not list or len(b01["anchors"]) != 2:
+        failures.append("b01 must contain both committed static anchors")
+        return {"status": "fail", "failures": failures}
     graphs = b01["synthetic"] + b01["anchors"]
+    try:
+        for ordinal, item in enumerate(graphs):
+            if type(item) is not dict:
+                raise ValueError(f"b01.graphs.{ordinal} must be an object")
+            for field in ("nodes", "edges", "evaluations"):
+                _positive_int(item.get(field), f"b01.graphs.{ordinal}.{field}")
+    except ValueError as exc:
+        return {"status": "fail", "failures": [str(exc)]}
     b01_structural = {
         "max_nodes": max(item["nodes"] for item in graphs),
         "max_edges": max(item["edges"] for item in graphs),
@@ -234,6 +374,18 @@ def evaluate_pure(report: Json, limits: Json) -> Json:
         "anchor_count": len(b01["anchors"]),
     }
     b02 = by_name["b02"]["result"]
+    try:
+        _positive_int(b02["alias"]["candidate_count"], "b02.alias.candidate_count")
+        _nonnegative_int(b02["alias"]["interval_count"], "b02.alias.interval_count")
+        _positive_int(b02["alias"]["iterations"], "b02.alias.iterations")
+        _positive_int(b02["loop"]["iterations"], "b02.loop.iterations")
+        _positive_int(b02["loop"]["frontier_count"], "b02.loop.frontier_count")
+        _positive_int(
+            b02["scalar_budget"]["frontier_count"],
+            "b02.scalar_budget.frontier_count",
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        return {"status": "fail", "failures": [str(exc)]}
     b02_structural = {
         "max_alias_candidates": b02["alias"]["candidate_count"],
         "max_intervals": b02["alias"]["interval_count"],
@@ -243,6 +395,16 @@ def evaluate_pure(report: Json, limits: Json) -> Json:
         ),
     }
     b03 = by_name["b03"]["result"]
+    try:
+        for field in (
+            "page_count",
+            "reachable_nodes",
+            "max_json_chars",
+            "concurrent_clients",
+        ):
+            _positive_int(b03.get(field), f"b03.{field}")
+    except ValueError as exc:
+        return {"status": "fail", "failures": [str(exc)]}
     b03_structural = {
         "max_pages": b03["page_count"],
         "max_reachable_nodes": b03["reachable_nodes"],
@@ -254,7 +416,10 @@ def evaluate_pure(report: Json, limits: Json) -> Json:
         frozen = limits["workloads"][name]["structural"]
         for key, actual in fields.items():
             limit = frozen[key]
-            if key == "min_frontier":
+            if key in {"anchor_count", "concurrent_clients"}:
+                if actual != limit:
+                    failures.append(f"{name}.{key}: {actual} != {limit}")
+            elif key == "min_frontier":
                 if actual < limit:
                     failures.append(f"{name}.{key}: {actual} < {limit}")
             elif actual > limit:
@@ -279,7 +444,9 @@ def evaluate_pure(report: Json, limits: Json) -> Json:
     }
 
 
-def evaluate_ida(metrics: Json | None, limits: Json) -> Json:
+def evaluate_ida(
+    metrics: Json | None, limits: Json, expected: Json | None = None
+) -> Json:
     if metrics is None:
         return {
             "status": "not_measured",
@@ -289,8 +456,12 @@ def evaluate_ida(metrics: Json | None, limits: Json) -> Json:
     required = {
         "schema_version",
         "ida_build",
-        "hardware_id",
+        "ida_executable_sha256",
+        "hexrays_build",
+        "hardware_class",
         "commit",
+        "build_id",
+        "limits_digest",
         "fixture_sha256",
         "profile",
         "warmups",
@@ -302,15 +473,55 @@ def evaluate_ida(metrics: Json | None, limits: Json) -> Json:
     }
     if set(metrics) != required:
         failures.append("licensed IDA metrics fields do not match the v1 contract")
-    if metrics.get("schema_version") != "flow-ida-benchmark/1":
+    if metrics.get("schema_version") != "flow-ida-benchmark/2":
         failures.append("unsupported licensed IDA benchmark schema")
-    if metrics.get("warmups") != 5 or metrics.get("measurements") != 30:
+    if (
+        type(metrics.get("warmups")) is not int
+        or type(metrics.get("measurements")) is not int
+        or metrics.get("warmups") != 5
+        or metrics.get("measurements") != 30
+    ):
         failures.append("licensed IDA benchmark must use 5 warmups/30 measurements")
     if (
         metrics.get("target_executed") is not False
         or metrics.get("input_preserved") is not True
     ):
         failures.append("licensed IDA benchmark violated static-only safety evidence")
+    try:
+        if COMMIT.fullmatch(str(metrics.get("commit"))) is None:
+            raise ValueError("licensed IDA benchmark commit is invalid")
+        if BUILD_ID.fullmatch(str(metrics.get("build_id"))) is None:
+            raise ValueError("licensed IDA benchmark build ID is invalid")
+        if DIGEST.fullmatch(str(metrics.get("limits_digest"))) is None:
+            raise ValueError("licensed IDA benchmark limits digest is invalid")
+        if (
+            type(metrics.get("ida_executable_sha256")) is not str
+            or re.fullmatch(r"[0-9a-f]{64}", metrics["ida_executable_sha256"]) is None
+        ):
+            raise ValueError("licensed IDA benchmark executable digest is invalid")
+        if re.fullmatch(r"[0-9a-f]{64}", str(metrics.get("fixture_sha256"))) is None:
+            raise ValueError("licensed IDA benchmark fixture digest is invalid")
+        for field in ("profile", "ida_build", "hexrays_build", "hardware_class"):
+            _string(metrics.get(field), f"licensed_ida.{field}")
+        if re.fullmatch(r"[A-Z0-9]+(?:-[A-Z0-9]+)+", metrics["profile"]) is None:
+            raise ValueError("licensed IDA benchmark profile is invalid")
+        if re.fullmatch(r"\d+\.\d+(?:\.\d+)*", metrics["ida_build"]) is None:
+            raise ValueError("licensed IDA benchmark IDA build is invalid")
+        if re.fullmatch(r"\d+\.\d+(?:\.\d+)*", metrics["hexrays_build"]) is None:
+            raise ValueError("licensed IDA benchmark Hex-Rays build is invalid")
+        if (
+            re.fullmatch(r"[a-z0-9][a-z0-9._-]{2,127}", metrics["hardware_class"])
+            is None
+        ):
+            raise ValueError("licensed IDA benchmark hardware class is invalid")
+        _statistics(metrics.get("wall_time_ms"), "licensed_ida.wall_time_ms")
+        _positive_int(metrics.get("peak_rss_bytes"), "licensed_ida.peak_rss_bytes")
+        if expected is not None:
+            for field, value in expected.items():
+                if metrics.get(field) != value:
+                    raise ValueError(f"licensed IDA benchmark {field} mismatch")
+    except (TypeError, ValueError) as exc:
+        failures.append(str(exc))
     if not failures:
         frozen = limits["stages"]["ida_extract"]
         _within_stats(
@@ -321,11 +532,29 @@ def evaluate_ida(metrics: Json | None, limits: Json) -> Json:
     return {"status": "fail" if failures else "pass", "failures": failures}
 
 
-def build_report(workloads: list[Json], limits: Json, ida_metrics: Json | None) -> Json:
+def build_report(
+    workloads: list[Json],
+    limits: Json,
+    ida_metrics: Json | None,
+    *,
+    limits_digest: str | None = None,
+    commit: str | None = None,
+    build_id: str | None = None,
+    expected_ida_executable_sha256: str | None = None,
+) -> Json:
+    if limits_digest is None:
+        limits_digest = _sha256(DEFAULT_LIMITS)
+    if commit is None:
+        commit = git_commit()
+    if build_id is None:
+        from ida_pro_mcp.flow_core.build_identity import BUILD_ID as build_id
     report: Json = {
-        "schema_version": "flow-benchmark-report/1",
+        "schema_version": "flow-benchmark-report/2",
+        "commit": commit,
+        "build_id": build_id,
+        "expected_ida_executable_sha256": expected_ida_executable_sha256,
         "implementation_sha256": implementation_sha256(),
-        "limits_sha256": _sha256(DEFAULT_LIMITS),
+        "limits_sha256": limits_digest,
         "environment": {
             "system": platform.system(),
             "machine": platform.machine(),
@@ -333,11 +562,21 @@ def build_report(workloads: list[Json], limits: Json, ida_metrics: Json | None) 
         },
         "sampling": limits["sampling"],
         "workloads": workloads,
+        "ida_metrics": ida_metrics,
         "target_executed": False,
         "input_preserved": True,
     }
     pure = evaluate_pure(report, limits)
-    ida = evaluate_ida(ida_metrics, limits)
+    expected = None
+    if expected_ida_executable_sha256 is not None:
+        expected = _expectations(
+            limits,
+            commit=commit,
+            build_id=build_id,
+            limits_digest=limits_digest,
+            ida_executable_sha256=expected_ida_executable_sha256,
+        )
+    ida = evaluate_ida(ida_metrics, limits, expected)
     report["evaluation"] = {"pure": pure, "ida_extract": ida}
     report["status"] = (
         "fail"
@@ -347,6 +586,98 @@ def build_report(workloads: list[Json], limits: Json, ida_metrics: Json | None) 
         else "partial"
     )
     return report
+
+
+def git_commit() -> str:
+    return subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+
+def validate_release_report(
+    report: Json,
+    limits: Json,
+    *,
+    expected_commit: str,
+    expected_build_id: str,
+    expected_limits_digest: str,
+    expected_ida_executable_sha256: str,
+) -> None:
+    required = {
+        "schema_version",
+        "commit",
+        "build_id",
+        "expected_ida_executable_sha256",
+        "implementation_sha256",
+        "limits_sha256",
+        "environment",
+        "sampling",
+        "workloads",
+        "ida_metrics",
+        "target_executed",
+        "input_preserved",
+        "evaluation",
+        "status",
+    }
+    if set(report) != required:
+        raise ValueError("benchmark report fields do not match the release contract")
+    if report.get("schema_version") != "flow-benchmark-report/2":
+        raise ValueError("benchmark report schema mismatch")
+    if report.get("commit") != expected_commit:
+        raise ValueError("benchmark report commit mismatch")
+    if report.get("build_id") != expected_build_id:
+        raise ValueError("benchmark report build ID mismatch")
+    if report.get("implementation_sha256") != implementation_sha256():
+        raise ValueError("benchmark report implementation is stale")
+    if report.get("limits_sha256") != expected_limits_digest:
+        raise ValueError("benchmark report limits digest mismatch")
+    if (
+        type(expected_ida_executable_sha256) is not str
+        or re.fullmatch(r"[0-9a-f]{64}", expected_ida_executable_sha256) is None
+        or report.get("expected_ida_executable_sha256")
+        != expected_ida_executable_sha256
+    ):
+        raise ValueError("benchmark report IDA executable identity mismatch")
+    if report.get("sampling") != limits.get("sampling"):
+        raise ValueError("benchmark report sampling contract mismatch")
+    environment = report.get("environment")
+    if type(environment) is not dict or set(environment) != {
+        "system",
+        "machine",
+        "python",
+    }:
+        raise ValueError("benchmark report environment is malformed")
+    for field in ("system", "machine", "python"):
+        _string(environment.get(field), f"benchmark.environment.{field}")
+    if (
+        report.get("target_executed") is not False
+        or report.get("input_preserved") is not True
+    ):
+        raise ValueError("benchmark report violated static-only safety")
+    pure = evaluate_pure(report, limits)
+    ida = evaluate_ida(
+        report.get("ida_metrics"),
+        limits,
+        _expectations(
+            limits,
+            commit=expected_commit,
+            build_id=expected_build_id,
+            limits_digest=expected_limits_digest,
+            ida_executable_sha256=expected_ida_executable_sha256,
+        ),
+    )
+    if report.get("evaluation") != {"pure": pure, "ida_extract": ida}:
+        raise ValueError("benchmark report evaluation is stale or tampered")
+    if (
+        pure.get("status") != "pass"
+        or ida.get("status") != "pass"
+        or report.get("status") != "pass"
+    ):
+        raise ValueError("benchmark report is not release-ready")
 
 
 def _run_children(limits: Json, warmups: int, measurements: int) -> list[Json]:
@@ -378,6 +709,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--ida-metrics", type=Path)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--require-ida", action="store_true")
+    parser.add_argument("--expected-ida-executable-sha256")
     parser.add_argument("--worker", choices=tuple(WORKLOADS))
     parser.add_argument("--warmups", type=int)
     parser.add_argument("--measurements", type=int)
@@ -404,7 +736,15 @@ def main() -> int:
     measurements = limits["sampling"]["measurements"]
     workloads = _run_children(limits, warmups, measurements)
     ida_metrics = json.loads(args.ida_metrics.read_text()) if args.ida_metrics else None
-    report = build_report(workloads, limits, ida_metrics)
+    if ida_metrics is not None and args.expected_ida_executable_sha256 is None:
+        raise ValueError("licensed IDA metrics require an expected executable digest")
+    report = build_report(
+        workloads,
+        limits,
+        ida_metrics,
+        limits_digest=_sha256(args.limits.resolve()),
+        expected_ida_executable_sha256=args.expected_ida_executable_sha256,
+    )
     rendered = json.dumps(report, indent=2, sort_keys=True) + "\n"
     if args.output:
         args.output.write_text(rendered)

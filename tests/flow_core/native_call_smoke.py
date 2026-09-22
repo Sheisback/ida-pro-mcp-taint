@@ -60,12 +60,10 @@ def main():
     for record in extraction["functions"]:
         function = extractor.ExtractedFunction.from_data(record["runtime"])
         bindings = tuple(
-            catalog_module.CallBinding.from_data(value)
-            for value in record["bindings"]
+            catalog_module.CallBinding.from_data(value) for value in record["bindings"]
         )
         stored = tuple(
-            CallCompositionResult.from_data(value)
-            for value in record["compositions"]
+            CallCompositionResult.from_data(value) for value in record["compositions"]
         )
         assert len(bindings) == len(stored)
         for binding, expected in zip(bindings, stored):

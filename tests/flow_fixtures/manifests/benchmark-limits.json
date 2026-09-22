@@ -62,7 +62,7 @@
       }
     }
   },
-  "implementation_sha256": "sha256-v1:88a556b297de7e3af4dc60c8551dad996687ce30b27cb94ffb6b5f1282713f9d",
+  "implementation_sha256": "sha256-v1:6e79457e01015e970743b3189dfc5f0b021b7d5b6ad5120ee76830f8f86fbed2",
   "sampling": {
     "measurements": 30,
     "p95_method": "nearest-rank",
@@ -82,8 +82,15 @@
       ]
     },
     "ida_extract": {
+      "expectations": {
+        "fixture_sha256": "8f2ac8d7384a926cb416b9c8feaa53f4f32abee6dc9eb1c14edef702ca063703",
+        "hardware_class": "linux-x86_64",
+        "hexrays_build": "9.3.0.260213",
+        "ida_build": "9.3",
+        "profile": "X64-LE"
+      },
       "peak_rss_bytes": 4294967296,
-      "required_receipt": "flow-ida-benchmark/1",
+      "required_receipt": "flow-ida-benchmark/2",
       "runner": "protected licensed static IDA runner",
       "target_execution_forbidden": true,
       "wall_time_ms": {

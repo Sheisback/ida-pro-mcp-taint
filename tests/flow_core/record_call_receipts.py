@@ -105,11 +105,7 @@ def heap_lifetime(result, object_id):
 
 
 def memory_bytes(result, item):
-    return [
-        byte
-        for byte in result.state.memory
-        if byte.object_id == item.object_id
-    ]
+    return [byte for byte in result.state.memory if byte.object_id == item.object_id]
 
 
 def binding_for(functions, function_name, summary_name=None, *, unknown=False, index=0):
@@ -204,9 +200,7 @@ def h02_proven_left_free(functions):
     normal_frees = [
         binding
         for binding in frees
-        if not _reachable(
-            blocks, cleanup_block, binding.observation["block_index"]
-        )
+        if not _reachable(blocks, cleanup_block, binding.observation["block_index"])
     ]
     if len(normal_frees) != 2:
         raise ValueError("H02 normal two-free path is not uniquely proven")
@@ -228,21 +222,23 @@ def h02_proven_left_free(functions):
     selected = first[0]
     later = next(binding for binding in normal_frees if binding is not selected)
     dominators = _dominators(runtime.snapshot.function)
-    allocation_blocks = {
-        binding.observation["block_index"] for binding in allocations
-    }
+    allocation_blocks = {binding.observation["block_index"] for binding in allocations}
     if not allocation_blocks <= dominators[selected.observation["block_index"]]:
         raise ValueError("H02 selected free is not dominated by both allocations")
-    return runtime, selected, {
-        "selection": "two_allocations_dominate_and_cleanup_path_excluded",
-        "allocation_instruction_rvas": sorted(
-            binding.site.instruction_rva for binding in allocations
-        ),
-        "cleanup_first_free_instruction_rva": cleanup[0].site.instruction_rva,
-        "selected_left_free_instruction_rva": selected.site.instruction_rva,
-        "later_right_free_instruction_rva": later.site.instruction_rva,
-        "selected_block_index": selected.observation["block_index"],
-    }
+    return (
+        runtime,
+        selected,
+        {
+            "selection": "two_allocations_dominate_and_cleanup_path_excluded",
+            "allocation_instruction_rvas": sorted(
+                binding.site.instruction_rva for binding in allocations
+            ),
+            "cleanup_first_free_instruction_rva": cleanup[0].site.instruction_rva,
+            "selected_left_free_instruction_rva": selected.site.instruction_rva,
+            "later_right_free_instruction_rva": later.site.instruction_rva,
+            "selected_block_index": selected.observation["block_index"],
+        },
+    )
 
 
 def entrypoint_plan(functions, catalog, summary_name):
@@ -298,7 +294,9 @@ def semantic_cases(functions, catalog):
         raise ValueError("C01 identity return provenance mismatch")
 
     _, copy_function, _, _ = functions["call_copy"]
-    destination = memory_object(copy_function.snapshot.snapshot_id, "c01-destination", 4)
+    destination = memory_object(
+        copy_function.snapshot.snapshot_id, "c01-destination", 4
+    )
     source = memory_object(copy_function.snapshot.snapshot_id, "c01-source", 4)
     seeded = state(
         (destination, source),
@@ -434,13 +432,14 @@ def semantic_cases(functions, catalog):
     recursive = compose(
         recursive_function,
         recursive_binding,
-        inputs=CallInputs(
-            (value(32, label="X"), value(32, label="DEPTH"))
-        ),
+        inputs=CallInputs((value(32, label="X"), value(32, label="DEPTH"))),
     )
     if base.return_value.labels.explicit != ("X",):
         raise ValueError("C03 base return provenance mismatch")
-    if recursive.status != "partial" or not recursive.return_value.labels.unknown_provenance:
+    if (
+        recursive.status != "partial"
+        or not recursive.return_value.labels.unknown_provenance
+    ):
         raise ValueError("C03 recursive remainder was not composed as partial")
     if "missing_reviewed_summary" not in recursive.diagnostics:
         raise ValueError("C03 recursive boundary disappeared")
@@ -448,15 +447,19 @@ def semantic_cases(functions, catalog):
     indirect_function, indirect_binding = binding_for(
         functions, "call_indirect", unknown=True
     )
-    indirect_width = indirect_function.calls[
-        tuple(indirect_function.calls).index(
-            next(
-                observation
-                for observation in indirect_function.calls
-                if observation.to_data() == indirect_binding.observation
+    indirect_width = (
+        indirect_function.calls[
+            tuple(indirect_function.calls).index(
+                next(
+                    observation
+                    for observation in indirect_function.calls
+                    if observation.to_data() == indirect_binding.observation
+                )
             )
-        )
-    ].call.arguments[0].width_bits
+        ]
+        .call.arguments[0]
+        .width_bits
+    )
     if indirect_width is None:
         raise ValueError("C04 extracted argument width unavailable")
     indirect = compose(
@@ -464,7 +467,10 @@ def semantic_cases(functions, catalog):
         indirect_binding,
         inputs=CallInputs((value(indirect_width, label="X"),)),
     )
-    if indirect.status != "partial" or not indirect.return_value.labels.unknown_provenance:
+    if (
+        indirect.status != "partial"
+        or not indirect.return_value.labels.unknown_provenance
+    ):
         raise ValueError("C04 unknown remainder was not composed")
     if indirect_binding.plan.branches:
         raise ValueError("C04 incompatible reviewed candidates were not rejected")
@@ -651,7 +657,9 @@ def semantic_cases(functions, catalog):
             "right_object_id": h02_right_id,
             "after_left_free": {
                 "left": list(heap_lifetime(h02_after_left_free, h02_left_id).possible),
-                "right": list(heap_lifetime(h02_after_left_free, h02_right_id).possible),
+                "right": list(
+                    heap_lifetime(h02_after_left_free, h02_right_id).possible
+                ),
             },
             "composition_digests": [
                 digest(h02_left),
@@ -681,13 +689,15 @@ def receipt(arch):
     extraction = json.loads(extraction_path.read_text())
     if extraction["target_executed"] is not False:
         raise ValueError("Static extraction receipt executed the target")
-    if extraction["extractor_sha256"] != hashlib.sha256(
-        EXTRACTOR_PATH.read_bytes()
-    ).hexdigest():
+    if (
+        extraction["extractor_sha256"]
+        != hashlib.sha256(EXTRACTOR_PATH.read_bytes()).hexdigest()
+    ):
         raise ValueError("Stale call extractor receipt")
-    if extraction["catalog_module_sha256"] != hashlib.sha256(
-        CATALOG_PATH.read_bytes()
-    ).hexdigest():
+    if (
+        extraction["catalog_module_sha256"]
+        != hashlib.sha256(CATALOG_PATH.read_bytes()).hexdigest()
+    ):
         raise ValueError("Stale call catalog receipt")
     catalog = SummaryCatalog.from_data(extraction["catalog"])
     if catalog.catalog_digest != extraction["catalog_digest"]:
@@ -712,14 +722,15 @@ def receipt(arch):
         if extractor.ExtractedFunction.from_json(canonical_json(runtime)) != runtime:
             raise ValueError("Runtime extraction roundtrip failed")
         bindings = tuple(
-            catalog_module.CallBinding.from_data(value)
-            for value in record["bindings"]
+            catalog_module.CallBinding.from_data(value) for value in record["bindings"]
         )
-        if any(binding.plan.catalog_digest != catalog.catalog_digest for binding in bindings):
+        if any(
+            binding.plan.catalog_digest != catalog.catalog_digest
+            for binding in bindings
+        ):
             raise ValueError("Call plan/catalog mismatch")
         compositions = tuple(
-            CallCompositionResult.from_data(value)
-            for value in record["compositions"]
+            CallCompositionResult.from_data(value) for value in record["compositions"]
         )
         if len(bindings) != len(compositions):
             raise ValueError("Extracted binding/composition count mismatch")
@@ -768,9 +779,7 @@ def receipt(arch):
         raise ValueError("C04 incompatible reviewed branch was accepted")
 
     plans = [
-        binding.plan
-        for _, _, bindings, _ in functions.values()
-        for binding in bindings
+        binding.plan for _, _, bindings, _ in functions.values() for binding in bindings
     ]
     branch_counts = Counter(
         branch.summary.display_name for plan in plans for branch in plan.branches
@@ -802,7 +811,9 @@ def receipt(arch):
         "schema_version": "flow-call-replay/2",
         "arch": arch,
         "extraction_file": str(extraction_path.relative_to(ROOT)),
-        "extraction_file_sha256": hashlib.sha256(extraction_path.read_bytes()).hexdigest(),
+        "extraction_file_sha256": hashlib.sha256(
+            extraction_path.read_bytes()
+        ).hexdigest(),
         "generator_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "catalog_digest": catalog.catalog_digest,
         "reviewed_summaries": [

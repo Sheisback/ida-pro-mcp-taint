@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 from pathlib import Path
+from types import ModuleType
 from typing import Any
 
 from ida_pro_mcp.flow_core.serialization import canonical_json
@@ -18,8 +20,39 @@ P0_ROOT = Path("tests/flow_fixtures/manifests/profiles/actual-p0")
 SEMANTIC_MATRIX = Path("tests/flow_fixtures/manifests/profile_semantics/matrix.json")
 
 
+def _load_validator_script(name: str) -> ModuleType:
+    path = Path(__file__).with_name(name + ".py")
+    spec = importlib.util.spec_from_file_location("flow_support_" + name, path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Unable to load receipt validator: {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+PROFILE_RECEIPTS = _load_validator_script("record_flow_profile_receipts")
+SEMANTIC_RECEIPTS = _load_validator_script("evaluate_flow_profile_semantics")
+
+
+def _reject_constant(value: str) -> None:
+    raise ValueError(f"Non-finite JSON constant: {value}")
+
+
+def _object_pairs(items: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in items:
+        if key in result:
+            raise ValueError(f"Duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
 def read_json(path: Path) -> dict[str, Any]:
-    value = json.loads(path.read_text())
+    value = json.loads(
+        path.read_text(),
+        object_pairs_hook=_object_pairs,
+        parse_constant=_reject_constant,
+    )
     if type(value) is not dict:
         raise ValueError(f"Expected object in {path}")
     return value
@@ -39,9 +72,11 @@ def _under(root: Path, relative: str) -> Path:
 def validate_referenced_receipts(
     root: Path, p0_matrix: dict[str, Any], semantic_matrix: dict[str, Any]
 ) -> None:
+    PROFILE_RECEIPTS.validate_matrix_result(p0_matrix)
     p0_root = (root / P0_ROOT).resolve()
     for row in p0_matrix["rows"]:
         result = read_json(_under(p0_root, row["result_file"]))
+        PROFILE_RECEIPTS.validate_row_result(result)
         if result.get("receipt_digest") != row["receipt_digest"]:
             raise ValueError("P0 result digest mismatch")
         if result.get("profile_id") != row["profile_id"]:
@@ -55,19 +90,11 @@ def validate_referenced_receipts(
         if result.get("support_status") != "unverified":
             raise ValueError("P0 result promoted support")
 
-    for row in semantic_matrix["profiles"]:
-        receipt = read_json(_under(root, row["receipt_file"]))
-        if receipt.get("receipt_digest") != row["receipt_digest"]:
-            raise ValueError("Semantic receipt digest mismatch")
-        if receipt.get("profile_id") != row["profile_id"]:
-            raise ValueError("Semantic receipt profile mismatch")
-        if receipt.get("target_executed") is not False:
-            raise ValueError("Semantic receipt executed target")
-        if receipt.get("input_preserved") is not True:
-            raise ValueError("Semantic receipt changed its input")
-        for field in ("registry_promoted", "service_promoted"):
-            if receipt.get(field) is not False:
-                raise ValueError(f"Semantic receipt promoted {field}")
+    # Rebuild the complete semantic matrix from every referenced normal,
+    # format, and RV32 fallback body.  This invokes the same receipt-specific
+    # validators used when the evidence was recorded, rather than trusting a
+    # copied digest label in the summary matrix.
+    SEMANTIC_RECEIPTS.validate_complete_matrix_artifacts(root, semantic_matrix)
 
 
 def build(root: Path) -> dict[str, Any]:

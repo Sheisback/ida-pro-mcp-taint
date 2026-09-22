@@ -34,6 +34,9 @@ def test_flow_capabilities_honest():
             "value_ssa",
             "memory_ssa",
             "taint",
+            "interprocedural",
+            "implicit_flow",
+            "path_proof",
             "durable_jobs",
             "microcode_extraction",
         }:
@@ -44,6 +47,9 @@ def test_flow_capabilities_honest():
         "value_ssa",
         "memory_ssa",
         "taint",
+        "interprocedural",
+        "implicit_flow",
+        "path_proof",
         "durable_jobs",
         "microcode_extraction",
     ):

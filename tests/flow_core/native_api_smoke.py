@@ -14,6 +14,17 @@ import tempfile
 import time
 
 from ida_pro_mcp import idalib_supervisor as sm
+from ida_pro_mcp.flow_core.constraints import (
+    ConstraintBindings,
+    ConstraintExpression,
+    ConstraintQuery,
+    ConstraintVariable,
+    DeclaredCoverage,
+    PathConstraint,
+    ProofBounds,
+    ProofBudget,
+    variable_domain_digest,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -145,9 +156,35 @@ def main(build_dir, output):
                     items.extend(page["items"])
                 return items
 
+            call_page = call(
+                "flow_get_call_compositions",
+                artifact_id=result["call_composition_artifact"],
+                limit=5,
+            )
+            assert call_page["metadata"] == {
+                "catalog_digest": result["summary_digest"],
+                "call_count": 0,
+                "partial_count": 0,
+                "unknown_remainder_count": 0,
+                "status": "complete_in_scope",
+                "target_executed": False,
+                "no_auto_vulnerability_verdict": True,
+            }
+
             nodes = pages("flow_get_function_ssa", result["ssa_artifact"])
             cfg = pages("flow_get_cfg", result["ssa_artifact"])
-            graph = pages("flow_get_graph", result["graph_artifact"])
+            graph_first = call(
+                "flow_get_graph", artifact_id=result["graph_artifact"], limit=5
+            )
+            graph = list(graph_first["items"])
+            while graph_first["next_cursor"]:
+                graph_first = call(
+                    "flow_get_graph",
+                    artifact_id=result["graph_artifact"],
+                    cursor=graph_first["next_cursor"],
+                    limit=5,
+                )
+                graph.extend(graph_first["items"])
             evidence = pages("flow_get_evidence", result["graph_artifact"])
             edges = [
                 e
@@ -226,6 +263,110 @@ def main(build_dir, output):
             returned = max(
                 (n["node_id"] for n in nodes), key=lambda n: len(reachable(n, True))
             )
+
+            implicit_submission = call(
+                "flow_create_implicit_analysis",
+                ssa_artifact=result["ssa_artifact"],
+                seeds=[
+                    {
+                        "node_id": source,
+                        "labels": {
+                            "explicit": ["public-static-source"],
+                            "control": [],
+                            "unknown_provenance": False,
+                            "any_explicit_source": False,
+                            "any_control_source": False,
+                        },
+                    }
+                ],
+                request_key="implicit",
+            )
+            for _ in range(200):
+                implicit_job = call(
+                    "flow_get_job", job_id=implicit_submission["job_id"]
+                )
+                if implicit_job["state"] in {
+                    "complete",
+                    "failed",
+                    "cancelled",
+                    "stale",
+                    "interrupted",
+                }:
+                    break
+                time.sleep(0.05)
+            assert implicit_job["state"] == "complete", implicit_job
+            implicit_page = call(
+                "flow_get_implicit_analysis",
+                artifact_id=implicit_job["result"]["implicit_artifact"],
+                limit=200,
+            )
+            assert implicit_page["metadata"]["target_executed"] is False
+            assert implicit_page["metadata"]["no_auto_vulnerability_verdict"] is True
+            assert any(item["type"] == "fact" for item in implicit_page["items"])
+
+            graph_metadata = call(
+                "flow_get_graph", artifact_id=result["graph_artifact"], limit=1
+            )["metadata"]
+            variables = (ConstraintVariable("x", 1, (0, 1)),)
+            constraint = PathConstraint(
+                "public-static-eq",
+                ConstraintExpression("variable", 1, variable="x"),
+                "eq",
+                ConstraintExpression("constant", 1, value=1),
+                None,
+                True,
+                "rule:public-declared-path-v1",
+                "origin:public-static-smoke",
+                (memory_evidence["evidence_id"],),
+            )
+            query = ConstraintQuery(
+                ConstraintBindings(
+                    result["snapshot_id"],
+                    result["graph_digest"],
+                    graph_metadata["profile_digest"],
+                    graph_metadata["rule_digest"],
+                    (result["summary_digest"],),
+                ),
+                variables,
+                (constraint,),
+                (),
+                ProofBounds(1, 0),
+                ProofBudget(2, 8, 1000),
+                DeclaredCoverage(
+                    "fixed_width_bitvectors",
+                    ("x",),
+                    variable_domain_digest(variables),
+                    ("public-static-eq",),
+                    ("eq",),
+                ),
+            )
+            proof_submission = call(
+                "flow_create_path_proof",
+                graph_artifact=result["graph_artifact"],
+                query=query.to_data(),
+                request_key="proof",
+            )
+            for _ in range(200):
+                proof_job = call("flow_get_job", job_id=proof_submission["job_id"])
+                if proof_job["state"] in {
+                    "complete",
+                    "failed",
+                    "cancelled",
+                    "stale",
+                    "interrupted",
+                }:
+                    break
+                time.sleep(0.05)
+            assert proof_job["state"] == "complete", proof_job
+            proof_page = call(
+                "flow_get_path_proof",
+                artifact_id=proof_job["result"]["path_proof_artifact"],
+                limit=200,
+            )
+            assert proof_page["metadata"]["status"] == "feasible"
+            assert proof_page["metadata"]["scope"] == "within_bounds"
+            assert proof_page["metadata"]["witness_valid"] is True
+            assert proof_page["metadata"]["no_auto_vulnerability_verdict"] is True
             for direction, selected in (("forward", source), ("backward", returned)):
                 args = dict(
                     snapshot_artifact=result["snapshot_artifact"],

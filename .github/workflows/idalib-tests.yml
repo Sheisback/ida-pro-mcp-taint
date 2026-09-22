@@ -20,26 +20,64 @@ permissions:
   packages: read
 
 jobs:
+  image-pin:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - ida-version: '9.0'
+            image-digest: ${{ vars.IDA_IMAGE_90_DIGEST }}
+          - ida-version: '9.1'
+            image-digest: ${{ vars.IDA_IMAGE_91_DIGEST }}
+          - ida-version: '9.2'
+            image-digest: ${{ vars.IDA_IMAGE_92_DIGEST }}
+          - ida-version: '9.3'
+            image-digest: ${{ vars.IDA_IMAGE_93_DIGEST }}
+    steps:
+      - name: Require immutable licensed image digest
+        env:
+          IMAGE_DIGEST: ${{ matrix.image-digest }}
+        run: '[[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]'
+      - name: Require reviewed IDA 9.3 executable digest
+        if: matrix.ida-version == '9.3'
+        env:
+          IDA_EXECUTABLE_SHA256: ${{ vars.IDA_93_EXECUTABLE_SHA256 }}
+        run: '[[ "$IDA_EXECUTABLE_SHA256" =~ ^[0-9a-f]{64}$ ]]'
+      - name: Require reviewed IDA 9.3 GUI executable digest
+        if: matrix.ida-version == '9.3'
+        env:
+          IDA_GUI_EXECUTABLE_SHA256: ${{ vars.IDA_93_GUI_EXECUTABLE_SHA256 }}
+        run: '[[ "$IDA_GUI_EXECUTABLE_SHA256" =~ ^[0-9a-f]{64}$ ]]'
+
   flow-ida:
     # This protected environment must require reviewer approval. Untrusted pull
     # request code is never checked out by this workflow.
     environment: licensed-ida
+    needs: image-pin
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        ida-version: ['9.0', '9.1', '9.2', '9.3']
+        include:
+          - ida-version: '9.0'
+            image-digest: ${{ vars.IDA_IMAGE_90_DIGEST }}
+          - ida-version: '9.1'
+            image-digest: ${{ vars.IDA_IMAGE_91_DIGEST }}
+          - ida-version: '9.2'
+            image-digest: ${{ vars.IDA_IMAGE_92_DIGEST }}
+          - ida-version: '9.3'
+            image-digest: ${{ vars.IDA_IMAGE_93_DIGEST }}
     container:
-      image: ghcr.io/mrexodia/ida-docker/ida:${{ matrix.ida-version }}
+      image: ghcr.io/mrexodia/ida-docker/ida@${{ matrix.image-digest }}
       credentials:
         username: ${{ github.repository_owner }}
         password: ${{ secrets.GITHUB_TOKEN }}
     env:
       EXPECTED_SHA: ${{ inputs.release_sha || github.sha }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           ref: ${{ inputs.release_sha || github.sha }}
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
       - name: Verify the reviewed checkout
         run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
       - name: Run retained licensed IDA tests
@@ -52,14 +90,44 @@ jobs:
           uv run python scripts/flow_licensed_ci.py \
             --fixture tests/crackme03.elf \
             --checkout-sha "$EXPECTED_SHA" \
+            --profile X64-LE --abi sysv-amd64 --format FMT-ELF \
             --output "licensed-reports/licensed-${{ matrix.ida-version }}-crackme03.json"
           uv run python scripts/flow_licensed_ci.py \
             --fixture tests/typed_fixture.elf \
             --checkout-sha "$EXPECTED_SHA" \
+            --profile X64-LE --abi sysv-amd64 --format FMT-ELF \
             --output "licensed-reports/licensed-${{ matrix.ida-version }}-typed-fixture.json"
+      - name: Record current actual normal semantic receipts
+        if: matrix.ida-version == '9.3'
+        run: |
+          uv run python scripts/record_flow_licensed_normal.py \
+            --checkout-sha "$EXPECTED_SHA" \
+            --ida "$(command -v idat)" \
+            --expected-ida-executable-sha256 "${{ vars.IDA_93_EXECUTABLE_SHA256 }}" \
+            --output licensed-reports/normal
+      - name: Record fresh protected 5x30 licensed IDA benchmark
+        if: matrix.ida-version == '9.3'
+        run: |
+          uv run python scripts/run_ida_flow_benchmark.py \
+            --fixture tests/flow_fixtures/benchmark/p0_x86_64 \
+            --profile X64-LE --abi darwin-x86_64-sysv-derived --format FMT-MACHO \
+            --build-manifest tests/flow_fixtures/benchmark/build.json \
+            --ida "$(command -v idat)" \
+            --expected-ida-executable-sha256 "${{ vars.IDA_93_EXECUTABLE_SHA256 }}" \
+            --output licensed-reports/benchmark-ida.json
+      - name: Attempt isolated disposable GUI-process evidence
+        if: matrix.ida-version == '9.3'
+        run: |
+          GUI_EXECUTABLE="$(command -v ida || printf /missing/ida)"
+          uv run python scripts/record_flow_gui_ci.py \
+            --fixture tests/crackme03.elf \
+            --checkout-sha "$EXPECTED_SHA" \
+            --ida "$GUI_EXECUTABLE" \
+            --expected-ida-executable-sha256 "${{ vars.IDA_93_GUI_EXECUTABLE_SHA256 }}" \
+            --output licensed-reports/gui-process.json
       - name: Upload licensed static receipts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: licensed-static-${{ matrix.ida-version }}
           path: licensed-reports

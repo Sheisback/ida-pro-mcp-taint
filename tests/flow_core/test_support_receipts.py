@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from ida_pro_mcp.flow_core import ContractError
+from ida_pro_mcp.flow_core import ContractError, digest
 from ida_pro_mcp.flow_core.profile_registry import PROFILE_IDS
 from ida_pro_mcp.flow_core.support_receipts import (
     build_support_receipt_manifest,
@@ -93,11 +93,61 @@ def test_builder_rejects_forged_rv32_normal_success():
         build_support_receipt_manifest(inventory, p0_matrix, semantic_matrix)
 
 
+def test_audit_rejects_p0_body_tamper_with_copied_digest_label(monkeypatch):
+    _, p0_matrix, semantic_matrix = _sources()
+    result_file = p0_matrix["rows"][0]["result_file"]
+    target = (ROOT / audit.P0_ROOT / result_file).resolve()
+    original_read_json = audit.read_json
+
+    def tampered_read_json(path: Path):
+        value = original_read_json(path)
+        if path.resolve() == target:
+            value["binary"]["copied_sha256"] = "0" * 64
+        return value
+
+    monkeypatch.setattr(audit, "read_json", tampered_read_json)
+    with pytest.raises(ValueError, match="receipt digest"):
+        audit.validate_referenced_receipts(ROOT, p0_matrix, semantic_matrix)
+
+
+def test_audit_rejects_semantic_body_tamper_with_copied_digest_label(monkeypatch):
+    _, p0_matrix, semantic_matrix = _sources()
+    row = next(
+        item
+        for item in semantic_matrix["profiles"]
+        if item["evidence_path"] == "normal"
+    )
+    target = (ROOT / row["receipt_file"]).resolve()
+    original_read_json = audit.SEMANTIC_RECEIPTS.read_json
+
+    def tampered_read_json(path: Path):
+        value = original_read_json(path)
+        if path.resolve() == target:
+            value["environment"]["processor"] = "tampered"
+        return value
+
+    monkeypatch.setattr(audit.SEMANTIC_RECEIPTS, "read_json", tampered_read_json)
+    with pytest.raises(ValueError, match="receipt digest"):
+        audit.validate_referenced_receipts(ROOT, p0_matrix, semantic_matrix)
+
+
+def test_support_manifest_rejects_semantic_status_tamper():
+    receipt = deepcopy(_read(MANIFEST))
+    receipt["profiles"][0]["semantic_status"] = "success"
+    body = {key: value for key, value in receipt.items() if key != "receipt_digest"}
+    receipt["receipt_digest"] = digest(body)
+    with pytest.raises(ContractError, match="semantic status"):
+        validate_support_receipt_manifest(receipt)
+
+
 def test_docs_name_every_profile_and_the_static_only_boundary():
     compatibility = (ROOT / "docs/flow-compatibility.md").read_text()
     operator = (ROOT / "docs/flow-operator.md").read_text()
     for profile_id in PROFILE_IDS:
         assert f"`{profile_id}`" in compatibility
     assert "does not promote runtime support" in compatibility
+    assert "does not establish P6 release readiness" in compatibility
+    assert "recomputes every referenced receipt body" in compatibility
     assert "Never execute the target" in operator
     assert "target_executed: false" in operator
+    assert "copied digest labels" in operator

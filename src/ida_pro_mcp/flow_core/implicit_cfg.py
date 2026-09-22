@@ -1,5 +1,6 @@
 """Pure structural post-dominance and CFG control-dependence certificates."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 import heapq
 from typing import Literal
@@ -200,11 +201,14 @@ class ImplicitCFG(Model):
 
 
 class _Budget:
-    def __init__(self, maximum: int):
+    def __init__(self, maximum: int, checkpoint: Callable[[], None] | None = None):
+        self.checkpoint = checkpoint
         self.maximum = maximum
         self.used = 0
 
     def tick(self, amount: int = 1) -> bool:
+        if self.checkpoint is not None:
+            self.checkpoint()
         if self.used + amount > self.maximum:
             return False
         self.used += amount
@@ -270,13 +274,17 @@ def _reverse_reachable(
 def analyze_implicit_cfg(
     program: SSAProgram,
     policy: ImplicitCFGPolicy = ImplicitCFGPolicy(),
+    *,
+    checkpoint: Callable[[], None] | None = None,
 ) -> ImplicitCFG:
     """Compute bounded post-dominance and successor-attributed control regions."""
 
+    if checkpoint is not None:
+        checkpoint()
     function = program.graph.snapshot.function
     all_blocks = set(range(len(function.blocks)))
     edge_count = sum(len(block.successors) for block in function.blocks)
-    budget = _Budget(policy.max_iterations)
+    budget = _Budget(policy.max_iterations, checkpoint)
     diagnostics: set[str] = set()
     if len(function.blocks) > policy.max_blocks:
         diagnostics.add("block_budget_exceeded")
@@ -288,6 +296,8 @@ def analyze_implicit_cfg(
     reachable: set[int] = set()
     pending = [function.entry_block]
     while pending:
+        if checkpoint is not None:
+            checkpoint()
         if not budget.tick():
             diagnostics.add("iteration_budget_exceeded:reachability")
             return _partial(
@@ -303,6 +313,8 @@ def analyze_implicit_cfg(
             continue
         reachable.add(block)
         for successor in function.blocks[block].successors:
+            if checkpoint is not None:
+                checkpoint()
             if successor not in reachable:
                 heapq.heappush(pending, successor)
     unreachable = all_blocks - reachable
@@ -310,8 +322,12 @@ def analyze_implicit_cfg(
     definitions = {definition.node_id: definition for definition in program.definitions}
     nodes_by_block: dict[int, list] = {block: [] for block in all_blocks}
     for node in program.graph.nodes:
+        if checkpoint is not None:
+            checkpoint()
         nodes_by_block[definitions[node.node_id].block].append(node)
     for block_nodes in nodes_by_block.values():
+        if checkpoint is not None:
+            checkpoint()
         block_nodes.sort(
             key=lambda node: (definitions[node.node_id].order, node.node_id)
         )
@@ -320,6 +336,8 @@ def analyze_implicit_cfg(
     return_exits: set[int] = set()
     unknown_exits: set[int] = set()
     for block in sorted(terminals):
+        if checkpoint is not None:
+            checkpoint()
         returns = [node for node in nodes_by_block[block] if node.kind == "Return"]
         branches = [node for node in nodes_by_block[block] if node.kind == "Branch"]
         if len(returns) == 1 and not branches:
@@ -384,9 +402,13 @@ def analyze_implicit_cfg(
     universe = safe | {virtual_exit}
     postdom: dict[int, set[int]] = {virtual_exit: {virtual_exit}}
     for block in safe:
+        if checkpoint is not None:
+            checkpoint()
         postdom[block] = set(universe)
     successors: dict[int, tuple[int, ...]] = {}
     for block in safe:
+        if checkpoint is not None:
+            checkpoint()
         if block in terminals:
             successors[block] = (virtual_exit,)
         else:
@@ -398,8 +420,12 @@ def analyze_implicit_cfg(
 
     changed = True
     while changed:
+        if checkpoint is not None:
+            checkpoint()
         changed = False
         for block in sorted(safe, reverse=True):
+            if checkpoint is not None:
+                checkpoint()
             if not budget.tick():
                 diagnostics.add("iteration_budget_exceeded:post_dominance")
                 return _partial(
@@ -425,6 +451,8 @@ def analyze_implicit_cfg(
     immediate: dict[int, int] = {}
     post_blocks: list[PostDominatorBlock] = []
     for block in sorted(safe):
+        if checkpoint is not None:
+            checkpoint()
         strict = postdom[block] - {block}
         require(bool(strict), "Safe real block lacks virtual exit post-dominator")
         ordered = sorted(strict)
@@ -459,6 +487,8 @@ def analyze_implicit_cfg(
         partial_frontier.update(reachable)
 
     for branch_block in sorted(reachable):
+        if checkpoint is not None:
+            checkpoint()
         block_successors = function.blocks[branch_block].successors
         if len(block_successors) <= 1:
             continue
@@ -506,6 +536,8 @@ def analyze_implicit_cfg(
             partial_frontier.add(branch_block)
 
         for successor in block_successors:
+            if checkpoint is not None:
+                checkpoint()
             region_diagnostics = set(binding_diagnostics)
             controlled: list[int] = []
             region_frontier: set[int] = set()
@@ -519,6 +551,8 @@ def analyze_implicit_cfg(
                 runner = successor
                 seen: set[int] = set()
                 while runner != stop:
+                    if checkpoint is not None:
+                        checkpoint()
                     if not budget.tick():
                         region_frontier.add(runner)
                         region_diagnostics.add("iteration_budget_exceeded:region_walk")

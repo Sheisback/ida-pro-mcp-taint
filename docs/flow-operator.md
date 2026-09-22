@@ -37,8 +37,11 @@ uv run python scripts/audit_flow_support.py \
   --output tests/flow_fixtures/manifests/support_receipts.json
 ```
 
-Review the diff. A successful audit means the receipt set is internally
-complete and unchanged; it is not a support promotion.
+Review the diff. The audit validates the P0 result bodies, recomputes the
+normal, format, and RV32 semantic receipt graph, and then compares the derived
+support manifest. It does not trust copied digest labels. A successful audit
+means the committed receipt graph is internally consistent and reproducible;
+it is not a support promotion or a P6 release-readiness verdict.
 
 ## Interpret results conservatively
 
@@ -62,6 +65,9 @@ complete and unchanged; it is not a support promotion.
   credentials to untrusted jobs.
 - Retain receipt inputs, source digests, named limitations, and
   `target_executed: false`; do not delete or weaken evidence to make a gate pass.
+- Require a current, normal receipt for every mandatory profile. A fallback,
+  skip, empty profile list, stale/unbound receipt, missing benchmark, or absent
+  permitted GUI-process observation must leave strict release readiness blocked.
 
 If IDA, a processor/decompiler module, license entitlement, or GUI acceptance
 is unavailable, report that exact blocker and leave the corresponding claim

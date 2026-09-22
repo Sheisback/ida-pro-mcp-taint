@@ -210,6 +210,15 @@ def validate_support_receipt_manifest(value: Any) -> None:
             row["semantic_evidence_path"] == ("fallback" if is_rv32 else "normal"),
             "Profile semantic path mismatch",
         )
+        require(
+            row["semantic_status"]
+            == (
+                "accepted_candidate_partial_normal_failed"
+                if is_rv32
+                else "success_partial_with_named_limitations"
+            ),
+            "Profile semantic status mismatch",
+        )
     body = {key: item for key, item in value.items() if key != "receipt_digest"}
     require(value["receipt_digest"] == digest(body), "Support receipt digest mismatch")
 

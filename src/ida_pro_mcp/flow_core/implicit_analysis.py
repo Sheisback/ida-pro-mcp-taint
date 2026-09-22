@@ -6,7 +6,7 @@ definitions structurally attributed to them, while already-carried control
 labels continue through value, phi, select-payload, and memory-data relations.
 """
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
@@ -202,11 +202,16 @@ def _predicate_control(labels: Labels) -> Labels:
 
 def _dataflow(
     program: SSAProgram,
+    checkpoint: Callable[[], None] | None = None,
 ) -> tuple[dict[str, tuple[str, ...]], dict[str, set[str]]]:
+    if checkpoint is not None:
+        checkpoint()
     nodes = {node.node_id for node in program.graph.nodes}
     dependencies: dict[str, set[str]] = {node_id: set() for node_id in nodes}
     consumers: dict[str, set[str]] = {node_id: set() for node_id in nodes}
     for edge in program.graph.edges:
+        if checkpoint is not None:
+            checkpoint()
         if edge.kind not in {
             "value_dependency",
             "phi_input",
@@ -221,11 +226,21 @@ def _dataflow(
     )
 
 
-def _descendants(starts: Iterable[str], consumers: Mapping[str, set[str]]) -> set[str]:
+def _descendants(
+    starts: Iterable[str],
+    consumers: Mapping[str, set[str]],
+    checkpoint: Callable[[], None] | None = None,
+) -> set[str]:
+    if checkpoint is not None:
+        checkpoint()
     reached = set(starts)
     pending = list(reached)
     while pending:
+        if checkpoint is not None:
+            checkpoint()
         for consumer in consumers[pending.pop()]:
+            if checkpoint is not None:
+                checkpoint()
             if consumer not in reached:
                 reached.add(consumer)
                 pending.append(consumer)
@@ -241,9 +256,12 @@ def _analyze_regions(
     *,
     partial_nodes: tuple[str, ...] = (),
     control_diagnostics: tuple[str, ...] = (),
+    checkpoint: Callable[[], None] | None = None,
 ) -> ImplicitResult:
     """Run the label fixed point over a normalized Task-1 certificate view."""
 
+    if checkpoint is not None:
+        checkpoint()
     check_digest(control_digest)
     canonical_set(tuple(seed.node_id for seed in seeds))
     graph = program.graph
@@ -251,8 +269,12 @@ def _analyze_regions(
     evidence_ids = {evidence.evidence_id for evidence in graph.evidence}
     definitions = {definition.node_id: definition for definition in program.definitions}
     for seed in seeds:
+        if checkpoint is not None:
+            checkpoint()
         graph.validate_source(ValueSource(graph.snapshot.snapshot_id, seed.node_id))
     for region in regions:
+        if checkpoint is not None:
+            checkpoint()
         require(
             region.predicate_node_id in node_ids and region.branch_node_id in node_ids,
             "Control region references an unknown predicate/branch node",
@@ -273,7 +295,7 @@ def _analyze_regions(
     canonical_set(control_diagnostics)
 
     explicit_seeds = tuple(_explicit_seed(seed) for seed in seeds)
-    explicit = analyze(graph, explicit_seeds)
+    explicit = analyze(graph, explicit_seeds, checkpoint=checkpoint)
     explicit_facts = {fact.node_id: fact for fact in explicit.facts}
     seed_controls = {seed.node_id: _control_part(seed.labels) for seed in seeds}
     labels = {
@@ -281,15 +303,19 @@ def _analyze_regions(
         for node_id, fact in explicit_facts.items()
     }
     for node_id in node_ids - labels.keys():
+        if checkpoint is not None:
+            checkpoint()
         labels[node_id] = seed_controls.get(node_id, Labels())
 
-    dependencies, consumers = _dataflow(program)
+    dependencies, consumers = _dataflow(program, checkpoint)
     injections: dict[str, set[tuple[str, str | None]]] = {
         node_id: set() for node_id in node_ids
     }
     relations: list[ControlDependency] = []
     predicate_targets: dict[str, set[str]] = {node_id: set() for node_id in node_ids}
     for region in regions:
+        if checkpoint is not None:
+            checkpoint()
         targets = tuple(
             sorted(
                 node_id
@@ -298,6 +324,8 @@ def _analyze_regions(
             )
         )
         for target in targets:
+            if checkpoint is not None:
+                checkpoint()
             injections[target].add((region.predicate_node_id, region.branch_node_id))
             predicate_targets[region.predicate_node_id].add(target)
             predicate_targets[region.branch_node_id].add(target)
@@ -313,6 +341,8 @@ def _analyze_regions(
             )
 
     for edge in graph.edges:
+        if checkpoint is not None:
+            checkpoint()
         if edge.kind != "control_dependency":
             continue
         target = next(node for node in graph.nodes if node.node_id == edge.target)
@@ -334,15 +364,21 @@ def _analyze_regions(
     pending = set(node_ids)
     evaluations = 0
     while pending and evaluations < policy.max_evaluations:
+        if checkpoint is not None:
+            checkpoint()
         node_id = min(pending)
         pending.remove(node_id)
         evaluations += 1
         addition = Labels()
         for source in dependencies[node_id]:
+            if checkpoint is not None:
+                checkpoint()
             addition = addition.join(_control_part(labels[source]))
         for predicate, branch_node in sorted(
             injections[node_id], key=lambda item: (item[0], item[1] or "")
         ):
+            if checkpoint is not None:
+                checkpoint()
             addition = addition.join(_predicate_control(labels[predicate]))
             if branch_node is not None:
                 addition = addition.join(_control_part(labels[branch_node]))
@@ -355,11 +391,13 @@ def _analyze_regions(
     diagnostics = set(control_diagnostics)
     if explicit.status == "partial":
         diagnostics.add("partial_explicit_analysis")
-    frontier = _descendants(partial_nodes, consumers)
+    frontier = _descendants(partial_nodes, consumers, checkpoint)
     if pending:
         diagnostics.add("implicit_evaluation_budget")
-        frontier.update(_descendants(pending, consumers))
+        frontier.update(_descendants(pending, consumers, checkpoint))
     for node_id in frontier:
+        if checkpoint is not None:
+            checkpoint()
         labels[node_id] = labels[node_id].join(
             Labels(unknown_provenance=True, any_control_source=True)
         )
@@ -385,17 +423,23 @@ def analyze_implicit(
     seeds: tuple[Seed, ...] = (),
     policy: ImplicitPolicy = ImplicitPolicy(),
     control: "ImplicitCFG | None" = None,
+    *,
+    checkpoint: Callable[[], None] | None = None,
 ) -> ImplicitResult:
     """Apply implicit labels using Task 1's structural certificate.
 
     Passing a certificate supports deterministic cache/replay workflows. A
     supplied stale certificate is rejected instead of being silently recomputed.
+    The optional checkpoint runs throughout structural and label computation;
+    cancellation/deadline exceptions propagate rather than returning partial facts.
     """
 
+    if checkpoint is not None:
+        checkpoint()
     from .implicit_cfg import ImplicitCFG, analyze_implicit_cfg
 
     if control is None:
-        control = analyze_implicit_cfg(program)
+        control = analyze_implicit_cfg(program, checkpoint=checkpoint)
     require(type(control) is ImplicitCFG, "Invalid implicit CFG certificate")
     require(
         control.program_digest == digest(program),
@@ -410,6 +454,8 @@ def analyze_implicit(
         "Invalid implicit CFG frontier block",
     )
     for region in control.regions:
+        if checkpoint is not None:
+            checkpoint()
         require(
             set(region.controlled_blocks) <= reachable,
             "Invalid implicit CFG controlled block",
@@ -435,6 +481,8 @@ def analyze_implicit(
     frontier_blocks = set(control.frontier)
     diagnostics = set(control.diagnostics)
     for region in control.regions:
+        if checkpoint is not None:
+            checkpoint()
         frontier_blocks.update(region.frontier)
         diagnostics.update(region.diagnostics)
         if region.status == "partial":
@@ -447,8 +495,12 @@ def analyze_implicit(
             frontier_blocks.update(control.reachable)
     pending_blocks = list(frontier_blocks)
     while pending_blocks:
+        if checkpoint is not None:
+            checkpoint()
         block = pending_blocks.pop()
         for successor in program.graph.snapshot.function.blocks[block].successors:
+            if checkpoint is not None:
+                checkpoint()
             if successor not in frontier_blocks:
                 frontier_blocks.add(successor)
                 pending_blocks.append(successor)
@@ -465,6 +517,7 @@ def analyze_implicit(
         policy,
         partial_nodes=tuple(sorted(partial_nodes)),
         control_diagnostics=tuple(sorted(diagnostics)),
+        checkpoint=checkpoint,
     )
 
 

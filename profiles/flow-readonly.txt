@@ -8,10 +8,15 @@ list_funcs
 
 # Ephemeral sessions must close with save=false; idb_save is intentionally absent.
 flow_create_snapshot
+flow_create_implicit_analysis
+flow_create_path_proof
 flow_get_job
 flow_cancel_job
 flow_get_function_ssa
 flow_get_cfg
+flow_get_implicit_analysis
+flow_get_path_proof
+flow_get_call_compositions
 flow_trace_forward
 flow_trace_backward
 flow_continue_trace

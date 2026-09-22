@@ -1,16 +1,19 @@
-"""Experimental bounded value/memory graph tools; no implicit/path/interprocedural APIs."""
+"""Experimental static flow-analysis tools with explicit boundedness contracts."""
 
 import functools
 import os
 import platform
-from typing import Literal, TypedDict
+from typing import Any, Literal, TypedDict
 
 import ida_hexrays
 import ida_ida
 import ida_kernwin
+import ida_nalt
 
 from ida_pro_mcp.flow_core.build_identity import BUILD_ID, BUILD_SCOPE
+from ida_pro_mcp.flow_core.profile_routing import resolve_open_database_profile
 
+from .flow.profile_routing import observe_open_database
 from .rpc import tool
 from .sync import idasync
 
@@ -115,6 +118,19 @@ class FlowMemorySourceSpec(TypedDict):
 FlowSourceSpec = FlowValueSourceSpec | FlowMemorySourceSpec
 
 
+class FlowLabelSpec(TypedDict):
+    explicit: list[str]
+    control: list[str]
+    unknown_provenance: bool
+    any_explicit_source: bool
+    any_control_source: bool
+
+
+class FlowImplicitSeedSpec(TypedDict):
+    node_id: str
+    labels: FlowLabelSpec
+
+
 @tool
 @idasync
 def flow_get_capabilities() -> FlowCapabilities:
@@ -136,25 +152,33 @@ def flow_get_capabilities() -> FlowCapabilities:
         }
         if ready:
             version = ida_hexrays.get_hexrays_version()
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - discovery must report arbitrary SDK failure.
         probe = {"status": "unverified", "reason": f"Hex-Rays probe failed: {exc}"}
     processor = ida_ida.inf_get_procname()
     bits = (
         64 if ida_ida.inf_is_64bit() else 32 if ida_ida.inf_is_32bit_exactly() else 16
     )
     endian = "big" if ida_ida.inf_is_be() else "little"
+    resolved = None
+    route_error = "Hex-Rays initialization unavailable"
     try:
-        target_supported = (
-            os.name == "posix"
-            and ready
-            and ida_ida.inf_get_filetype() == ida_ida.f_MACHO
-            and bits == 64
-            and endian == "little"
-            and processor in {"metapc", "ARM"}
-        )
-    except Exception:
+        if os.name == "posix" and ready:
+            if version is None:
+                raise RuntimeError("Hex-Rays version unavailable after initialization")
+            resolved = resolve_open_database_profile(
+                observe_open_database(
+                    ida_ida,
+                    ida_nalt,
+                    ida_build=ida_kernwin.get_kernel_version(),
+                    hexrays_build=version,
+                )
+            )
+            target_supported = True
+        else:
+            target_supported = False
+    except Exception as exc:  # noqa: BLE001 - discovery must fail closed, not abort.
         target_supported = False
-    profile = "X64-LE" if processor == "metapc" else "A64-LE"
+        route_error = str(exc)
     support_status = (
         "available"
         if target_supported
@@ -162,11 +186,26 @@ def flow_get_capabilities() -> FlowCapabilities:
         if probe["status"] == "unverified"
         else "unavailable"
     )
-    support_reason = (
-        f"Experimental {profile} Darwin Mach-O MMAT_CALLS scope for this open database"
-        if target_supported
-        else "Current database, host permission model, or Hex-Rays probe is outside the experimental X64-LE/A64-LE Darwin Mach-O scope"
-    )
+    if resolved is not None:
+        if resolved.evidence.evidence_path == "registry":
+            support_reason = (
+                "Experimental measured registry-configuration route for "
+                f"{resolved.evidence.profile_id}/{resolved.evidence.abi_id}/"
+                f"{resolved.evidence.format_id} at MMAT_CALLS; current-binary ABI "
+                "is not inferred"
+            )
+        else:
+            support_reason = (
+                "Experimental exact static-evidence route for "
+                f"{resolved.evidence.profile_id}/{resolved.evidence.abi_id}/"
+                f"{resolved.evidence.format_id} at MMAT_CALLS"
+            )
+        supported_profiles = [resolved.evidence.profile_id]
+    else:
+        support_reason = (
+            "Current database has no exact frozen normal-profile route: " + route_error
+        )
+        supported_profiles = []
     features: dict[str, FlowFeature] = {
         name: {"status": "unavailable", "reason": "Not implemented in this build"}
         for name in (
@@ -193,6 +232,9 @@ def flow_get_capabilities() -> FlowCapabilities:
         "value_ssa",
         "memory_ssa",
         "taint",
+        "interprocedural",
+        "implicit_flow",
+        "path_proof",
         "durable_jobs",
         "microcode_extraction",
     ):
@@ -214,11 +256,13 @@ def flow_get_capabilities() -> FlowCapabilities:
             "hexrays_initialization": probe,
         },
         "features": features,
-        "supported_profiles": [profile] if target_supported else [],
+        "supported_profiles": supported_profiles,
         "limitations": [
             "No ISA, ABI, maturity, or decompiler entitlement has been validated by this tool.",
-            "This capability query performs no snapshot, SSA, taint, path proof, or target execution.",
-            "Published traces include conservative intra-function byte-range memory dependencies; no call-summary, implicit-flow, or path-proof completeness is implied.",
+            "This capability query performs no snapshot, SSA, taint, proof, call composition, or target execution.",
+            "Implicit results publish explicit partial/frontier evidence; bounded proof results apply only to the artifact-bound declared constraint model.",
+            "Interprocedural call compositions preserve unknown remainders; the default runtime summary catalog is empty and never implies whole-program completeness.",
+            "No flow tool emits an automatic vulnerability or safety verdict.",
             "Supported-anchor memory edges model successful flat user-space accesses; TLS/MMIO and null/fault path feasibility remain unresolved.",
             "MCP tools/call tracing can write the working IDB netnode; host close/save policy may persist it.",
             "Read-only describes program-analysis operations, not a byte-immutable IDB session; use working copies.",
@@ -242,7 +286,7 @@ def _flow_api(function):
     return wrapped
 
 
-def _service():
+def _service() -> Any:
     # Import lazily: tools/list and discovery need neither an open IDB nor storage.
     from .flow import service
 
@@ -256,8 +300,9 @@ def flow_create_snapshot(
 ) -> FlowJobSubmission | FlowError:
     """Queue an experimental MMAT_CALLS scalar snapshot for an exact function entry.
 
-    Profiles: X64-LE or A64-LE, Darwin Mach-O only. No target execution or ABI
-    argument inference. Reuse request_key only for the identical request.
+    The requested profile must exactly match frozen static semantic evidence for
+    the open database identity. No target execution or ABI inference occurs.
+    Reuse request_key only for the identical request.
     """
     return _service().create(function, profile, request_key)
 
@@ -274,6 +319,37 @@ def flow_get_job(job_id: str) -> FlowJob | FlowError:
 def flow_cancel_job(job_id: str) -> FlowJob | FlowError:
     """Request cooperative cancellation; native extraction is not preemptible."""
     return _service().job(job_id, cancel=True)
+
+
+@tool
+@_flow_api
+def flow_create_implicit_analysis(
+    ssa_artifact: str,
+    seeds: list[FlowImplicitSeedSpec],
+    request_key: str,
+    max_evaluations: int = 100000,
+) -> FlowJobSubmission | FlowError:
+    """Queue seeded explicit-plus-control propagation over an owned SSA artifact.
+
+    Control provenance remains distinct from explicit provenance. Partial CFG or
+    budget coverage is returned as partial with a concrete frontier; it is never
+    interpreted as evidence that no implicit flow exists.
+    """
+    return _service().create_implicit(ssa_artifact, seeds, request_key, max_evaluations)
+
+
+@tool
+@_flow_api
+def flow_create_path_proof(
+    graph_artifact: str, query: dict, request_key: str
+) -> FlowJobSubmission | FlowError:
+    """Queue an artifact-bound finite proof of a declared bounded constraint model.
+
+    Exact SAT requires independent witness replay; only exhaustive exact bounded
+    UNSAT can become infeasible. Sound-overapproximate or incomplete evidence is
+    Unknown. Results are constraint-model facts, never vulnerability verdicts.
+    """
+    return _service().create_path_proof(graph_artifact, query, request_key)
 
 
 @tool
@@ -313,6 +389,33 @@ def flow_get_evidence(
 ) -> FlowArtifactPage | FlowError:
     """Page graph evidence; unknown requested IDs are explicitly marked missing."""
     return _service().page(artifact_id, "evidence", cursor, limit, evidence_ids)
+
+
+@tool
+@_flow_api
+def flow_get_implicit_analysis(
+    artifact_id: str, cursor: str | None = None, limit: int = 50
+) -> FlowArtifactPage | FlowError:
+    """Page implicit facts, control relations, and any unresolved frontier."""
+    return _service().analysis_page(artifact_id, "implicit", cursor, limit)
+
+
+@tool
+@_flow_api
+def flow_get_path_proof(
+    artifact_id: str, cursor: str | None = None, limit: int = 50
+) -> FlowArtifactPage | FlowError:
+    """Page a bounded proof result with exact/overapprox/incomplete distinctions."""
+    return _service().analysis_page(artifact_id, "path_proof", cursor, limit)
+
+
+@tool
+@_flow_api
+def flow_get_call_compositions(
+    artifact_id: str, cursor: str | None = None, limit: int = 50
+) -> FlowArtifactPage | FlowError:
+    """Page bounded call bindings/compositions, including unknown remainders."""
+    return _service().analysis_page(artifact_id, "interprocedural", cursor, limit)
 
 
 @tool
