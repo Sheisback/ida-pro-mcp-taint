@@ -1,7 +1,6 @@
 name: idalib-tests
 on:
-  push:
-    branches: [main]
+  # Licensed IDA jobs are opt-in; normal pushes use flow-core-tests instead.
   workflow_dispatch:
     inputs:
       release_sha:

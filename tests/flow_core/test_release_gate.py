@@ -960,3 +960,14 @@ def test_workflows_keep_untrusted_and_release_paths_separate_and_pinned():
     assert "actions/download-artifact@v" not in combined
     assert "ida@${{ matrix.image-digest }}" in licensed
     assert "^sha256:[0-9a-f]{64}$" in licensed
+
+
+def test_licensed_workflow_is_opt_in_for_normal_pushes():
+    licensed = (ROOT / ".github/workflows/idalib-tests.yml").read_text()
+    release = (ROOT / ".github/workflows/flow-release.yml").read_text()
+    triggers = licensed.partition("\npermissions:")[0]
+    assert "\n  push:" not in triggers
+    assert "\n  workflow_dispatch:" in triggers
+    assert "\n  workflow_call:" in triggers
+    assert "uses: ./.github/workflows/idalib-tests.yml" in release
+    assert 'test "$LICENSED_RESULT" = success' in release
