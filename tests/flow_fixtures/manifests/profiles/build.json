@@ -1,0 +1,3190 @@
+{
+  "schema_version": "flow-isa-profile-builds/1",
+  "manifest_kind": "build_only",
+  "source": "tests/flow_fixtures/isa_profile_anchor.c",
+  "source_sha256": "8322823fb0308b9eb4352ade7e1dc404d57804417306b4889821be29fffdcb1b",
+  "builder": "scripts/build_flow_isa_profiles.py",
+  "builder_sha256": "11169352dd0589466efd577232632a0170a68ed39f95f9925f37fc6edbd5a24c",
+  "compiler": {
+    "command": "$ZIG",
+    "resolved_path": "~/.local/share/cmux-zig/zig-aarch64-macos-0.16.0/zig",
+    "version": "0.16.0",
+    "sha256": "e6cd688d25664983833aae272f501d4bceeae304875b8f1741209d15fd13a4ec"
+  },
+  "environment": {
+    "LC_ALL": "C",
+    "SOURCE_DATE_EPOCH": "0",
+    "ZERO_AR_DATE": "1"
+  },
+  "profile_count": 17,
+  "profiles": [
+    {
+      "profile_id": "X86-LE",
+      "profile_version": 1,
+      "target_triple": "x86-linux-gnu",
+      "abi_id": "sysv-i386",
+      "bitness": 32,
+      "data_endian": "LE",
+      "instruction_endian": "LE",
+      "mode": "X86",
+      "processor": "metapc",
+      "format": "FMT-ELF",
+      "platform_tag": "linux",
+      "binary": "fresh-1/profiles/X86-LE/x86_le.elf",
+      "binary_sha256": "7aec7a326f78c7c45b93ed18d556e9c2d0a948aece7b514b9562373106ce1fd4",
+      "binary_size": 2712,
+      "binary_header": {
+        "kind": "ELF",
+        "bits": 32,
+        "endian": "LE",
+        "machine": 3,
+        "entry": 70336,
+        "image_base": 65536,
+        "flags_hex": "0x0"
+      },
+      "command": [
+        "$ZIG",
+        "cc",
+        "-target",
+        "x86-linux-gnu",
+        "-std=c11",
+        "-O0",
+        "-g",
+        "-fno-sanitize=all",
+        "-ffreestanding",
+        "-fno-stack-protector",
+        "-fno-builtin",
+        "-fdebug-compilation-dir=.",
+        "-ffile-prefix-map=$ROOT=.",
+        "-nostdlib",
+        "-Wl,--build-id=none",
+        "-Wl,-e,isa_profile_entry",
+        "tests/flow_fixtures/isa_profile_anchor.c",
+        "-o",
+        "$OUTPUT/fresh-1/profiles/X86-LE/x86_le.elf"
+      ],
+      "command_sha256": "cc2f6443996e5d46a55f66b241002b5003c013c7975d40e56a378dc58520c0da",
+      "function_selector": {
+        "kind": "debug_or_symbol_name",
+        "value": "isa_scalar"
+      },
+      "function_selectors": [
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_scalar"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_branch"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_load"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_store"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_call"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_profile_entry"
+        }
+      ],
+      "function_entries": [
+        {
+          "name": "isa_scalar",
+          "symbol_value": 70160,
+          "symbol_size": 22,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 4624,
+          "local_entry_offset": 0,
+          "extraction_rva": 4624,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_branch",
+          "symbol_value": 70192,
+          "symbol_size": 44,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 4656,
+          "local_entry_offset": 0,
+          "extraction_rva": 4656,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_load",
+          "symbol_value": 70240,
+          "symbol_size": 13,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 4704,
+          "local_entry_offset": 0,
+          "extraction_rva": 4704,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_store",
+          "symbol_value": 70256,
+          "symbol_size": 19,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 4720,
+          "local_entry_offset": 0,
+          "extraction_rva": 4720,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_call",
+          "symbol_value": 70288,
+          "symbol_size": 33,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 4752,
+          "local_entry_offset": 0,
+          "extraction_rva": 4752,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_profile_entry",
+          "symbol_value": 70336,
+          "symbol_size": 91,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 4800,
+          "local_entry_offset": 0,
+          "extraction_rva": 4800,
+          "proof_kind": "elf_symbol"
+        }
+      ],
+      "reproducibility": {
+        "fresh_builds": 2,
+        "binary_sha256_equal": true,
+        "binary_sha256s": [
+          "7aec7a326f78c7c45b93ed18d556e9c2d0a948aece7b514b9562373106ce1fd4",
+          "7aec7a326f78c7c45b93ed18d556e9c2d0a948aece7b514b9562373106ce1fd4"
+        ]
+      },
+      "target_executed": false,
+      "ida_receipt_recorded": false,
+      "support_status": "build_only_unmeasured"
+    },
+    {
+      "profile_id": "X64-LE",
+      "profile_version": 1,
+      "target_triple": "x86_64-linux-gnu",
+      "abi_id": "sysv-amd64",
+      "bitness": 64,
+      "data_endian": "LE",
+      "instruction_endian": "LE",
+      "mode": "X64",
+      "processor": "metapc",
+      "format": "FMT-ELF",
+      "platform_tag": "linux",
+      "binary": "fresh-1/profiles/X64-LE/x64_le.elf",
+      "binary_sha256": "3f03305a9f75c223a27a657339bb3942bc72eb9d015c4d3a1760dfc3a2a1a217",
+      "binary_size": 3272,
+      "binary_header": {
+        "kind": "ELF",
+        "bits": 64,
+        "endian": "LE",
+        "machine": 62,
+        "entry": 16782160,
+        "image_base": 16777216,
+        "flags_hex": "0x0"
+      },
+      "command": [
+        "$ZIG",
+        "cc",
+        "-target",
+        "x86_64-linux-gnu",
+        "-std=c11",
+        "-O0",
+        "-g",
+        "-fno-sanitize=all",
+        "-ffreestanding",
+        "-fno-stack-protector",
+        "-fno-builtin",
+        "-fdebug-compilation-dir=.",
+        "-ffile-prefix-map=$ROOT=.",
+        "-nostdlib",
+        "-Wl,--build-id=none",
+        "-Wl,-e,isa_profile_entry",
+        "tests/flow_fixtures/isa_profile_anchor.c",
+        "-o",
+        "$OUTPUT/fresh-1/profiles/X64-LE/x64_le.elf"
+      ],
+      "command_sha256": "e03f12c2d5bab315c43dd67dd6623cd3a28d71d2ed1dad93a3bd22b2c1db2ef7",
+      "function_selector": {
+        "kind": "debug_or_symbol_name",
+        "value": "isa_scalar"
+      },
+      "function_selectors": [
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_scalar"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_branch"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_load"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_store"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_call"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_profile_entry"
+        }
+      ],
+      "function_entries": [
+        {
+          "name": "isa_scalar",
+          "symbol_value": 16782000,
+          "symbol_size": 23,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 4784,
+          "local_entry_offset": 0,
+          "extraction_rva": 4784,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_branch",
+          "symbol_value": 16782032,
+          "symbol_size": 41,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 4816,
+          "local_entry_offset": 0,
+          "extraction_rva": 4816,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_load",
+          "symbol_value": 16782080,
+          "symbol_size": 16,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 4864,
+          "local_entry_offset": 0,
+          "extraction_rva": 4864,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_store",
+          "symbol_value": 16782096,
+          "symbol_size": 22,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 4880,
+          "local_entry_offset": 0,
+          "extraction_rva": 4880,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_call",
+          "symbol_value": 16782128,
+          "symbol_size": 30,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 4912,
+          "local_entry_offset": 0,
+          "extraction_rva": 4912,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_profile_entry",
+          "symbol_value": 16782160,
+          "symbol_size": 79,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 4944,
+          "local_entry_offset": 0,
+          "extraction_rva": 4944,
+          "proof_kind": "elf_symbol"
+        }
+      ],
+      "reproducibility": {
+        "fresh_builds": 2,
+        "binary_sha256_equal": true,
+        "binary_sha256s": [
+          "3f03305a9f75c223a27a657339bb3942bc72eb9d015c4d3a1760dfc3a2a1a217",
+          "3f03305a9f75c223a27a657339bb3942bc72eb9d015c4d3a1760dfc3a2a1a217"
+        ]
+      },
+      "target_executed": false,
+      "ida_receipt_recorded": false,
+      "support_status": "build_only_unmeasured"
+    },
+    {
+      "profile_id": "ARM32-LE",
+      "profile_version": 1,
+      "target_triple": "arm-linux-gnueabi",
+      "abi_id": "aapcs32",
+      "bitness": 32,
+      "data_endian": "LE",
+      "instruction_endian": "LE",
+      "mode": "ARM32",
+      "processor": "ARM",
+      "format": "FMT-ELF",
+      "platform_tag": "linux",
+      "binary": "fresh-1/profiles/ARM32-LE/arm32_le.elf",
+      "binary_sha256": "579cfc13cb9f2997bc0ba021b1fc5f60f3ed1f6c4ef9e419f9a80dfdf8fccd0e",
+      "binary_size": 2952,
+      "binary_header": {
+        "kind": "ELF",
+        "bits": 32,
+        "endian": "LE",
+        "machine": 40,
+        "entry": 131604,
+        "image_base": 65536,
+        "flags_hex": "0x5000200"
+      },
+      "command": [
+        "$ZIG",
+        "cc",
+        "-target",
+        "arm-linux-gnueabi",
+        "-std=c11",
+        "-O0",
+        "-g",
+        "-fno-sanitize=all",
+        "-ffreestanding",
+        "-fno-stack-protector",
+        "-fno-builtin",
+        "-fdebug-compilation-dir=.",
+        "-ffile-prefix-map=$ROOT=.",
+        "-nostdlib",
+        "-Wl,--build-id=none",
+        "-Wl,-e,isa_profile_entry",
+        "tests/flow_fixtures/isa_profile_anchor.c",
+        "-o",
+        "$OUTPUT/fresh-1/profiles/ARM32-LE/arm32_le.elf"
+      ],
+      "command_sha256": "f7d3cdf1534c204d812c08e7cefacf58168517998b31eb8dbbc487c6f8732c43",
+      "function_selector": {
+        "kind": "debug_or_symbol_name",
+        "value": "isa_scalar"
+      },
+      "function_selectors": [
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_scalar"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_branch"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_load"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_store"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_call"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_profile_entry"
+        }
+      ],
+      "function_entries": [
+        {
+          "name": "isa_scalar",
+          "symbol_value": 131372,
+          "symbol_size": 52,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 65836,
+          "local_entry_offset": 0,
+          "extraction_rva": 65836,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_branch",
+          "symbol_value": 131424,
+          "symbol_size": 72,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 65888,
+          "local_entry_offset": 0,
+          "extraction_rva": 65888,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_load",
+          "symbol_value": 131496,
+          "symbol_size": 32,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 65960,
+          "local_entry_offset": 0,
+          "extraction_rva": 65960,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_store",
+          "symbol_value": 131528,
+          "symbol_size": 40,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 65992,
+          "local_entry_offset": 0,
+          "extraction_rva": 65992,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_call",
+          "symbol_value": 131568,
+          "symbol_size": 36,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66032,
+          "local_entry_offset": 0,
+          "extraction_rva": 66032,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_profile_entry",
+          "symbol_value": 131604,
+          "symbol_size": 92,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66068,
+          "local_entry_offset": 0,
+          "extraction_rva": 66068,
+          "proof_kind": "elf_symbol"
+        }
+      ],
+      "reproducibility": {
+        "fresh_builds": 2,
+        "binary_sha256_equal": true,
+        "binary_sha256s": [
+          "579cfc13cb9f2997bc0ba021b1fc5f60f3ed1f6c4ef9e419f9a80dfdf8fccd0e",
+          "579cfc13cb9f2997bc0ba021b1fc5f60f3ed1f6c4ef9e419f9a80dfdf8fccd0e"
+        ]
+      },
+      "target_executed": false,
+      "ida_receipt_recorded": false,
+      "support_status": "build_only_unmeasured"
+    },
+    {
+      "profile_id": "ARM32-BE",
+      "profile_version": 1,
+      "target_triple": "armeb-linux-gnueabi",
+      "abi_id": "aapcs32",
+      "bitness": 32,
+      "data_endian": "BE",
+      "instruction_endian": "LE",
+      "mode": "ARM32",
+      "processor": "ARMB",
+      "format": "FMT-ELF",
+      "platform_tag": "linux",
+      "binary": "fresh-1/profiles/ARM32-BE/arm32_be.elf",
+      "binary_sha256": "30bd4b5028ac319ffa54df7cf24d48c3f4b94e7c09bea85a19fcba372f9ca1e2",
+      "binary_size": 2952,
+      "binary_header": {
+        "kind": "ELF",
+        "bits": 32,
+        "endian": "BE",
+        "machine": 40,
+        "entry": 131604,
+        "image_base": 65536,
+        "flags_hex": "0x5800200"
+      },
+      "command": [
+        "$ZIG",
+        "cc",
+        "-target",
+        "armeb-linux-gnueabi",
+        "-std=c11",
+        "-O0",
+        "-g",
+        "-fno-sanitize=all",
+        "-ffreestanding",
+        "-fno-stack-protector",
+        "-fno-builtin",
+        "-fdebug-compilation-dir=.",
+        "-ffile-prefix-map=$ROOT=.",
+        "-nostdlib",
+        "-Wl,--build-id=none",
+        "-Wl,-e,isa_profile_entry",
+        "tests/flow_fixtures/isa_profile_anchor.c",
+        "-o",
+        "$OUTPUT/fresh-1/profiles/ARM32-BE/arm32_be.elf"
+      ],
+      "command_sha256": "93db69cb7854649dfa70a45ea1324bcfc4a7394448f3956a278941ac483d9225",
+      "function_selector": {
+        "kind": "debug_or_symbol_name",
+        "value": "isa_scalar"
+      },
+      "function_selectors": [
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_scalar"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_branch"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_load"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_store"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_call"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_profile_entry"
+        }
+      ],
+      "function_entries": [
+        {
+          "name": "isa_scalar",
+          "symbol_value": 131372,
+          "symbol_size": 52,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 65836,
+          "local_entry_offset": 0,
+          "extraction_rva": 65836,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_branch",
+          "symbol_value": 131424,
+          "symbol_size": 72,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 65888,
+          "local_entry_offset": 0,
+          "extraction_rva": 65888,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_load",
+          "symbol_value": 131496,
+          "symbol_size": 32,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 65960,
+          "local_entry_offset": 0,
+          "extraction_rva": 65960,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_store",
+          "symbol_value": 131528,
+          "symbol_size": 40,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 65992,
+          "local_entry_offset": 0,
+          "extraction_rva": 65992,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_call",
+          "symbol_value": 131568,
+          "symbol_size": 36,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66032,
+          "local_entry_offset": 0,
+          "extraction_rva": 66032,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_profile_entry",
+          "symbol_value": 131604,
+          "symbol_size": 92,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66068,
+          "local_entry_offset": 0,
+          "extraction_rva": 66068,
+          "proof_kind": "elf_symbol"
+        }
+      ],
+      "reproducibility": {
+        "fresh_builds": 2,
+        "binary_sha256_equal": true,
+        "binary_sha256s": [
+          "30bd4b5028ac319ffa54df7cf24d48c3f4b94e7c09bea85a19fcba372f9ca1e2",
+          "30bd4b5028ac319ffa54df7cf24d48c3f4b94e7c09bea85a19fcba372f9ca1e2"
+        ]
+      },
+      "target_executed": false,
+      "ida_receipt_recorded": false,
+      "support_status": "build_only_unmeasured"
+    },
+    {
+      "profile_id": "THUMB-LE",
+      "profile_version": 1,
+      "target_triple": "thumb-linux-musleabi",
+      "abi_id": "aapcs32",
+      "bitness": 32,
+      "data_endian": "LE",
+      "instruction_endian": "LE",
+      "mode": "THUMB",
+      "processor": "ARM",
+      "format": "FMT-ELF",
+      "platform_tag": "linux",
+      "binary": "fresh-1/profiles/THUMB-LE/thumb_le.elf",
+      "binary_sha256": "0c05feec880d8fa13a7dfa8cde22a1e8773762767e490e9e8641f2650d281296",
+      "binary_size": 2768,
+      "binary_header": {
+        "kind": "ELF",
+        "bits": 32,
+        "endian": "LE",
+        "machine": 40,
+        "entry": 131499,
+        "image_base": 65536,
+        "flags_hex": "0x5000200"
+      },
+      "command": [
+        "$ZIG",
+        "cc",
+        "-target",
+        "thumb-linux-musleabi",
+        "-std=c11",
+        "-O0",
+        "-g",
+        "-fno-sanitize=all",
+        "-ffreestanding",
+        "-fno-stack-protector",
+        "-fno-builtin",
+        "-fdebug-compilation-dir=.",
+        "-ffile-prefix-map=$ROOT=.",
+        "-nostdlib",
+        "-Wl,--build-id=none",
+        "-Wl,-e,isa_profile_entry",
+        "tests/flow_fixtures/isa_profile_anchor.c",
+        "-o",
+        "$OUTPUT/fresh-1/profiles/THUMB-LE/thumb_le.elf"
+      ],
+      "command_sha256": "6e3bc63b123d226fc8e2c01ba11e5b0ca2ad29056d393c4482739af1b772ac80",
+      "function_selector": {
+        "kind": "debug_or_symbol_name",
+        "value": "isa_scalar"
+      },
+      "function_selectors": [
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_scalar"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_branch"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_load"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_store"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_call"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_profile_entry"
+        }
+      ],
+      "function_entries": [
+        {
+          "name": "isa_scalar",
+          "symbol_value": 131373,
+          "symbol_size": 30,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 65836,
+          "local_entry_offset": 0,
+          "extraction_rva": 65836,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_branch",
+          "symbol_value": 131403,
+          "symbol_size": 40,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 65866,
+          "local_entry_offset": 0,
+          "extraction_rva": 65866,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_load",
+          "symbol_value": 131443,
+          "symbol_size": 16,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 65906,
+          "local_entry_offset": 0,
+          "extraction_rva": 65906,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_store",
+          "symbol_value": 131459,
+          "symbol_size": 20,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 65922,
+          "local_entry_offset": 0,
+          "extraction_rva": 65922,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_call",
+          "symbol_value": 131479,
+          "symbol_size": 20,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 65942,
+          "local_entry_offset": 0,
+          "extraction_rva": 65942,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_profile_entry",
+          "symbol_value": 131499,
+          "symbol_size": 58,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 65962,
+          "local_entry_offset": 0,
+          "extraction_rva": 65962,
+          "proof_kind": "elf_symbol"
+        }
+      ],
+      "reproducibility": {
+        "fresh_builds": 2,
+        "binary_sha256_equal": true,
+        "binary_sha256s": [
+          "0c05feec880d8fa13a7dfa8cde22a1e8773762767e490e9e8641f2650d281296",
+          "0c05feec880d8fa13a7dfa8cde22a1e8773762767e490e9e8641f2650d281296"
+        ]
+      },
+      "target_executed": false,
+      "ida_receipt_recorded": false,
+      "support_status": "build_only_unmeasured"
+    },
+    {
+      "profile_id": "THUMB-BE",
+      "profile_version": 1,
+      "target_triple": "thumbeb-linux-musleabi",
+      "abi_id": "aapcs32",
+      "bitness": 32,
+      "data_endian": "BE",
+      "instruction_endian": "LE",
+      "mode": "THUMB",
+      "processor": "ARMB",
+      "format": "FMT-ELF",
+      "platform_tag": "linux",
+      "binary": "fresh-1/profiles/THUMB-BE/thumb_be.elf",
+      "binary_sha256": "b34e4c4a88f79d98caa726b11cd9a2d66579aa74dcf263fd1c49748bf6f86d6f",
+      "binary_size": 2768,
+      "binary_header": {
+        "kind": "ELF",
+        "bits": 32,
+        "endian": "BE",
+        "machine": 40,
+        "entry": 131499,
+        "image_base": 65536,
+        "flags_hex": "0x5800200"
+      },
+      "command": [
+        "$ZIG",
+        "cc",
+        "-target",
+        "thumbeb-linux-musleabi",
+        "-std=c11",
+        "-O0",
+        "-g",
+        "-fno-sanitize=all",
+        "-ffreestanding",
+        "-fno-stack-protector",
+        "-fno-builtin",
+        "-fdebug-compilation-dir=.",
+        "-ffile-prefix-map=$ROOT=.",
+        "-nostdlib",
+        "-Wl,--build-id=none",
+        "-Wl,-e,isa_profile_entry",
+        "tests/flow_fixtures/isa_profile_anchor.c",
+        "-o",
+        "$OUTPUT/fresh-1/profiles/THUMB-BE/thumb_be.elf"
+      ],
+      "command_sha256": "c941204578478d7a0e3a667c63626f9689a9995b67047c15c058be8e078bc772",
+      "function_selector": {
+        "kind": "debug_or_symbol_name",
+        "value": "isa_scalar"
+      },
+      "function_selectors": [
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_scalar"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_branch"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_load"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_store"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_call"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_profile_entry"
+        }
+      ],
+      "function_entries": [
+        {
+          "name": "isa_scalar",
+          "symbol_value": 131373,
+          "symbol_size": 30,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 65836,
+          "local_entry_offset": 0,
+          "extraction_rva": 65836,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_branch",
+          "symbol_value": 131403,
+          "symbol_size": 40,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 65866,
+          "local_entry_offset": 0,
+          "extraction_rva": 65866,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_load",
+          "symbol_value": 131443,
+          "symbol_size": 16,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 65906,
+          "local_entry_offset": 0,
+          "extraction_rva": 65906,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_store",
+          "symbol_value": 131459,
+          "symbol_size": 20,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 65922,
+          "local_entry_offset": 0,
+          "extraction_rva": 65922,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_call",
+          "symbol_value": 131479,
+          "symbol_size": 20,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 65942,
+          "local_entry_offset": 0,
+          "extraction_rva": 65942,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_profile_entry",
+          "symbol_value": 131499,
+          "symbol_size": 58,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 65962,
+          "local_entry_offset": 0,
+          "extraction_rva": 65962,
+          "proof_kind": "elf_symbol"
+        }
+      ],
+      "reproducibility": {
+        "fresh_builds": 2,
+        "binary_sha256_equal": true,
+        "binary_sha256s": [
+          "b34e4c4a88f79d98caa726b11cd9a2d66579aa74dcf263fd1c49748bf6f86d6f",
+          "b34e4c4a88f79d98caa726b11cd9a2d66579aa74dcf263fd1c49748bf6f86d6f"
+        ]
+      },
+      "target_executed": false,
+      "ida_receipt_recorded": false,
+      "support_status": "build_only_unmeasured"
+    },
+    {
+      "profile_id": "A64-LE",
+      "profile_version": 1,
+      "target_triple": "aarch64-linux-gnu",
+      "abi_id": "aapcs64",
+      "bitness": 64,
+      "data_endian": "LE",
+      "instruction_endian": "LE",
+      "mode": "A64",
+      "processor": "ARM",
+      "format": "FMT-ELF",
+      "platform_tag": "linux",
+      "binary": "fresh-1/profiles/A64-LE/a64_le.elf",
+      "binary_sha256": "a540f9d5a4ae2fa945355e167dcb2a9ef941668697df680cc8d7a19f4282d16d",
+      "binary_size": 3536,
+      "binary_header": {
+        "kind": "ELF",
+        "bits": 64,
+        "endian": "LE",
+        "machine": 183,
+        "entry": 16843632,
+        "image_base": 16777216,
+        "flags_hex": "0x0"
+      },
+      "command": [
+        "$ZIG",
+        "cc",
+        "-target",
+        "aarch64-linux-gnu",
+        "-std=c11",
+        "-O0",
+        "-g",
+        "-fno-sanitize=all",
+        "-ffreestanding",
+        "-fno-stack-protector",
+        "-fno-builtin",
+        "-fdebug-compilation-dir=.",
+        "-ffile-prefix-map=$ROOT=.",
+        "-nostdlib",
+        "-Wl,--build-id=none",
+        "-Wl,-e,isa_profile_entry",
+        "tests/flow_fixtures/isa_profile_anchor.c",
+        "-o",
+        "$OUTPUT/fresh-1/profiles/A64-LE/a64_le.elf"
+      ],
+      "command_sha256": "6d3c5c511944383e215c5f106109924eab92ef43f6e35b09fab809039d9dd85c",
+      "function_selector": {
+        "kind": "debug_or_symbol_name",
+        "value": "isa_scalar"
+      },
+      "function_selectors": [
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_scalar"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_branch"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_load"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_store"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_call"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_profile_entry"
+        }
+      ],
+      "function_entries": [
+        {
+          "name": "isa_scalar",
+          "symbol_value": 16843420,
+          "symbol_size": 44,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66204,
+          "local_entry_offset": 0,
+          "extraction_rva": 66204,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_branch",
+          "symbol_value": 16843464,
+          "symbol_size": 72,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66248,
+          "local_entry_offset": 0,
+          "extraction_rva": 66248,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_load",
+          "symbol_value": 16843536,
+          "symbol_size": 24,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66320,
+          "local_entry_offset": 0,
+          "extraction_rva": 66320,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_store",
+          "symbol_value": 16843560,
+          "symbol_size": 32,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66344,
+          "local_entry_offset": 0,
+          "extraction_rva": 66344,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_call",
+          "symbol_value": 16843592,
+          "symbol_size": 40,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66376,
+          "local_entry_offset": 0,
+          "extraction_rva": 66376,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_profile_entry",
+          "symbol_value": 16843632,
+          "symbol_size": 92,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66416,
+          "local_entry_offset": 0,
+          "extraction_rva": 66416,
+          "proof_kind": "elf_symbol"
+        }
+      ],
+      "reproducibility": {
+        "fresh_builds": 2,
+        "binary_sha256_equal": true,
+        "binary_sha256s": [
+          "a540f9d5a4ae2fa945355e167dcb2a9ef941668697df680cc8d7a19f4282d16d",
+          "a540f9d5a4ae2fa945355e167dcb2a9ef941668697df680cc8d7a19f4282d16d"
+        ]
+      },
+      "target_executed": false,
+      "ida_receipt_recorded": false,
+      "support_status": "build_only_unmeasured"
+    },
+    {
+      "profile_id": "MIPS32-LE",
+      "profile_version": 1,
+      "target_triple": "mipsel-linux-gnu",
+      "abi_id": "mips-o32",
+      "bitness": 32,
+      "data_endian": "LE",
+      "instruction_endian": "LE",
+      "mode": "MIPS32",
+      "processor": "mipsl",
+      "format": "FMT-ELF",
+      "platform_tag": "linux",
+      "binary": "fresh-1/profiles/MIPS32-LE/mips32_le.elf",
+      "binary_sha256": "07455c1d91d89e8d0b4d5cb84de3a0bd9f77f93819578f3070fd04c8f4ddbb04",
+      "binary_size": 3560,
+      "binary_header": {
+        "kind": "ELF",
+        "bits": 32,
+        "endian": "LE",
+        "machine": 8,
+        "entry": 132052,
+        "image_base": 65536,
+        "flags_hex": "0x70001005"
+      },
+      "command": [
+        "$ZIG",
+        "cc",
+        "-target",
+        "mipsel-linux-gnu",
+        "-std=c11",
+        "-O0",
+        "-g",
+        "-fno-sanitize=all",
+        "-ffreestanding",
+        "-fno-stack-protector",
+        "-fno-builtin",
+        "-fdebug-compilation-dir=.",
+        "-ffile-prefix-map=$ROOT=.",
+        "-nostdlib",
+        "-mabi=o32",
+        "-Wl,--build-id=none",
+        "-Wl,-e,isa_profile_entry",
+        "tests/flow_fixtures/isa_profile_anchor.c",
+        "-o",
+        "$OUTPUT/fresh-1/profiles/MIPS32-LE/mips32_le.elf"
+      ],
+      "command_sha256": "0b89fe75d503f2ebd5a5ca52e8fb1c5bedfcd687f81a56eb30677d09bdea5148",
+      "function_selector": {
+        "kind": "debug_or_symbol_name",
+        "value": "isa_scalar"
+      },
+      "function_selectors": [
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_scalar"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_branch"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_load"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_store"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_call"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_profile_entry"
+        }
+      ],
+      "function_entries": [
+        {
+          "name": "isa_scalar",
+          "symbol_value": 131696,
+          "symbol_size": 72,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66160,
+          "local_entry_offset": 0,
+          "extraction_rva": 66160,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_branch",
+          "symbol_value": 131768,
+          "symbol_size": 112,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66232,
+          "local_entry_offset": 0,
+          "extraction_rva": 66232,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_load",
+          "symbol_value": 131880,
+          "symbol_size": 52,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66344,
+          "local_entry_offset": 0,
+          "extraction_rva": 66344,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_store",
+          "symbol_value": 131932,
+          "symbol_size": 60,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66396,
+          "local_entry_offset": 0,
+          "extraction_rva": 66396,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_call",
+          "symbol_value": 131992,
+          "symbol_size": 60,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66456,
+          "local_entry_offset": 0,
+          "extraction_rva": 66456,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_profile_entry",
+          "symbol_value": 132052,
+          "symbol_size": 128,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66516,
+          "local_entry_offset": 0,
+          "extraction_rva": 66516,
+          "proof_kind": "elf_symbol"
+        }
+      ],
+      "reproducibility": {
+        "fresh_builds": 2,
+        "binary_sha256_equal": true,
+        "binary_sha256s": [
+          "07455c1d91d89e8d0b4d5cb84de3a0bd9f77f93819578f3070fd04c8f4ddbb04",
+          "07455c1d91d89e8d0b4d5cb84de3a0bd9f77f93819578f3070fd04c8f4ddbb04"
+        ]
+      },
+      "target_executed": false,
+      "ida_receipt_recorded": false,
+      "support_status": "build_only_unmeasured"
+    },
+    {
+      "profile_id": "MIPS32-BE",
+      "profile_version": 1,
+      "target_triple": "mips-linux-gnu",
+      "abi_id": "mips-o32",
+      "bitness": 32,
+      "data_endian": "BE",
+      "instruction_endian": "BE",
+      "mode": "MIPS32",
+      "processor": "mipsb",
+      "format": "FMT-ELF",
+      "platform_tag": "linux",
+      "binary": "fresh-1/profiles/MIPS32-BE/mips32_be.elf",
+      "binary_sha256": "257f5bdbc40d8d57051f9e374dd38415c89d9361e27213b1626f17aa88e61c1d",
+      "binary_size": 3560,
+      "binary_header": {
+        "kind": "ELF",
+        "bits": 32,
+        "endian": "BE",
+        "machine": 8,
+        "entry": 132052,
+        "image_base": 65536,
+        "flags_hex": "0x70001005"
+      },
+      "command": [
+        "$ZIG",
+        "cc",
+        "-target",
+        "mips-linux-gnu",
+        "-std=c11",
+        "-O0",
+        "-g",
+        "-fno-sanitize=all",
+        "-ffreestanding",
+        "-fno-stack-protector",
+        "-fno-builtin",
+        "-fdebug-compilation-dir=.",
+        "-ffile-prefix-map=$ROOT=.",
+        "-nostdlib",
+        "-mabi=o32",
+        "-Wl,--build-id=none",
+        "-Wl,-e,isa_profile_entry",
+        "tests/flow_fixtures/isa_profile_anchor.c",
+        "-o",
+        "$OUTPUT/fresh-1/profiles/MIPS32-BE/mips32_be.elf"
+      ],
+      "command_sha256": "f398a0d88f2aa9fa03d64d29da4fc51db6d18a92df311deeabaa4bc4182ddb64",
+      "function_selector": {
+        "kind": "debug_or_symbol_name",
+        "value": "isa_scalar"
+      },
+      "function_selectors": [
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_scalar"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_branch"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_load"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_store"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_call"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_profile_entry"
+        }
+      ],
+      "function_entries": [
+        {
+          "name": "isa_scalar",
+          "symbol_value": 131696,
+          "symbol_size": 72,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66160,
+          "local_entry_offset": 0,
+          "extraction_rva": 66160,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_branch",
+          "symbol_value": 131768,
+          "symbol_size": 112,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66232,
+          "local_entry_offset": 0,
+          "extraction_rva": 66232,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_load",
+          "symbol_value": 131880,
+          "symbol_size": 52,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66344,
+          "local_entry_offset": 0,
+          "extraction_rva": 66344,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_store",
+          "symbol_value": 131932,
+          "symbol_size": 60,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66396,
+          "local_entry_offset": 0,
+          "extraction_rva": 66396,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_call",
+          "symbol_value": 131992,
+          "symbol_size": 60,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66456,
+          "local_entry_offset": 0,
+          "extraction_rva": 66456,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_profile_entry",
+          "symbol_value": 132052,
+          "symbol_size": 128,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66516,
+          "local_entry_offset": 0,
+          "extraction_rva": 66516,
+          "proof_kind": "elf_symbol"
+        }
+      ],
+      "reproducibility": {
+        "fresh_builds": 2,
+        "binary_sha256_equal": true,
+        "binary_sha256s": [
+          "257f5bdbc40d8d57051f9e374dd38415c89d9361e27213b1626f17aa88e61c1d",
+          "257f5bdbc40d8d57051f9e374dd38415c89d9361e27213b1626f17aa88e61c1d"
+        ]
+      },
+      "target_executed": false,
+      "ida_receipt_recorded": false,
+      "support_status": "build_only_unmeasured"
+    },
+    {
+      "profile_id": "MIPS64-LE",
+      "profile_version": 1,
+      "target_triple": "mips64el-linux-gnuabi64",
+      "abi_id": "mips-n64",
+      "bitness": 64,
+      "data_endian": "LE",
+      "instruction_endian": "LE",
+      "mode": "MIPS64",
+      "processor": "mipsl",
+      "format": "FMT-ELF",
+      "platform_tag": "linux",
+      "binary": "fresh-1/profiles/MIPS64-LE/mips64_le.elf",
+      "binary_sha256": "d2bdf5ab6f0db1f261c29634a36b4a96e597e6409041c7a30244837cbc7ff4db",
+      "binary_size": 4720,
+      "binary_header": {
+        "kind": "ELF",
+        "bits": 64,
+        "endian": "LE",
+        "machine": 8,
+        "entry": 16844024,
+        "image_base": 16777216,
+        "flags_hex": "0x80000007"
+      },
+      "command": [
+        "$ZIG",
+        "cc",
+        "-target",
+        "mips64el-linux-gnuabi64",
+        "-std=c11",
+        "-O0",
+        "-g",
+        "-fno-sanitize=all",
+        "-ffreestanding",
+        "-fno-stack-protector",
+        "-fno-builtin",
+        "-fdebug-compilation-dir=.",
+        "-ffile-prefix-map=$ROOT=.",
+        "-nostdlib",
+        "-mabi=n64",
+        "-Wl,--build-id=none",
+        "-Wl,-e,isa_profile_entry",
+        "tests/flow_fixtures/isa_profile_anchor.c",
+        "-o",
+        "$OUTPUT/fresh-1/profiles/MIPS64-LE/mips64_le.elf"
+      ],
+      "command_sha256": "7366d3bad9289cee87f67861bb3b81bd25cdeaae609c7733c02e9e817231fcdf",
+      "function_selector": {
+        "kind": "debug_or_symbol_name",
+        "value": "isa_scalar"
+      },
+      "function_selectors": [
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_scalar"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_branch"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_load"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_store"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_call"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_profile_entry"
+        }
+      ],
+      "function_entries": [
+        {
+          "name": "isa_scalar",
+          "symbol_value": 16843600,
+          "symbol_size": 84,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66384,
+          "local_entry_offset": 0,
+          "extraction_rva": 66384,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_branch",
+          "symbol_value": 16843688,
+          "symbol_size": 120,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66472,
+          "local_entry_offset": 0,
+          "extraction_rva": 66472,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_load",
+          "symbol_value": 16843808,
+          "symbol_size": 56,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66592,
+          "local_entry_offset": 0,
+          "extraction_rva": 66592,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_store",
+          "symbol_value": 16843864,
+          "symbol_size": 64,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66648,
+          "local_entry_offset": 0,
+          "extraction_rva": 66648,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_call",
+          "symbol_value": 16843928,
+          "symbol_size": 92,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66712,
+          "local_entry_offset": 0,
+          "extraction_rva": 66712,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_profile_entry",
+          "symbol_value": 16844024,
+          "symbol_size": 188,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66808,
+          "local_entry_offset": 0,
+          "extraction_rva": 66808,
+          "proof_kind": "elf_symbol"
+        }
+      ],
+      "reproducibility": {
+        "fresh_builds": 2,
+        "binary_sha256_equal": true,
+        "binary_sha256s": [
+          "d2bdf5ab6f0db1f261c29634a36b4a96e597e6409041c7a30244837cbc7ff4db",
+          "d2bdf5ab6f0db1f261c29634a36b4a96e597e6409041c7a30244837cbc7ff4db"
+        ]
+      },
+      "target_executed": false,
+      "ida_receipt_recorded": false,
+      "support_status": "build_only_unmeasured"
+    },
+    {
+      "profile_id": "MIPS64-BE",
+      "profile_version": 1,
+      "target_triple": "mips64-linux-gnuabi64",
+      "abi_id": "mips-n64",
+      "bitness": 64,
+      "data_endian": "BE",
+      "instruction_endian": "BE",
+      "mode": "MIPS64",
+      "processor": "mipsb",
+      "format": "FMT-ELF",
+      "platform_tag": "linux",
+      "binary": "fresh-1/profiles/MIPS64-BE/mips64_be.elf",
+      "binary_sha256": "0e2751aafabf92a83158e29d67a494f961a787127c7f12ae13beecebc4276661",
+      "binary_size": 4720,
+      "binary_header": {
+        "kind": "ELF",
+        "bits": 64,
+        "endian": "BE",
+        "machine": 8,
+        "entry": 16844024,
+        "image_base": 16777216,
+        "flags_hex": "0x80000007"
+      },
+      "command": [
+        "$ZIG",
+        "cc",
+        "-target",
+        "mips64-linux-gnuabi64",
+        "-std=c11",
+        "-O0",
+        "-g",
+        "-fno-sanitize=all",
+        "-ffreestanding",
+        "-fno-stack-protector",
+        "-fno-builtin",
+        "-fdebug-compilation-dir=.",
+        "-ffile-prefix-map=$ROOT=.",
+        "-nostdlib",
+        "-mabi=n64",
+        "-Wl,--build-id=none",
+        "-Wl,-e,isa_profile_entry",
+        "tests/flow_fixtures/isa_profile_anchor.c",
+        "-o",
+        "$OUTPUT/fresh-1/profiles/MIPS64-BE/mips64_be.elf"
+      ],
+      "command_sha256": "229db9821939e33f259a21efe9818767ba05f4fa06b92d106dd2cb2c80e3a06d",
+      "function_selector": {
+        "kind": "debug_or_symbol_name",
+        "value": "isa_scalar"
+      },
+      "function_selectors": [
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_scalar"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_branch"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_load"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_store"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_call"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_profile_entry"
+        }
+      ],
+      "function_entries": [
+        {
+          "name": "isa_scalar",
+          "symbol_value": 16843600,
+          "symbol_size": 84,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66384,
+          "local_entry_offset": 0,
+          "extraction_rva": 66384,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_branch",
+          "symbol_value": 16843688,
+          "symbol_size": 120,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66472,
+          "local_entry_offset": 0,
+          "extraction_rva": 66472,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_load",
+          "symbol_value": 16843808,
+          "symbol_size": 56,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66592,
+          "local_entry_offset": 0,
+          "extraction_rva": 66592,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_store",
+          "symbol_value": 16843864,
+          "symbol_size": 64,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66648,
+          "local_entry_offset": 0,
+          "extraction_rva": 66648,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_call",
+          "symbol_value": 16843928,
+          "symbol_size": 92,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66712,
+          "local_entry_offset": 0,
+          "extraction_rva": 66712,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_profile_entry",
+          "symbol_value": 16844024,
+          "symbol_size": 188,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66808,
+          "local_entry_offset": 0,
+          "extraction_rva": 66808,
+          "proof_kind": "elf_symbol"
+        }
+      ],
+      "reproducibility": {
+        "fresh_builds": 2,
+        "binary_sha256_equal": true,
+        "binary_sha256s": [
+          "0e2751aafabf92a83158e29d67a494f961a787127c7f12ae13beecebc4276661",
+          "0e2751aafabf92a83158e29d67a494f961a787127c7f12ae13beecebc4276661"
+        ]
+      },
+      "target_executed": false,
+      "ida_receipt_recorded": false,
+      "support_status": "build_only_unmeasured"
+    },
+    {
+      "profile_id": "PPC32-LE",
+      "profile_version": 1,
+      "target_triple": "powerpcle-linux-gnu",
+      "abi_id": "sysv-ppc32",
+      "bitness": 32,
+      "data_endian": "LE",
+      "instruction_endian": "LE",
+      "mode": "PPC32",
+      "processor": "PPCL",
+      "format": "FMT-ELF",
+      "platform_tag": "linux",
+      "binary": "fresh-1/profiles/PPC32-LE/ppc32_le.elf",
+      "binary_sha256": "016efe8c142a8a9aa9c854f5113a66eeb8b87f39352b4defe343ae6c77423c1f",
+      "binary_size": 2788,
+      "binary_header": {
+        "kind": "ELF",
+        "bits": 32,
+        "endian": "LE",
+        "machine": 20,
+        "entry": 131840,
+        "image_base": 65536,
+        "flags_hex": "0x0"
+      },
+      "command": [
+        "$ZIG",
+        "cc",
+        "-target",
+        "powerpcle-linux-gnu",
+        "-std=c11",
+        "-O0",
+        "-g",
+        "-fno-sanitize=all",
+        "-ffreestanding",
+        "-fno-stack-protector",
+        "-fno-builtin",
+        "-fdebug-compilation-dir=.",
+        "-ffile-prefix-map=$ROOT=.",
+        "-nostdlib",
+        "-Wl,--build-id=none",
+        "-Wl,-e,isa_profile_entry",
+        "tests/flow_fixtures/isa_profile_anchor.c",
+        "-o",
+        "$OUTPUT/fresh-1/profiles/PPC32-LE/ppc32_le.elf"
+      ],
+      "command_sha256": "3f3f844e36ad2be6cd59a859ec0d7e3ea7e3650c6128f103312fcf6cf73bb20d",
+      "function_selector": {
+        "kind": "debug_or_symbol_name",
+        "value": "isa_scalar"
+      },
+      "function_selectors": [
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_scalar"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_branch"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_load"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_store"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_call"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_profile_entry"
+        }
+      ],
+      "function_entries": [
+        {
+          "name": "isa_scalar",
+          "symbol_value": 131568,
+          "symbol_size": 52,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66032,
+          "local_entry_offset": 0,
+          "extraction_rva": 66032,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_branch",
+          "symbol_value": 131620,
+          "symbol_size": 84,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66084,
+          "local_entry_offset": 0,
+          "extraction_rva": 66084,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_load",
+          "symbol_value": 131704,
+          "symbol_size": 36,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66168,
+          "local_entry_offset": 0,
+          "extraction_rva": 66168,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_store",
+          "symbol_value": 131740,
+          "symbol_size": 44,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66204,
+          "local_entry_offset": 0,
+          "extraction_rva": 66204,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_call",
+          "symbol_value": 131784,
+          "symbol_size": 56,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66248,
+          "local_entry_offset": 0,
+          "extraction_rva": 66248,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_profile_entry",
+          "symbol_value": 131840,
+          "symbol_size": 108,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66304,
+          "local_entry_offset": 0,
+          "extraction_rva": 66304,
+          "proof_kind": "elf_symbol"
+        }
+      ],
+      "reproducibility": {
+        "fresh_builds": 2,
+        "binary_sha256_equal": true,
+        "binary_sha256s": [
+          "016efe8c142a8a9aa9c854f5113a66eeb8b87f39352b4defe343ae6c77423c1f",
+          "016efe8c142a8a9aa9c854f5113a66eeb8b87f39352b4defe343ae6c77423c1f"
+        ]
+      },
+      "target_executed": false,
+      "ida_receipt_recorded": false,
+      "support_status": "build_only_unmeasured"
+    },
+    {
+      "profile_id": "PPC32-BE",
+      "profile_version": 1,
+      "target_triple": "powerpc-linux-gnu",
+      "abi_id": "sysv-ppc32",
+      "bitness": 32,
+      "data_endian": "BE",
+      "instruction_endian": "BE",
+      "mode": "PPC32",
+      "processor": "PPC",
+      "format": "FMT-ELF",
+      "platform_tag": "linux",
+      "binary": "fresh-1/profiles/PPC32-BE/ppc32_be.elf",
+      "binary_sha256": "5b2c0bddb982538eb73e708c0695e53807945f4b6caf3b54910016c37eb9889b",
+      "binary_size": 2788,
+      "binary_header": {
+        "kind": "ELF",
+        "bits": 32,
+        "endian": "BE",
+        "machine": 20,
+        "entry": 131840,
+        "image_base": 65536,
+        "flags_hex": "0x0"
+      },
+      "command": [
+        "$ZIG",
+        "cc",
+        "-target",
+        "powerpc-linux-gnu",
+        "-std=c11",
+        "-O0",
+        "-g",
+        "-fno-sanitize=all",
+        "-ffreestanding",
+        "-fno-stack-protector",
+        "-fno-builtin",
+        "-fdebug-compilation-dir=.",
+        "-ffile-prefix-map=$ROOT=.",
+        "-nostdlib",
+        "-Wl,--build-id=none",
+        "-Wl,-e,isa_profile_entry",
+        "tests/flow_fixtures/isa_profile_anchor.c",
+        "-o",
+        "$OUTPUT/fresh-1/profiles/PPC32-BE/ppc32_be.elf"
+      ],
+      "command_sha256": "aaeb8842541590080bf1d5d1ad339bfbce130c73693413231ebf0e9bf754137c",
+      "function_selector": {
+        "kind": "debug_or_symbol_name",
+        "value": "isa_scalar"
+      },
+      "function_selectors": [
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_scalar"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_branch"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_load"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_store"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_call"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_profile_entry"
+        }
+      ],
+      "function_entries": [
+        {
+          "name": "isa_scalar",
+          "symbol_value": 131568,
+          "symbol_size": 52,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66032,
+          "local_entry_offset": 0,
+          "extraction_rva": 66032,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_branch",
+          "symbol_value": 131620,
+          "symbol_size": 84,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66084,
+          "local_entry_offset": 0,
+          "extraction_rva": 66084,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_load",
+          "symbol_value": 131704,
+          "symbol_size": 36,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66168,
+          "local_entry_offset": 0,
+          "extraction_rva": 66168,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_store",
+          "symbol_value": 131740,
+          "symbol_size": 44,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66204,
+          "local_entry_offset": 0,
+          "extraction_rva": 66204,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_call",
+          "symbol_value": 131784,
+          "symbol_size": 56,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66248,
+          "local_entry_offset": 0,
+          "extraction_rva": 66248,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_profile_entry",
+          "symbol_value": 131840,
+          "symbol_size": 108,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66304,
+          "local_entry_offset": 0,
+          "extraction_rva": 66304,
+          "proof_kind": "elf_symbol"
+        }
+      ],
+      "reproducibility": {
+        "fresh_builds": 2,
+        "binary_sha256_equal": true,
+        "binary_sha256s": [
+          "5b2c0bddb982538eb73e708c0695e53807945f4b6caf3b54910016c37eb9889b",
+          "5b2c0bddb982538eb73e708c0695e53807945f4b6caf3b54910016c37eb9889b"
+        ]
+      },
+      "target_executed": false,
+      "ida_receipt_recorded": false,
+      "support_status": "build_only_unmeasured"
+    },
+    {
+      "profile_id": "PPC64-LE",
+      "profile_version": 1,
+      "target_triple": "powerpc64le-linux-gnu",
+      "abi_id": "elfv2-ppc64",
+      "bitness": 64,
+      "data_endian": "LE",
+      "instruction_endian": "LE",
+      "mode": "PPC64",
+      "processor": "PPCL",
+      "format": "FMT-ELF",
+      "platform_tag": "linux",
+      "binary": "fresh-1/profiles/PPC64-LE/ppc64_le.elf",
+      "binary_sha256": "c4da59435feaba1a73ae4f7987c246aba819d56ed57a2f745833bf9146465c67",
+      "binary_size": 3848,
+      "binary_header": {
+        "kind": "ELF",
+        "bits": 64,
+        "endian": "LE",
+        "machine": 21,
+        "entry": 16843840,
+        "image_base": 16777216,
+        "flags_hex": "0x2"
+      },
+      "command": [
+        "$ZIG",
+        "cc",
+        "-target",
+        "powerpc64le-linux-gnu",
+        "-std=c11",
+        "-O0",
+        "-g",
+        "-fno-sanitize=all",
+        "-ffreestanding",
+        "-fno-stack-protector",
+        "-fno-builtin",
+        "-fdebug-compilation-dir=.",
+        "-ffile-prefix-map=$ROOT=.",
+        "-nostdlib",
+        "-mabi=elfv2",
+        "-Wl,--build-id=none",
+        "-Wl,-e,isa_profile_entry",
+        "tests/flow_fixtures/isa_profile_anchor.c",
+        "-o",
+        "$OUTPUT/fresh-1/profiles/PPC64-LE/ppc64_le.elf"
+      ],
+      "command_sha256": "218e6e7fd211d6042f93c229a3f02a068f88fd471573f73cc463973bafe14c3c",
+      "function_selector": {
+        "kind": "debug_or_symbol_name",
+        "value": "isa_scalar"
+      },
+      "function_selectors": [
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_scalar"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_branch"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_load"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_store"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_call"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_profile_entry"
+        }
+      ],
+      "function_entries": [
+        {
+          "name": "isa_scalar",
+          "symbol_value": 16843504,
+          "symbol_size": 64,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66288,
+          "local_entry_offset": 0,
+          "extraction_rva": 66288,
+          "proof_kind": "ppc64_elfv2_st_other"
+        },
+        {
+          "name": "isa_branch",
+          "symbol_value": 16843568,
+          "symbol_size": 84,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66352,
+          "local_entry_offset": 0,
+          "extraction_rva": 66352,
+          "proof_kind": "ppc64_elfv2_st_other"
+        },
+        {
+          "name": "isa_load",
+          "symbol_value": 16843664,
+          "symbol_size": 32,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66448,
+          "local_entry_offset": 0,
+          "extraction_rva": 66448,
+          "proof_kind": "ppc64_elfv2_st_other"
+        },
+        {
+          "name": "isa_store",
+          "symbol_value": 16843696,
+          "symbol_size": 48,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66480,
+          "local_entry_offset": 0,
+          "extraction_rva": 66480,
+          "proof_kind": "ppc64_elfv2_st_other"
+        },
+        {
+          "name": "isa_call",
+          "symbol_value": 16843744,
+          "symbol_size": 88,
+          "symbol_other": 96,
+          "symbol_table": ".symtab",
+          "logical_rva": 66528,
+          "local_entry_offset": 8,
+          "extraction_rva": 66536,
+          "proof_kind": "ppc64_elfv2_st_other"
+        },
+        {
+          "name": "isa_profile_entry",
+          "symbol_value": 16843840,
+          "symbol_size": 164,
+          "symbol_other": 96,
+          "symbol_table": ".symtab",
+          "logical_rva": 66624,
+          "local_entry_offset": 8,
+          "extraction_rva": 66632,
+          "proof_kind": "ppc64_elfv2_st_other"
+        }
+      ],
+      "reproducibility": {
+        "fresh_builds": 2,
+        "binary_sha256_equal": true,
+        "binary_sha256s": [
+          "c4da59435feaba1a73ae4f7987c246aba819d56ed57a2f745833bf9146465c67",
+          "c4da59435feaba1a73ae4f7987c246aba819d56ed57a2f745833bf9146465c67"
+        ]
+      },
+      "target_executed": false,
+      "ida_receipt_recorded": false,
+      "support_status": "build_only_unmeasured"
+    },
+    {
+      "profile_id": "PPC64-BE",
+      "profile_version": 1,
+      "target_triple": "powerpc64-linux-gnu",
+      "abi_id": "elfv2-ppc64",
+      "bitness": 64,
+      "data_endian": "BE",
+      "instruction_endian": "BE",
+      "mode": "PPC64",
+      "processor": "PPC",
+      "format": "FMT-ELF",
+      "platform_tag": "linux",
+      "binary": "fresh-1/profiles/PPC64-BE/ppc64_be.elf",
+      "binary_sha256": "7a35c6ae7a3f87fd32b389419d3da977fea05eeadacd39b45bede52550589af7",
+      "binary_size": 3816,
+      "binary_header": {
+        "kind": "ELF",
+        "bits": 64,
+        "endian": "BE",
+        "machine": 21,
+        "entry": 16843808,
+        "image_base": 16777216,
+        "flags_hex": "0x2"
+      },
+      "command": [
+        "$ZIG",
+        "cc",
+        "-target",
+        "powerpc64-linux-gnu",
+        "-std=c11",
+        "-O0",
+        "-g",
+        "-fno-sanitize=all",
+        "-ffreestanding",
+        "-fno-stack-protector",
+        "-fno-builtin",
+        "-fdebug-compilation-dir=.",
+        "-ffile-prefix-map=$ROOT=.",
+        "-nostdlib",
+        "-mabi=elfv2",
+        "-Wl,--build-id=none",
+        "-Wl,-e,isa_profile_entry",
+        "tests/flow_fixtures/isa_profile_anchor.c",
+        "-o",
+        "$OUTPUT/fresh-1/profiles/PPC64-BE/ppc64_be.elf"
+      ],
+      "command_sha256": "ff7103ece870fb0889f75f60ef36c03570a9ec1dabc9543909ba3a8874b768b9",
+      "function_selector": {
+        "kind": "debug_or_symbol_name",
+        "value": "isa_scalar"
+      },
+      "function_selectors": [
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_scalar"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_branch"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_load"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_store"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_call"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_profile_entry"
+        }
+      ],
+      "function_entries": [
+        {
+          "name": "isa_scalar",
+          "symbol_value": 16843492,
+          "symbol_size": 64,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66276,
+          "local_entry_offset": 0,
+          "extraction_rva": 66276,
+          "proof_kind": "ppc64_elfv2_st_other"
+        },
+        {
+          "name": "isa_branch",
+          "symbol_value": 16843556,
+          "symbol_size": 84,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66340,
+          "local_entry_offset": 0,
+          "extraction_rva": 66340,
+          "proof_kind": "ppc64_elfv2_st_other"
+        },
+        {
+          "name": "isa_load",
+          "symbol_value": 16843640,
+          "symbol_size": 32,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66424,
+          "local_entry_offset": 0,
+          "extraction_rva": 66424,
+          "proof_kind": "ppc64_elfv2_st_other"
+        },
+        {
+          "name": "isa_store",
+          "symbol_value": 16843672,
+          "symbol_size": 48,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 66456,
+          "local_entry_offset": 0,
+          "extraction_rva": 66456,
+          "proof_kind": "ppc64_elfv2_st_other"
+        },
+        {
+          "name": "isa_call",
+          "symbol_value": 16843720,
+          "symbol_size": 88,
+          "symbol_other": 96,
+          "symbol_table": ".symtab",
+          "logical_rva": 66504,
+          "local_entry_offset": 8,
+          "extraction_rva": 66512,
+          "proof_kind": "ppc64_elfv2_st_other"
+        },
+        {
+          "name": "isa_profile_entry",
+          "symbol_value": 16843808,
+          "symbol_size": 164,
+          "symbol_other": 96,
+          "symbol_table": ".symtab",
+          "logical_rva": 66592,
+          "local_entry_offset": 8,
+          "extraction_rva": 66600,
+          "proof_kind": "ppc64_elfv2_st_other"
+        }
+      ],
+      "reproducibility": {
+        "fresh_builds": 2,
+        "binary_sha256_equal": true,
+        "binary_sha256s": [
+          "7a35c6ae7a3f87fd32b389419d3da977fea05eeadacd39b45bede52550589af7",
+          "7a35c6ae7a3f87fd32b389419d3da977fea05eeadacd39b45bede52550589af7"
+        ]
+      },
+      "target_executed": false,
+      "ida_receipt_recorded": false,
+      "support_status": "build_only_unmeasured"
+    },
+    {
+      "profile_id": "RV32-LE",
+      "profile_version": 1,
+      "target_triple": "riscv32-linux-gnu",
+      "abi_id": "riscv-ilp32",
+      "bitness": 32,
+      "data_endian": "LE",
+      "instruction_endian": "LE",
+      "mode": "RV32",
+      "processor": "riscv",
+      "format": "FMT-ELF",
+      "platform_tag": "linux",
+      "binary": "fresh-1/profiles/RV32-LE/rv32_le.elf",
+      "binary_sha256": "7542035cd7ed38b7b891515c3590ad8b6f814d70f4d35ba95e1dc3e25ee580b3",
+      "binary_size": 3848,
+      "binary_header": {
+        "kind": "ELF",
+        "bits": 32,
+        "endian": "LE",
+        "machine": 243,
+        "entry": 70432,
+        "image_base": 65536,
+        "flags_hex": "0x1"
+      },
+      "command": [
+        "$ZIG",
+        "cc",
+        "-target",
+        "riscv32-linux-gnu",
+        "-std=c11",
+        "-O0",
+        "-g",
+        "-fno-sanitize=all",
+        "-ffreestanding",
+        "-fno-stack-protector",
+        "-fno-builtin",
+        "-fdebug-compilation-dir=.",
+        "-ffile-prefix-map=$ROOT=.",
+        "-nostdlib",
+        "-mabi=ilp32",
+        "-Wl,--build-id=none",
+        "-Wl,-e,isa_profile_entry",
+        "tests/flow_fixtures/isa_profile_anchor.c",
+        "-o",
+        "$OUTPUT/fresh-1/profiles/RV32-LE/rv32_le.elf"
+      ],
+      "command_sha256": "af8b6f88daf0430d1b2507f2243ab5ecefcc2f3d8c91dfdb51055b453fdb3353",
+      "function_selector": {
+        "kind": "debug_or_symbol_name",
+        "value": "isa_scalar"
+      },
+      "function_selectors": [
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_scalar"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_branch"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_load"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_store"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_call"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_profile_entry"
+        }
+      ],
+      "function_entries": [
+        {
+          "name": "isa_scalar",
+          "symbol_value": 70232,
+          "symbol_size": 44,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 4696,
+          "local_entry_offset": 0,
+          "extraction_rva": 4696,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_branch",
+          "symbol_value": 70276,
+          "symbol_size": 62,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 4740,
+          "local_entry_offset": 0,
+          "extraction_rva": 4740,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_load",
+          "symbol_value": 70338,
+          "symbol_size": 26,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 4802,
+          "local_entry_offset": 0,
+          "extraction_rva": 4802,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_store",
+          "symbol_value": 70364,
+          "symbol_size": 34,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 4828,
+          "local_entry_offset": 0,
+          "extraction_rva": 4828,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_call",
+          "symbol_value": 70398,
+          "symbol_size": 34,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 4862,
+          "local_entry_offset": 0,
+          "extraction_rva": 4862,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_profile_entry",
+          "symbol_value": 70432,
+          "symbol_size": 100,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 4896,
+          "local_entry_offset": 0,
+          "extraction_rva": 4896,
+          "proof_kind": "elf_symbol"
+        }
+      ],
+      "reproducibility": {
+        "fresh_builds": 2,
+        "binary_sha256_equal": true,
+        "binary_sha256s": [
+          "7542035cd7ed38b7b891515c3590ad8b6f814d70f4d35ba95e1dc3e25ee580b3",
+          "7542035cd7ed38b7b891515c3590ad8b6f814d70f4d35ba95e1dc3e25ee580b3"
+        ]
+      },
+      "target_executed": false,
+      "ida_receipt_recorded": false,
+      "support_status": "build_only_unmeasured"
+    },
+    {
+      "profile_id": "RV64-LE",
+      "profile_version": 1,
+      "target_triple": "riscv64-linux-gnu",
+      "abi_id": "riscv-lp64",
+      "bitness": 64,
+      "data_endian": "LE",
+      "instruction_endian": "LE",
+      "mode": "RV64",
+      "processor": "riscv",
+      "format": "FMT-ELF",
+      "platform_tag": "linux",
+      "binary": "fresh-1/profiles/RV64-LE/rv64_le.elf",
+      "binary_sha256": "6a9a51949d884723d71b027b488354f2b7fadfb403a5bc2041615a6ccb50279f",
+      "binary_size": 4792,
+      "binary_header": {
+        "kind": "ELF",
+        "bits": 64,
+        "endian": "LE",
+        "machine": 243,
+        "entry": 16782300,
+        "image_base": 16777216,
+        "flags_hex": "0x1"
+      },
+      "command": [
+        "$ZIG",
+        "cc",
+        "-target",
+        "riscv64-linux-gnu",
+        "-std=c11",
+        "-O0",
+        "-g",
+        "-fno-sanitize=all",
+        "-ffreestanding",
+        "-fno-stack-protector",
+        "-fno-builtin",
+        "-fdebug-compilation-dir=.",
+        "-ffile-prefix-map=$ROOT=.",
+        "-nostdlib",
+        "-mabi=lp64",
+        "-Wl,--build-id=none",
+        "-Wl,-e,isa_profile_entry",
+        "tests/flow_fixtures/isa_profile_anchor.c",
+        "-o",
+        "$OUTPUT/fresh-1/profiles/RV64-LE/rv64_le.elf"
+      ],
+      "command_sha256": "9ecaf33a1c2004256bf296b9e0043a32b29da0753dd5a7c462e1f5d025b99d8a",
+      "function_selector": {
+        "kind": "debug_or_symbol_name",
+        "value": "isa_scalar"
+      },
+      "function_selectors": [
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_scalar"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_branch"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_load"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_store"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_call"
+        },
+        {
+          "kind": "debug_or_symbol_name",
+          "value": "isa_profile_entry"
+        }
+      ],
+      "function_entries": [
+        {
+          "name": "isa_scalar",
+          "symbol_value": 16782100,
+          "symbol_size": 44,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 4884,
+          "local_entry_offset": 0,
+          "extraction_rva": 4884,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_branch",
+          "symbol_value": 16782144,
+          "symbol_size": 62,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 4928,
+          "local_entry_offset": 0,
+          "extraction_rva": 4928,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_load",
+          "symbol_value": 16782206,
+          "symbol_size": 26,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 4990,
+          "local_entry_offset": 0,
+          "extraction_rva": 4990,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_store",
+          "symbol_value": 16782232,
+          "symbol_size": 34,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 5016,
+          "local_entry_offset": 0,
+          "extraction_rva": 5016,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_call",
+          "symbol_value": 16782266,
+          "symbol_size": 34,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 5050,
+          "local_entry_offset": 0,
+          "extraction_rva": 5050,
+          "proof_kind": "elf_symbol"
+        },
+        {
+          "name": "isa_profile_entry",
+          "symbol_value": 16782300,
+          "symbol_size": 100,
+          "symbol_other": 0,
+          "symbol_table": ".symtab",
+          "logical_rva": 5084,
+          "local_entry_offset": 0,
+          "extraction_rva": 5084,
+          "proof_kind": "elf_symbol"
+        }
+      ],
+      "reproducibility": {
+        "fresh_builds": 2,
+        "binary_sha256_equal": true,
+        "binary_sha256s": [
+          "6a9a51949d884723d71b027b488354f2b7fadfb403a5bc2041615a6ccb50279f",
+          "6a9a51949d884723d71b027b488354f2b7fadfb403a5bc2041615a6ccb50279f"
+        ]
+      },
+      "target_executed": false,
+      "ida_receipt_recorded": false,
+      "support_status": "build_only_unmeasured"
+    }
+  ],
+  "format_variants": [
+    {
+      "profile_id": "X64-LE",
+      "profile_version": 1,
+      "target_triple": "x86_64-windows-gnu",
+      "abi_id": "windows-x64",
+      "bitness": 64,
+      "data_endian": "LE",
+      "instruction_endian": "LE",
+      "mode": "X64",
+      "processor": "metapc",
+      "format": "FMT-PE",
+      "platform_tag": "windows",
+      "binary": "fresh-1/formats/X64-LE/x64_pe.exe",
+      "binary_sha256": "5c5cbc1b4029053029df20896ac57dfda06619f8d0dbd0afa3c1e3b77819a171",
+      "binary_size": 2560,
+      "binary_header": {
+        "kind": "PE",
+        "bits": 64,
+        "endian": "LE",
+        "machine": 34404,
+        "timestamp": 0,
+        "entry_rva": 4304,
+        "exports": [
+          {
+            "name": "isa_branch",
+            "rva": 4128
+          },
+          {
+            "name": "isa_call",
+            "rva": 4256
+          },
+          {
+            "name": "isa_load",
+            "rva": 4192
+          },
+          {
+            "name": "isa_profile_entry",
+            "rva": 4304
+          },
+          {
+            "name": "isa_scalar",
+            "rva": 4096
+          },
+          {
+            "name": "isa_store",
+            "rva": 4224
+          }
+        ]
+      },
+      "command": [
+        "$ZIG",
+        "cc",
+        "-target",
+        "x86_64-windows-gnu",
+        "-std=c11",
+        "-O0",
+        "-g",
+        "-fno-sanitize=all",
+        "-ffreestanding",
+        "-fno-stack-protector",
+        "-fno-builtin",
+        "-fdebug-compilation-dir=.",
+        "-ffile-prefix-map=$ROOT=.",
+        "-nostdlib",
+        "-s",
+        "-Wl,--entry,isa_profile_entry",
+        "-Wl,--subsystem,console",
+        "tests/flow_fixtures/isa_profile_anchor.c",
+        "-o",
+        "$OUTPUT/fresh-1/formats/X64-LE/x64_pe.exe"
+      ],
+      "command_sha256": "3ed7a69965f8207d38ad73ded92ba18884c144e5ebba0dd0f16d7e5ab04c6bc6",
+      "function_selector": {
+        "kind": "export_name",
+        "value": "isa_scalar"
+      },
+      "function_selectors": [
+        {
+          "function": "isa_scalar",
+          "kind": "export_name",
+          "value": "isa_scalar",
+          "rva": 4096
+        },
+        {
+          "function": "isa_branch",
+          "kind": "export_name",
+          "value": "isa_branch",
+          "rva": 4128
+        },
+        {
+          "function": "isa_load",
+          "kind": "export_name",
+          "value": "isa_load",
+          "rva": 4192
+        },
+        {
+          "function": "isa_store",
+          "kind": "export_name",
+          "value": "isa_store",
+          "rva": 4224
+        },
+        {
+          "function": "isa_call",
+          "kind": "export_name",
+          "value": "isa_call",
+          "rva": 4256
+        },
+        {
+          "function": "isa_profile_entry",
+          "kind": "export_name",
+          "value": "isa_profile_entry",
+          "rva": 4304
+        }
+      ],
+      "debug_info": "stripped for deterministic PE; no PDB required",
+      "reproducibility": {
+        "fresh_builds": 2,
+        "binary_sha256_equal": true,
+        "binary_sha256s": [
+          "5c5cbc1b4029053029df20896ac57dfda06619f8d0dbd0afa3c1e3b77819a171",
+          "5c5cbc1b4029053029df20896ac57dfda06619f8d0dbd0afa3c1e3b77819a171"
+        ]
+      },
+      "target_executed": false,
+      "ida_receipt_recorded": false,
+      "support_status": "build_only_unmeasured"
+    },
+    {
+      "profile_id": "ARM32-LE",
+      "profile_version": 1,
+      "abi_id": "aapcs32",
+      "bitness": 32,
+      "data_endian": "LE",
+      "instruction_endian": "LE",
+      "mode": "ARM32",
+      "processor": "ARM",
+      "format": "FMT-RAW",
+      "platform_tag": "bare",
+      "derived_from": "fresh-1/profiles/ARM32-LE/arm32_le.elf",
+      "derived_from_sha256": "579cfc13cb9f2997bc0ba021b1fc5f60f3ed1f6c4ef9e419f9a80dfdf8fccd0e",
+      "binary": "fresh-1/formats/ARM32-LE/arm32_le.raw",
+      "binary_sha256": "43b1047885a3772b1926c467317139c3fa91222c48f7c4539893b4af12d3b285",
+      "binary_size": 324,
+      "command": [
+        "$ZIG",
+        "objcopy",
+        "-O",
+        "binary",
+        "-j",
+        ".text",
+        "$OUTPUT/fresh-1/profiles/ARM32-LE/arm32_le.elf",
+        "$OUTPUT/fresh-1/formats/ARM32-LE/arm32_le.raw"
+      ],
+      "command_sha256": "93212be291725e892f66b75da8c08c04d17ca8317d4c2efc45d04f7b6cb85c06",
+      "raw_configuration": {
+        "processor": "ARM",
+        "bitness": 32,
+        "data_endian": "LE",
+        "instruction_endian": "LE",
+        "mode": "ARM32",
+        "load_address": 65536,
+        "entry_offset": 0,
+        "entry_point": 65536,
+        "source_section": ".text",
+        "function_selector": {
+          "kind": "raw_offset",
+          "value": 0
+        }
+      },
+      "function_selectors": [
+        {
+          "function": "isa_scalar",
+          "kind": "raw_offset",
+          "value": 0,
+          "size": 52
+        },
+        {
+          "function": "isa_branch",
+          "kind": "raw_offset",
+          "value": 52,
+          "size": 72
+        },
+        {
+          "function": "isa_load",
+          "kind": "raw_offset",
+          "value": 124,
+          "size": 32
+        },
+        {
+          "function": "isa_store",
+          "kind": "raw_offset",
+          "value": 156,
+          "size": 40
+        },
+        {
+          "function": "isa_call",
+          "kind": "raw_offset",
+          "value": 196,
+          "size": 36
+        },
+        {
+          "function": "isa_profile_entry",
+          "kind": "raw_offset",
+          "value": 232,
+          "size": 92
+        }
+      ],
+      "reproducibility": {
+        "fresh_builds": 2,
+        "binary_sha256_equal": true,
+        "binary_sha256s": [
+          "43b1047885a3772b1926c467317139c3fa91222c48f7c4539893b4af12d3b285",
+          "43b1047885a3772b1926c467317139c3fa91222c48f7c4539893b4af12d3b285"
+        ]
+      },
+      "target_executed": false,
+      "ida_receipt_recorded": false,
+      "support_status": "build_only_unmeasured"
+    },
+    {
+      "profile_id": "X64-LE",
+      "profile_version": 1,
+      "target_triple": "x86_64-apple-darwin",
+      "abi_id": "darwin-x86_64-sysv-derived",
+      "bitness": 64,
+      "data_endian": "LE",
+      "instruction_endian": "LE",
+      "mode": "X64",
+      "processor": "metapc",
+      "format": "FMT-MACHO",
+      "platform_tag": "darwin",
+      "source": "tests/flow_fixtures/isa_profile_anchor.c",
+      "source_sha256": "8322823fb0308b9eb4352ade7e1dc404d57804417306b4889821be29fffdcb1b",
+      "binary": "fresh-1/formats/X64-LE/isa_profile_anchor",
+      "binary_sha256": "25ae3f21eb437e6577ae4cbff3f639db50d8e621f795f82ec5978f8b896f6622",
+      "binary_size": 4552,
+      "binary_header": {
+        "kind": "MACH-O",
+        "bits": 64,
+        "endian": "LE",
+        "cpu_type": 16777223,
+        "file_type": 2,
+        "image_base": 4294967296,
+        "selected_symbol": "_isa_scalar",
+        "semantic_symbols": [
+          {
+            "name": "_isa_scalar",
+            "rva": 960
+          },
+          {
+            "name": "_isa_branch",
+            "rva": 992
+          },
+          {
+            "name": "_isa_load",
+            "rva": 1040
+          },
+          {
+            "name": "_isa_store",
+            "rva": 1056
+          },
+          {
+            "name": "_isa_call",
+            "rva": 1088
+          },
+          {
+            "name": "_isa_profile_entry",
+            "rva": 1120
+          }
+        ]
+      },
+      "compiler": {
+        "command": "$APPLE_CLANG",
+        "resolved_path": "/usr/bin/clang",
+        "version": "Apple clang version 21.0.0 (clang-2100.0.123.102)\nTarget: arm64-apple-darwin27.0.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin",
+        "sha256": "34129c71a01a74f7f3b2443521519b2e5447553fa187f5fcafaaf8c42cc192e2"
+      },
+      "command": [
+        "$APPLE_CLANG",
+        "-arch",
+        "x86_64",
+        "-O0",
+        "-fno-stack-protector",
+        "-Wl,-no_uuid",
+        "-Wl,-no_adhoc_codesign",
+        "-Wl,-e,_isa_profile_entry",
+        "tests/flow_fixtures/isa_profile_anchor.c",
+        "-o",
+        "$OUTPUT/fresh-1/formats/X64-LE/isa_profile_anchor"
+      ],
+      "command_sha256": "805b657ca45d3fe22712eb882061b742088341de99fee2b89a6bd87740fa8bb0",
+      "function_selector": {
+        "kind": "ida_name",
+        "value": "_isa_scalar",
+        "naming_convention": "Mach-O external symbol with the object-format underscore prefix",
+        "requires_companion": false
+      },
+      "function_selectors": [
+        {
+          "function": "isa_scalar",
+          "kind": "ida_name",
+          "value": "_isa_scalar",
+          "rva": 960,
+          "naming_convention": "Mach-O external symbol with the object-format underscore prefix",
+          "requires_companion": false
+        },
+        {
+          "function": "isa_branch",
+          "kind": "ida_name",
+          "value": "_isa_branch",
+          "rva": 992,
+          "naming_convention": "Mach-O external symbol with the object-format underscore prefix",
+          "requires_companion": false
+        },
+        {
+          "function": "isa_load",
+          "kind": "ida_name",
+          "value": "_isa_load",
+          "rva": 1040,
+          "naming_convention": "Mach-O external symbol with the object-format underscore prefix",
+          "requires_companion": false
+        },
+        {
+          "function": "isa_store",
+          "kind": "ida_name",
+          "value": "_isa_store",
+          "rva": 1056,
+          "naming_convention": "Mach-O external symbol with the object-format underscore prefix",
+          "requires_companion": false
+        },
+        {
+          "function": "isa_call",
+          "kind": "ida_name",
+          "value": "_isa_call",
+          "rva": 1088,
+          "naming_convention": "Mach-O external symbol with the object-format underscore prefix",
+          "requires_companion": false
+        },
+        {
+          "function": "isa_profile_entry",
+          "kind": "ida_name",
+          "value": "_isa_profile_entry",
+          "rva": 1120,
+          "naming_convention": "Mach-O external symbol with the object-format underscore prefix",
+          "requires_companion": false
+        }
+      ],
+      "companion_artifacts": [],
+      "debug_info": "no debug info; global symbol retained; no dSYM required",
+      "reproducibility": {
+        "fresh_builds": 2,
+        "binary_sha256_equal": true,
+        "binary_sha256s": [
+          "25ae3f21eb437e6577ae4cbff3f639db50d8e621f795f82ec5978f8b896f6622",
+          "25ae3f21eb437e6577ae4cbff3f639db50d8e621f795f82ec5978f8b896f6622"
+        ]
+      },
+      "target_executed": false,
+      "ida_receipt_recorded": false,
+      "support_status": "build_only_unmeasured"
+    },
+    {
+      "profile_id": "A64-LE",
+      "profile_version": 1,
+      "target_triple": "arm64-apple-darwin",
+      "abi_id": "darwin-aarch64",
+      "bitness": 64,
+      "data_endian": "LE",
+      "instruction_endian": "LE",
+      "mode": "A64",
+      "processor": "ARM",
+      "format": "FMT-MACHO",
+      "platform_tag": "darwin",
+      "source": "tests/flow_fixtures/isa_profile_anchor.c",
+      "source_sha256": "8322823fb0308b9eb4352ade7e1dc404d57804417306b4889821be29fffdcb1b",
+      "binary": "fresh-1/formats/A64-LE/isa_profile_anchor",
+      "binary_sha256": "ada0029630104cfd87c19b6534ac05615b802f1315302b2a53a1954942382d25",
+      "binary_size": 16840,
+      "binary_header": {
+        "kind": "MACH-O",
+        "bits": 64,
+        "endian": "LE",
+        "cpu_type": 16777228,
+        "file_type": 2,
+        "image_base": 4294967296,
+        "selected_symbol": "_isa_scalar",
+        "semantic_symbols": [
+          {
+            "name": "_isa_scalar",
+            "rva": 920
+          },
+          {
+            "name": "_isa_branch",
+            "rva": 964
+          },
+          {
+            "name": "_isa_load",
+            "rva": 1036
+          },
+          {
+            "name": "_isa_store",
+            "rva": 1060
+          },
+          {
+            "name": "_isa_call",
+            "rva": 1092
+          },
+          {
+            "name": "_isa_profile_entry",
+            "rva": 1132
+          }
+        ]
+      },
+      "compiler": {
+        "command": "$APPLE_CLANG",
+        "resolved_path": "/usr/bin/clang",
+        "version": "Apple clang version 21.0.0 (clang-2100.0.123.102)\nTarget: arm64-apple-darwin27.0.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin",
+        "sha256": "34129c71a01a74f7f3b2443521519b2e5447553fa187f5fcafaaf8c42cc192e2"
+      },
+      "command": [
+        "$APPLE_CLANG",
+        "-arch",
+        "arm64",
+        "-O0",
+        "-fno-stack-protector",
+        "-Wl,-no_uuid",
+        "-Wl,-no_adhoc_codesign",
+        "-Wl,-e,_isa_profile_entry",
+        "tests/flow_fixtures/isa_profile_anchor.c",
+        "-o",
+        "$OUTPUT/fresh-1/formats/A64-LE/isa_profile_anchor"
+      ],
+      "command_sha256": "6b9e9c50060055915a383a5491518a62ba0cb11f4e7f178dcf96cfc94ff1ce66",
+      "function_selector": {
+        "kind": "ida_name",
+        "value": "_isa_scalar",
+        "naming_convention": "Mach-O external symbol with the object-format underscore prefix",
+        "requires_companion": false
+      },
+      "function_selectors": [
+        {
+          "function": "isa_scalar",
+          "kind": "ida_name",
+          "value": "_isa_scalar",
+          "rva": 920,
+          "naming_convention": "Mach-O external symbol with the object-format underscore prefix",
+          "requires_companion": false
+        },
+        {
+          "function": "isa_branch",
+          "kind": "ida_name",
+          "value": "_isa_branch",
+          "rva": 964,
+          "naming_convention": "Mach-O external symbol with the object-format underscore prefix",
+          "requires_companion": false
+        },
+        {
+          "function": "isa_load",
+          "kind": "ida_name",
+          "value": "_isa_load",
+          "rva": 1036,
+          "naming_convention": "Mach-O external symbol with the object-format underscore prefix",
+          "requires_companion": false
+        },
+        {
+          "function": "isa_store",
+          "kind": "ida_name",
+          "value": "_isa_store",
+          "rva": 1060,
+          "naming_convention": "Mach-O external symbol with the object-format underscore prefix",
+          "requires_companion": false
+        },
+        {
+          "function": "isa_call",
+          "kind": "ida_name",
+          "value": "_isa_call",
+          "rva": 1092,
+          "naming_convention": "Mach-O external symbol with the object-format underscore prefix",
+          "requires_companion": false
+        },
+        {
+          "function": "isa_profile_entry",
+          "kind": "ida_name",
+          "value": "_isa_profile_entry",
+          "rva": 1132,
+          "naming_convention": "Mach-O external symbol with the object-format underscore prefix",
+          "requires_companion": false
+        }
+      ],
+      "companion_artifacts": [],
+      "debug_info": "no debug info; global symbol retained; no dSYM required",
+      "reproducibility": {
+        "fresh_builds": 2,
+        "binary_sha256_equal": true,
+        "binary_sha256s": [
+          "ada0029630104cfd87c19b6534ac05615b802f1315302b2a53a1954942382d25",
+          "ada0029630104cfd87c19b6534ac05615b802f1315302b2a53a1954942382d25"
+        ]
+      },
+      "target_executed": false,
+      "ida_receipt_recorded": false,
+      "support_status": "build_only_unmeasured"
+    }
+  ],
+  "target_executed": false,
+  "new_profiles_advertised": [],
+  "status": "builds_only_not_engine_validation"
+}

@@ -1,0 +1,194 @@
+{
+  "schema_version": "flow-p0-probe/2",
+  "request": {
+    "binary": {
+      "filetype": "__bootstrap_observation_required__",
+      "format": "RAW",
+      "sha256": "43b1047885a3772b1926c467317139c3fa91222c48f7c4539893b4af12d3b285"
+    },
+    "entry": {
+      "kind": "address",
+      "value": 65536
+    },
+    "load": {
+      "file_offset": 0,
+      "kind": "raw",
+      "load_address": 65536
+    },
+    "probe": {
+      "maturities": [
+        "MMAT_CALLS",
+        "MMAT_GLBOPT3"
+      ]
+    },
+    "profile": {
+      "abi_id": "aapcs32",
+      "bits": 32,
+      "data_endian": "LE",
+      "instruction_endian": "LE",
+      "mode": "ARM32",
+      "processor": "ARM",
+      "profile_id": "ARM32-LE",
+      "profile_version": 1
+    },
+    "schema_version": "flow-p0-probe-request/1"
+  },
+  "request_digest": "90691d5d48992dfe0bbb6ac39bea10e20ce2cc4aabb24c77b02960142acddf58",
+  "implementation_sha256": "abfbf92cf84b960ab6af71235d51fffa88005ee9eeee13412b8f7354c4d3b3e3",
+  "environment": {
+    "ida_version": "9.3",
+    "python_version": "3.11.15",
+    "hexrays_version": null,
+    "filetype_id": 2,
+    "binary_sha256": "43b1047885a3772b1926c467317139c3fa91222c48f7c4539893b4af12d3b285",
+    "format": "RAW",
+    "filetype": "Binary file",
+    "processor": "ARM",
+    "bits": 32,
+    "data_endian": "LE",
+    "instruction_endian": null,
+    "image_base": 65536,
+    "entry_ea": 65536
+  },
+  "validation": {
+    "schema_version": "flow-p0-probe-validation/1",
+    "request_digest": "90691d5d48992dfe0bbb6ac39bea10e20ce2cc4aabb24c77b02960142acddf58",
+    "status": "mismatch",
+    "checks": [
+      {
+        "field": "binary.sha256",
+        "expected": "43b1047885a3772b1926c467317139c3fa91222c48f7c4539893b4af12d3b285",
+        "observed": "43b1047885a3772b1926c467317139c3fa91222c48f7c4539893b4af12d3b285",
+        "status": "matched"
+      },
+      {
+        "field": "binary.format",
+        "expected": "RAW",
+        "observed": "RAW",
+        "status": "matched"
+      },
+      {
+        "field": "binary.filetype",
+        "expected": "__bootstrap_observation_required__",
+        "observed": "Binary file",
+        "status": "mismatch"
+      },
+      {
+        "field": "profile.processor",
+        "expected": "ARM",
+        "observed": "ARM",
+        "status": "matched"
+      },
+      {
+        "field": "profile.bits",
+        "expected": 32,
+        "observed": 32,
+        "status": "matched"
+      },
+      {
+        "field": "profile.data_endian",
+        "expected": "LE",
+        "observed": "LE",
+        "status": "matched"
+      },
+      {
+        "field": "load.address",
+        "expected": 65536,
+        "observed": 65536,
+        "status": "matched"
+      },
+      {
+        "field": "entry",
+        "expected": {
+          "kind": "address",
+          "value": 65536
+        },
+        "observed": 65536,
+        "status": "matched"
+      },
+      {
+        "field": "profile.instruction_endian",
+        "expected": "LE",
+        "observed": null,
+        "status": "unverified"
+      }
+    ],
+    "mismatches": [
+      "binary.filetype"
+    ],
+    "declared_only": [
+      "profile.profile_id",
+      "profile.profile_version",
+      "profile.mode",
+      "profile.abi_id"
+    ],
+    "unverified": [
+      "profile.instruction_endian"
+    ],
+    "raw_setup": {
+      "schema_version": "flow-p0-raw-setup/1",
+      "status": "required",
+      "owner": "external_ida_invocation",
+      "stage": "before_idapython_entrypoint",
+      "reason": "Raw processor, load, and entry configuration must be applied before this IDAPython script starts; the probe does not mutate loader state",
+      "required": {
+        "processor": "ARM",
+        "bits": 32,
+        "data_endian": "LE",
+        "instruction_endian": "LE",
+        "file_offset": 0,
+        "load_address": 65536,
+        "entry_address": 65536
+      }
+    }
+  },
+  "probe_status": "blocked",
+  "support_status": "unverified",
+  "target_executed": false,
+  "binary": {
+    "name": "arm32_le.raw",
+    "sha256": "43b1047885a3772b1926c467317139c3fa91222c48f7c4539893b4af12d3b285"
+  },
+  "entry": {
+    "requested": {
+      "kind": "address",
+      "value": 65536
+    },
+    "resolved_ea": 65536
+  },
+  "initialization": null,
+  "probes": [],
+  "failures": [
+    {
+      "kind": "request_validation_mismatch",
+      "message": "Probe request did not pass fail-closed runtime validation",
+      "details": {
+        "mismatches": [
+          "binary.filetype"
+        ],
+        "raw_setup": {
+          "schema_version": "flow-p0-raw-setup/1",
+          "status": "required",
+          "owner": "external_ida_invocation",
+          "stage": "before_idapython_entrypoint",
+          "reason": "Raw processor, load, and entry configuration must be applied before this IDAPython script starts; the probe does not mutate loader state",
+          "required": {
+            "processor": "ARM",
+            "bits": 32,
+            "data_endian": "LE",
+            "instruction_endian": "LE",
+            "file_offset": 0,
+            "load_address": 65536,
+            "entry_address": 65536
+          }
+        }
+      }
+    }
+  ],
+  "lifetime": {
+    "json_roundtrip": true,
+    "repeat_after_gc": false,
+    "native_leak_freedom": "not_proven"
+  },
+  "receipt_digest": "0bafb496d8bf1348a1acdef957e71bcce8fe8c5614d3877f012743c9b6a5a1cb"
+}

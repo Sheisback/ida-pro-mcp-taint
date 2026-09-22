@@ -1,0 +1,664 @@
+{
+  "schema_version": "flow-isa-profile-oracles/1",
+  "oracle_origin": "hand-authored independent semantic expectations",
+  "source": "tests/flow_fixtures/isa_profile_anchor.c",
+  "status": [
+    "build_only",
+    "not_engine_validation",
+    "not_support_advertisement",
+    "target_must_never_execute"
+  ],
+  "generic_cases": [
+    {
+      "oracle_id": "ISA-G01",
+      "operation": "scalar",
+      "function": "isa_scalar",
+      "inputs": {
+        "left": "L",
+        "right": "R"
+      },
+      "expected_relations": [
+        "return == (L + R) xor 0x013579bd modulo 32 bits"
+      ],
+      "forbidden_relations": [
+        "return is unconstrained"
+      ]
+    },
+    {
+      "oracle_id": "ISA-G02",
+      "operation": "branch",
+      "function": "isa_branch",
+      "inputs": {
+        "value": "V",
+        "selector": "S"
+      },
+      "expected_relations": [
+        "S != 0 selects V + 3",
+        "S == 0 selects V xor 5"
+      ],
+      "forbidden_relations": [
+        "both branch results hold simultaneously"
+      ]
+    },
+    {
+      "oracle_id": "ISA-G03",
+      "operation": "load",
+      "function": "isa_load",
+      "inputs": {
+        "slot.memory[0,4)": "M"
+      },
+      "expected_relations": [
+        "return has label/value M from slot.memory[0,4)"
+      ],
+      "forbidden_relations": [
+        "load reads beyond four bytes"
+      ]
+    },
+    {
+      "oracle_id": "ISA-G04",
+      "operation": "store",
+      "function": "isa_store",
+      "inputs": {
+        "value": "V"
+      },
+      "expected_relations": [
+        "slot.memory[0,4) becomes V"
+      ],
+      "forbidden_relations": [
+        "store writes beyond four bytes"
+      ]
+    },
+    {
+      "oracle_id": "ISA-G05",
+      "operation": "call",
+      "function": "isa_call",
+      "inputs": {
+        "value": "V"
+      },
+      "expected_relations": [
+        "return composes through isa_scalar(V, 7)"
+      ],
+      "forbidden_relations": [
+        "callee effects are silently discarded"
+      ]
+    }
+  ],
+  "profiles": [
+    {
+      "oracle_id": "ISA-X86-LE",
+      "profile_id": "X86-LE",
+      "abi_id": "sysv-i386",
+      "bitness": 32,
+      "data_endian": "LE",
+      "instruction_endian": "LE",
+      "mode": "X86",
+      "processor": "metapc",
+      "function_selector": {
+        "kind": "debug_or_symbol_name",
+        "value": "isa_profile_entry"
+      },
+      "required_generic_oracles": [
+        "ISA-G01",
+        "ISA-G02",
+        "ISA-G03",
+        "ISA-G04",
+        "ISA-G05"
+      ],
+      "isa_specific_expectations": {
+        "integer_return_register": "eax",
+        "stack_pointer_register": "esp",
+        "call_instruction_family": [
+          "call"
+        ],
+        "pointer_width_bits": 32,
+        "data_byte_order": "LE",
+        "instruction_byte_order": "LE",
+        "mode_selection_required": false
+      },
+      "status": "hand-authored_expectation_not_engine_validation"
+    },
+    {
+      "oracle_id": "ISA-X64-LE",
+      "profile_id": "X64-LE",
+      "abi_id": "sysv-amd64",
+      "bitness": 64,
+      "data_endian": "LE",
+      "instruction_endian": "LE",
+      "mode": "X64",
+      "processor": "metapc",
+      "function_selector": {
+        "kind": "debug_or_symbol_name",
+        "value": "isa_profile_entry"
+      },
+      "required_generic_oracles": [
+        "ISA-G01",
+        "ISA-G02",
+        "ISA-G03",
+        "ISA-G04",
+        "ISA-G05"
+      ],
+      "isa_specific_expectations": {
+        "integer_return_register": "eax",
+        "stack_pointer_register": "rsp",
+        "call_instruction_family": [
+          "call"
+        ],
+        "pointer_width_bits": 64,
+        "data_byte_order": "LE",
+        "instruction_byte_order": "LE",
+        "mode_selection_required": false
+      },
+      "status": "hand-authored_expectation_not_engine_validation"
+    },
+    {
+      "oracle_id": "ISA-ARM32-LE",
+      "profile_id": "ARM32-LE",
+      "abi_id": "aapcs32",
+      "bitness": 32,
+      "data_endian": "LE",
+      "instruction_endian": "LE",
+      "mode": "ARM32",
+      "processor": "ARM",
+      "function_selector": {
+        "kind": "debug_or_symbol_name",
+        "value": "isa_profile_entry"
+      },
+      "required_generic_oracles": [
+        "ISA-G01",
+        "ISA-G02",
+        "ISA-G03",
+        "ISA-G04",
+        "ISA-G05"
+      ],
+      "isa_specific_expectations": {
+        "integer_return_register": "r0",
+        "stack_pointer_register": "sp",
+        "call_instruction_family": [
+          "bl",
+          "blx"
+        ],
+        "pointer_width_bits": 32,
+        "data_byte_order": "LE",
+        "instruction_byte_order": "LE",
+        "mode_selection_required": true
+      },
+      "status": "hand-authored_expectation_not_engine_validation"
+    },
+    {
+      "oracle_id": "ISA-ARM32-BE",
+      "profile_id": "ARM32-BE",
+      "abi_id": "aapcs32",
+      "bitness": 32,
+      "data_endian": "BE",
+      "instruction_endian": "LE",
+      "mode": "ARM32",
+      "processor": "ARMB",
+      "function_selector": {
+        "kind": "debug_or_symbol_name",
+        "value": "isa_profile_entry"
+      },
+      "required_generic_oracles": [
+        "ISA-G01",
+        "ISA-G02",
+        "ISA-G03",
+        "ISA-G04",
+        "ISA-G05"
+      ],
+      "isa_specific_expectations": {
+        "integer_return_register": "r0",
+        "stack_pointer_register": "sp",
+        "call_instruction_family": [
+          "bl",
+          "blx"
+        ],
+        "pointer_width_bits": 32,
+        "data_byte_order": "BE",
+        "instruction_byte_order": "LE",
+        "mode_selection_required": true
+      },
+      "status": "hand-authored_expectation_not_engine_validation"
+    },
+    {
+      "oracle_id": "ISA-THUMB-LE",
+      "profile_id": "THUMB-LE",
+      "abi_id": "aapcs32",
+      "bitness": 32,
+      "data_endian": "LE",
+      "instruction_endian": "LE",
+      "mode": "THUMB",
+      "processor": "ARM",
+      "function_selector": {
+        "kind": "debug_or_symbol_name",
+        "value": "isa_profile_entry"
+      },
+      "required_generic_oracles": [
+        "ISA-G01",
+        "ISA-G02",
+        "ISA-G03",
+        "ISA-G04",
+        "ISA-G05"
+      ],
+      "isa_specific_expectations": {
+        "integer_return_register": "r0",
+        "stack_pointer_register": "sp",
+        "call_instruction_family": [
+          "bl",
+          "blx"
+        ],
+        "pointer_width_bits": 32,
+        "data_byte_order": "LE",
+        "instruction_byte_order": "LE",
+        "mode_selection_required": true
+      },
+      "status": "hand-authored_expectation_not_engine_validation"
+    },
+    {
+      "oracle_id": "ISA-THUMB-BE",
+      "profile_id": "THUMB-BE",
+      "abi_id": "aapcs32",
+      "bitness": 32,
+      "data_endian": "BE",
+      "instruction_endian": "LE",
+      "mode": "THUMB",
+      "processor": "ARMB",
+      "function_selector": {
+        "kind": "debug_or_symbol_name",
+        "value": "isa_profile_entry"
+      },
+      "required_generic_oracles": [
+        "ISA-G01",
+        "ISA-G02",
+        "ISA-G03",
+        "ISA-G04",
+        "ISA-G05"
+      ],
+      "isa_specific_expectations": {
+        "integer_return_register": "r0",
+        "stack_pointer_register": "sp",
+        "call_instruction_family": [
+          "bl",
+          "blx"
+        ],
+        "pointer_width_bits": 32,
+        "data_byte_order": "BE",
+        "instruction_byte_order": "LE",
+        "mode_selection_required": true
+      },
+      "status": "hand-authored_expectation_not_engine_validation"
+    },
+    {
+      "oracle_id": "ISA-A64-LE",
+      "profile_id": "A64-LE",
+      "abi_id": "aapcs64",
+      "bitness": 64,
+      "data_endian": "LE",
+      "instruction_endian": "LE",
+      "mode": "A64",
+      "processor": "ARM",
+      "function_selector": {
+        "kind": "debug_or_symbol_name",
+        "value": "isa_profile_entry"
+      },
+      "required_generic_oracles": [
+        "ISA-G01",
+        "ISA-G02",
+        "ISA-G03",
+        "ISA-G04",
+        "ISA-G05"
+      ],
+      "isa_specific_expectations": {
+        "integer_return_register": "w0",
+        "stack_pointer_register": "sp",
+        "call_instruction_family": [
+          "bl",
+          "blr"
+        ],
+        "pointer_width_bits": 64,
+        "data_byte_order": "LE",
+        "instruction_byte_order": "LE",
+        "mode_selection_required": false
+      },
+      "status": "hand-authored_expectation_not_engine_validation"
+    },
+    {
+      "oracle_id": "ISA-MIPS32-LE",
+      "profile_id": "MIPS32-LE",
+      "abi_id": "mips-o32",
+      "bitness": 32,
+      "data_endian": "LE",
+      "instruction_endian": "LE",
+      "mode": "MIPS32",
+      "processor": "mipsl",
+      "function_selector": {
+        "kind": "debug_or_symbol_name",
+        "value": "isa_profile_entry"
+      },
+      "required_generic_oracles": [
+        "ISA-G01",
+        "ISA-G02",
+        "ISA-G03",
+        "ISA-G04",
+        "ISA-G05"
+      ],
+      "isa_specific_expectations": {
+        "integer_return_register": "v0",
+        "stack_pointer_register": "sp",
+        "call_instruction_family": [
+          "jal",
+          "jalr"
+        ],
+        "pointer_width_bits": 32,
+        "data_byte_order": "LE",
+        "instruction_byte_order": "LE",
+        "mode_selection_required": true
+      },
+      "status": "hand-authored_expectation_not_engine_validation"
+    },
+    {
+      "oracle_id": "ISA-MIPS32-BE",
+      "profile_id": "MIPS32-BE",
+      "abi_id": "mips-o32",
+      "bitness": 32,
+      "data_endian": "BE",
+      "instruction_endian": "BE",
+      "mode": "MIPS32",
+      "processor": "mipsb",
+      "function_selector": {
+        "kind": "debug_or_symbol_name",
+        "value": "isa_profile_entry"
+      },
+      "required_generic_oracles": [
+        "ISA-G01",
+        "ISA-G02",
+        "ISA-G03",
+        "ISA-G04",
+        "ISA-G05"
+      ],
+      "isa_specific_expectations": {
+        "integer_return_register": "v0",
+        "stack_pointer_register": "sp",
+        "call_instruction_family": [
+          "jal",
+          "jalr"
+        ],
+        "pointer_width_bits": 32,
+        "data_byte_order": "BE",
+        "instruction_byte_order": "BE",
+        "mode_selection_required": true
+      },
+      "status": "hand-authored_expectation_not_engine_validation"
+    },
+    {
+      "oracle_id": "ISA-MIPS64-LE",
+      "profile_id": "MIPS64-LE",
+      "abi_id": "mips-n64",
+      "bitness": 64,
+      "data_endian": "LE",
+      "instruction_endian": "LE",
+      "mode": "MIPS64",
+      "processor": "mipsl",
+      "function_selector": {
+        "kind": "debug_or_symbol_name",
+        "value": "isa_profile_entry"
+      },
+      "required_generic_oracles": [
+        "ISA-G01",
+        "ISA-G02",
+        "ISA-G03",
+        "ISA-G04",
+        "ISA-G05"
+      ],
+      "isa_specific_expectations": {
+        "integer_return_register": "v0",
+        "stack_pointer_register": "sp",
+        "call_instruction_family": [
+          "jal",
+          "jalr"
+        ],
+        "pointer_width_bits": 64,
+        "data_byte_order": "LE",
+        "instruction_byte_order": "LE",
+        "mode_selection_required": true
+      },
+      "status": "hand-authored_expectation_not_engine_validation"
+    },
+    {
+      "oracle_id": "ISA-MIPS64-BE",
+      "profile_id": "MIPS64-BE",
+      "abi_id": "mips-n64",
+      "bitness": 64,
+      "data_endian": "BE",
+      "instruction_endian": "BE",
+      "mode": "MIPS64",
+      "processor": "mipsb",
+      "function_selector": {
+        "kind": "debug_or_symbol_name",
+        "value": "isa_profile_entry"
+      },
+      "required_generic_oracles": [
+        "ISA-G01",
+        "ISA-G02",
+        "ISA-G03",
+        "ISA-G04",
+        "ISA-G05"
+      ],
+      "isa_specific_expectations": {
+        "integer_return_register": "v0",
+        "stack_pointer_register": "sp",
+        "call_instruction_family": [
+          "jal",
+          "jalr"
+        ],
+        "pointer_width_bits": 64,
+        "data_byte_order": "BE",
+        "instruction_byte_order": "BE",
+        "mode_selection_required": true
+      },
+      "status": "hand-authored_expectation_not_engine_validation"
+    },
+    {
+      "oracle_id": "ISA-PPC32-LE",
+      "profile_id": "PPC32-LE",
+      "abi_id": "sysv-ppc32",
+      "bitness": 32,
+      "data_endian": "LE",
+      "instruction_endian": "LE",
+      "mode": "PPC32",
+      "processor": "PPCL",
+      "function_selector": {
+        "kind": "debug_or_symbol_name",
+        "value": "isa_profile_entry"
+      },
+      "required_generic_oracles": [
+        "ISA-G01",
+        "ISA-G02",
+        "ISA-G03",
+        "ISA-G04",
+        "ISA-G05"
+      ],
+      "isa_specific_expectations": {
+        "integer_return_register": "r3",
+        "stack_pointer_register": "r1",
+        "call_instruction_family": [
+          "bl",
+          "bctrl"
+        ],
+        "pointer_width_bits": 32,
+        "data_byte_order": "LE",
+        "instruction_byte_order": "LE",
+        "mode_selection_required": false
+      },
+      "status": "hand-authored_expectation_not_engine_validation"
+    },
+    {
+      "oracle_id": "ISA-PPC32-BE",
+      "profile_id": "PPC32-BE",
+      "abi_id": "sysv-ppc32",
+      "bitness": 32,
+      "data_endian": "BE",
+      "instruction_endian": "BE",
+      "mode": "PPC32",
+      "processor": "PPC",
+      "function_selector": {
+        "kind": "debug_or_symbol_name",
+        "value": "isa_profile_entry"
+      },
+      "required_generic_oracles": [
+        "ISA-G01",
+        "ISA-G02",
+        "ISA-G03",
+        "ISA-G04",
+        "ISA-G05"
+      ],
+      "isa_specific_expectations": {
+        "integer_return_register": "r3",
+        "stack_pointer_register": "r1",
+        "call_instruction_family": [
+          "bl",
+          "bctrl"
+        ],
+        "pointer_width_bits": 32,
+        "data_byte_order": "BE",
+        "instruction_byte_order": "BE",
+        "mode_selection_required": false
+      },
+      "status": "hand-authored_expectation_not_engine_validation"
+    },
+    {
+      "oracle_id": "ISA-PPC64-LE",
+      "profile_id": "PPC64-LE",
+      "abi_id": "elfv2-ppc64",
+      "bitness": 64,
+      "data_endian": "LE",
+      "instruction_endian": "LE",
+      "mode": "PPC64",
+      "processor": "PPCL",
+      "function_selector": {
+        "kind": "debug_or_symbol_name",
+        "value": "isa_profile_entry"
+      },
+      "required_generic_oracles": [
+        "ISA-G01",
+        "ISA-G02",
+        "ISA-G03",
+        "ISA-G04",
+        "ISA-G05"
+      ],
+      "isa_specific_expectations": {
+        "integer_return_register": "r3",
+        "stack_pointer_register": "r1",
+        "call_instruction_family": [
+          "bl",
+          "bctrl"
+        ],
+        "pointer_width_bits": 64,
+        "data_byte_order": "LE",
+        "instruction_byte_order": "LE",
+        "mode_selection_required": false
+      },
+      "status": "hand-authored_expectation_not_engine_validation"
+    },
+    {
+      "oracle_id": "ISA-PPC64-BE",
+      "profile_id": "PPC64-BE",
+      "abi_id": "elfv2-ppc64",
+      "bitness": 64,
+      "data_endian": "BE",
+      "instruction_endian": "BE",
+      "mode": "PPC64",
+      "processor": "PPC",
+      "function_selector": {
+        "kind": "debug_or_symbol_name",
+        "value": "isa_profile_entry"
+      },
+      "required_generic_oracles": [
+        "ISA-G01",
+        "ISA-G02",
+        "ISA-G03",
+        "ISA-G04",
+        "ISA-G05"
+      ],
+      "isa_specific_expectations": {
+        "integer_return_register": "r3",
+        "stack_pointer_register": "r1",
+        "call_instruction_family": [
+          "bl",
+          "bctrl"
+        ],
+        "pointer_width_bits": 64,
+        "data_byte_order": "BE",
+        "instruction_byte_order": "BE",
+        "mode_selection_required": false
+      },
+      "status": "hand-authored_expectation_not_engine_validation"
+    },
+    {
+      "oracle_id": "ISA-RV32-LE",
+      "profile_id": "RV32-LE",
+      "abi_id": "riscv-ilp32",
+      "bitness": 32,
+      "data_endian": "LE",
+      "instruction_endian": "LE",
+      "mode": "RV32",
+      "processor": "riscv",
+      "function_selector": {
+        "kind": "debug_or_symbol_name",
+        "value": "isa_profile_entry"
+      },
+      "required_generic_oracles": [
+        "ISA-G01",
+        "ISA-G02",
+        "ISA-G03",
+        "ISA-G04",
+        "ISA-G05"
+      ],
+      "isa_specific_expectations": {
+        "integer_return_register": "a0",
+        "stack_pointer_register": "sp",
+        "call_instruction_family": [
+          "jal",
+          "jalr"
+        ],
+        "pointer_width_bits": 32,
+        "data_byte_order": "LE",
+        "instruction_byte_order": "LE",
+        "mode_selection_required": false
+      },
+      "status": "hand-authored_expectation_not_engine_validation"
+    },
+    {
+      "oracle_id": "ISA-RV64-LE",
+      "profile_id": "RV64-LE",
+      "abi_id": "riscv-lp64",
+      "bitness": 64,
+      "data_endian": "LE",
+      "instruction_endian": "LE",
+      "mode": "RV64",
+      "processor": "riscv",
+      "function_selector": {
+        "kind": "debug_or_symbol_name",
+        "value": "isa_profile_entry"
+      },
+      "required_generic_oracles": [
+        "ISA-G01",
+        "ISA-G02",
+        "ISA-G03",
+        "ISA-G04",
+        "ISA-G05"
+      ],
+      "isa_specific_expectations": {
+        "integer_return_register": "a0",
+        "stack_pointer_register": "sp",
+        "call_instruction_family": [
+          "jal",
+          "jalr"
+        ],
+        "pointer_width_bits": 64,
+        "data_byte_order": "LE",
+        "instruction_byte_order": "LE",
+        "mode_selection_required": false
+      },
+      "status": "hand-authored_expectation_not_engine_validation"
+    }
+  ]
+}

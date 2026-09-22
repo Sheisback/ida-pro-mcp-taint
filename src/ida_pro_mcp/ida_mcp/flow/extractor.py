@@ -23,6 +23,11 @@ from ida_pro_mcp.flow_core.contracts import (
     Snapshot,
     SnapshotIdentity,
 )
+from ida_pro_mcp.flow_core.profile_registry import (
+    REGISTRY,
+    REGISTRY_DIGEST,
+    ProfileRegistry,
+)
 from ida_pro_mcp.flow_core.serialization import ContractError, Model, digest
 from ida_pro_mcp.flow_core.states import ByteRange, StorageLocation, require
 
@@ -124,28 +129,26 @@ class ExtractedFunction(Model):
 
 def anchor_profile(inventory, profile_id, abi, build_manifest):
     """Freeze selected inventory configuration, not an ISA support claim."""
-    rows = [r for r in inventory["profiles"] if r["profile_id"] == profile_id]
-    if len(rows) != 1 or profile_id not in ("X64-LE", "A64-LE"):
-        raise ContractError("Only two measured extraction anchors are enabled")
-    row = rows[0]
-    if abi not in row["abi_ids"] or row["maturity"] != "MMAT_CALLS":
-        raise ContractError("Unmeasured ABI or maturity configuration")
-    measured = {"X64-LE": "darwin-x86_64-sysv-derived", "A64-LE": "darwin-aarch64"}
-    if abi != measured[profile_id]:
+    spec = REGISTRY.resolve_inventory_profile(inventory, profile_id)
+    receipt = spec.measured_receipt
+    if receipt is None:
+        raise ContractError("Profile has no measured extraction receipt")
+    if abi != receipt.abi:
         raise ContractError("ABI lacks anchor extraction evidence")
+    row = next(r for r in inventory["profiles"] if r["profile_id"] == profile_id)
     builds = [
         b
         for b in build_manifest
         if b["abi_id"] == abi
-        and b["format"] == "FMT-MACHO"
+        and b["format"] == receipt.format_id
         and b["binary_sha256"] in row["fixture_hashes"]
     ]
     if len(builds) != 1:
         raise ContractError("Anchor requires one matching Mach-O build receipt")
     build = builds[0]
     return {
-        "format_id": "FMT-MACHO",
-        "platform_tag": "darwin",
+        "format_id": receipt.format_id,
+        "platform_tag": receipt.platform_tag,
         "abi_provenance": {
             "kind": "measured_anchor_build",
             "source_sha256": build["source_sha256"],
@@ -154,14 +157,20 @@ def anchor_profile(inventory, profile_id, abi, build_manifest):
             "binary_sha256": build["binary_sha256"],
         },
         "profile_id": profile_id,
-        "version": row["profile_version"],
+        "version": spec.profile_version,
+        "mode": spec.mode,
         "abi": abi,
-        "maturity": row["maturity"],
-        "bitness": row["bitness"],
-        "data_endian": "little",
-        "instruction_endian": "little",
-        "processor": "metapc" if profile_id == "X64-LE" else "ARM",
-        "required_features": row["required_features"],
+        "maturity": receipt.maturity,
+        "bitness": spec.bitness,
+        "data_endian": spec.data_endian,
+        "instruction_endian": spec.instruction_endian,
+        "processor": receipt.processor,
+        "normal_status": spec.normal_status,
+        "fallback_status": spec.fallback_status,
+        "receipt_status": spec.receipt_status,
+        "receipt_evidence": receipt.to_data(),
+        "registry_digest": REGISTRY_DIGEST,
+        "required_features": list(spec.required_features),
     }
 
 
@@ -219,6 +228,7 @@ def extract_snapshot(
     include_calls=False,
     deadline=None,
     cancelled=lambda: False,
+    registry: ProfileRegistry = REGISTRY,
 ):
     """Main-thread SDK scope returning immutable, roundtrippable pure Snapshot.
 
@@ -243,26 +253,22 @@ def extract_snapshot(
     check()
     if not namespace.strip() or not function_key.strip():
         raise ContractError("Explicit owner namespace and stable function key required")
-    if profile["maturity"] != "MMAT_CALLS":
+    if profile.get("maturity") != "MMAT_CALLS":
         raise ContractError("Unmeasured maturity; no mixed-maturity extraction")
-    measured = {
-        "X64-LE": ("metapc", "darwin-x86_64-sysv-derived"),
-        "A64-LE": ("ARM", "darwin-aarch64"),
-    }
-    if (
-        measured.get(profile.get("profile_id"))
-        != (profile.get("processor"), profile.get("abi"))
-        or profile.get("bitness") != 64
-        or profile.get("data_endian") != "little"
-        or profile.get("instruction_endian") != "little"
-        or profile.get("format_id") != "FMT-MACHO"
-        or profile.get("platform_tag") != "darwin"
-    ):
-        raise ContractError("Unmeasured extraction profile configuration")
+    if type(registry) is not ProfileRegistry:
+        raise ContractError("Expected exact extraction profile registry")
+    registry.validate_extraction_profile(profile)
     # Structured loader metadata, not processor names or display-text heuristics.
-    if ida_ida.inf_get_filetype() != ida_ida.f_MACHO:
+    loader_constants = {
+        "FMT-MACHO": "f_MACHO",
+        "FMT-ELF": "f_ELF",
+        "FMT-PE": "f_PE",
+        "FMT-RAW": "f_BIN",
+    }
+    expected_filetype = getattr(ida_ida, loader_constants[profile["format_id"]], None)
+    if expected_filetype is None or ida_ida.inf_get_filetype() != expected_filetype:
         raise ContractError(
-            "Binary format mismatch: measured Darwin anchors require FMT-MACHO"
+            "Binary format mismatch: expected measured " + profile["format_id"]
         )
     bits = 64 if ida_ida.inf_is_64bit() else 32
     endian = "big" if ida_ida.inf_is_be() else "little"
@@ -449,9 +455,7 @@ def extract_snapshot(
         if depth == 0:
             calls = [call for value in operands for call in nested_calls(value)]
             if len(calls) == 1 and ins.ea != ida_idaapi.BADADDR:
-                observed_calls.append(
-                    (block_index, index, int(ins.ea), calls[0])
-                )
+                observed_calls.append((block_index, index, int(ins.ea), calls[0]))
             elif calls:
                 diagnostics.append(
                     Diagnostic(
@@ -495,7 +499,7 @@ def extract_snapshot(
         profile["instruction_endian"],
         "ram",
         VERSION,
-        "FMT-MACHO",
+        profile["format_id"],
         profile["platform_tag"],
     )
     binary = hashlib.sha256(

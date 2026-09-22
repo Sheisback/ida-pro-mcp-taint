@@ -127,6 +127,50 @@ def test_unsupported_current_database_is_not_advertised(flow, monkeypatch):
         assert result["features"][name]["status"] == "unavailable"
 
 
+def test_runtime_context_uses_exact_measured_registry_profile(
+    flow, monkeypatch, tmp_path
+):
+    from ida_pro_mcp.flow_core.profile_registry import REGISTRY
+
+    module, _ = flow
+    binary = tmp_path / "fixture"
+    binary.write_bytes(b"static input; never executed")
+    package = module.__package__
+    monkeypatch.setitem(
+        sys.modules,
+        "ida_funcs",
+        types.SimpleNamespace(get_func=lambda ea: types.SimpleNamespace(start_ea=ea)),
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "ida_loader",
+        types.SimpleNamespace(
+            PATH_TYPE_IDB=1, get_path=lambda _kind: str(binary) + ".i64"
+        ),
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "ida_nalt",
+        types.SimpleNamespace(get_input_file_path=lambda: str(binary)),
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        package + ".utils",
+        types.SimpleNamespace(parse_address=lambda _selector: 0x1000),
+    )
+    monkeypatch.setattr(
+        module.ida_ida, "inf_get_database_change_count", lambda: 0, raising=False
+    )
+    service = module._service()
+    for processor, profile_id in (("metapc", "X64-LE"), ("ARM", "A64-LE")):
+        monkeypatch.setattr(module.ida_ida, "inf_get_procname", lambda: processor)
+        info = service._context("0x1000", profile_id)
+        assert info["profile"] == REGISTRY.measured_extraction_profile(profile_id)
+        assert REGISTRY.validate_extraction_profile(info["profile"]) == REGISTRY.get(
+            profile_id
+        )
+
+
 def test_supervisor_schema_and_forwarding(flow, monkeypatch):
     _, server = flow
     local = server._mcp_tools_list()["tools"][0]

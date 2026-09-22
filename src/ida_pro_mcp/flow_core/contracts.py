@@ -385,6 +385,82 @@ class SnapshotIdentity(Model):
 
 
 @dataclass(frozen=True)
+class StructuredEnvironment(Model):
+    """Exact environment for non-Hex-Rays structured-disassembly snapshots."""
+
+    ida_build: str
+    processor: str
+    abi: str
+    bitness: int
+    data_endian: Endian
+    instruction_endian: Endian
+    address_space: str
+    backend_id: Literal["ida-disasm-rv32"]
+    backend_version: Literal[1]
+    extraction_stage: Literal["structured-disassembly"]
+    lowering_version: Literal["rv32-lowering/1"]
+    processor_adapter_digest: str
+    format_id: Literal["FMT-ELF", "FMT-PE", "FMT-MACHO", "FMT-RAW"]
+    platform_tag: str
+
+    def __post_init__(self):
+        super().__post_init__()
+        for value in (
+            self.ida_build,
+            self.processor,
+            self.abi,
+            self.address_space,
+            self.backend_id,
+            self.extraction_stage,
+            self.lowering_version,
+            self.platform_tag,
+        ):
+            nonempty(value)
+        require(self.bitness in (16, 32, 64), "Unsupported address width")
+        check_digest(self.processor_adapter_digest)
+
+
+@dataclass(frozen=True)
+class StructuredSnapshotIdentity(Model):
+    """Identity for reviewed structured input, without fake maturity/Hex-Rays data."""
+
+    namespace: str
+    binary_digest: str
+    semantic_digest: str
+    function_id: str
+    backend_digest: str
+    profile_digest: str
+    capture_digest: str
+    lowering_rule_digest: str
+    summary_digest: str
+    policy_digest: str
+    input_digest: str
+    environment: StructuredEnvironment
+    schema_version: Literal[1] = 1
+
+    def __post_init__(self):
+        super().__post_init__()
+        nonempty(self.namespace)
+        nonempty(self.function_id)
+        for value in (
+            self.binary_digest,
+            self.semantic_digest,
+            self.backend_digest,
+            self.profile_digest,
+            self.capture_digest,
+            self.lowering_rule_digest,
+            self.summary_digest,
+            self.policy_digest,
+            self.input_digest,
+        ):
+            check_digest(value)
+
+    @property
+    def snapshot_id(self) -> str:
+        return stable_id("snapshot", self.to_data())
+
+
+@dataclass(frozen=True)
 class Site(Model):
     block_index: int
     instruction_index: int
@@ -685,6 +761,41 @@ class Snapshot(Model):
 
 
 @dataclass(frozen=True)
+class StructuredSnapshot(Model):
+    identity: StructuredSnapshotIdentity
+    function: FunctionInput
+    snapshot_id: str
+    schema_version: Literal[1] = 1
+
+    def __post_init__(self):
+        super().__post_init__()
+        require(
+            self.identity.function_id == self.function.function_id,
+            "Function identity mismatch",
+        )
+        require(
+            self.identity.input_digest == digest(self.function),
+            "Structured input digest mismatch",
+        )
+        require(
+            self.snapshot_id == self.identity.snapshot_id,
+            "Structured snapshot identity mismatch",
+        )
+
+    def validate_site(self, site: Site):
+        require(site.block_index < len(self.function.blocks), "Missing site block")
+        instructions = self.function.blocks[site.block_index].instructions
+        require(site.instruction_index < len(instructions), "Missing site instruction")
+        children = instructions[site.instruction_index].operands
+        for index in site.operand_path:
+            require(index < len(children), "Missing operand path")
+            operand = children[index]
+            children = operand.children
+            if operand.call is not None:
+                children = operand.call.arguments + operand.call.return_operands
+
+
+@dataclass(frozen=True)
 class MemoryObject(Model):
     snapshot_id: str
     key: str
@@ -763,7 +874,7 @@ class MemorySource(Model):
 
 @dataclass(frozen=True)
 class Graph(Model):
-    snapshot: Snapshot
+    snapshot: Snapshot | StructuredSnapshot
     nodes: tuple[Node, ...]
     edges: tuple[Edge, ...]
     evidence: tuple[Evidence, ...]

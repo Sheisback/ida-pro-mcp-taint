@@ -9,6 +9,7 @@ from ida_pro_mcp.flow_core.build_identity import BUILD_ID
 from ida_pro_mcp.flow_core.host_identity import identity
 from ida_pro_mcp.flow_core.memory_graph import build_memory_graph
 from ida_pro_mcp.flow_core.persistence import require
+from ida_pro_mcp.flow_core.profile_registry import REGISTRY
 from ida_pro_mcp.flow_core.query import Queries, artifact_page, evidence_chunks
 from ida_pro_mcp.flow_core.runtime import Handler
 from ida_pro_mcp.flow_core.runtime_contracts import RuntimeScope
@@ -52,25 +53,9 @@ def _context(selector=None, requested_profile=None):
     )
     processor = ida_ida.inf_get_procname()
     require(processor in {"metapc", "ARM"}, "experimental_profile_unavailable")
-    profile_id, abi = (
-        ("X64-LE", "darwin-x86_64-sysv-derived")
-        if processor == "metapc"
-        else ("A64-LE", "darwin-aarch64")
-    )
+    profile_id = "X64-LE" if processor == "metapc" else "A64-LE"
     require(requested_profile in {None, profile_id}, "profile_mismatch")
-    profile = {
-        "profile_id": profile_id,
-        "version": 1,
-        "abi": abi,
-        "maturity": "MMAT_CALLS",
-        "bitness": 64,
-        "data_endian": "little",
-        "instruction_endian": "little",
-        "processor": processor,
-        "format_id": "FMT-MACHO",
-        "platform_tag": "darwin",
-        "abi_provenance": {"kind": "experimental_profile_not_abi_inference"},
-    }
+    profile = REGISTRY.measured_extraction_profile(profile_id)
     binary = (
         "sha256-v1:"
         + hashlib.sha256(Path(ida_nalt.get_input_file_path()).read_bytes()).hexdigest()

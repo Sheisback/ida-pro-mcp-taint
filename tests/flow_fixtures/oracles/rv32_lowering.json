@@ -1,0 +1,349 @@
+{
+  "schema_version": "flow-rv32-lowering-oracles/1",
+  "oracle_origin": "hand-authored from source semantics, reviewed lowering rules, and committed static capture addresses; independent of lowering output",
+  "source": "tests/flow_fixtures/isa_profile_anchor.c",
+  "capture": "tests/flow_fixtures/manifests/rv32_capture/fresh-1/process-receipt.json",
+  "capture_digest": "sha256-v1:32268d0833ca8f4b235d289f99c301ee9e7313ccde9e05d6ffe0244a91514d27",
+  "status": [
+    "static_analysis_only",
+    "target_must_never_execute",
+    "structured_disassembly_support_unverified",
+    "no_service_registry_or_capability_promotion",
+    "no_automatic_vulnerability_verdict"
+  ],
+  "identity": {
+    "backend_id": "ida-disasm-rv32",
+    "backend_version": 1,
+    "extraction_stage": "structured-disassembly",
+    "capture_schema": "flow-rv32-disassembly-capture/1",
+    "maturity": null,
+    "profile_id": "RV32-LE",
+    "abi_id": "riscv-ilp32",
+    "pointer_width_bits": 32,
+    "data_byte_order": "LE",
+    "instruction_byte_order": "LE"
+  },
+  "dispatch": [
+    {
+      "itype": 1,
+      "semantic": "lui",
+      "canonical_feature_bits": 516,
+      "operand_types": [1, 5],
+      "operand_dtypes": [2, 2],
+      "reviewed_sizes": [4],
+      "macro": false
+    },
+    {
+      "itype": 13,
+      "semantic": "lw",
+      "canonical_feature_bits": 516,
+      "operand_types": [1, 4],
+      "operand_dtypes": [2, 2],
+      "reviewed_sizes": [2, 4],
+      "macro": false
+    },
+    {
+      "itype": 18,
+      "semantic": "sw",
+      "canonical_feature_bits": 264,
+      "operand_types": [1, 4],
+      "operand_dtypes": [2, 2],
+      "reviewed_sizes": [2, 4],
+      "macro": false
+    },
+    {
+      "itype": 19,
+      "semantic": "addi",
+      "canonical_feature_bits": 1540,
+      "operand_types": [1, 1, 5],
+      "operand_dtypes": [2, 2, 2],
+      "reviewed_sizes": [2, 4],
+      "macro": false
+    },
+    {
+      "itype": 22,
+      "semantic": "xori",
+      "canonical_feature_bits": 1540,
+      "operand_types": [1, 1, 5],
+      "operand_dtypes": [2, 2, 2],
+      "reviewed_sizes": [4],
+      "macro": false
+    },
+    {
+      "itype": 28,
+      "semantic": "add",
+      "canonical_feature_bits": 1540,
+      "operand_types": [1, 1, 1],
+      "operand_dtypes": [2, 2, 2],
+      "reviewed_sizes": [2, 4],
+      "macro": false
+    },
+    {
+      "itype": 33,
+      "semantic": "xor",
+      "canonical_feature_bits": 1540,
+      "operand_types": [1, 1, 1],
+      "operand_dtypes": [2, 2, 2],
+      "reviewed_sizes": [2, 4],
+      "macro": false
+    },
+    {
+      "itype": 122,
+      "semantic": "li",
+      "canonical_feature_bits": 516,
+      "operand_types": [1, 5],
+      "operand_dtypes": [2, 2],
+      "reviewed_sizes": [2, 8],
+      "reviewed_macro_by_size": {
+        "2": false,
+        "8": true
+      }
+    },
+    {
+      "itype": 134,
+      "semantic": "beqz",
+      "canonical_feature_bits": 768,
+      "operand_types": [1, 7],
+      "operand_dtypes": [2, 0],
+      "reviewed_sizes": [2],
+      "macro": false
+    },
+    {
+      "itype": 140,
+      "semantic": "j",
+      "canonical_feature_bits": 257,
+      "operand_types": [7],
+      "operand_dtypes": [0],
+      "reviewed_sizes": [2],
+      "macro": false
+    },
+    {
+      "itype": 142,
+      "semantic": "ret",
+      "canonical_feature_bits": 1,
+      "operand_types": [],
+      "operand_dtypes": [],
+      "reviewed_sizes": [2],
+      "macro": false,
+      "return_register": "a0"
+    },
+    {
+      "itype": 163,
+      "semantic": "call",
+      "canonical_feature_bits": 518,
+      "operand_types": [1, 7],
+      "operand_dtypes": [2, 2],
+      "reviewed_sizes": [8],
+      "macro": true,
+      "link_register": "ra"
+    }
+  ],
+  "functions": [
+    {
+      "oracle_id": "RV32-P1-SCALAR",
+      "symbol": "isa_scalar",
+      "selector_ordinal": 0,
+      "function_rva": 4696,
+      "entry_ea": 70232,
+      "instruction_count": 15,
+      "expected_relations": [
+        "a0 and a1 are 32-bit explicit sources for the add at RVA 0x1270",
+        "the add result is XORed with constant 0x013579bd at RVA 0x127a",
+        "the resulting explicit a0 source reaches Return"
+      ],
+      "forbidden_relations": [
+        "an unrelated register becomes Return provenance",
+        "the reviewed 8-byte li macro at RVA 0x1272 is rejected solely for being a macro"
+      ]
+    },
+    {
+      "oracle_id": "RV32-P1-BRANCH",
+      "symbol": "isa_branch",
+      "selector_ordinal": 1,
+      "function_rva": 4740,
+      "entry_ea": 70276,
+      "instruction_count": 22,
+      "cfg_successors": [[1, 3], [2], [4], [4], []],
+      "expected_relations": [
+        "selector a1 is the predicate for beqz at RVA 0x1298",
+        "nonzero selector chooses value+3 and zero selector chooses value xor 5",
+        "the value a0 source reaches Return through a deterministic join"
+      ],
+      "forbidden_relations": [
+        "selector a1 becomes explicit Return payload provenance",
+        "implicit-flow propagation is claimed in Phase 1",
+        "a near target that is not an exact captured block start is accepted"
+      ]
+    },
+    {
+      "oracle_id": "RV32-P1-LOAD",
+      "symbol": "isa_load",
+      "selector_ordinal": 2,
+      "function_rva": 4802,
+      "entry_ea": 70338,
+      "instruction_count": 11,
+      "expected_relations": [
+        "lw at RVA 0x12d2 reads exactly four bytes from address a0+0",
+        "the non-frame argument address remains an explicit memory boundary",
+        "the loaded value reaches Return in a0"
+      ],
+      "forbidden_relations": [
+        "the argument address is fabricated as a frame slot",
+        "the load width exceeds four bytes"
+      ]
+    },
+    {
+      "oracle_id": "RV32-P1-STORE",
+      "symbol": "isa_store",
+      "selector_ordinal": 3,
+      "function_rva": 4828,
+      "entry_ea": 70364,
+      "instruction_count": 13,
+      "expected_relations": [
+        "sw at RVA 0x12f4 writes exactly four bytes from a1 to address a0+0",
+        "the non-frame argument address remains an explicit memory boundary",
+        "the memory store does not havoc scalar register SSA"
+      ],
+      "forbidden_relations": [
+        "the store is modeled as no effect",
+        "the store invalidates unrelated register definitions",
+        "the store width exceeds four bytes"
+      ]
+    },
+    {
+      "oracle_id": "RV32-P1-CALL",
+      "symbol": "isa_call",
+      "selector_ordinal": 4,
+      "function_rva": 4862,
+      "entry_ea": 70398,
+      "instruction_count": 12,
+      "expected_relations": [
+        "li at RVA 0x130e provides constant argument a1=7",
+        "call at RVA 0x1310 targets absolute EA 0x11258 and records a0 argument and a0 return evidence",
+        "caller-saved spoil evidence and partial call status remain explicit"
+      ],
+      "forbidden_relations": [
+        "the call is treated as no effect",
+        "the call is claimed complete or interprocedurally composed in Phase 1",
+        "a fabricated numeric IDA calling convention is reported"
+      ]
+    },
+    {
+      "oracle_id": "RV32-P1-ENTRY",
+      "symbol": "isa_profile_entry",
+      "selector_ordinal": 5,
+      "function_rva": 4896,
+      "entry_ea": 70432,
+      "instruction_count": 25,
+      "expected_relations": [
+        "four reviewed call macros remain explicit partial call boundaries",
+        "lui at RVA 0x1370 shifts immediate 18 left by 12 before the store displacement",
+        "the final non-frame store remains distinct from frame spills"
+      ],
+      "forbidden_relations": [
+        "Phase 2 interprocedural composition is claimed",
+        "display text or mnemonic parsing is used for dispatch"
+      ]
+    }
+  ],
+  "semantic_contract": {
+    "scalar": {
+      "operations": ["m_add", "m_xor"],
+      "return_explicit_sources": ["rv32:a0", "rv32:a1"],
+      "unrelated_return_sources": []
+    },
+    "branch": {
+      "cfg_successors": [[1, 3], [2], [4], [4], []],
+      "phi_predecessors": [[2, 3], [2, 3]],
+      "value_return_sources": ["rv32:a0"],
+      "selector_predicate_sources": ["rv32:a1"],
+      "selector_return_sources": [],
+      "implicit_flow_claimed": false
+    },
+    "memory": [
+      {
+        "symbol": "isa_load",
+        "kind": "Load",
+        "width_bits": 32,
+        "interval": [0, 4],
+        "address_space": "flat-rv32",
+        "object_kind": "argument",
+        "object_singleton": true,
+        "policy_digest": "sha256-v1:f40c19cff4bc6893f8936f8add85a9e1a7acde9fb8757260700f5e801e3c948b"
+      },
+      {
+        "symbol": "isa_store",
+        "kind": "Store",
+        "width_bits": 32,
+        "interval": [0, 4],
+        "address_space": "flat-rv32",
+        "object_kind": "argument",
+        "object_singleton": true,
+        "policy_digest": "sha256-v1:f40c19cff4bc6893f8936f8add85a9e1a7acde9fb8757260700f5e801e3c948b"
+      }
+    ],
+    "isa_store_return": {"inputs": [], "width_bits": null},
+    "calls": {
+      "unresolved": [
+        "call_effects_partial",
+        "memory_effects_unknown",
+        "numeric_calling_convention_unavailable"
+      ],
+      "spoiled_locations_digest": "sha256-v1:00b19fd74c288d81f1128f5f33d043570d49dcec7cc9ea0eb407ae4fa337307e",
+      "nonvoid_return_locations_digest": "sha256-v1:ee576c82b303da8f441070cece35aafab0e815f2869718453f2c48a601492b68",
+      "void_return_locations_digest": "sha256-v1:bcf235be97ba86841eb2dcd1e167bd2781e4bb6f80964e33d7920fe0503cbe03",
+      "rows": [
+        {
+          "site_ea": 70416,
+          "callee_symbol": "isa_scalar",
+          "arguments": ["rv32:a0", "rv32:a1"],
+          "returns": ["rv32:a0"],
+          "return_is_void": false,
+          "return_width_bits": 32
+        },
+        {
+          "site_ea": 70452,
+          "callee_symbol": "isa_load",
+          "arguments": ["rv32:a0"],
+          "returns": ["rv32:a0"],
+          "return_is_void": false,
+          "return_width_bits": 32
+        },
+        {
+          "site_ea": 70468,
+          "callee_symbol": "isa_call",
+          "arguments": ["rv32:a0"],
+          "returns": ["rv32:a0"],
+          "return_is_void": false,
+          "return_width_bits": 32
+        },
+        {
+          "site_ea": 70480,
+          "callee_symbol": "isa_branch",
+          "arguments": ["rv32:a0", "rv32:a1"],
+          "returns": ["rv32:a0"],
+          "return_is_void": false,
+          "return_width_bits": 32
+        },
+        {
+          "site_ea": 70500,
+          "callee_symbol": "isa_store",
+          "arguments": ["rv32:a0", "rv32:a1"],
+          "returns": [],
+          "return_is_void": true,
+          "return_width_bits": null
+        }
+      ]
+    }
+  },
+  "hostile_invariants": [
+    "dispatch requires is_canon true, exact itype, feature bits, operand count, operand types, dtypes, reviewed size, and reviewed macro status",
+    "nonzero specval or specflag1 through specflag4 cannot produce a precise reviewed operation",
+    "32-bit immediates and displacements use two's-complement interpretation",
+    "x0 reads are constant zero and x0 writes create no state definition",
+    "near addresses are absolute EAs and must equal captured block starts with matching CFG edges",
+    "equal entry-SP-relative frame offsets may join; unequal or unknown offsets remain memory boundaries",
+    "structured snapshots contain no MMAT or Hex-Rays claims and cannot collide with normal snapshots",
+    "normal Snapshot and Graph canonical JSON, IDs, and digests remain byte-for-byte compatible"
+  ]
+}

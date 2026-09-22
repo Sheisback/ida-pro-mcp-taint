@@ -17,6 +17,7 @@ from .contracts import (
     ResultAxes,
     Site,
     Snapshot,
+    StructuredSnapshot,
 )
 from .serialization import Model
 from .states import (
@@ -168,7 +169,7 @@ BRANCH = {
 
 
 def build_ssa(
-    snapshot: Snapshot,
+    snapshot: Snapshot | StructuredSnapshot,
     *,
     max_nodes: int = 20000,
     max_blocks: int = 1000,
@@ -546,7 +547,10 @@ class _Builder:
 
     def havoc(self, inputs, stack_only=False):
         for atom in self.atoms:
-            if not stack_only or atom.address_space != "microregister":
+            if not stack_only or atom.address_space not in {
+                "microregister",
+                "register",
+            }:
                 old = self.stacks[atom][-1]
                 self.stacks[atom].append(
                     self.unknown(

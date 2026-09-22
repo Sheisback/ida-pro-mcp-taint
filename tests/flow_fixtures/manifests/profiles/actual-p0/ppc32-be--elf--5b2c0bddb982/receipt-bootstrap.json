@@ -1,0 +1,173 @@
+{
+  "schema_version": "flow-p0-probe/2",
+  "request": {
+    "binary": {
+      "filetype": "__bootstrap_observation_required__",
+      "format": "ELF",
+      "sha256": "5b2c0bddb982538eb73e708c0695e53807945f4b6caf3b54910016c37eb9889b"
+    },
+    "entry": {
+      "kind": "name",
+      "value": "isa_scalar"
+    },
+    "load": {
+      "image_base": 0,
+      "kind": "loader"
+    },
+    "probe": {
+      "maturities": [
+        "MMAT_CALLS",
+        "MMAT_GLBOPT3"
+      ]
+    },
+    "profile": {
+      "abi_id": "sysv-ppc32",
+      "bits": 32,
+      "data_endian": "BE",
+      "instruction_endian": "BE",
+      "mode": "PPC32",
+      "processor": "PPC",
+      "profile_id": "PPC32-BE",
+      "profile_version": 1
+    },
+    "schema_version": "flow-p0-probe-request/1"
+  },
+  "request_digest": "7b64875d175b8115a9b075a6d5a42741036fd2b3078e8d630119560a9fce2352",
+  "implementation_sha256": "abfbf92cf84b960ab6af71235d51fffa88005ee9eeee13412b8f7354c4d3b3e3",
+  "environment": {
+    "ida_version": "9.3",
+    "python_version": "3.11.15",
+    "hexrays_version": null,
+    "filetype_id": 18,
+    "binary_sha256": "5b2c0bddb982538eb73e708c0695e53807945f4b6caf3b54910016c37eb9889b",
+    "format": "ELF",
+    "filetype": "ELF for PowerPC (Executable)",
+    "processor": "PPC",
+    "bits": 32,
+    "data_endian": "BE",
+    "instruction_endian": null,
+    "image_base": 65536,
+    "entry_ea": 131568
+  },
+  "validation": {
+    "schema_version": "flow-p0-probe-validation/1",
+    "request_digest": "7b64875d175b8115a9b075a6d5a42741036fd2b3078e8d630119560a9fce2352",
+    "status": "mismatch",
+    "checks": [
+      {
+        "field": "binary.sha256",
+        "expected": "5b2c0bddb982538eb73e708c0695e53807945f4b6caf3b54910016c37eb9889b",
+        "observed": "5b2c0bddb982538eb73e708c0695e53807945f4b6caf3b54910016c37eb9889b",
+        "status": "matched"
+      },
+      {
+        "field": "binary.format",
+        "expected": "ELF",
+        "observed": "ELF",
+        "status": "matched"
+      },
+      {
+        "field": "binary.filetype",
+        "expected": "__bootstrap_observation_required__",
+        "observed": "ELF for PowerPC (Executable)",
+        "status": "mismatch"
+      },
+      {
+        "field": "profile.processor",
+        "expected": "PPC",
+        "observed": "PPC",
+        "status": "matched"
+      },
+      {
+        "field": "profile.bits",
+        "expected": 32,
+        "observed": 32,
+        "status": "matched"
+      },
+      {
+        "field": "profile.data_endian",
+        "expected": "BE",
+        "observed": "BE",
+        "status": "matched"
+      },
+      {
+        "field": "load.address",
+        "expected": 0,
+        "observed": 65536,
+        "status": "mismatch"
+      },
+      {
+        "field": "entry",
+        "expected": {
+          "kind": "name",
+          "value": "isa_scalar"
+        },
+        "observed": 131568,
+        "status": "matched"
+      },
+      {
+        "field": "profile.instruction_endian",
+        "expected": "BE",
+        "observed": null,
+        "status": "unverified"
+      }
+    ],
+    "mismatches": [
+      "binary.filetype",
+      "load.address"
+    ],
+    "declared_only": [
+      "profile.profile_id",
+      "profile.profile_version",
+      "profile.mode",
+      "profile.abi_id"
+    ],
+    "unverified": [
+      "profile.instruction_endian"
+    ],
+    "raw_setup": {
+      "schema_version": "flow-p0-raw-setup/1",
+      "status": "not_applicable",
+      "reason": "input is configured by an IDA loader"
+    }
+  },
+  "probe_status": "blocked",
+  "support_status": "unverified",
+  "target_executed": false,
+  "binary": {
+    "name": "ppc32_be.elf",
+    "sha256": "5b2c0bddb982538eb73e708c0695e53807945f4b6caf3b54910016c37eb9889b"
+  },
+  "entry": {
+    "requested": {
+      "kind": "name",
+      "value": "isa_scalar"
+    },
+    "resolved_ea": 131568
+  },
+  "initialization": null,
+  "probes": [],
+  "failures": [
+    {
+      "kind": "request_validation_mismatch",
+      "message": "Probe request did not pass fail-closed runtime validation",
+      "details": {
+        "mismatches": [
+          "binary.filetype",
+          "load.address"
+        ],
+        "raw_setup": {
+          "schema_version": "flow-p0-raw-setup/1",
+          "status": "not_applicable",
+          "reason": "input is configured by an IDA loader"
+        }
+      }
+    }
+  ],
+  "lifetime": {
+    "json_roundtrip": true,
+    "repeat_after_gc": false,
+    "native_leak_freedom": "not_proven"
+  },
+  "receipt_digest": "b3300f24b845060da2d9dd09e719d423eb495b58da02e071430b8ce553f764e0"
+}

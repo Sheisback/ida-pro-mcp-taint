@@ -1,0 +1,448 @@
+{
+  "schema_version": "flow-p0-probe/2",
+  "request": {
+    "binary": {
+      "filetype": "ELF for PowerPC (Executable)",
+      "format": "ELF",
+      "sha256": "016efe8c142a8a9aa9c854f5113a66eeb8b87f39352b4defe343ae6c77423c1f"
+    },
+    "entry": {
+      "kind": "address",
+      "value": 131568
+    },
+    "load": {
+      "image_base": 65536,
+      "kind": "loader"
+    },
+    "probe": {
+      "maturities": [
+        "MMAT_CALLS",
+        "MMAT_GLBOPT3"
+      ]
+    },
+    "profile": {
+      "abi_id": "sysv-ppc32",
+      "bits": 32,
+      "data_endian": "LE",
+      "instruction_endian": "LE",
+      "mode": "PPC32",
+      "processor": "PPCL",
+      "profile_id": "PPC32-LE",
+      "profile_version": 1
+    },
+    "schema_version": "flow-p0-probe-request/1"
+  },
+  "request_digest": "ac1f6f4e3152aaec4ebd0653e78e9d0960ace9ec08964b63d9547f0a4fd9b485",
+  "implementation_sha256": "abfbf92cf84b960ab6af71235d51fffa88005ee9eeee13412b8f7354c4d3b3e3",
+  "environment": {
+    "ida_version": "9.3",
+    "python_version": "3.11.15",
+    "hexrays_version": "9.3.0.260213",
+    "filetype_id": 18,
+    "binary_sha256": "016efe8c142a8a9aa9c854f5113a66eeb8b87f39352b4defe343ae6c77423c1f",
+    "format": "ELF",
+    "filetype": "ELF for PowerPC (Executable)",
+    "processor": "PPCL",
+    "bits": 32,
+    "data_endian": "LE",
+    "instruction_endian": null,
+    "image_base": 65536,
+    "entry_ea": 131568
+  },
+  "validation": {
+    "schema_version": "flow-p0-probe-validation/1",
+    "request_digest": "ac1f6f4e3152aaec4ebd0653e78e9d0960ace9ec08964b63d9547f0a4fd9b485",
+    "status": "accepted",
+    "checks": [
+      {
+        "field": "binary.sha256",
+        "expected": "016efe8c142a8a9aa9c854f5113a66eeb8b87f39352b4defe343ae6c77423c1f",
+        "observed": "016efe8c142a8a9aa9c854f5113a66eeb8b87f39352b4defe343ae6c77423c1f",
+        "status": "matched"
+      },
+      {
+        "field": "binary.format",
+        "expected": "ELF",
+        "observed": "ELF",
+        "status": "matched"
+      },
+      {
+        "field": "binary.filetype",
+        "expected": "ELF for PowerPC (Executable)",
+        "observed": "ELF for PowerPC (Executable)",
+        "status": "matched"
+      },
+      {
+        "field": "profile.processor",
+        "expected": "PPCL",
+        "observed": "PPCL",
+        "status": "matched"
+      },
+      {
+        "field": "profile.bits",
+        "expected": 32,
+        "observed": 32,
+        "status": "matched"
+      },
+      {
+        "field": "profile.data_endian",
+        "expected": "LE",
+        "observed": "LE",
+        "status": "matched"
+      },
+      {
+        "field": "load.address",
+        "expected": 65536,
+        "observed": 65536,
+        "status": "matched"
+      },
+      {
+        "field": "entry",
+        "expected": {
+          "kind": "address",
+          "value": 131568
+        },
+        "observed": 131568,
+        "status": "matched"
+      },
+      {
+        "field": "profile.instruction_endian",
+        "expected": "LE",
+        "observed": null,
+        "status": "unverified"
+      }
+    ],
+    "mismatches": [],
+    "declared_only": [
+      "profile.profile_id",
+      "profile.profile_version",
+      "profile.mode",
+      "profile.abi_id"
+    ],
+    "unverified": [
+      "profile.instruction_endian"
+    ],
+    "raw_setup": {
+      "schema_version": "flow-p0-raw-setup/1",
+      "status": "not_applicable",
+      "reason": "input is configured by an IDA loader"
+    }
+  },
+  "probe_status": "success",
+  "support_status": "unverified",
+  "target_executed": false,
+  "binary": {
+    "name": "ppc32_le.elf",
+    "sha256": "016efe8c142a8a9aa9c854f5113a66eeb8b87f39352b4defe343ae6c77423c1f"
+  },
+  "entry": {
+    "requested": {
+      "kind": "address",
+      "value": 131568
+    },
+    "resolved_ea": 131568
+  },
+  "initialization": true,
+  "probes": [
+    {
+      "status": "success",
+      "failure_code": 0,
+      "maturity": "MMAT_CALLS",
+      "actual_maturity": 4,
+      "python_owns_mba": true,
+      "function_ea": 131568,
+      "block_count": 3,
+      "instruction_count": 3,
+      "blocks": [
+        {
+          "id": 0,
+          "successors": [
+            1
+          ],
+          "predecessors": [],
+          "instructions": []
+        },
+        {
+          "id": 1,
+          "successors": [
+            2
+          ],
+          "predecessors": [
+            0
+          ],
+          "instructions": [
+            {
+              "opcode": "m_mov",
+              "ea": 131568,
+              "operands": [
+                {
+                  "kind": "mop_n",
+                  "size": 1,
+                  "value": 0
+                },
+                {
+                  "kind": "mop_z",
+                  "size": -1
+                },
+                {
+                  "kind": "mop_r",
+                  "size": 1,
+                  "register": 444
+                }
+              ]
+            },
+            {
+              "opcode": "m_mov",
+              "ea": 131584,
+              "operands": [
+                {
+                  "kind": "mop_r",
+                  "size": 4,
+                  "register": 24
+                },
+                {
+                  "kind": "mop_z",
+                  "size": -1
+                },
+                {
+                  "kind": "mop_S",
+                  "size": 4,
+                  "stack_offset": 20
+                }
+              ]
+            },
+            {
+              "opcode": "m_xor",
+              "ea": 131604,
+              "operands": [
+                {
+                  "kind": "mop_d",
+                  "size": 4,
+                  "instruction": {
+                    "opcode": "m_add",
+                    "ea": 131596,
+                    "operands": [
+                      {
+                        "kind": "mop_r",
+                        "size": 4,
+                        "register": 20
+                      },
+                      {
+                        "kind": "mop_r",
+                        "size": 4,
+                        "register": 24
+                      },
+                      {
+                        "kind": "mop_z",
+                        "size": 4
+                      }
+                    ]
+                  }
+                },
+                {
+                  "kind": "mop_n",
+                  "size": 4,
+                  "value": 20281789
+                },
+                {
+                  "kind": "mop_r",
+                  "size": 4,
+                  "register": 20
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "successors": [],
+          "predecessors": [
+            1
+          ],
+          "instructions": []
+        }
+      ],
+      "opcode_counts": {
+        "m_add": 1,
+        "m_mov": 2,
+        "m_xor": 1
+      },
+      "operand_kind_counts": {
+        "mop_S": 1,
+        "mop_d": 1,
+        "mop_n": 2,
+        "mop_r": 5,
+        "mop_z": 3
+      },
+      "use_def_checks": {
+        "build_def_list:MAY_ACCESS:nonempty": 3,
+        "build_def_list:MAY_ACCESS:ok": 3,
+        "build_def_list:MUST_ACCESS:nonempty": 3,
+        "build_def_list:MUST_ACCESS:ok": 3,
+        "build_use_list:MAY_ACCESS:nonempty": 2,
+        "build_use_list:MAY_ACCESS:ok": 3,
+        "build_use_list:MUST_ACCESS:nonempty": 2,
+        "build_use_list:MUST_ACCESS:ok": 3
+      },
+      "graph_build_result": 0,
+      "chains": {
+        "get_ud": {
+          "status": "available",
+          "block_count": 3
+        },
+        "get_du": {
+          "status": "available",
+          "block_count": 3
+        }
+      },
+      "warnings": [],
+      "source_map": {
+        "top_level_with_ea": 3,
+        "top_level_synthetic": 0,
+        "unique_eas": [
+          131568,
+          131584,
+          131604
+        ],
+        "reconstruction": "observed_microcode_ea_only_not_full_native_origin_sets"
+      },
+      "digest": "88b97db97eb41a0fb4004ecdb979be35789d8b54bb12b429615e3ace3351fe5b",
+      "repeat_equal": true
+    },
+    {
+      "status": "success",
+      "failure_code": 0,
+      "maturity": "MMAT_GLBOPT3",
+      "actual_maturity": 7,
+      "python_owns_mba": true,
+      "function_ea": 131568,
+      "block_count": 3,
+      "instruction_count": 1,
+      "blocks": [
+        {
+          "id": 0,
+          "successors": [
+            1
+          ],
+          "predecessors": [],
+          "instructions": []
+        },
+        {
+          "id": 1,
+          "successors": [
+            2
+          ],
+          "predecessors": [
+            0
+          ],
+          "instructions": [
+            {
+              "opcode": "m_xor",
+              "ea": 131604,
+              "operands": [
+                {
+                  "kind": "mop_d",
+                  "size": 4,
+                  "instruction": {
+                    "opcode": "m_add",
+                    "ea": 131596,
+                    "operands": [
+                      {
+                        "kind": "mop_r",
+                        "size": 4,
+                        "register": 20
+                      },
+                      {
+                        "kind": "mop_r",
+                        "size": 4,
+                        "register": 24
+                      },
+                      {
+                        "kind": "mop_z",
+                        "size": 4
+                      }
+                    ]
+                  }
+                },
+                {
+                  "kind": "mop_n",
+                  "size": 4,
+                  "value": 20281789
+                },
+                {
+                  "kind": "mop_r",
+                  "size": 4,
+                  "register": 20
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "successors": [],
+          "predecessors": [
+            1
+          ],
+          "instructions": []
+        }
+      ],
+      "opcode_counts": {
+        "m_add": 1,
+        "m_xor": 1
+      },
+      "operand_kind_counts": {
+        "mop_d": 1,
+        "mop_n": 1,
+        "mop_r": 3,
+        "mop_z": 1
+      },
+      "use_def_checks": {
+        "build_def_list:MAY_ACCESS:nonempty": 1,
+        "build_def_list:MAY_ACCESS:ok": 1,
+        "build_def_list:MUST_ACCESS:nonempty": 1,
+        "build_def_list:MUST_ACCESS:ok": 1,
+        "build_use_list:MAY_ACCESS:nonempty": 1,
+        "build_use_list:MAY_ACCESS:ok": 1,
+        "build_use_list:MUST_ACCESS:nonempty": 1,
+        "build_use_list:MUST_ACCESS:ok": 1
+      },
+      "graph_build_result": 0,
+      "chains": {
+        "get_ud": {
+          "status": "available",
+          "block_count": 3
+        },
+        "get_du": {
+          "status": "available",
+          "block_count": 3
+        }
+      },
+      "warnings": [],
+      "source_map": {
+        "top_level_with_ea": 1,
+        "top_level_synthetic": 0,
+        "unique_eas": [
+          131604
+        ],
+        "reconstruction": "observed_microcode_ea_only_not_full_native_origin_sets"
+      },
+      "digest": "59cb18044e8fc74265cc8fb11c636b9c292ec30dbcb29b634fd455cd19c3d81d",
+      "repeat_equal": true
+    }
+  ],
+  "failures": [],
+  "cancellation": {
+    "pre_cancel": true,
+    "expired_deadline": true,
+    "during_native_call": "not_preemptible_by_python_poll",
+    "during_serialization": "cooperative_poll",
+    "native_cancel_tested": false
+  },
+  "lifetime": {
+    "json_roundtrip": true,
+    "repeat_after_gc": true,
+    "native_leak_freedom": "not_proven"
+  },
+  "receipt_digest": "5d25daeac07ab9f78171387fc7f0ed30a2e466bed90e5686ff03b6a146b39d0d"
+}

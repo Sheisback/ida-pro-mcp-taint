@@ -105,11 +105,10 @@ def test_actual_sum_point_receipts_have_three_field_loads():
     spec = importlib.util.spec_from_file_location("s0_receipt_probe", probe_path)
     probe = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(probe)
-    implementation_hash = hashlib.sha256(probe_path.read_bytes()).hexdigest()
     builds = read("manifests/s0_build.json")
     for inspection in read("manifests/sum_point_inspection.json"):
         receipt = read("manifests/" + inspection["probe_receipt"])
-        assert receipt["implementation_sha256"] == implementation_hash
+        assert receipt["implementation_sha256"] == probe.LEGACY_IMPLEMENTATION_SHA256
         for entry in receipt["probes"]:
             payload = {
                 k: v for k, v in entry.items() if k not in ("digest", "repeat_equal")

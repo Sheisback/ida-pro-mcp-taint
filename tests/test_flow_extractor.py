@@ -212,7 +212,9 @@ def fake_sdk(monkeypatch, tmp_path):
         ),
         "ida_idaapi": NS(BADADDR=-1),
         "ida_kernwin": NS(get_kernel_version=lambda: "test"),
-        "ida_nalt": NS(get_input_file_path=lambda: str(binary), get_imagebase=lambda: 0),
+        "ida_nalt": NS(
+            get_input_file_path=lambda: str(binary), get_imagebase=lambda: 0
+        ),
     }
     for name, module in modules.items():
         monkeypatch.setitem(sys.modules, name, module)
@@ -287,6 +289,18 @@ def test_unknown_operands_remain_opaque_and_no_width_is_invented(monkeypatch, tm
 
 def test_profile_and_no_display_parsing_boundary():
     inventory = read("p0_inventory.json")
+    profile = adapter.anchor_profile(
+        inventory,
+        "X64-LE",
+        "darwin-x86_64-sysv-derived",
+        read("build.json"),
+    )
+    assert profile["mode"] == "X64"
+    assert profile["normal_status"] == profile["fallback_status"] == "unverified"
+    assert profile["receipt_status"] == "success"
+    assert profile["receipt_evidence"]["file_name"] == "x64.json"
+    assert profile["receipt_evidence"]["roundtrip_equal"] is True
+    assert profile["registry_digest"].startswith("sha256-v1:")
     with pytest.raises(ContractError):
         adapter.anchor_profile(inventory, "X64-LE", "windows-x64", read("build.json"))
     with pytest.raises(ContractError):
@@ -301,6 +315,34 @@ def test_profile_and_no_display_parsing_boundary():
     ):
         assert forbidden not in source
     assert "native_effects" in source and "preserve_once" in source
+
+
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [
+        ("profile_id", "MIPS32-LE"),
+        ("mode", "MIPS32"),
+        ("processor", "guess"),
+        ("bitness", 32),
+        ("normal_status", "available"),
+        ("registry_digest", "sha256-v1:" + "0" * 64),
+        ("receipt_evidence", {}),
+    ],
+)
+def test_registry_driven_extractor_rejects_unmeasured_or_drifted_profile(
+    monkeypatch, tmp_path, key, value
+):
+    profile = fake_sdk(monkeypatch, tmp_path)
+    profile[key] = value
+
+    def forbidden_init():
+        raise AssertionError("Unmeasured profile must fail before Hex-Rays")
+
+    sys.modules["ida_hexrays"].init_hexrays_plugin = forbidden_init
+    with pytest.raises(ContractError, match="Unmeasured extraction profile"):
+        adapter.extract_snapshot(
+            0x100, namespace="owner", function_key="fixture-0", profile=profile
+        )
 
 
 def test_indirect_call_metadata_preserves_unresolved_target(monkeypatch, tmp_path):
@@ -359,7 +401,9 @@ def test_catalog_digest_scopes_snapshot_identity_without_changing_legacy_default
         historical.identity.binary_digest.split(":", 1)[1],
         summary_digest=catalog_adapter.EMPTY_CATALOG.catalog_digest,
     )
-    assert scoped.identity.summary_digest == catalog_adapter.EMPTY_CATALOG.catalog_digest
+    assert (
+        scoped.identity.summary_digest == catalog_adapter.EMPTY_CATALOG.catalog_digest
+    )
     assert scoped.snapshot_id != historical.snapshot_id
 
 
@@ -473,7 +517,9 @@ def test_direct_call_binds_only_full_pinned_identity(monkeypatch, tmp_path):
             callee_snapshots=callee_snapshots,
         )
 
-    changed = SummaryCatalog((replace(reviewed, identity=replace(identity, callee_rva=0x201)),))
+    changed = SummaryCatalog(
+        (replace(reviewed, identity=replace(identity, callee_rva=0x201)),)
+    )
     wrong_caller = adapter.extract_snapshot(
         0x1100,
         namespace="owner",
@@ -489,9 +535,7 @@ def test_direct_call_binds_only_full_pinned_identity(monkeypatch, tmp_path):
         {0x200: baseline_callee},
     )
     assert unresolved.plan.branches == ()
-    assert unresolved.plan.unknown_remainder.reasons == (
-        "missing_reviewed_summary",
-    )
+    assert unresolved.plan.unknown_remainder.reasons == ("missing_reviewed_summary",)
     assert "reviewed_summary_unavailable" in unresolved.limitations
 
     unresolved_composition = catalog_adapter.compose_binding(
@@ -810,21 +854,31 @@ def test_signature_ignores_argument_values_but_pins_available_type_metadata(
     monkeypatch, tmp_path
 ):
     profile = direct_call_sdk(monkeypatch, tmp_path, argument=7)
-    first = adapter.extract_snapshot(
-        0x1100,
-        namespace="owner",
-        function_key="caller",
-        profile=profile,
-        include_calls=True,
-    ).calls[0].call
-    sys.modules["ida_hexrays"].gen_microcode().get_mblock(0).head.d.f.args[0].nnn.value = 9
-    second = adapter.extract_snapshot(
-        0x1100,
-        namespace="owner",
-        function_key="caller",
-        profile=profile,
-        include_calls=True,
-    ).calls[0].call
+    first = (
+        adapter.extract_snapshot(
+            0x1100,
+            namespace="owner",
+            function_key="caller",
+            profile=profile,
+            include_calls=True,
+        )
+        .calls[0]
+        .call
+    )
+    sys.modules["ida_hexrays"].gen_microcode().get_mblock(0).head.d.f.args[
+        0
+    ].nnn.value = 9
+    second = (
+        adapter.extract_snapshot(
+            0x1100,
+            namespace="owner",
+            function_key="caller",
+            profile=profile,
+            include_calls=True,
+        )
+        .calls[0]
+        .call
+    )
     assert first.arguments[0].constant != second.arguments[0].constant
     assert catalog_adapter.signature_digest(first) == catalog_adapter.signature_digest(
         second

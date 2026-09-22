@@ -37,6 +37,7 @@ def check(directory: Path):
                 "ida_pro_mcp/flow_core/runtime.py",
                 "ida_pro_mcp/flow_core/query.py",
                 "ida_pro_mcp/flow_core/host_identity.py",
+                "ida_pro_mcp/flow_core/profile_registry.py",
             }
             if not expected <= set(wheel.namelist()):
                 raise RuntimeError("Core files missing from wheel")
@@ -62,6 +63,7 @@ from ida_pro_mcp.flow_core.persistence import Store
 from ida_pro_mcp.flow_core.runtime import Runtime
 from ida_pro_mcp.flow_core.query import Queries
 from ida_pro_mcp.flow_core.host_identity import identity
+from ida_pro_mcp.flow_core.profile_registry import REGISTRY
 from ida_pro_mcp.flow_core.build_identity import BUILD_ID
 from ida_pro_mcp.flow_core.runtime_contracts import RuntimeScope
 from ida_pro_mcp.flow_core.contracts import ResultAxes
@@ -74,6 +76,7 @@ assert CallContext().frames == ()
 assert CallState().objects == ()
 assert BUILD_ID.startswith("flow-build-sha256-v1:")
 assert BUILD_ID == sys.argv[2]
+assert len(REGISTRY.profiles) == 17
 print("Wheel core import/roundtrip passed without SDK imports")
 """
         subprocess.run(

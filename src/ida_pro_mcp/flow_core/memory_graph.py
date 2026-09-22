@@ -10,6 +10,7 @@ from .contracts import (
     MemoryReference,
     ResultAxes,
     Snapshot,
+    StructuredSnapshot,
 )
 from .memory import (
     MemoryPlan,
@@ -26,6 +27,9 @@ from .states import PointerCandidate, PointerValue, require
 
 FLAT_USERSPACE_ASSUMPTION = (
     "experimental Mach-O flat user-space address model; no TLS or MMIO semantics"
+)
+RV32_FLAT_USERSPACE_ASSUMPTION = (
+    "reviewed RV32 ELF ILP32 flat user-space address model; no TLS or MMIO semantics"
 )
 
 
@@ -165,8 +169,15 @@ def _objects_and_pointers(plan):
     )
 
 
-def build_memory_graph(snapshot: Snapshot) -> MemoryGraphAnalysis:
+def build_memory_graph(
+    snapshot: Snapshot | StructuredSnapshot,
+) -> MemoryGraphAnalysis:
     """Build an alias-aware query graph; uncertainty remains opaque/partial."""
+    flat_assumption = (
+        RV32_FLAT_USERSPACE_ASSUMPTION
+        if type(snapshot) is StructuredSnapshot
+        else FLAT_USERSPACE_ASSUMPTION
+    )
     base_program = build_ssa(snapshot, storage_model="memory")
     plan = build_memory_plan(base_program)
     objects, pointers = _objects_and_pointers(plan)
@@ -174,7 +185,7 @@ def build_memory_graph(snapshot: Snapshot) -> MemoryGraphAnalysis:
         plan,
         objects,
         pointers,
-        policy=MemoryPolicy(flat_segment_assumption=FLAT_USERSPACE_ASSUMPTION),
+        policy=MemoryPolicy(flat_segment_assumption=flat_assumption),
     )
     accesses = {access.node_id: access for access in result.accesses}
     steps = {step.node_id: step for step in plan.steps}
@@ -214,7 +225,7 @@ def build_memory_graph(snapshot: Snapshot) -> MemoryGraphAnalysis:
             assumptions=tuple(
                 sorted(
                     (
-                        FLAT_USERSPACE_ASSUMPTION,
+                        flat_assumption,
                         "automatic object identity is structural and conservative; no ABI argument numbering",
                     )
                 )
@@ -281,6 +292,7 @@ def build_memory_graph(snapshot: Snapshot) -> MemoryGraphAnalysis:
 
 __all__ = [
     "FLAT_USERSPACE_ASSUMPTION",
+    "RV32_FLAT_USERSPACE_ASSUMPTION",
     "MemoryGraphAnalysis",
     "build_memory_graph",
 ]

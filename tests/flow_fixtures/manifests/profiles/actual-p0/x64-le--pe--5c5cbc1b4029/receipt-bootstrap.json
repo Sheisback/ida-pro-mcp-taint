@@ -1,0 +1,173 @@
+{
+  "schema_version": "flow-p0-probe/2",
+  "request": {
+    "binary": {
+      "filetype": "__bootstrap_observation_required__",
+      "format": "PE",
+      "sha256": "5c5cbc1b4029053029df20896ac57dfda06619f8d0dbd0afa3c1e3b77819a171"
+    },
+    "entry": {
+      "kind": "name",
+      "value": "isa_scalar"
+    },
+    "load": {
+      "image_base": 0,
+      "kind": "loader"
+    },
+    "probe": {
+      "maturities": [
+        "MMAT_CALLS",
+        "MMAT_GLBOPT3"
+      ]
+    },
+    "profile": {
+      "abi_id": "windows-x64",
+      "bits": 64,
+      "data_endian": "LE",
+      "instruction_endian": "LE",
+      "mode": "X64",
+      "processor": "metapc",
+      "profile_id": "X64-LE",
+      "profile_version": 1
+    },
+    "schema_version": "flow-p0-probe-request/1"
+  },
+  "request_digest": "c5b37eae7a88d8e3dd6d652dc1dc3c939e9f47521fa08d8aea570991df6239a4",
+  "implementation_sha256": "abfbf92cf84b960ab6af71235d51fffa88005ee9eeee13412b8f7354c4d3b3e3",
+  "environment": {
+    "ida_version": "9.3",
+    "python_version": "3.11.15",
+    "hexrays_version": null,
+    "filetype_id": 11,
+    "binary_sha256": "5c5cbc1b4029053029df20896ac57dfda06619f8d0dbd0afa3c1e3b77819a171",
+    "format": "PE",
+    "filetype": "Portable executable for AMD64 (PE)",
+    "processor": "metapc",
+    "bits": 64,
+    "data_endian": "LE",
+    "instruction_endian": null,
+    "image_base": 5368709120,
+    "entry_ea": 5368713216
+  },
+  "validation": {
+    "schema_version": "flow-p0-probe-validation/1",
+    "request_digest": "c5b37eae7a88d8e3dd6d652dc1dc3c939e9f47521fa08d8aea570991df6239a4",
+    "status": "mismatch",
+    "checks": [
+      {
+        "field": "binary.sha256",
+        "expected": "5c5cbc1b4029053029df20896ac57dfda06619f8d0dbd0afa3c1e3b77819a171",
+        "observed": "5c5cbc1b4029053029df20896ac57dfda06619f8d0dbd0afa3c1e3b77819a171",
+        "status": "matched"
+      },
+      {
+        "field": "binary.format",
+        "expected": "PE",
+        "observed": "PE",
+        "status": "matched"
+      },
+      {
+        "field": "binary.filetype",
+        "expected": "__bootstrap_observation_required__",
+        "observed": "Portable executable for AMD64 (PE)",
+        "status": "mismatch"
+      },
+      {
+        "field": "profile.processor",
+        "expected": "metapc",
+        "observed": "metapc",
+        "status": "matched"
+      },
+      {
+        "field": "profile.bits",
+        "expected": 64,
+        "observed": 64,
+        "status": "matched"
+      },
+      {
+        "field": "profile.data_endian",
+        "expected": "LE",
+        "observed": "LE",
+        "status": "matched"
+      },
+      {
+        "field": "load.address",
+        "expected": 0,
+        "observed": 5368709120,
+        "status": "mismatch"
+      },
+      {
+        "field": "entry",
+        "expected": {
+          "kind": "name",
+          "value": "isa_scalar"
+        },
+        "observed": 5368713216,
+        "status": "matched"
+      },
+      {
+        "field": "profile.instruction_endian",
+        "expected": "LE",
+        "observed": null,
+        "status": "unverified"
+      }
+    ],
+    "mismatches": [
+      "binary.filetype",
+      "load.address"
+    ],
+    "declared_only": [
+      "profile.profile_id",
+      "profile.profile_version",
+      "profile.mode",
+      "profile.abi_id"
+    ],
+    "unverified": [
+      "profile.instruction_endian"
+    ],
+    "raw_setup": {
+      "schema_version": "flow-p0-raw-setup/1",
+      "status": "not_applicable",
+      "reason": "input is configured by an IDA loader"
+    }
+  },
+  "probe_status": "blocked",
+  "support_status": "unverified",
+  "target_executed": false,
+  "binary": {
+    "name": "x64_pe.exe",
+    "sha256": "5c5cbc1b4029053029df20896ac57dfda06619f8d0dbd0afa3c1e3b77819a171"
+  },
+  "entry": {
+    "requested": {
+      "kind": "name",
+      "value": "isa_scalar"
+    },
+    "resolved_ea": 5368713216
+  },
+  "initialization": null,
+  "probes": [],
+  "failures": [
+    {
+      "kind": "request_validation_mismatch",
+      "message": "Probe request did not pass fail-closed runtime validation",
+      "details": {
+        "mismatches": [
+          "binary.filetype",
+          "load.address"
+        ],
+        "raw_setup": {
+          "schema_version": "flow-p0-raw-setup/1",
+          "status": "not_applicable",
+          "reason": "input is configured by an IDA loader"
+        }
+      }
+    }
+  ],
+  "lifetime": {
+    "json_roundtrip": true,
+    "repeat_after_gc": false,
+    "native_leak_freedom": "not_proven"
+  },
+  "receipt_digest": "c0413065f19152bf7d335dc030734444ff50d9c1e0d9b3b7f126473eb01c1b8c"
+}

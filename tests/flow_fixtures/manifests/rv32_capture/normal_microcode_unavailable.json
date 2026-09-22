@@ -1,0 +1,182 @@
+{
+  "schema_version": "flow-p0-probe/2",
+  "request": {
+    "binary": {
+      "filetype": "ELF for Risc-V (Executable)",
+      "format": "ELF",
+      "sha256": "7542035cd7ed38b7b891515c3590ad8b6f814d70f4d35ba95e1dc3e25ee580b3"
+    },
+    "entry": {
+      "kind": "address",
+      "value": 70232
+    },
+    "load": {
+      "image_base": 65536,
+      "kind": "loader"
+    },
+    "probe": {
+      "maturities": [
+        "MMAT_CALLS",
+        "MMAT_GLBOPT3"
+      ]
+    },
+    "profile": {
+      "abi_id": "riscv-ilp32",
+      "bits": 32,
+      "data_endian": "LE",
+      "instruction_endian": "LE",
+      "mode": "RV32",
+      "processor": "riscv",
+      "profile_id": "RV32-LE",
+      "profile_version": 1
+    },
+    "schema_version": "flow-p0-probe-request/1"
+  },
+  "request_digest": "9adca48d31bc3e7038e9f0c484f8f386872a42521f29f4db5c296ee0a7789cac",
+  "implementation_sha256": "abfbf92cf84b960ab6af71235d51fffa88005ee9eeee13412b8f7354c4d3b3e3",
+  "environment": {
+    "ida_version": "9.3",
+    "python_version": "3.11.15",
+    "hexrays_version": "9.3.0.260213",
+    "filetype_id": 18,
+    "binary_sha256": "7542035cd7ed38b7b891515c3590ad8b6f814d70f4d35ba95e1dc3e25ee580b3",
+    "format": "ELF",
+    "filetype": "ELF for Risc-V (Executable)",
+    "processor": "riscv",
+    "bits": 32,
+    "data_endian": "LE",
+    "instruction_endian": null,
+    "image_base": 65536,
+    "entry_ea": 70232
+  },
+  "validation": {
+    "schema_version": "flow-p0-probe-validation/1",
+    "request_digest": "9adca48d31bc3e7038e9f0c484f8f386872a42521f29f4db5c296ee0a7789cac",
+    "status": "accepted",
+    "checks": [
+      {
+        "field": "binary.sha256",
+        "expected": "7542035cd7ed38b7b891515c3590ad8b6f814d70f4d35ba95e1dc3e25ee580b3",
+        "observed": "7542035cd7ed38b7b891515c3590ad8b6f814d70f4d35ba95e1dc3e25ee580b3",
+        "status": "matched"
+      },
+      {
+        "field": "binary.format",
+        "expected": "ELF",
+        "observed": "ELF",
+        "status": "matched"
+      },
+      {
+        "field": "binary.filetype",
+        "expected": "ELF for Risc-V (Executable)",
+        "observed": "ELF for Risc-V (Executable)",
+        "status": "matched"
+      },
+      {
+        "field": "profile.processor",
+        "expected": "riscv",
+        "observed": "riscv",
+        "status": "matched"
+      },
+      {
+        "field": "profile.bits",
+        "expected": 32,
+        "observed": 32,
+        "status": "matched"
+      },
+      {
+        "field": "profile.data_endian",
+        "expected": "LE",
+        "observed": "LE",
+        "status": "matched"
+      },
+      {
+        "field": "load.address",
+        "expected": 65536,
+        "observed": 65536,
+        "status": "matched"
+      },
+      {
+        "field": "entry",
+        "expected": {
+          "kind": "address",
+          "value": 70232
+        },
+        "observed": 70232,
+        "status": "matched"
+      },
+      {
+        "field": "profile.instruction_endian",
+        "expected": "LE",
+        "observed": null,
+        "status": "unverified"
+      }
+    ],
+    "mismatches": [],
+    "declared_only": [
+      "profile.profile_id",
+      "profile.profile_version",
+      "profile.mode",
+      "profile.abi_id"
+    ],
+    "unverified": [
+      "profile.instruction_endian"
+    ],
+    "raw_setup": {
+      "schema_version": "flow-p0-raw-setup/1",
+      "status": "not_applicable",
+      "reason": "input is configured by an IDA loader"
+    }
+  },
+  "probe_status": "failed",
+  "support_status": "unverified",
+  "target_executed": false,
+  "binary": {
+    "name": "rv32_le.elf",
+    "sha256": "7542035cd7ed38b7b891515c3590ad8b6f814d70f4d35ba95e1dc3e25ee580b3"
+  },
+  "entry": {
+    "requested": {
+      "kind": "address",
+      "value": 70232
+    },
+    "resolved_ea": 70232
+  },
+  "initialization": true,
+  "probes": [
+    {
+      "status": "failed",
+      "failure_code": -23,
+      "failure_ea": 70232,
+      "maturity": "MMAT_CALLS",
+      "repeat_equal": true
+    },
+    {
+      "status": "failed",
+      "failure_code": -23,
+      "failure_ea": 70232,
+      "maturity": "MMAT_GLBOPT3",
+      "repeat_equal": true
+    }
+  ],
+  "failures": [
+    {
+      "kind": "probe_failure",
+      "message": "One or more maturity probes failed or were not repeatable",
+      "details": {}
+    }
+  ],
+  "cancellation": {
+    "pre_cancel": true,
+    "expired_deadline": true,
+    "during_native_call": "not_preemptible_by_python_poll",
+    "during_serialization": "cooperative_poll",
+    "native_cancel_tested": false
+  },
+  "lifetime": {
+    "json_roundtrip": true,
+    "repeat_after_gc": true,
+    "native_leak_freedom": "not_proven"
+  },
+  "receipt_digest": "c3c6c445b8ac69f4e4a3f3b37a653d35c022b766852febca9fb3e40c461380b6"
+}

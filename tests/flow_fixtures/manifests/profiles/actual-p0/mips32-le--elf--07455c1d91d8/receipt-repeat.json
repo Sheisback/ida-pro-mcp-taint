@@ -1,0 +1,469 @@
+{
+  "schema_version": "flow-p0-probe/2",
+  "request": {
+    "binary": {
+      "filetype": "ELF for MIPS (Executable)",
+      "format": "ELF",
+      "sha256": "07455c1d91d89e8d0b4d5cb84de3a0bd9f77f93819578f3070fd04c8f4ddbb04"
+    },
+    "entry": {
+      "kind": "address",
+      "value": 131696
+    },
+    "load": {
+      "image_base": 65536,
+      "kind": "loader"
+    },
+    "probe": {
+      "maturities": [
+        "MMAT_CALLS",
+        "MMAT_GLBOPT3"
+      ]
+    },
+    "profile": {
+      "abi_id": "mips-o32",
+      "bits": 32,
+      "data_endian": "LE",
+      "instruction_endian": "LE",
+      "mode": "MIPS32",
+      "processor": "mipsl",
+      "profile_id": "MIPS32-LE",
+      "profile_version": 1
+    },
+    "schema_version": "flow-p0-probe-request/1"
+  },
+  "request_digest": "122fb71526d236b3247933eab3fcb03470474b9a6b289b627e52c1deaae06aad",
+  "implementation_sha256": "abfbf92cf84b960ab6af71235d51fffa88005ee9eeee13412b8f7354c4d3b3e3",
+  "environment": {
+    "ida_version": "9.3",
+    "python_version": "3.11.15",
+    "hexrays_version": "9.3.0.260213",
+    "filetype_id": 18,
+    "binary_sha256": "07455c1d91d89e8d0b4d5cb84de3a0bd9f77f93819578f3070fd04c8f4ddbb04",
+    "format": "ELF",
+    "filetype": "ELF for MIPS (Executable)",
+    "processor": "mipsl",
+    "bits": 32,
+    "data_endian": "LE",
+    "instruction_endian": null,
+    "image_base": 65536,
+    "entry_ea": 131696
+  },
+  "validation": {
+    "schema_version": "flow-p0-probe-validation/1",
+    "request_digest": "122fb71526d236b3247933eab3fcb03470474b9a6b289b627e52c1deaae06aad",
+    "status": "accepted",
+    "checks": [
+      {
+        "field": "binary.sha256",
+        "expected": "07455c1d91d89e8d0b4d5cb84de3a0bd9f77f93819578f3070fd04c8f4ddbb04",
+        "observed": "07455c1d91d89e8d0b4d5cb84de3a0bd9f77f93819578f3070fd04c8f4ddbb04",
+        "status": "matched"
+      },
+      {
+        "field": "binary.format",
+        "expected": "ELF",
+        "observed": "ELF",
+        "status": "matched"
+      },
+      {
+        "field": "binary.filetype",
+        "expected": "ELF for MIPS (Executable)",
+        "observed": "ELF for MIPS (Executable)",
+        "status": "matched"
+      },
+      {
+        "field": "profile.processor",
+        "expected": "mipsl",
+        "observed": "mipsl",
+        "status": "matched"
+      },
+      {
+        "field": "profile.bits",
+        "expected": 32,
+        "observed": 32,
+        "status": "matched"
+      },
+      {
+        "field": "profile.data_endian",
+        "expected": "LE",
+        "observed": "LE",
+        "status": "matched"
+      },
+      {
+        "field": "load.address",
+        "expected": 65536,
+        "observed": 65536,
+        "status": "matched"
+      },
+      {
+        "field": "entry",
+        "expected": {
+          "kind": "address",
+          "value": 131696
+        },
+        "observed": 131696,
+        "status": "matched"
+      },
+      {
+        "field": "profile.instruction_endian",
+        "expected": "LE",
+        "observed": null,
+        "status": "unverified"
+      }
+    ],
+    "mismatches": [],
+    "declared_only": [
+      "profile.profile_id",
+      "profile.profile_version",
+      "profile.mode",
+      "profile.abi_id"
+    ],
+    "unverified": [
+      "profile.instruction_endian"
+    ],
+    "raw_setup": {
+      "schema_version": "flow-p0-raw-setup/1",
+      "status": "not_applicable",
+      "reason": "input is configured by an IDA loader"
+    }
+  },
+  "probe_status": "success",
+  "support_status": "unverified",
+  "target_executed": false,
+  "binary": {
+    "name": "mips32_le.elf",
+    "sha256": "07455c1d91d89e8d0b4d5cb84de3a0bd9f77f93819578f3070fd04c8f4ddbb04"
+  },
+  "entry": {
+    "requested": {
+      "kind": "address",
+      "value": 131696
+    },
+    "resolved_ea": 131696
+  },
+  "initialization": true,
+  "probes": [
+    {
+      "status": "success",
+      "failure_code": 0,
+      "maturity": "MMAT_CALLS",
+      "actual_maturity": 4,
+      "python_owns_mba": true,
+      "function_ea": 131696,
+      "block_count": 3,
+      "instruction_count": 4,
+      "blocks": [
+        {
+          "id": 0,
+          "successors": [
+            1
+          ],
+          "predecessors": [],
+          "instructions": []
+        },
+        {
+          "id": 1,
+          "successors": [
+            2
+          ],
+          "predecessors": [
+            0
+          ],
+          "instructions": [
+            {
+              "opcode": "m_mov",
+              "ea": 131712,
+              "operands": [
+                {
+                  "kind": "mop_r",
+                  "size": 4,
+                  "register": 24
+                },
+                {
+                  "kind": "mop_z",
+                  "size": -1
+                },
+                {
+                  "kind": "mop_S",
+                  "size": 4,
+                  "stack_offset": 4
+                }
+              ]
+            },
+            {
+              "opcode": "m_mov",
+              "ea": 131716,
+              "operands": [
+                {
+                  "kind": "mop_r",
+                  "size": 4,
+                  "register": 28
+                },
+                {
+                  "kind": "mop_z",
+                  "size": -1
+                },
+                {
+                  "kind": "mop_S",
+                  "size": 4,
+                  "stack_offset": 0
+                }
+              ]
+            },
+            {
+              "opcode": "m_xor",
+              "ea": 131740,
+              "operands": [
+                {
+                  "kind": "mop_d",
+                  "size": 4,
+                  "instruction": {
+                    "opcode": "m_add",
+                    "ea": 131728,
+                    "operands": [
+                      {
+                        "kind": "mop_r",
+                        "size": 4,
+                        "register": 24
+                      },
+                      {
+                        "kind": "mop_r",
+                        "size": 4,
+                        "register": 28
+                      },
+                      {
+                        "kind": "mop_z",
+                        "size": 4
+                      }
+                    ]
+                  }
+                },
+                {
+                  "kind": "mop_n",
+                  "size": 4,
+                  "value": 20281789
+                },
+                {
+                  "kind": "mop_r",
+                  "size": 4,
+                  "register": 16
+                }
+              ]
+            },
+            {
+              "opcode": "m_mov",
+              "ea": 131748,
+              "operands": [
+                {
+                  "kind": "mop_S",
+                  "size": 4,
+                  "stack_offset": 8
+                },
+                {
+                  "kind": "mop_z",
+                  "size": -1
+                },
+                {
+                  "kind": "mop_r",
+                  "size": 4,
+                  "register": 128
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "successors": [],
+          "predecessors": [
+            1
+          ],
+          "instructions": []
+        }
+      ],
+      "opcode_counts": {
+        "m_add": 1,
+        "m_mov": 3,
+        "m_xor": 1
+      },
+      "operand_kind_counts": {
+        "mop_S": 3,
+        "mop_d": 1,
+        "mop_n": 1,
+        "mop_r": 6,
+        "mop_z": 4
+      },
+      "use_def_checks": {
+        "build_def_list:MAY_ACCESS:nonempty": 4,
+        "build_def_list:MAY_ACCESS:ok": 4,
+        "build_def_list:MUST_ACCESS:nonempty": 4,
+        "build_def_list:MUST_ACCESS:ok": 4,
+        "build_use_list:MAY_ACCESS:nonempty": 4,
+        "build_use_list:MAY_ACCESS:ok": 4,
+        "build_use_list:MUST_ACCESS:nonempty": 4,
+        "build_use_list:MUST_ACCESS:ok": 4
+      },
+      "graph_build_result": 0,
+      "chains": {
+        "get_ud": {
+          "status": "available",
+          "block_count": 3
+        },
+        "get_du": {
+          "status": "available",
+          "block_count": 3
+        }
+      },
+      "warnings": [],
+      "source_map": {
+        "top_level_with_ea": 4,
+        "top_level_synthetic": 0,
+        "unique_eas": [
+          131712,
+          131716,
+          131740,
+          131748
+        ],
+        "reconstruction": "observed_microcode_ea_only_not_full_native_origin_sets"
+      },
+      "digest": "edcd8694ac9da51bdaf845e79d7e86149acbd6ab6cf57ee8877ed7517ef30ff6",
+      "repeat_equal": true
+    },
+    {
+      "status": "success",
+      "failure_code": 0,
+      "maturity": "MMAT_GLBOPT3",
+      "actual_maturity": 7,
+      "python_owns_mba": true,
+      "function_ea": 131696,
+      "block_count": 3,
+      "instruction_count": 1,
+      "blocks": [
+        {
+          "id": 0,
+          "successors": [
+            1
+          ],
+          "predecessors": [],
+          "instructions": []
+        },
+        {
+          "id": 1,
+          "successors": [
+            2
+          ],
+          "predecessors": [
+            0
+          ],
+          "instructions": [
+            {
+              "opcode": "m_xor",
+              "ea": 131740,
+              "operands": [
+                {
+                  "kind": "mop_d",
+                  "size": 4,
+                  "instruction": {
+                    "opcode": "m_add",
+                    "ea": 131728,
+                    "operands": [
+                      {
+                        "kind": "mop_r",
+                        "size": 4,
+                        "register": 24
+                      },
+                      {
+                        "kind": "mop_r",
+                        "size": 4,
+                        "register": 28
+                      },
+                      {
+                        "kind": "mop_z",
+                        "size": 4
+                      }
+                    ]
+                  }
+                },
+                {
+                  "kind": "mop_n",
+                  "size": 4,
+                  "value": 20281789
+                },
+                {
+                  "kind": "mop_r",
+                  "size": 4,
+                  "register": 16
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "successors": [],
+          "predecessors": [
+            1
+          ],
+          "instructions": []
+        }
+      ],
+      "opcode_counts": {
+        "m_add": 1,
+        "m_xor": 1
+      },
+      "operand_kind_counts": {
+        "mop_d": 1,
+        "mop_n": 1,
+        "mop_r": 3,
+        "mop_z": 1
+      },
+      "use_def_checks": {
+        "build_def_list:MAY_ACCESS:nonempty": 1,
+        "build_def_list:MAY_ACCESS:ok": 1,
+        "build_def_list:MUST_ACCESS:nonempty": 1,
+        "build_def_list:MUST_ACCESS:ok": 1,
+        "build_use_list:MAY_ACCESS:nonempty": 1,
+        "build_use_list:MAY_ACCESS:ok": 1,
+        "build_use_list:MUST_ACCESS:nonempty": 1,
+        "build_use_list:MUST_ACCESS:ok": 1
+      },
+      "graph_build_result": 0,
+      "chains": {
+        "get_ud": {
+          "status": "available",
+          "block_count": 3
+        },
+        "get_du": {
+          "status": "available",
+          "block_count": 3
+        }
+      },
+      "warnings": [],
+      "source_map": {
+        "top_level_with_ea": 1,
+        "top_level_synthetic": 0,
+        "unique_eas": [
+          131740
+        ],
+        "reconstruction": "observed_microcode_ea_only_not_full_native_origin_sets"
+      },
+      "digest": "92e32e0ea0d86a1c5e49bc1eddcd14880fe27df0114e9461552e55fe66c871cd",
+      "repeat_equal": true
+    }
+  ],
+  "failures": [],
+  "cancellation": {
+    "pre_cancel": true,
+    "expired_deadline": true,
+    "during_native_call": "not_preemptible_by_python_poll",
+    "during_serialization": "cooperative_poll",
+    "native_cancel_tested": false
+  },
+  "lifetime": {
+    "json_roundtrip": true,
+    "repeat_after_gc": true,
+    "native_leak_freedom": "not_proven"
+  },
+  "receipt_digest": "4196a60893d61a8b4cf20296572a61cc41a550a5abaa95cc71045df6851675fa"
+}

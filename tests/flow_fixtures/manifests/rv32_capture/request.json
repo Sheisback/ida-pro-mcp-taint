@@ -1,0 +1,81 @@
+{
+  "backend": {
+    "abi_rule_digest": "sha256-v1:58300638cb43de77da5f7c393ec53ec5284469078fb9ec06dfdf1351d7a3be14",
+    "backend_id": "ida-disasm-rv32",
+    "backend_version": 1,
+    "capture_schema": "flow-rv32-disassembly-capture/1",
+    "decoder_rule_digest": "sha256-v1:474a06395078759618e51975bcb6dc85184cd11a292f0cd5b105f80accb7a9e1",
+    "extraction_stage": "structured-disassembly",
+    "maturity": null
+  },
+  "budgets": {
+    "deadline_millis": 30000,
+    "max_blocks": 64,
+    "max_diagnostics": 256,
+    "max_functions": 6,
+    "max_instruction_bytes": 65536,
+    "max_instructions": 512,
+    "max_operands": 2048,
+    "max_output_bytes": 2000000
+  },
+  "expected_ida_kernel_version": "9.3",
+  "fixture": {
+    "abi_evidence_digest": "sha256-v1:9a4f2965db7a32d182e20b10b35e42d2e6550d7dcd5543605f9b732dbaf69b17",
+    "abi_id": "riscv-ilp32",
+    "binary_sha256": "sha256-v1:7542035cd7ed38b7b891515c3590ad8b6f814d70f4d35ba95e1dc3e25ee580b3",
+    "binary_sha256_equal": true,
+    "binary_size": 3848,
+    "bitness": 32,
+    "build_manifest_sha256": "sha256-v1:b0efb53f753c7b739f63b01404bcc3c91d39d6066d500634b7980e7795a63673",
+    "command_sha256": "sha256-v1:af8b6f88daf0430d1b2507f2243ab5ecefcc2f3d8c91dfdb51055b453fdb3353",
+    "data_endian": "LE",
+    "format_id": "FMT-ELF",
+    "fresh_builds": 2,
+    "instruction_endian": "LE",
+    "mode": "RV32",
+    "platform_tag": "linux",
+    "processor": "riscv",
+    "profile_evidence_digest": "sha256-v1:513ba8355e63d7a3b6d5321a46f48cfc9baa663781e78c5c6c8201468b22e5fb",
+    "profile_id": "RV32-LE",
+    "profile_version": 1,
+    "source_sha256": "sha256-v1:8322823fb0308b9eb4352ade7e1dc404d57804417306b4889821be29fffdcb1b",
+    "support_status": "unverified",
+    "target_executed": false,
+    "target_triple": "riscv32-linux-gnu"
+  },
+  "functions": [
+    {
+      "expected_rva": 4696,
+      "ordinal": 0,
+      "symbol": "isa_scalar"
+    },
+    {
+      "expected_rva": 4740,
+      "ordinal": 1,
+      "symbol": "isa_branch"
+    },
+    {
+      "expected_rva": 4802,
+      "ordinal": 2,
+      "symbol": "isa_load"
+    },
+    {
+      "expected_rva": 4828,
+      "ordinal": 3,
+      "symbol": "isa_store"
+    },
+    {
+      "expected_rva": 4862,
+      "ordinal": 4,
+      "symbol": "isa_call"
+    },
+    {
+      "expected_rva": 4896,
+      "ordinal": 5,
+      "symbol": "isa_profile_entry"
+    }
+  ],
+  "implementation_digest": "sha256-v1:9d2e9576b81c199640770841782f88366d96fc92a62f6ea89c9e4c87b6155c55",
+  "processor_adapter_sha256": "sha256-v1:13b153cd2e9152f84a8a622fb75d83f62598fad00c493fb33c315fdb4904e076",
+  "schema_version": "flow-rv32-disassembly-request/1"
+}

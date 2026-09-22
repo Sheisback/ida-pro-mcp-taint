@@ -1,0 +1,486 @@
+{
+  "schema_version": "flow-p0-probe/2",
+  "request": {
+    "binary": {
+      "filetype": "Mach-O file (EXECUTE). ARM64",
+      "format": "MACH-O",
+      "sha256": "ada0029630104cfd87c19b6534ac05615b802f1315302b2a53a1954942382d25"
+    },
+    "entry": {
+      "kind": "address",
+      "value": 4294968216
+    },
+    "load": {
+      "image_base": 4294967296,
+      "kind": "loader"
+    },
+    "probe": {
+      "maturities": [
+        "MMAT_CALLS",
+        "MMAT_GLBOPT3"
+      ]
+    },
+    "profile": {
+      "abi_id": "darwin-aarch64",
+      "bits": 64,
+      "data_endian": "LE",
+      "instruction_endian": "LE",
+      "mode": "A64",
+      "processor": "ARM",
+      "profile_id": "A64-LE",
+      "profile_version": 1
+    },
+    "schema_version": "flow-p0-probe-request/1"
+  },
+  "request_digest": "a57ead1febc00c08384e86fe4e2bfc67be0134bf12fd34e4e1687fc942b1613b",
+  "implementation_sha256": "abfbf92cf84b960ab6af71235d51fffa88005ee9eeee13412b8f7354c4d3b3e3",
+  "environment": {
+    "ida_version": "9.3",
+    "python_version": "3.11.15",
+    "hexrays_version": "9.3.0.260213",
+    "filetype_id": 25,
+    "binary_sha256": "ada0029630104cfd87c19b6534ac05615b802f1315302b2a53a1954942382d25",
+    "format": "MACH-O",
+    "filetype": "Mach-O file (EXECUTE). ARM64",
+    "processor": "ARM",
+    "bits": 64,
+    "data_endian": "LE",
+    "instruction_endian": null,
+    "image_base": 4294967296,
+    "entry_ea": 4294968216
+  },
+  "validation": {
+    "schema_version": "flow-p0-probe-validation/1",
+    "request_digest": "a57ead1febc00c08384e86fe4e2bfc67be0134bf12fd34e4e1687fc942b1613b",
+    "status": "accepted",
+    "checks": [
+      {
+        "field": "binary.sha256",
+        "expected": "ada0029630104cfd87c19b6534ac05615b802f1315302b2a53a1954942382d25",
+        "observed": "ada0029630104cfd87c19b6534ac05615b802f1315302b2a53a1954942382d25",
+        "status": "matched"
+      },
+      {
+        "field": "binary.format",
+        "expected": "MACH-O",
+        "observed": "MACH-O",
+        "status": "matched"
+      },
+      {
+        "field": "binary.filetype",
+        "expected": "Mach-O file (EXECUTE). ARM64",
+        "observed": "Mach-O file (EXECUTE). ARM64",
+        "status": "matched"
+      },
+      {
+        "field": "profile.processor",
+        "expected": "ARM",
+        "observed": "ARM",
+        "status": "matched"
+      },
+      {
+        "field": "profile.bits",
+        "expected": 64,
+        "observed": 64,
+        "status": "matched"
+      },
+      {
+        "field": "profile.data_endian",
+        "expected": "LE",
+        "observed": "LE",
+        "status": "matched"
+      },
+      {
+        "field": "load.address",
+        "expected": 4294967296,
+        "observed": 4294967296,
+        "status": "matched"
+      },
+      {
+        "field": "entry",
+        "expected": {
+          "kind": "address",
+          "value": 4294968216
+        },
+        "observed": 4294968216,
+        "status": "matched"
+      },
+      {
+        "field": "profile.instruction_endian",
+        "expected": "LE",
+        "observed": null,
+        "status": "unverified"
+      }
+    ],
+    "mismatches": [],
+    "declared_only": [
+      "profile.profile_id",
+      "profile.profile_version",
+      "profile.mode",
+      "profile.abi_id"
+    ],
+    "unverified": [
+      "profile.instruction_endian"
+    ],
+    "raw_setup": {
+      "schema_version": "flow-p0-raw-setup/1",
+      "status": "not_applicable",
+      "reason": "input is configured by an IDA loader"
+    }
+  },
+  "probe_status": "success",
+  "support_status": "unverified",
+  "target_executed": false,
+  "binary": {
+    "name": "isa_profile_anchor",
+    "sha256": "ada0029630104cfd87c19b6534ac05615b802f1315302b2a53a1954942382d25"
+  },
+  "entry": {
+    "requested": {
+      "kind": "address",
+      "value": 4294968216
+    },
+    "resolved_ea": 4294968216
+  },
+  "initialization": true,
+  "probes": [
+    {
+      "status": "success",
+      "failure_code": 0,
+      "maturity": "MMAT_CALLS",
+      "actual_maturity": 4,
+      "python_owns_mba": true,
+      "function_ea": 4294968216,
+      "block_count": 3,
+      "instruction_count": 3,
+      "blocks": [
+        {
+          "id": 0,
+          "successors": [
+            1
+          ],
+          "predecessors": [],
+          "instructions": []
+        },
+        {
+          "id": 1,
+          "successors": [
+            2
+          ],
+          "predecessors": [
+            0
+          ],
+          "instructions": [
+            {
+              "opcode": "m_mov",
+              "ea": 4294968220,
+              "operands": [
+                {
+                  "kind": "mop_r",
+                  "size": 4,
+                  "register": 8
+                },
+                {
+                  "kind": "mop_z",
+                  "size": -1
+                },
+                {
+                  "kind": "mop_S",
+                  "size": 4,
+                  "stack_offset": 12
+                }
+              ]
+            },
+            {
+              "opcode": "m_mov",
+              "ea": 4294968224,
+              "operands": [
+                {
+                  "kind": "mop_r",
+                  "size": 4,
+                  "register": 16
+                },
+                {
+                  "kind": "mop_z",
+                  "size": -1
+                },
+                {
+                  "kind": "mop_S",
+                  "size": 4,
+                  "stack_offset": 8
+                }
+              ]
+            },
+            {
+              "opcode": "m_xdu",
+              "ea": 4294968248,
+              "operands": [
+                {
+                  "kind": "mop_d",
+                  "size": 4,
+                  "instruction": {
+                    "opcode": "m_xor",
+                    "ea": 4294968248,
+                    "operands": [
+                      {
+                        "kind": "mop_d",
+                        "size": 4,
+                        "instruction": {
+                          "opcode": "m_add",
+                          "ea": 4294968236,
+                          "operands": [
+                            {
+                              "kind": "mop_r",
+                              "size": 4,
+                              "register": 8
+                            },
+                            {
+                              "kind": "mop_r",
+                              "size": 4,
+                              "register": 16
+                            },
+                            {
+                              "kind": "mop_z",
+                              "size": 4
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "kind": "mop_n",
+                        "size": 4,
+                        "value": 20281789
+                      },
+                      {
+                        "kind": "mop_z",
+                        "size": 4
+                      }
+                    ]
+                  }
+                },
+                {
+                  "kind": "mop_z",
+                  "size": -1
+                },
+                {
+                  "kind": "mop_r",
+                  "size": 8,
+                  "register": 8
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "successors": [],
+          "predecessors": [
+            1
+          ],
+          "instructions": []
+        }
+      ],
+      "opcode_counts": {
+        "m_add": 1,
+        "m_mov": 2,
+        "m_xdu": 1,
+        "m_xor": 1
+      },
+      "operand_kind_counts": {
+        "mop_S": 2,
+        "mop_d": 2,
+        "mop_n": 1,
+        "mop_r": 5,
+        "mop_z": 5
+      },
+      "use_def_checks": {
+        "build_def_list:MAY_ACCESS:nonempty": 3,
+        "build_def_list:MAY_ACCESS:ok": 3,
+        "build_def_list:MUST_ACCESS:nonempty": 3,
+        "build_def_list:MUST_ACCESS:ok": 3,
+        "build_use_list:MAY_ACCESS:nonempty": 3,
+        "build_use_list:MAY_ACCESS:ok": 3,
+        "build_use_list:MUST_ACCESS:nonempty": 3,
+        "build_use_list:MUST_ACCESS:ok": 3
+      },
+      "graph_build_result": 0,
+      "chains": {
+        "get_ud": {
+          "status": "available",
+          "block_count": 3
+        },
+        "get_du": {
+          "status": "available",
+          "block_count": 3
+        }
+      },
+      "warnings": [],
+      "source_map": {
+        "top_level_with_ea": 3,
+        "top_level_synthetic": 0,
+        "unique_eas": [
+          4294968220,
+          4294968224,
+          4294968248
+        ],
+        "reconstruction": "observed_microcode_ea_only_not_full_native_origin_sets"
+      },
+      "digest": "aafe7e77bbedad33e48fc3d292af77eb4a43f3c1919d81405707aa1af8078459",
+      "repeat_equal": true
+    },
+    {
+      "status": "success",
+      "failure_code": 0,
+      "maturity": "MMAT_GLBOPT3",
+      "actual_maturity": 7,
+      "python_owns_mba": true,
+      "function_ea": 4294968216,
+      "block_count": 3,
+      "instruction_count": 1,
+      "blocks": [
+        {
+          "id": 0,
+          "successors": [
+            1
+          ],
+          "predecessors": [],
+          "instructions": []
+        },
+        {
+          "id": 1,
+          "successors": [
+            2
+          ],
+          "predecessors": [
+            0
+          ],
+          "instructions": [
+            {
+              "opcode": "m_xdu",
+              "ea": 4294968248,
+              "operands": [
+                {
+                  "kind": "mop_d",
+                  "size": 4,
+                  "instruction": {
+                    "opcode": "m_xor",
+                    "ea": 4294968248,
+                    "operands": [
+                      {
+                        "kind": "mop_d",
+                        "size": 4,
+                        "instruction": {
+                          "opcode": "m_add",
+                          "ea": 4294968236,
+                          "operands": [
+                            {
+                              "kind": "mop_r",
+                              "size": 4,
+                              "register": 8
+                            },
+                            {
+                              "kind": "mop_r",
+                              "size": 4,
+                              "register": 16
+                            },
+                            {
+                              "kind": "mop_z",
+                              "size": 4
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "kind": "mop_n",
+                        "size": 4,
+                        "value": 20281789
+                      },
+                      {
+                        "kind": "mop_z",
+                        "size": 4
+                      }
+                    ]
+                  }
+                },
+                {
+                  "kind": "mop_z",
+                  "size": -1
+                },
+                {
+                  "kind": "mop_r",
+                  "size": 8,
+                  "register": 8
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "successors": [],
+          "predecessors": [
+            1
+          ],
+          "instructions": []
+        }
+      ],
+      "opcode_counts": {
+        "m_add": 1,
+        "m_xdu": 1,
+        "m_xor": 1
+      },
+      "operand_kind_counts": {
+        "mop_d": 2,
+        "mop_n": 1,
+        "mop_r": 3,
+        "mop_z": 3
+      },
+      "use_def_checks": {
+        "build_def_list:MAY_ACCESS:nonempty": 1,
+        "build_def_list:MAY_ACCESS:ok": 1,
+        "build_def_list:MUST_ACCESS:nonempty": 1,
+        "build_def_list:MUST_ACCESS:ok": 1,
+        "build_use_list:MAY_ACCESS:nonempty": 1,
+        "build_use_list:MAY_ACCESS:ok": 1,
+        "build_use_list:MUST_ACCESS:nonempty": 1,
+        "build_use_list:MUST_ACCESS:ok": 1
+      },
+      "graph_build_result": 0,
+      "chains": {
+        "get_ud": {
+          "status": "available",
+          "block_count": 3
+        },
+        "get_du": {
+          "status": "available",
+          "block_count": 3
+        }
+      },
+      "warnings": [],
+      "source_map": {
+        "top_level_with_ea": 1,
+        "top_level_synthetic": 0,
+        "unique_eas": [
+          4294968248
+        ],
+        "reconstruction": "observed_microcode_ea_only_not_full_native_origin_sets"
+      },
+      "digest": "d6e38c8e00eb622b9ae8abe6c16e06e5eb6328231d7b8bacea0ca16f3169b494",
+      "repeat_equal": true
+    }
+  ],
+  "failures": [],
+  "cancellation": {
+    "pre_cancel": true,
+    "expired_deadline": true,
+    "during_native_call": "not_preemptible_by_python_poll",
+    "during_serialization": "cooperative_poll",
+    "native_cancel_tested": false
+  },
+  "lifetime": {
+    "json_roundtrip": true,
+    "repeat_after_gc": true,
+    "native_leak_freedom": "not_proven"
+  },
+  "receipt_digest": "ae0598b92652b286ba144fd59abacf3fb1931783bda81c05fc691e23aac14bc5"
+}

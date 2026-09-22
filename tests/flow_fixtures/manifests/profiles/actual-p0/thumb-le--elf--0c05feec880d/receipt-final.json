@@ -1,0 +1,512 @@
+{
+  "schema_version": "flow-p0-probe/2",
+  "request": {
+    "binary": {
+      "filetype": "ELF for ARM (Executable)",
+      "format": "ELF",
+      "sha256": "0c05feec880d8fa13a7dfa8cde22a1e8773762767e490e9e8641f2650d281296"
+    },
+    "entry": {
+      "kind": "address",
+      "value": 131372
+    },
+    "load": {
+      "image_base": 65536,
+      "kind": "loader"
+    },
+    "probe": {
+      "maturities": [
+        "MMAT_CALLS",
+        "MMAT_GLBOPT3"
+      ]
+    },
+    "profile": {
+      "abi_id": "aapcs32",
+      "bits": 32,
+      "data_endian": "LE",
+      "instruction_endian": "LE",
+      "mode": "THUMB",
+      "processor": "ARM",
+      "profile_id": "THUMB-LE",
+      "profile_version": 1
+    },
+    "schema_version": "flow-p0-probe-request/1"
+  },
+  "request_digest": "7a7a6226d383bbee98170bcc0070a30fcf4d88230ada8a3b8e0f87330db11f51",
+  "implementation_sha256": "abfbf92cf84b960ab6af71235d51fffa88005ee9eeee13412b8f7354c4d3b3e3",
+  "environment": {
+    "ida_version": "9.3",
+    "python_version": "3.11.15",
+    "hexrays_version": "9.3.0.260213",
+    "filetype_id": 18,
+    "binary_sha256": "0c05feec880d8fa13a7dfa8cde22a1e8773762767e490e9e8641f2650d281296",
+    "format": "ELF",
+    "filetype": "ELF for ARM (Executable)",
+    "processor": "ARM",
+    "bits": 32,
+    "data_endian": "LE",
+    "instruction_endian": null,
+    "image_base": 65536,
+    "entry_ea": 131372
+  },
+  "validation": {
+    "schema_version": "flow-p0-probe-validation/1",
+    "request_digest": "7a7a6226d383bbee98170bcc0070a30fcf4d88230ada8a3b8e0f87330db11f51",
+    "status": "accepted",
+    "checks": [
+      {
+        "field": "binary.sha256",
+        "expected": "0c05feec880d8fa13a7dfa8cde22a1e8773762767e490e9e8641f2650d281296",
+        "observed": "0c05feec880d8fa13a7dfa8cde22a1e8773762767e490e9e8641f2650d281296",
+        "status": "matched"
+      },
+      {
+        "field": "binary.format",
+        "expected": "ELF",
+        "observed": "ELF",
+        "status": "matched"
+      },
+      {
+        "field": "binary.filetype",
+        "expected": "ELF for ARM (Executable)",
+        "observed": "ELF for ARM (Executable)",
+        "status": "matched"
+      },
+      {
+        "field": "profile.processor",
+        "expected": "ARM",
+        "observed": "ARM",
+        "status": "matched"
+      },
+      {
+        "field": "profile.bits",
+        "expected": 32,
+        "observed": 32,
+        "status": "matched"
+      },
+      {
+        "field": "profile.data_endian",
+        "expected": "LE",
+        "observed": "LE",
+        "status": "matched"
+      },
+      {
+        "field": "load.address",
+        "expected": 65536,
+        "observed": 65536,
+        "status": "matched"
+      },
+      {
+        "field": "entry",
+        "expected": {
+          "kind": "address",
+          "value": 131372
+        },
+        "observed": 131372,
+        "status": "matched"
+      },
+      {
+        "field": "profile.instruction_endian",
+        "expected": "LE",
+        "observed": null,
+        "status": "unverified"
+      }
+    ],
+    "mismatches": [],
+    "declared_only": [
+      "profile.profile_id",
+      "profile.profile_version",
+      "profile.mode",
+      "profile.abi_id"
+    ],
+    "unverified": [
+      "profile.instruction_endian"
+    ],
+    "raw_setup": {
+      "schema_version": "flow-p0-raw-setup/1",
+      "status": "not_applicable",
+      "reason": "input is configured by an IDA loader"
+    }
+  },
+  "probe_status": "success",
+  "support_status": "unverified",
+  "target_executed": false,
+  "binary": {
+    "name": "thumb_le.elf",
+    "sha256": "0c05feec880d8fa13a7dfa8cde22a1e8773762767e490e9e8641f2650d281296"
+  },
+  "entry": {
+    "requested": {
+      "kind": "address",
+      "value": 131372
+    },
+    "resolved_ea": 131372
+  },
+  "initialization": true,
+  "probes": [
+    {
+      "status": "success",
+      "failure_code": 0,
+      "maturity": "MMAT_CALLS",
+      "actual_maturity": 4,
+      "python_owns_mba": true,
+      "function_ea": 131372,
+      "block_count": 3,
+      "instruction_count": 7,
+      "blocks": [
+        {
+          "id": 0,
+          "successors": [
+            1
+          ],
+          "predecessors": [],
+          "instructions": []
+        },
+        {
+          "id": 1,
+          "successors": [
+            2
+          ],
+          "predecessors": [
+            0
+          ],
+          "instructions": [
+            {
+              "opcode": "m_mov",
+              "ea": 131378,
+              "operands": [
+                {
+                  "kind": "mop_r",
+                  "size": 4,
+                  "register": 8
+                },
+                {
+                  "kind": "mop_z",
+                  "size": -1
+                },
+                {
+                  "kind": "mop_S",
+                  "size": 4,
+                  "stack_offset": 4
+                }
+              ]
+            },
+            {
+              "opcode": "m_mov",
+              "ea": 131380,
+              "operands": [
+                {
+                  "kind": "mop_r",
+                  "size": 4,
+                  "register": 12
+                },
+                {
+                  "kind": "mop_z",
+                  "size": -1
+                },
+                {
+                  "kind": "mop_S",
+                  "size": 4,
+                  "stack_offset": 0
+                }
+              ]
+            },
+            {
+              "opcode": "m_add",
+              "ea": 131386,
+              "operands": [
+                {
+                  "kind": "mop_r",
+                  "size": 4,
+                  "register": 8
+                },
+                {
+                  "kind": "mop_r",
+                  "size": 4,
+                  "register": 12
+                },
+                {
+                  "kind": "mop_r",
+                  "size": 4,
+                  "register": 8
+                }
+              ]
+            },
+            {
+              "opcode": "m_mov",
+              "ea": 131388,
+              "operands": [
+                {
+                  "kind": "mop_n",
+                  "size": 4,
+                  "value": 20281789
+                },
+                {
+                  "kind": "mop_z",
+                  "size": -1
+                },
+                {
+                  "kind": "mop_r",
+                  "size": 4,
+                  "register": 12
+                }
+              ]
+            },
+            {
+              "opcode": "m_xor",
+              "ea": 131396,
+              "operands": [
+                {
+                  "kind": "mop_r",
+                  "size": 4,
+                  "register": 8
+                },
+                {
+                  "kind": "mop_n",
+                  "size": 4,
+                  "value": 20281789
+                },
+                {
+                  "kind": "mop_r",
+                  "size": 4,
+                  "register": 8
+                }
+              ]
+            },
+            {
+              "opcode": "m_mov",
+              "ea": 131400,
+              "operands": [
+                {
+                  "kind": "mop_S",
+                  "size": 4,
+                  "stack_offset": 8
+                },
+                {
+                  "kind": "mop_z",
+                  "size": -1
+                },
+                {
+                  "kind": "mop_r",
+                  "size": 4,
+                  "register": 36
+                }
+              ]
+            },
+            {
+              "opcode": "m_mov",
+              "ea": 131400,
+              "operands": [
+                {
+                  "kind": "mop_S",
+                  "size": 4,
+                  "stack_offset": 12
+                },
+                {
+                  "kind": "mop_z",
+                  "size": -1
+                },
+                {
+                  "kind": "mop_r",
+                  "size": 4,
+                  "register": 68
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "successors": [],
+          "predecessors": [
+            1
+          ],
+          "instructions": []
+        }
+      ],
+      "opcode_counts": {
+        "m_add": 1,
+        "m_mov": 5,
+        "m_xor": 1
+      },
+      "operand_kind_counts": {
+        "mop_S": 4,
+        "mop_n": 2,
+        "mop_r": 10,
+        "mop_z": 5
+      },
+      "use_def_checks": {
+        "build_def_list:MAY_ACCESS:nonempty": 7,
+        "build_def_list:MAY_ACCESS:ok": 7,
+        "build_def_list:MUST_ACCESS:nonempty": 7,
+        "build_def_list:MUST_ACCESS:ok": 7,
+        "build_use_list:MAY_ACCESS:nonempty": 6,
+        "build_use_list:MAY_ACCESS:ok": 7,
+        "build_use_list:MUST_ACCESS:nonempty": 6,
+        "build_use_list:MUST_ACCESS:ok": 7
+      },
+      "graph_build_result": 0,
+      "chains": {
+        "get_ud": {
+          "status": "available",
+          "block_count": 3
+        },
+        "get_du": {
+          "status": "available",
+          "block_count": 3
+        }
+      },
+      "warnings": [],
+      "source_map": {
+        "top_level_with_ea": 7,
+        "top_level_synthetic": 0,
+        "unique_eas": [
+          131378,
+          131380,
+          131386,
+          131388,
+          131396,
+          131400
+        ],
+        "reconstruction": "observed_microcode_ea_only_not_full_native_origin_sets"
+      },
+      "digest": "971e5f9fe5caee10bfd5ab0f267cb3cacd160f123c76b3e86f4982f74e511574",
+      "repeat_equal": true
+    },
+    {
+      "status": "success",
+      "failure_code": 0,
+      "maturity": "MMAT_GLBOPT3",
+      "actual_maturity": 7,
+      "python_owns_mba": true,
+      "function_ea": 131372,
+      "block_count": 3,
+      "instruction_count": 1,
+      "blocks": [
+        {
+          "id": 0,
+          "successors": [
+            1
+          ],
+          "predecessors": [],
+          "instructions": []
+        },
+        {
+          "id": 1,
+          "successors": [
+            2
+          ],
+          "predecessors": [
+            0
+          ],
+          "instructions": [
+            {
+              "opcode": "m_xor",
+              "ea": 131396,
+              "operands": [
+                {
+                  "kind": "mop_d",
+                  "size": 4,
+                  "instruction": {
+                    "opcode": "m_add",
+                    "ea": 131386,
+                    "operands": [
+                      {
+                        "kind": "mop_r",
+                        "size": 4,
+                        "register": 8
+                      },
+                      {
+                        "kind": "mop_r",
+                        "size": 4,
+                        "register": 12
+                      },
+                      {
+                        "kind": "mop_z",
+                        "size": 4
+                      }
+                    ]
+                  }
+                },
+                {
+                  "kind": "mop_n",
+                  "size": 4,
+                  "value": 20281789
+                },
+                {
+                  "kind": "mop_r",
+                  "size": 4,
+                  "register": 8
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "successors": [],
+          "predecessors": [
+            1
+          ],
+          "instructions": []
+        }
+      ],
+      "opcode_counts": {
+        "m_add": 1,
+        "m_xor": 1
+      },
+      "operand_kind_counts": {
+        "mop_d": 1,
+        "mop_n": 1,
+        "mop_r": 3,
+        "mop_z": 1
+      },
+      "use_def_checks": {
+        "build_def_list:MAY_ACCESS:nonempty": 1,
+        "build_def_list:MAY_ACCESS:ok": 1,
+        "build_def_list:MUST_ACCESS:nonempty": 1,
+        "build_def_list:MUST_ACCESS:ok": 1,
+        "build_use_list:MAY_ACCESS:nonempty": 1,
+        "build_use_list:MAY_ACCESS:ok": 1,
+        "build_use_list:MUST_ACCESS:nonempty": 1,
+        "build_use_list:MUST_ACCESS:ok": 1
+      },
+      "graph_build_result": 0,
+      "chains": {
+        "get_ud": {
+          "status": "available",
+          "block_count": 3
+        },
+        "get_du": {
+          "status": "available",
+          "block_count": 3
+        }
+      },
+      "warnings": [],
+      "source_map": {
+        "top_level_with_ea": 1,
+        "top_level_synthetic": 0,
+        "unique_eas": [
+          131396
+        ],
+        "reconstruction": "observed_microcode_ea_only_not_full_native_origin_sets"
+      },
+      "digest": "ad48c52988df1b7354a889cd973ac8096e44915734df998d4a1dcb8946f7d0e9",
+      "repeat_equal": true
+    }
+  ],
+  "failures": [],
+  "cancellation": {
+    "pre_cancel": true,
+    "expired_deadline": true,
+    "during_native_call": "not_preemptible_by_python_poll",
+    "during_serialization": "cooperative_poll",
+    "native_cancel_tested": false
+  },
+  "lifetime": {
+    "json_roundtrip": true,
+    "repeat_after_gc": true,
+    "native_leak_freedom": "not_proven"
+  },
+  "receipt_digest": "229acdd4894f2ed884003487b2f7ba78bb603b1bf3e51fb8026b614e83b715b3"
+}

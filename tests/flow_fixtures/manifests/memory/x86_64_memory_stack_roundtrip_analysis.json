@@ -5,23 +5,23 @@
     "Valid fixture objects; sequential recovered CFG; ordinary flat user-space C data accesses, no TLS/MMIO",
     "index == 0; analyst-selected computed address points to source local[0]; no ABI argument inference or path proof"
   ],
-  "cache_key": "sha256-v1:d331454f5b2c5a78db859b829c3d758915e005c12c3709de59155f9eea15abb7",
+  "cache_key": "sha256-v1:93efb458d38773e2337588d6dff87698b40facc84a73996e56f25c98c0432e93",
   "dependencies": [
     {
       "evidence_ids": [
-        "evidence-v1:754a80f3e2d283e1286015c73cf3d8d088d570aea17eec65c729099b96aded02",
-        "evidence-v1:826df00918bd28c24a78b6d94d2725d9b06a235eb7e4bd4005c129fc1401dd62"
+        "evidence-v1:758f53e3616130c648d215411525eec52237c5a8827c058d40102e6755b97d75",
+        "evidence-v1:eaa5bfbb9baf4a1b8249d34535baddbf6f2475bd02b89ed992e896a8ab26678c"
       ],
       "interval": {
         "end": 3,
         "start": 2
       },
       "kind": "memory_data_dependency",
-      "object_id": "object-v1:49926ec28dfc10f60f5eae074b59c5242d7d14d6a8500210a199eb3f0c3c4bf5",
+      "object_id": "object-v1:3badfc196edf7c9c98a8d3a4c2c538caa52108ffc84a4eeead64ba252c0069ff",
       "precision": "exact",
       "rule_id": "byte-reaching-store-v1",
-      "source": "node-v1:7c9dc54ad1786106aa802bd556097f9596bf2e9ec0f1e15a9342bda04816d886",
-      "target": "node-v1:9b42d18e52b4f2a82c011af0e8459e2e4f78f80ed24e2155acc6417224e4c701"
+      "source": "node-v1:12c73b204bb838e9f9e0cce27e728b58a6fd06e7f6d3bbd85e119f834c10d340",
+      "target": "node-v1:f5c59b5d13d731435e5c7ff934bcd09fa3c6cf2612a34ddb3c282e6e9a053bc3"
     }
   ],
   "diagnostics": [
@@ -29,25 +29,25 @@
     "unresolved_scalar_effect"
   ],
   "extraction_file": "tests/flow_fixtures/manifests/memory/x86_64_memory_stack_roundtrip.json",
-  "extraction_file_sha256": "0745f040c73139733c9689b52d68cb90760651f5f7aa2ef23501be31018e9735",
+  "extraction_file_sha256": "0202ed936d89d6b147cfe63b1ed966708b35091e1768774e70ba4996ccf6f457",
   "fresh_static_ida_extraction": true,
   "function": "memory_stack_roundtrip",
   "generator_sha256": "f3bca447461394912ee7f249f3076be261e358fab03c88b8b7fe01e2a0c9c153",
-  "graph_digest": "sha256-v1:1fd1eb5ed4e2526bcee7a78011206ffa527302856a0d1a0117ac16c8be4147c2",
+  "graph_digest": "sha256-v1:cee019d631aa229c2b8f8251c4d4ff3459e7a17d599cf48498ee499b396d0e06",
   "implementation_sha256": {
     "analysis.py": "8bc2d342ec6060d8c1e0d4f9912e707e7ff24a014f45ddf8af10778743a21b45",
     "cfg.py": "167a4491b93278888cda50641c8c1c4d5cc444ab5b57b8f078e76931c7f7749f",
-    "contracts.py": "feaa51fad25bb98116fa9501315a87b4efbd8b1ff9fb1ed2e45ef8d7810e0dfa",
+    "contracts.py": "ff0968563d0b08458dc092774c1c8ce3352d4adffc7a9eb52b5cc3be6ea4a6da",
     "memory.py": "7960fce27069016664271da7d3d6e69a5be586f6dc17d6ea0a899ed1e56363af",
     "memory_analysis.py": "7071ff4027e24249aca7cc653e220f0d2bbe8b3cbe9dddb61279bfaa0c7f80d5",
-    "ssa.py": "7f7b702f7ebd801e6e38563b187bd0bc10ad102294060033f9139ef673cdf43a",
+    "ssa.py": "9f37017efc701977cfefba34a3fdd586be23f63b56a17765a3282e2759dd02d1",
     "states.py": "4a03c1eec0e86893a58faf81b06853ffd75de7daf40d3eec3b7ace2b5187ee78"
   },
   "iterations": 2,
   "load_observations": [
     {
       "access": {
-        "address_node": "node-v1:b6fdfe3cdd471d5a3912b5aca3709cb140acaa7e6e37802bbfeb2440bf257e8e",
+        "address_node": "node-v1:f46281ac13b0fdb68cd0d702ff64da73975b06cba9f4b5702d8abf0463b470e4",
         "alias": "must_alias",
         "candidates": [
           {
@@ -55,17 +55,17 @@
               "end": 3,
               "start": 2
             },
-            "object_id": "object-v1:49926ec28dfc10f60f5eae074b59c5242d7d14d6a8500210a199eb3f0c3c4bf5"
+            "object_id": "object-v1:3badfc196edf7c9c98a8d3a4c2c538caa52108ffc84a4eeead64ba252c0069ff"
           }
         ],
         "evidence_ids": [
-          "evidence-v1:826df00918bd28c24a78b6d94d2725d9b06a235eb7e4bd4005c129fc1401dd62"
+          "evidence-v1:eaa5bfbb9baf4a1b8249d34535baddbf6f2475bd02b89ed992e896a8ab26678c"
         ],
-        "node_id": "node-v1:9b42d18e52b4f2a82c011af0e8459e2e4f78f80ed24e2155acc6417224e4c701",
+        "node_id": "node-v1:f5c59b5d13d731435e5c7ff934bcd09fa3c6cf2612a34ddb3c282e6e9a053bc3",
         "precision": "exact",
         "strong_update": false,
         "unresolved": false,
-        "version_id": "memory-v1:d0d924560b2b7094581e65b7f4df3f75641e4aea4e6d42b34652d9f931d78750",
+        "version_id": "memory-v1:db8d72075765463add8c960b7a526ca4a7251ec2a7ddfa00c9f1c169f1bd1fc6",
         "width_bits": 8
       },
       "fact": {
@@ -83,14 +83,14 @@
           "explicit": [],
           "unknown_provenance": false
         },
-        "node_id": "node-v1:9b42d18e52b4f2a82c011af0e8459e2e4f78f80ed24e2155acc6417224e4c701",
+        "node_id": "node-v1:f5c59b5d13d731435e5c7ff934bcd09fa3c6cf2612a34ddb3c282e6e9a053bc3",
         "pointer": null,
         "value": {
           "value": 43,
           "width_bits": 8
         }
       },
-      "node_id": "node-v1:9b42d18e52b4f2a82c011af0e8459e2e4f78f80ed24e2155acc6417224e4c701"
+      "node_id": "node-v1:f5c59b5d13d731435e5c7ff934bcd09fa3c6cf2612a34ddb3c282e6e9a053bc3"
     }
   ],
   "memory_order_step_count": 4,
@@ -110,7 +110,7 @@
         ],
         "unknown_provenance": false
       },
-      "object_id": "object-v1:49926ec28dfc10f60f5eae074b59c5242d7d14d6a8500210a199eb3f0c3c4bf5",
+      "object_id": "object-v1:3badfc196edf7c9c98a8d3a4c2c538caa52108ffc84a4eeead64ba252c0069ff",
       "point": "entry",
       "value": {
         "value": null,
@@ -130,19 +130,19 @@
       "singleton": true,
       "singleton_evidence": "fixture single object / invocation",
       "size_bytes": 8,
-      "snapshot_id": "snapshot-v1:bf0c6f1f5ae450c57d92a1d87fb2fce649e89aa804c8e45387c8416cf72273bc"
+      "snapshot_id": "snapshot-v1:47d9a4c03dee08a8bc3d9d06afe8eeb61f7904a631678137098c74b01f477596"
     }
   ],
-  "plan_digest": "sha256-v1:8a2d7741908be692b61448754b9e3ae3ff14f74859c1e5a14a46de94526b59fe",
+  "plan_digest": "sha256-v1:7eaeac79bce5c07cfe21bdc4807838f7d77b160d5a6f695e0ce397d8323b6b18",
   "pointer_seeds": [
     {
-      "node_id": "node-v1:9080a9e79c8627b8aba2b8187a380016f15327ffff4cb2b728b56a19bcd16478",
+      "node_id": "node-v1:1aee8e20946a0dd87e42d6302982b9636a3555f0f3358ef475ac3b8ff9c27c19",
       "pointer": {
         "address_space": "ram",
         "any_compatible_location": false,
         "candidates": [
           {
-            "object_id": "object-v1:49926ec28dfc10f60f5eae074b59c5242d7d14d6a8500210a199eb3f0c3c4bf5",
+            "object_id": "object-v1:3badfc196edf7c9c98a8d3a4c2c538caa52108ffc84a4eeead64ba252c0069ff",
             "offset": 3
           }
         ],
@@ -151,28 +151,13 @@
       }
     },
     {
-      "node_id": "node-v1:9611c1775554b52b9e772308713874edb20e7d127d7742d10c4c30f2f2cc3109",
+      "node_id": "node-v1:9dfc228f52198e019701e183ae0b1b3d29093ee5c21383aecce75418166f6d1f",
       "pointer": {
         "address_space": "ram",
         "any_compatible_location": false,
         "candidates": [
           {
-            "object_id": "object-v1:49926ec28dfc10f60f5eae074b59c5242d7d14d6a8500210a199eb3f0c3c4bf5",
-            "offset": 4
-          }
-        ],
-        "may_be_null": false,
-        "width_bits": 64
-      }
-    },
-    {
-      "node_id": "node-v1:b6fdfe3cdd471d5a3912b5aca3709cb140acaa7e6e37802bbfeb2440bf257e8e",
-      "pointer": {
-        "address_space": "ram",
-        "any_compatible_location": false,
-        "candidates": [
-          {
-            "object_id": "object-v1:49926ec28dfc10f60f5eae074b59c5242d7d14d6a8500210a199eb3f0c3c4bf5",
+            "object_id": "object-v1:3badfc196edf7c9c98a8d3a4c2c538caa52108ffc84a4eeead64ba252c0069ff",
             "offset": 2
           }
         ],
@@ -181,13 +166,28 @@
       }
     },
     {
-      "node_id": "node-v1:dd68f60a7f4517cbfd67679858fecfbfbc4599eb423c6738b68a1548b0a5769e",
+      "node_id": "node-v1:c9d5b66452b2e58a032a47b4fbba05493cd650e8992fe6e18e4c0eda2d3baf29",
       "pointer": {
         "address_space": "ram",
         "any_compatible_location": false,
         "candidates": [
           {
-            "object_id": "object-v1:49926ec28dfc10f60f5eae074b59c5242d7d14d6a8500210a199eb3f0c3c4bf5",
+            "object_id": "object-v1:3badfc196edf7c9c98a8d3a4c2c538caa52108ffc84a4eeead64ba252c0069ff",
+            "offset": 4
+          }
+        ],
+        "may_be_null": false,
+        "width_bits": 64
+      }
+    },
+    {
+      "node_id": "node-v1:f46281ac13b0fdb68cd0d702ff64da73975b06cba9f4b5702d8abf0463b470e4",
+      "pointer": {
+        "address_space": "ram",
+        "any_compatible_location": false,
+        "candidates": [
+          {
+            "object_id": "object-v1:3badfc196edf7c9c98a8d3a4c2c538caa52108ffc84a4eeead64ba252c0069ff",
             "offset": 2
           }
         ],
@@ -201,13 +201,13 @@
   "repeat_equal": true,
   "roundtrip_equal": true,
   "schema_version": "flow-memory-receipt/1",
-  "selected_source_id": "node-v1:b6fdfe3cdd471d5a3912b5aca3709cb140acaa7e6e37802bbfeb2440bf257e8e",
-  "snapshot_digest": "sha256-v1:4baa9be6f8c754196a44eda8e46fe57ff0b25271e1afe7af8839a1b299419a1c",
-  "source_digest": "sha256-v1:c40f0815ae1b41f760bbfe8b7bcd054c7b8e6583c860bc4541a3acca6e37b151",
+  "selected_source_id": "node-v1:f46281ac13b0fdb68cd0d702ff64da73975b06cba9f4b5702d8abf0463b470e4",
+  "snapshot_digest": "sha256-v1:bc12366cff70fe7f325e21a213fc1369d08c267f8a097a442286112d6303b31b",
+  "source_digest": "sha256-v1:c06c08a0f08a9b1c83349d7e80be50922d8328d0aad787c79b60eefff5c8e966",
   "target_executed": false,
   "target_stores": [
     {
-      "address_node": "node-v1:dd68f60a7f4517cbfd67679858fecfbfbc4599eb423c6738b68a1548b0a5769e",
+      "address_node": "node-v1:9dfc228f52198e019701e183ae0b1b3d29093ee5c21383aecce75418166f6d1f",
       "alias": "must_alias",
       "candidates": [
         {
@@ -215,17 +215,17 @@
             "end": 3,
             "start": 2
           },
-          "object_id": "object-v1:49926ec28dfc10f60f5eae074b59c5242d7d14d6a8500210a199eb3f0c3c4bf5"
+          "object_id": "object-v1:3badfc196edf7c9c98a8d3a4c2c538caa52108ffc84a4eeead64ba252c0069ff"
         }
       ],
       "evidence_ids": [
-        "evidence-v1:754a80f3e2d283e1286015c73cf3d8d088d570aea17eec65c729099b96aded02"
+        "evidence-v1:758f53e3616130c648d215411525eec52237c5a8827c058d40102e6755b97d75"
       ],
-      "node_id": "node-v1:7c9dc54ad1786106aa802bd556097f9596bf2e9ec0f1e15a9342bda04816d886",
+      "node_id": "node-v1:12c73b204bb838e9f9e0cce27e728b58a6fd06e7f6d3bbd85e119f834c10d340",
       "precision": "exact",
       "strong_update": true,
       "unresolved": false,
-      "version_id": "memory-v1:b2e7448f243a2c0e3ef24708c8d292442ce2d99cf33bf293069959b1acc53b70",
+      "version_id": "memory-v1:ddf2a98a37e74367f37369c45bb462f4917fa6b4962303908487bc20e8e66a28",
       "width_bits": 8
     }
   ]
