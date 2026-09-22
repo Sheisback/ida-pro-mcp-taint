@@ -11,9 +11,12 @@ import pytest
 from _mcp_spec_support import McpServer
 
 from ida_pro_mcp import idalib_supervisor as supmod
+from ida_pro_mcp.flow_core.profile_registry import REGISTRY
 from ida_pro_mcp.flow_core.profile_routing import (
     FROZEN_PROFILE_EVIDENCE,
     REGISTRY_PROFILE_EVIDENCE,
+    OpenDatabaseEvidence,
+    resolve_open_database_profile,
 )
 from ida_pro_mcp.flow_core.serialization import ContractError
 
@@ -33,7 +36,7 @@ FILE_TYPES = {
 
 
 @pytest.fixture
-def flow(monkeypatch):
+def flow(monkeypatch, tmp_path):
     server = McpServer("flow-test")
     package = types.ModuleType("_flow_test_package")
     package.__path__ = [str(PACKAGE)]
@@ -72,6 +75,14 @@ def flow(monkeypatch):
             inf_is_32bit_exactly=lambda: False,
             inf_is_be=lambda: False,
             inf_get_filetype=lambda: 7,
+            inf_get_database_change_count=lambda: 0,
+        ),
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "ida_loader",
+        types.SimpleNamespace(
+            PATH_TYPE_IDB=1, get_path=lambda _kind: str(tmp_path / "current.i64")
         ),
     )
     monkeypatch.setitem(
@@ -83,6 +94,7 @@ def flow(monkeypatch):
             )
         ),
     )
+    monkeypatch.setenv("IDA_MCP_FLOW_STATE_ROOT", str(tmp_path / "state"))
     name = package.__name__ + ".api_flow"
     spec = importlib.util.spec_from_file_location(name, PACKAGE / "api_flow.py")
     module = importlib.util.module_from_spec(spec)
@@ -188,7 +200,9 @@ def test_rv32_fallback_is_never_promoted_to_runtime_support(flow, monkeypatch):
         result["features"][name]["status"] == "unavailable"
         for name in ("implicit_flow", "path_proof", "interprocedural")
     )
-    assert "rv32_normal_profile_unavailable" in result["features"]["snapshot"]["reason"]
+    assert (
+        "experimental_profile_unavailable" in result["features"]["snapshot"]["reason"]
+    )
 
 
 @pytest.mark.parametrize(
@@ -198,9 +212,7 @@ def test_rv32_fallback_is_never_promoted_to_runtime_support(flow, monkeypatch):
 )
 def test_capabilities_route_every_exact_frozen_identity(flow, monkeypatch, route):
     module, _ = flow
-    spec = __import__(
-        "ida_pro_mcp.flow_core.profile_registry", fromlist=["REGISTRY"]
-    ).REGISTRY.get(route.profile_id)
+    spec = REGISTRY.get(route.profile_id)
     monkeypatch.setattr(module.ida_ida, "inf_get_procname", lambda: route.processor)
     monkeypatch.setattr(module.ida_ida, "inf_is_64bit", lambda: spec.bitness == 64)
     monkeypatch.setattr(
@@ -219,13 +231,14 @@ def test_capabilities_route_every_exact_frozen_identity(flow, monkeypatch, route
     )
     result = module.flow_get_capabilities()
     assert result["supported_profiles"] == [route.profile_id]
+    assert result["routing"]["mode"] == "exact_fixture"
     assert result["features"]["snapshot"]["status"] == "available"
     assert route.abi_id in result["features"]["snapshot"]["reason"]
     assert route.format_id in result["features"]["snapshot"]["reason"]
 
 
 @pytest.mark.parametrize("route", REGISTRY_PROFILE_EVIDENCE)
-def test_capabilities_preserve_existing_measured_macho_routes(flow, monkeypatch, route):
+def test_capabilities_do_not_infer_profile_for_unpinned_macho(flow, monkeypatch, route):
     module, _ = flow
     processor, bits, endian, format_id, _ida_build, _hexrays_build = (
         route.observed_identity
@@ -245,8 +258,10 @@ def test_capabilities_preserve_existing_measured_macho_routes(flow, monkeypatch,
         lambda: bytes.fromhex("f" * 64),
     )
     result = module.flow_get_capabilities()
-    assert result["supported_profiles"] == [route.profile_id]
-    assert route.abi_id in result["features"]["snapshot"]["reason"]
+    assert result["supported_profiles"] == []
+    assert (
+        "experimental_profile_unavailable" in result["features"]["snapshot"]["reason"]
+    )
 
 
 def test_runtime_context_uses_exact_measured_registry_profile(
@@ -258,10 +273,13 @@ def test_runtime_context_uses_exact_measured_registry_profile(
     binary = tmp_path / "fixture"
     binary.write_bytes(b"static input; never executed")
     package = module.__package__
+    funcs = types.SimpleNamespace(
+        get_func=lambda ea: types.SimpleNamespace(start_ea=ea)
+    )
     monkeypatch.setitem(
         sys.modules,
         "ida_funcs",
-        types.SimpleNamespace(get_func=lambda ea: types.SimpleNamespace(start_ea=ea)),
+        funcs,
     )
     monkeypatch.setitem(
         sys.modules,
@@ -320,6 +338,356 @@ def test_runtime_context_uses_exact_measured_registry_profile(
         )
 
 
+def test_runtime_context_retains_explicit_analyst_selection_and_rejects_staleness(
+    flow, monkeypatch, tmp_path
+):
+    module, _ = flow
+    route = next(
+        row
+        for row in FROZEN_PROFILE_EVIDENCE
+        if row.profile_id == "X64-LE" and row.format_id == "FMT-ELF"
+    )
+    spec = __import__(
+        "ida_pro_mcp.flow_core.profile_registry", fromlist=["REGISTRY"]
+    ).REGISTRY.get(route.profile_id)
+    dbpath = str(tmp_path / "analyst.i64")
+    current_digest = "a" * 64
+    package = module.__package__
+    funcs = types.SimpleNamespace(
+        get_func=lambda ea: types.SimpleNamespace(start_ea=ea)
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "ida_funcs",
+        funcs,
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "ida_loader",
+        types.SimpleNamespace(PATH_TYPE_IDB=1, get_path=lambda _kind: dbpath),
+    )
+    nalt = types.SimpleNamespace(
+        retrieve_input_file_sha256=lambda: bytes.fromhex(current_digest)
+    )
+    monkeypatch.setitem(sys.modules, "ida_nalt", nalt)
+    monkeypatch.setitem(
+        sys.modules,
+        package + ".utils",
+        types.SimpleNamespace(parse_address=lambda _selector: 0x1000),
+    )
+    monkeypatch.setattr(module.ida_ida, "inf_get_procname", lambda: route.processor)
+    monkeypatch.setattr(module.ida_ida, "inf_is_64bit", lambda: spec.bitness == 64)
+    monkeypatch.setattr(
+        module.ida_ida, "inf_is_32bit_exactly", lambda: spec.bitness == 32
+    )
+    monkeypatch.setattr(module.ida_ida, "inf_is_be", lambda: spec.data_endian == "big")
+    monkeypatch.setattr(
+        module.ida_ida,
+        "inf_get_filetype",
+        lambda: getattr(module.ida_ida, FILE_TYPES[route.format_id]),
+    )
+    monkeypatch.setattr(
+        module.ida_ida, "inf_get_database_change_count", lambda: 0, raising=False
+    )
+
+    service = module._service()
+    funcs.get_func = lambda _ea: None
+    with pytest.raises(ContractError, match="function_entry_required"):
+        service._context("0x1000", route.profile_id, route.abi_id, "analyst_selected")
+    assert not service._state_root().exists()
+    funcs.get_func = lambda ea: types.SimpleNamespace(start_ea=ea)
+    info = service._context(
+        "0x1000", route.profile_id, route.abi_id, "analyst_selected"
+    )
+    assert info["routing"] == {
+        "routing_mode": "analyst_selected",
+        "profile_id": route.profile_id,
+        "abi_id": route.abi_id,
+        "binary_digest": "sha256-v1:" + current_digest,
+    }
+    assert info["profile"]["abi_provenance"]["observed_binary_digest"] == (
+        "sha256-v1:" + current_digest
+    )
+    engine = service.get_runtime(info)
+    service.runtime.persist_routing_selection(
+        engine.store,
+        info["dbpath"],
+        service._routing_selection(info, engine.store.scope),
+    )
+    replay = service._context()
+    assert replay["routing"] == info["routing"]
+    assert replay["profile"] == info["profile"]
+
+    stale_request = {
+        "routing": {**info["routing"], "binary_digest": "sha256-v1:" + "b" * 64}
+    }
+    with pytest.raises(ContractError, match="stale_profile_selection"):
+        service._context_for_request(stale_request)
+    nalt.retrieve_input_file_sha256 = lambda: bytes.fromhex("b" * 64)
+    with pytest.raises(ContractError, match="stale_profile_selection"):
+        service._context()
+
+
+def test_create_publishes_selection_only_after_runtime_admission(flow, monkeypatch):
+    module, _ = flow
+    service = module._service()
+    route = next(
+        row
+        for row in FROZEN_PROFILE_EVIDENCE
+        if row.profile_id == "X64-LE" and row.format_id == "FMT-ELF"
+    )
+    current = "sha256-v1:" + "e" * 64
+    resolved = resolve_open_database_profile(
+        OpenDatabaseEvidence(
+            current,
+            route.processor,
+            64,
+            "little",
+            route.format_id,
+            route.ida_build,
+            route.hexrays_build,
+        ),
+        route.profile_id,
+        route.abi_id,
+        "analyst_selected",
+    )
+    info = {
+        "dbpath": "/tmp/selected.i64",
+        "profile": resolved.profile,
+        "registry": resolved.registry,
+        "binary": current,
+        "count": 0,
+        "ida": route.ida_build,
+        "hexrays": route.hexrays_build,
+        "routing": {
+            "routing_mode": "analyst_selected",
+            "profile_id": route.profile_id,
+            "abi_id": route.abi_id,
+            "binary_digest": current,
+        },
+        "persist_selection": True,
+        "ea": 0x1000,
+    }
+    scope = service._runtime_scope(info, "database_" + "f" * 48)
+    events = []
+    store = types.SimpleNamespace(scope=scope)
+    engine = types.SimpleNamespace(
+        store=store,
+        submit=lambda *_args, **_kwargs: events.append("submit") or "job",
+    )
+    monkeypatch.setattr(service, "context", lambda *_args: info)
+    monkeypatch.setattr(service, "get_runtime", lambda actual: engine)
+    monkeypatch.setattr(
+        service.runtime,
+        "persist_routing_selection",
+        lambda *_args: events.append("persist"),
+    )
+
+    assert (
+        service.create(
+            "0x1000", route.profile_id, "request", route.abi_id, "analyst_selected"
+        )["job_id"]
+        == "job"
+    )
+    assert events == ["persist", "submit"]
+
+
+def test_durable_selection_restores_after_restart_and_fences_foreign_database(
+    flow, monkeypatch, tmp_path
+):
+    module, _ = flow
+    service = module._service()
+    route = next(
+        row
+        for row in FROZEN_PROFILE_EVIDENCE
+        if row.profile_id == "X64-LE" and row.format_id == "FMT-ELF"
+    )
+    spec = REGISTRY.get(route.profile_id)
+    current_digest = "a" * 64
+    dbpath = str(tmp_path / "selected.i64")
+    package = module.__package__
+    monkeypatch.setitem(
+        sys.modules,
+        "ida_funcs",
+        types.SimpleNamespace(get_func=lambda ea: types.SimpleNamespace(start_ea=ea)),
+    )
+    loader = types.SimpleNamespace(PATH_TYPE_IDB=1, get_path=lambda _kind: dbpath)
+    monkeypatch.setitem(sys.modules, "ida_loader", loader)
+    monkeypatch.setattr(module, "ida_loader", loader)
+    nalt = types.SimpleNamespace(
+        retrieve_input_file_sha256=lambda: bytes.fromhex(current_digest)
+    )
+    monkeypatch.setitem(sys.modules, "ida_nalt", nalt)
+    monkeypatch.setattr(module, "ida_nalt", nalt)
+    monkeypatch.setitem(
+        sys.modules,
+        package + ".utils",
+        types.SimpleNamespace(parse_address=lambda _selector: 0x1000),
+    )
+    monkeypatch.setattr(module.ida_ida, "inf_get_procname", lambda: route.processor)
+    monkeypatch.setattr(module.ida_ida, "inf_is_64bit", lambda: spec.bitness == 64)
+    monkeypatch.setattr(
+        module.ida_ida, "inf_is_32bit_exactly", lambda: spec.bitness == 32
+    )
+    monkeypatch.setattr(module.ida_ida, "inf_is_be", lambda: spec.data_endian == "big")
+    monkeypatch.setattr(
+        module.ida_ida,
+        "inf_get_filetype",
+        lambda: getattr(module.ida_ida, FILE_TYPES[route.format_id]),
+    )
+    change_count = 7
+    monkeypatch.setattr(
+        module.ida_ida,
+        "inf_get_database_change_count",
+        lambda: change_count,
+        raising=False,
+    )
+
+    info = service._context(
+        "0x1000", route.profile_id, route.abi_id, "analyst_selected"
+    )
+    engine = service.get_runtime(info)
+    service.runtime.persist_routing_selection(
+        engine.store,
+        info["dbpath"],
+        service._routing_selection(info, engine.store.scope),
+    )
+    job_id = engine.store.create_job(
+        "snapshot_ssa_v1", {"routing": info["routing"]}, "restart-job"
+    )
+    artifact_id = engine.store.put_artifact(
+        "analysis", {"kind": "restart-artifact", "target_executed": False}
+    )
+    namespace = engine.store.scope.namespace
+    scope_digest = engine.store.scope.scope_digest
+    selection_path = engine.store.root / "routing-selection.json"
+
+    engine.shutdown(0)
+    engine.store.close()
+    del service.runtime._runtimes[namespace]
+
+    restored = service._context()
+    assert restored["routing"] == info["routing"]
+    assert restored["restored_selection"]["scope_digest"] == scope_digest
+    reopened = service.get_runtime(restored)
+    assert service.job(job_id)["state"] == "interrupted"
+    assert reopened.store.artifact(artifact_id) == {
+        "kind": "restart-artifact",
+        "target_executed": False,
+    }
+
+    change_count = 8
+    with pytest.raises(ContractError, match="stale_profile_selection"):
+        service._context()
+    reattached = service._context(
+        "0x1000", route.profile_id, route.abi_id, "analyst_selected"
+    )
+    replacement = service.get_runtime(reattached)
+    service.runtime.persist_routing_selection(
+        replacement.store,
+        reattached["dbpath"],
+        service._routing_selection(reattached, replacement.store.scope),
+    )
+    assert service._context()["routing"] == info["routing"]
+    with pytest.raises(ContractError, match="stale_context"):
+        replacement.store.artifact(artifact_id)
+
+    loader.get_path = lambda _kind: str(tmp_path / "foreign.i64")
+    foreign_namespace, _owner = service.identity(
+        service._state_root(), str(tmp_path / "foreign.i64")
+    )
+    foreign_root = service._state_root() / foreign_namespace
+    foreign_root.mkdir(mode=0o700)
+    foreign_selection = foreign_root / "routing-selection.json"
+    foreign_selection.write_bytes(selection_path.read_bytes())
+    foreign_selection.chmod(0o600)
+    with pytest.raises(ContractError, match="invalid_routing_selection"):
+        service._context()
+
+
+def test_capabilities_follow_durable_analyst_selection_and_invalidation(
+    flow, monkeypatch, tmp_path
+):
+    module, _ = flow
+    service = module._service()
+    route = next(
+        row
+        for row in FROZEN_PROFILE_EVIDENCE
+        if row.profile_id == "X64-LE" and row.format_id == "FMT-ELF"
+    )
+    spec = REGISTRY.get(route.profile_id)
+    current_digest = "c" * 64
+    dbpath = str(tmp_path / "capabilities.i64")
+    loader = types.SimpleNamespace(PATH_TYPE_IDB=1, get_path=lambda _kind: dbpath)
+    monkeypatch.setitem(sys.modules, "ida_loader", loader)
+    monkeypatch.setattr(module, "ida_loader", loader)
+    nalt = types.SimpleNamespace(
+        retrieve_input_file_sha256=lambda: bytes.fromhex(current_digest)
+    )
+    monkeypatch.setitem(sys.modules, "ida_nalt", nalt)
+    monkeypatch.setattr(module, "ida_nalt", nalt)
+    monkeypatch.setattr(module.ida_ida, "inf_get_procname", lambda: route.processor)
+    monkeypatch.setattr(module.ida_ida, "inf_is_64bit", lambda: spec.bitness == 64)
+    monkeypatch.setattr(
+        module.ida_ida, "inf_is_32bit_exactly", lambda: spec.bitness == 32
+    )
+    monkeypatch.setattr(module.ida_ida, "inf_is_be", lambda: spec.data_endian == "big")
+    monkeypatch.setattr(
+        module.ida_ida,
+        "inf_get_filetype",
+        lambda: getattr(module.ida_ida, FILE_TYPES[route.format_id]),
+    )
+    change_count = 3
+    monkeypatch.setattr(
+        module.ida_ida,
+        "inf_get_database_change_count",
+        lambda: change_count,
+        raising=False,
+    )
+
+    before = module.flow_get_capabilities()
+    assert before["routing"]["mode"] is None
+    assert before["supported_profiles"] == []
+    assert not service._state_root().exists()
+
+    observed = service.observe_open_database(
+        module.ida_ida,
+        nalt,
+        ida_build=module.ida_kernwin.get_kernel_version(),
+        hexrays_build=module.ida_hexrays.get_hexrays_version(),
+    )
+    info = service.resolve_observed_context(
+        dbpath,
+        observed,
+        change_count,
+        route.profile_id,
+        route.abi_id,
+        "analyst_selected",
+    )
+    engine = service.get_runtime(info)
+    service.runtime.persist_routing_selection(
+        engine.store,
+        dbpath,
+        service._routing_selection(info, engine.store.scope),
+    )
+
+    selected = module.flow_get_capabilities()
+    assert selected["routing"] == {
+        "mode": "analyst_selected",
+        "profile_id": route.profile_id,
+        "abi_id": route.abi_id,
+        "binary_digest": "sha256-v1:" + current_digest,
+    }
+    assert selected["supported_profiles"] == [route.profile_id]
+    assert "analyst-selected" in selected["features"]["snapshot"]["reason"]
+
+    change_count = 4
+    invalidated = module.flow_get_capabilities()
+    assert invalidated["routing"]["mode"] is None
+    assert invalidated["supported_profiles"] == []
+    assert "stale_profile_selection" in invalidated["features"]["snapshot"]["reason"]
+
+
 def test_runtime_extraction_rechecks_profile_and_passes_ephemeral_registry(
     flow, monkeypatch
 ):
@@ -363,6 +731,118 @@ def test_runtime_extraction_rechecks_profile_and_passes_ephemeral_registry(
         service._extract(
             context, {**request, "profile": {**profile, "profile_id": "A64-LE"}}
         )
+
+
+def test_runtime_extraction_rehydrates_explicit_selection(flow, monkeypatch):
+    module, _ = flow
+    service = module._service()
+    route = next(
+        row
+        for row in FROZEN_PROFILE_EVIDENCE
+        if row.profile_id == "X64-LE" and row.format_id == "FMT-ELF"
+    )
+    current = "sha256-v1:" + "c" * 64
+    resolved = resolve_open_database_profile(
+        OpenDatabaseEvidence(
+            current,
+            route.processor,
+            64,
+            "little",
+            route.format_id,
+            route.ida_build,
+            route.hexrays_build,
+        ),
+        route.profile_id,
+        route.abi_id,
+        "analyst_selected",
+    )
+    info = {
+        "dbpath": "/tmp/selected.i64",
+        "profile": resolved.profile,
+        "registry": resolved.registry,
+        "binary": current,
+        "count": 0,
+        "ida": route.ida_build,
+        "hexrays": route.hexrays_build,
+        "routing": {
+            "routing_mode": "analyst_selected",
+            "profile_id": route.profile_id,
+            "abi_id": route.abi_id,
+            "binary_digest": current,
+        },
+    }
+    calls = []
+    monkeypatch.setattr(
+        service,
+        "_context",
+        lambda **kwargs: calls.append(kwargs) or info,
+    )
+    monkeypatch.setattr(
+        service.extractor, "extract_snapshot", lambda *_args, **_kwargs: object()
+    )
+    request = {
+        "ea": 0x1000,
+        "profile": resolved.profile,
+        "namespace": "test",
+        "function_key": "function-entry:4096",
+        "fingerprint": service._fingerprint(info),
+        "summary_digest": service.reviewed_catalog(info).catalog_digest,
+        "routing": info["routing"],
+    }
+    context = types.SimpleNamespace(
+        deadline=None, cancel=types.SimpleNamespace(is_set=lambda: False)
+    )
+    service._extract(context, request)
+    assert calls == [
+        {
+            "requested_profile": route.profile_id,
+            "requested_abi": route.abi_id,
+            "routing_mode": "analyst_selected",
+            "retain_selection": False,
+        },
+        {
+            "requested_profile": route.profile_id,
+            "requested_abi": route.abi_id,
+            "routing_mode": "analyst_selected",
+            "retain_selection": False,
+        },
+    ]
+
+
+def test_background_routing_rehydration_uses_synchronized_context(flow, monkeypatch):
+    module, _ = flow
+    service = module._service()
+    routing = {
+        "routing_mode": "analyst_selected",
+        "profile_id": "X64-LE",
+        "abi_id": "sysv-amd64",
+        "binary_digest": "sha256-v1:" + "d" * 64,
+    }
+    calls = []
+    monkeypatch.setattr(
+        service,
+        "_context",
+        lambda **_kwargs: (_ for _ in ()).throw(
+            AssertionError("background work called raw IDA context")
+        ),
+    )
+    monkeypatch.setattr(
+        service,
+        "context",
+        lambda **kwargs: calls.append(kwargs) or {"binary": routing["binary_digest"]},
+    )
+    assert (
+        service._context_for_request({"routing": routing}, synchronized=True)["binary"]
+        == routing["binary_digest"]
+    )
+    assert calls == [
+        {
+            "requested_profile": "X64-LE",
+            "requested_abi": "sysv-amd64",
+            "routing_mode": "analyst_selected",
+            "retain_selection": False,
+        }
+    ]
 
 
 def test_supervisor_schema_and_forwarding(flow, monkeypatch):
@@ -594,6 +1074,38 @@ def test_public_analysis_tools_forward_exact_owned_artifact_contracts(
         ("page", ("p-result", "path_proof", None, 50)),
         ("page", ("c-result", "interprocedural", None, 50)),
     ]
+
+
+def test_public_snapshot_forwards_explicit_profile_abi_mode(flow, monkeypatch):
+    module, server = flow
+    calls = []
+    monkeypatch.setattr(
+        module,
+        "_service",
+        lambda: types.SimpleNamespace(
+            create=lambda *args: (
+                calls.append(args)
+                or {
+                    "schema_version": "flow-job/1",
+                    "job_id": "selected",
+                    "experimental": True,
+                }
+            )
+        ),
+    )
+    result = module.flow_create_snapshot(
+        "0x1000", "X64-LE", "request", "sysv-amd64", "analyst_selected"
+    )
+    assert result["job_id"] == "selected"
+    assert calls == [("0x1000", "X64-LE", "request", "sysv-amd64", "analyst_selected")]
+    schema = {
+        tool["name"]: tool["inputSchema"] for tool in server._mcp_tools_list()["tools"]
+    }["flow_create_snapshot"]
+    assert schema["properties"]["routing_mode"] == {
+        "default": "exact_fixture",
+        "type": "string",
+    }
+    assert "abi" not in schema["required"]
 
 
 def test_analysis_adapter_preserves_partiality_proof_bounds_and_artifact_binding(flow):

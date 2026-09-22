@@ -12,76 +12,18 @@ import sys
 import tempfile
 import zipfile
 from pathlib import Path
+from typing import cast
 
 ROOT = Path(__file__).resolve().parents[1]
 SHA1 = re.compile(r"[0-9a-f]{40}")
 BUILD_ID = re.compile(r"flow-build-sha256-v1:[0-9a-f]{64}")
 PACKAGE_SCHEMA = "flow-release-package/1"
 LICENSED_SCHEMA = "flow-licensed-ci/2"
-NORMAL_LICENSED_SCHEMA = "flow-licensed-normal/1"
-GUI_SCHEMA = "flow-gui-process/1"
+NORMAL_LICENSED_SCHEMA = "flow-licensed-normal/2"
+GUI_SCHEMA = "flow-gui-process/2"
 AGGREGATE_SCHEMA = "flow-release-aggregate/1"
-MANDATORY_PROFILES = (
-    "X86-LE",
-    "X64-LE",
-    "ARM32-LE",
-    "ARM32-BE",
-    "THUMB-LE",
-    "THUMB-BE",
-    "A64-LE",
-    "MIPS32-LE",
-    "MIPS32-BE",
-    "MIPS64-LE",
-    "MIPS64-BE",
-    "PPC32-LE",
-    "PPC32-BE",
-    "PPC64-LE",
-    "PPC64-BE",
-    "RV32-LE",
-    "RV64-LE",
-)
-MANDATORY_ROW_IDENTITIES = (
-    ("X86-LE", "sysv-i386", "FMT-ELF"),
-    ("X64-LE", "sysv-amd64", "FMT-ELF"),
-    ("ARM32-LE", "aapcs32", "FMT-ELF"),
-    ("ARM32-BE", "aapcs32", "FMT-ELF"),
-    ("THUMB-LE", "aapcs32", "FMT-ELF"),
-    ("THUMB-BE", "aapcs32", "FMT-ELF"),
-    ("A64-LE", "aapcs64", "FMT-ELF"),
-    ("MIPS32-LE", "mips-o32", "FMT-ELF"),
-    ("MIPS32-BE", "mips-o32", "FMT-ELF"),
-    ("MIPS64-LE", "mips-n64", "FMT-ELF"),
-    ("MIPS64-BE", "mips-n64", "FMT-ELF"),
-    ("PPC32-LE", "sysv-ppc32", "FMT-ELF"),
-    ("PPC32-BE", "sysv-ppc32", "FMT-ELF"),
-    ("PPC64-LE", "elfv2-ppc64", "FMT-ELF"),
-    ("PPC64-BE", "elfv2-ppc64", "FMT-ELF"),
-    ("RV32-LE", "riscv-ilp32", "FMT-ELF"),
-    ("RV64-LE", "riscv-lp64", "FMT-ELF"),
-    ("X64-LE", "windows-x64", "FMT-PE"),
-    ("ARM32-LE", "aapcs32", "FMT-RAW"),
-    ("X64-LE", "darwin-x86_64-sysv-derived", "FMT-MACHO"),
-    ("A64-LE", "darwin-aarch64", "FMT-MACHO"),
-)
-PROFILE_FACTS = {
-    "X86-LE": ("metapc", 32, "little"),
-    "X64-LE": ("metapc", 64, "little"),
-    "ARM32-LE": ("ARM", 32, "little"),
-    "ARM32-BE": ("ARMB", 32, "big"),
-    "THUMB-LE": ("ARM", 32, "little"),
-    "THUMB-BE": ("ARMB", 32, "big"),
-    "A64-LE": ("ARM", 64, "little"),
-    "MIPS32-LE": ("mipsl", 32, "little"),
-    "MIPS32-BE": ("mipsb", 32, "big"),
-    "MIPS64-LE": ("mipsl", 64, "little"),
-    "MIPS64-BE": ("mipsb", 64, "big"),
-    "PPC32-LE": ("PPCL", 32, "little"),
-    "PPC32-BE": ("PPC", 32, "big"),
-    "PPC64-LE": ("PPCL", 64, "little"),
-    "PPC64-BE": ("PPC", 64, "big"),
-    "RV32-LE": ("riscv", 32, "little"),
-    "RV64-LE": ("riscv", 64, "little"),
-}
+SEMANTIC_MATRIX = Path("tests/flow_fixtures/manifests/profile_semantics/matrix.json")
+PROFILE_BUILD_MANIFEST = Path("tests/flow_fixtures/manifests/profiles/build.json")
 
 
 def sha256(path: Path) -> str:
@@ -185,6 +127,10 @@ def _gui_build_id() -> str:
 
 
 def _mandatory_normal_rows(matrix: dict[str, object]) -> list[dict[str, object]]:
+    from ida_pro_mcp.flow_core.semantic_equivalence import (
+        normal_semantic_equivalence_digest,
+    )
+
     rows: list[dict[str, object]] = []
     profiles = matrix.get("profiles")
     if type(profiles) is not list:
@@ -200,18 +146,6 @@ def _mandatory_normal_rows(matrix: dict[str, object]) -> list[dict[str, object]]
         environment = receipt.get("environment")
         if type(environment) is not dict:
             raise ValueError("Normal semantic environment is missing")
-        invocations = receipt.get("invocations")
-        executable_hashes = (
-            {
-                invocation.get("ida_executable_sha256")
-                for invocation in invocations
-                if type(invocation) is dict
-            }
-            if type(invocations) is list
-            else set()
-        )
-        if len(executable_hashes) != 1:
-            raise ValueError("Normal semantic IDA executable identity is missing")
         rows.append(
             {
                 "profile_id": receipt.get("profile_id"),
@@ -221,7 +155,6 @@ def _mandatory_normal_rows(matrix: dict[str, object]) -> list[dict[str, object]]
                 "maturity": receipt.get("maturity"),
                 "ida_build": environment.get("ida_build"),
                 "hexrays_build": environment.get("hexrays_build"),
-                "ida_executable_sha256": executable_hashes.pop(),
                 "processor": environment.get("processor"),
                 "bits": environment.get("bitness"),
                 "endian": environment.get("data_endian"),
@@ -231,9 +164,118 @@ def _mandatory_normal_rows(matrix: dict[str, object]) -> list[dict[str, object]]
                 else "unknown",
                 "semantic_receipt_file": item.get("receipt_file"),
                 "semantic_receipt_digest": item.get("receipt_digest"),
+                "semantic_equivalence_digest": normal_semantic_equivalence_digest(
+                    receipt
+                ),
             }
         )
     return rows
+
+
+def _readiness_contract(
+    matrix: dict[str, object], build_manifest: dict[str, object]
+) -> dict[str, object]:
+    """Derive strict normal requirements and blockers from canonical data.
+
+    Successful normal/format semantic rows are eligible requirements. Fallback
+    rows remain required normal identities but are recorded separately as
+    unavailable, so the package lane can complete while the strict aggregate
+    continues to fail closed with an exact blocker.
+    """
+
+    available = _mandatory_normal_rows(matrix)
+    build_rows = build_manifest.get("profiles")
+    semantic_rows = matrix.get("profiles")
+    if type(build_rows) is not list or type(semantic_rows) is not list:
+        raise ValueError("Canonical readiness manifests are malformed")
+    builds = {row.get("profile_id"): row for row in build_rows if type(row) is dict}
+    unavailable: list[dict[str, object]] = []
+    for item in semantic_rows:
+        if type(item) is not dict or item.get("evidence_path") != "fallback":
+            continue
+        profile_id = item.get("profile_id")
+        build = builds.get(profile_id)
+        if type(profile_id) is not str or type(build) is not dict:
+            raise ValueError("Fallback readiness row lacks canonical build identity")
+        receipt_file = item.get("receipt_file")
+        if type(receipt_file) is not str:
+            raise ValueError("Fallback readiness row lacks a receipt")
+        receipt = read_json(ROOT / receipt_file)
+        normal_backend = receipt.get("normal_backend")
+        data_endian = build.get("data_endian")
+        if (
+            receipt.get("profile_id") != profile_id
+            or type(normal_backend) is not dict
+            or normal_backend.get("probe_status") != "failed"
+            or normal_backend.get("support_status") != "unverified"
+            or type(data_endian) is not str
+        ):
+            raise ValueError("Fallback row does not prove normal unavailability")
+        unavailable.append(
+            {
+                "profile_id": profile_id,
+                "fixture_sha256": build.get("binary_sha256"),
+                "abi_id": build.get("abi_id"),
+                "format_id": build.get("format"),
+                "maturity": "MMAT_CALLS",
+                "processor": build.get("processor"),
+                "bits": build.get("bitness"),
+                "endian": {"LE": "little", "BE": "big"}.get(data_endian),
+                "evidence_path": "fallback",
+                "normal_status": "unavailable",
+                "blocker": "normal_backend_unavailable",
+                "fallback_receipt_file": receipt_file,
+                "fallback_receipt_digest": item.get("receipt_digest"),
+            }
+        )
+    profile_ids = tuple(
+        row.get("profile_id") for row in build_rows if type(row) is dict
+    )
+    if len(profile_ids) != len(set(profile_ids)) or not profile_ids:
+        raise ValueError("Canonical build profile identities are invalid")
+    identities = [
+        (row["profile_id"], row["abi_id"], row["format_id"])
+        for row in [*available, *unavailable]
+    ]
+    if len(identities) != len(set(identities)):
+        raise ValueError("Canonical readiness row identities are duplicated")
+    return {
+        "required_profiles": profile_ids,
+        "required_row_identities": tuple(identities),
+        "mandatory_normal_rows": available,
+        "unavailable_normal_rows": unavailable,
+    }
+
+
+def _canonical_readiness_contract() -> dict[str, object]:
+    return _readiness_contract(
+        read_json(ROOT / SEMANTIC_MATRIX),
+        read_json(ROOT / PROFILE_BUILD_MANIFEST),
+    )
+
+
+# Compatibility exports for focused tests and callers. They are derived from
+# the canonical manifests at import, not maintained as parallel hardcoded lists.
+_CANONICAL_READINESS = _canonical_readiness_contract()
+MANDATORY_PROFILES = tuple(
+    cast(tuple[str, ...], _CANONICAL_READINESS["required_profiles"])
+)
+MANDATORY_ROW_IDENTITIES = tuple(
+    cast(
+        tuple[tuple[object, object, object], ...],
+        _CANONICAL_READINESS["required_row_identities"],
+    )
+)
+_CANONICAL_AVAILABLE = cast(
+    list[dict[str, object]], _CANONICAL_READINESS["mandatory_normal_rows"]
+)
+_CANONICAL_UNAVAILABLE = cast(
+    list[dict[str, object]], _CANONICAL_READINESS["unavailable_normal_rows"]
+)
+PROFILE_FACTS = {
+    row["profile_id"]: (row["processor"], row["bits"], row["endian"])
+    for row in [*_CANONICAL_AVAILABLE, *_CANONICAL_UNAVAILABLE]
+}
 
 
 def package_manifest(dist: Path, checkout_sha: str) -> dict[str, object]:
@@ -248,9 +290,15 @@ def package_manifest(dist: Path, checkout_sha: str) -> dict[str, object]:
         validate_complete_matrix_receipt,
     )
 
-    matrix_path = ROOT / "tests/flow_fixtures/manifests/profile_semantics/matrix.json"
+    matrix_path = ROOT / SEMANTIC_MATRIX
     matrix = read_json(matrix_path)
+    build_manifest = read_json(ROOT / PROFILE_BUILD_MANIFEST)
     validate_complete_matrix_receipt(matrix)
+    readiness = _readiness_contract(matrix, build_manifest)
+    required_row_identities = cast(
+        tuple[tuple[object, object, object], ...],
+        readiness["required_row_identities"],
+    )
     source_id = _build_id(SOURCE_BUILD_ID)
     wheel_id = _wheel_build_id(wheels[0])
     gui_id = _gui_build_id()
@@ -272,7 +320,9 @@ def package_manifest(dist: Path, checkout_sha: str) -> dict[str, object]:
             "normal_success_count": matrix["normal_success_count"],
             "format_success_count": matrix["format_success_count"],
             "rv32_fallback_count": matrix["rv32_fallback_count"],
-            "mandatory_normal_rows": _mandatory_normal_rows(matrix),
+            "required_row_count": len(required_row_identities),
+            "mandatory_normal_rows": readiness["mandatory_normal_rows"],
+            "unavailable_normal_rows": readiness["unavailable_normal_rows"],
             "fallback_promotes_readiness": False,
         },
         "target_executed": False,
@@ -309,19 +359,14 @@ def _validate_package(value: dict[str, object], checkout_sha: str) -> str:
     if len(ids) != 1:
         raise ValueError("Package build IDs differ")
     matrix = value.get("support_matrix")
-    if (
-        type(matrix) is not dict
-        or matrix.get("profile_count") != len(MANDATORY_PROFILES)
-        or matrix.get("semantic_row_count") != 21
-        or matrix.get("normal_success_count") != len(MANDATORY_PROFILES)
-        or matrix.get("format_success_count") != 4
-    ):
+    if type(matrix) is not dict:
         raise ValueError("Package support matrix is incomplete")
     if matrix.get("fallback_promotes_readiness") is not False:
         raise ValueError("Package support matrix promotes fallback evidence")
     rows = matrix.get("mandatory_normal_rows")
-    if type(rows) is not list or len(rows) != 21:
-        raise ValueError("Package support matrix lacks every mandatory normal row")
+    unavailable = matrix.get("unavailable_normal_rows")
+    if type(rows) is not list or type(unavailable) is not list:
+        raise ValueError("Package support matrix readiness rows are missing")
     for row in rows:
         if type(row) is not dict or set(row) != {
             "profile_id",
@@ -331,7 +376,6 @@ def _validate_package(value: dict[str, object], checkout_sha: str) -> str:
             "maturity",
             "ida_build",
             "hexrays_build",
-            "ida_executable_sha256",
             "processor",
             "bits",
             "endian",
@@ -339,6 +383,7 @@ def _validate_package(value: dict[str, object], checkout_sha: str) -> str:
             "normal_status",
             "semantic_receipt_file",
             "semantic_receipt_digest",
+            "semantic_equivalence_digest",
         }:
             raise ValueError("Package support matrix row is malformed")
         profile_id = row.get("profile_id")
@@ -358,8 +403,6 @@ def _validate_package(value: dict[str, object], checkout_sha: str) -> str:
             or type(row.get("bits")) is not int
             or row["bits"] not in {16, 32, 64}
             or row.get("endian") not in {"little", "big"}
-            or type(row.get("ida_executable_sha256")) is not str
-            or re.fullmatch(r"[0-9a-f]{64}", row["ida_executable_sha256"]) is None
             or type(row.get("fixture_sha256")) is not str
             or re.fullmatch(r"[0-9a-f]{64}", row["fixture_sha256"]) is None
             or type(row.get("semantic_receipt_file")) is not str
@@ -367,29 +410,96 @@ def _validate_package(value: dict[str, object], checkout_sha: str) -> str:
             or type(row.get("semantic_receipt_digest")) is not str
             or re.fullmatch(r"sha256-v1:[0-9a-f]{64}", row["semantic_receipt_digest"])
             is None
+            or type(row.get("semantic_equivalence_digest")) is not str
+            or re.fullmatch(
+                r"sha256-v1:[0-9a-f]{64}", row["semantic_equivalence_digest"]
+            )
+            is None
         ):
             raise ValueError("Package support matrix row is not a passing normal row")
-    normal_profiles = tuple(
-        row["profile_id"] for row in rows if row["evidence_path"] == "normal"
-    )
-    identities = {(row["profile_id"], row["abi_id"], row["format_id"]) for row in rows}
-    facts_match = all(
-        (row["processor"], row["bits"], row["endian"])
-        == PROFILE_FACTS.get(row["profile_id"])
-        for row in rows
-    )
+    for row in unavailable:
+        if type(row) is not dict or set(row) != {
+            "profile_id",
+            "fixture_sha256",
+            "abi_id",
+            "format_id",
+            "maturity",
+            "processor",
+            "bits",
+            "endian",
+            "evidence_path",
+            "normal_status",
+            "blocker",
+            "fallback_receipt_file",
+            "fallback_receipt_digest",
+        }:
+            raise ValueError("Package unavailable normal row is malformed")
+        if (
+            type(row.get("profile_id")) is not str
+            or not row["profile_id"]
+            or type(row.get("abi_id")) is not str
+            or not row["abi_id"]
+            or row.get("format_id") not in {"FMT-ELF", "FMT-PE", "FMT-MACHO", "FMT-RAW"}
+            or row.get("maturity") != "MMAT_CALLS"
+            or type(row.get("processor")) is not str
+            or not row["processor"]
+            or type(row.get("bits")) is not int
+            or row["bits"] not in {16, 32, 64}
+            or row.get("endian") not in {"little", "big"}
+            or row.get("evidence_path") != "fallback"
+            or row.get("normal_status") != "unavailable"
+            or row.get("blocker") != "normal_backend_unavailable"
+            or not _hex_sha256(row.get("fixture_sha256"))
+            or type(row.get("fallback_receipt_file")) is not str
+            or not row["fallback_receipt_file"]
+            or type(row.get("fallback_receipt_digest")) is not str
+            or re.fullmatch(r"sha256-v1:[0-9a-f]{64}", row["fallback_receipt_digest"])
+            is None
+        ):
+            raise ValueError("Package unavailable normal row is invalid")
+    all_rows = [*rows, *unavailable]
+    identities = [
+        (row["profile_id"], row["abi_id"], row["format_id"]) for row in all_rows
+    ]
+    profiles = {row["profile_id"] for row in all_rows}
+    facts: dict[object, tuple[object, object, object]] = {}
+    facts_match = True
+    for row in all_rows:
+        identity = (row["processor"], row["bits"], row["endian"])
+        previous = facts.setdefault(row["profile_id"], identity)
+        facts_match = facts_match and previous == identity
+    counts = {
+        "profile_count": len(profiles),
+        "semantic_row_count": len(all_rows),
+        "normal_success_count": sum(row["evidence_path"] == "normal" for row in rows),
+        "format_success_count": sum(row["evidence_path"] == "format" for row in rows),
+        "rv32_fallback_count": len(unavailable),
+        "required_row_count": len(all_rows),
+    }
+    canonical_matrix_sha256 = sha256(ROOT / SEMANTIC_MATRIX)
     if (
-        normal_profiles != MANDATORY_PROFILES
-        or identities != set(MANDATORY_ROW_IDENTITIES)
+        matrix.get("sha256") != canonical_matrix_sha256
+        or rows != _CANONICAL_AVAILABLE
+        or unavailable != _CANONICAL_UNAVAILABLE
+    ):
+        raise ValueError(
+            "Package support matrix diverges from canonical readiness evidence"
+        )
+    if (
+        any(matrix.get(name) != count for name, count in counts.items())
+        or len(identities) != len(set(identities))
+        or set(identities) != set(MANDATORY_ROW_IDENTITIES)
+        or profiles != set(MANDATORY_PROFILES)
+        or any(
+            facts.get(profile_id) != PROFILE_FACTS[profile_id]
+            for profile_id in MANDATORY_PROFILES
+        )
         or not facts_match
-        or sum(row["evidence_path"] == "format" for row in rows) != 4
     ):
-        raise ValueError("Package support matrix mandatory row coverage is incomplete")
-    if (
-        not isinstance(matrix.get("sha256"), str)
-        or re.fullmatch(r"[0-9a-f]{64}", matrix["sha256"]) is None
-    ):
-        raise ValueError("Package support matrix digest is invalid")
+        raise ValueError(
+            "Package support matrix lacks every mandatory normal row; "
+            "mandatory row coverage is incomplete"
+        )
     return ids.pop()
 
 
@@ -419,6 +529,7 @@ def _validate_normal_receipt(
     checkout_sha: str,
     build_id: str,
     path: Path,
+    expected_executable_sha256: str | None = None,
 ) -> str:
     from ida_pro_mcp.flow_core.serialization import digest
 
@@ -446,6 +557,10 @@ def _validate_normal_receipt(
         "debugger_attached",
         "semantic_receipt_file",
         "semantic_receipt_digest",
+        "semantic_equivalence_digest",
+        "extraction_digest",
+        "public_profile_digest",
+        "current_run",
     }
     if (
         set(receipt) != required
@@ -470,15 +585,85 @@ def _validate_normal_receipt(
         "maturity": expected["maturity"],
         "ida_build": expected["ida_build"],
         "hexrays_build": expected["hexrays_build"],
-        "ida_executable_sha256": expected["ida_executable_sha256"],
         "normal_status": "pass",
         "semantic_receipt_file": expected["semantic_receipt_file"],
         "semantic_receipt_digest": expected["semantic_receipt_digest"],
+        "semantic_equivalence_digest": expected["semantic_equivalence_digest"],
     }
     if any(receipt.get(field) != value for field, value in expected_fields.items()):
         raise ValueError(f"Licensed mandatory normal row mismatch: {path}")
     if receipt.get("ida_input_sha256") != receipt.get("fixture_sha256"):
         raise ValueError(f"Licensed IDA input digest mismatch: {path}")
+    if (
+        not _hex_sha256(receipt.get("ida_executable_sha256"))
+        or expected_executable_sha256 is not None
+        and receipt.get("ida_executable_sha256") != expected_executable_sha256
+    ):
+        raise ValueError(f"Licensed IDA executable digest mismatch: {path}")
+    current_run = receipt.get("current_run")
+    extraction_digest = receipt.get("extraction_digest")
+    public_profile_digest = receipt.get("public_profile_digest")
+    if (
+        type(current_run) is not dict
+        or set(current_run)
+        != {
+            "kind",
+            "matrix_receipt_digest",
+            "semantic_receipt_digest",
+            "semantic_equivalence_digest",
+            "process_receipt_digests",
+            "build_evidence_digest",
+            "implementation",
+        }
+        or current_run.get("kind") != "current_checkout_actual_ida"
+        or not isinstance(current_run.get("matrix_receipt_digest"), str)
+        or re.fullmatch(r"sha256-v1:[0-9a-f]{64}", current_run["matrix_receipt_digest"])
+        is None
+        or type(current_run.get("semantic_receipt_digest")) is not str
+        or re.fullmatch(
+            r"sha256-v1:[0-9a-f]{64}", current_run["semantic_receipt_digest"]
+        )
+        is None
+        or current_run.get("semantic_equivalence_digest")
+        != receipt.get("semantic_equivalence_digest")
+        or type(current_run.get("process_receipt_digests")) is not list
+        or len(current_run["process_receipt_digests"]) != 2
+        or any(
+            type(item) is not str
+            or re.fullmatch(r"sha256-v1:[0-9a-f]{64}", item) is None
+            for item in current_run["process_receipt_digests"]
+        )
+        or len(set(current_run["process_receipt_digests"])) != 1
+        or type(current_run.get("build_evidence_digest")) is not str
+        or re.fullmatch(r"sha256-v1:[0-9a-f]{64}", current_run["build_evidence_digest"])
+        is None
+        or type(current_run.get("implementation")) is not dict
+        or not current_run["implementation"]
+        or type(extraction_digest) is not str
+        or re.fullmatch(r"sha256-v1:[0-9a-f]{64}", extraction_digest) is None
+        or type(public_profile_digest) is not str
+        or re.fullmatch(r"sha256-v1:[0-9a-f]{64}", public_profile_digest) is None
+    ):
+        raise ValueError(f"Licensed receipt lacks current-run extraction proof: {path}")
+    for relative, expected_digest in current_run["implementation"].items():
+        if (
+            type(relative) is not str
+            or type(expected_digest) is not str
+            or re.fullmatch(r"[0-9a-f]{64}", expected_digest) is None
+        ):
+            raise ValueError(f"Licensed implementation identity is invalid: {path}")
+        implementation_path = (ROOT / relative).resolve()
+        try:
+            implementation_path.relative_to(ROOT)
+        except ValueError as exc:
+            raise ValueError(
+                f"Licensed implementation identity escapes checkout: {path}"
+            ) from exc
+        if (
+            not implementation_path.is_file()
+            or sha256(implementation_path) != expected_digest
+        ):
+            raise ValueError(f"Licensed implementation identity is stale: {path}")
     supported = receipt.get("supported_profiles")
     if supported != [expected["profile_id"]]:
         raise ValueError(f"Licensed supported profiles are empty or inexact: {path}")
@@ -611,6 +796,9 @@ def _validate_gui_receipt(
         "ida_build",
         "hexrays_build",
         "ida_executable_sha256",
+        "module_origin",
+        "loader_sha256",
+        "bundle_manifest_sha256",
         "capabilities",
         "capabilities_digest",
         "process_kind",
@@ -633,6 +821,8 @@ def _validate_gui_receipt(
         or not _version_id(receipt.get("ida_build"))
         or not _version_id(receipt.get("hexrays_build"))
         or not _hex_sha256(receipt.get("ida_executable_sha256"))
+        or not _hex_sha256(receipt.get("loader_sha256"))
+        or not _hex_sha256(receipt.get("bundle_manifest_sha256"))
         or (
             expected_executable_sha256 is not None
             and receipt.get("ida_executable_sha256") != expected_executable_sha256
@@ -642,6 +832,15 @@ def _validate_gui_receipt(
         or capabilities.get("build_id") != build_id
     ):
         raise ValueError("Disposable GUI-process evidence is invalid or stale")
+    module_origin = receipt.get("module_origin")
+    normalized_origin = (
+        module_origin.replace("\\", "/") if type(module_origin) is str else ""
+    )
+    if (
+        "/idausr/plugins/_ida_pro_mcp_runtime/" not in normalized_origin
+        or not normalized_origin.endswith("/ida_mcp/api_flow.py")
+    ):
+        raise ValueError("Disposable GUI-process module origin is not installed")
     environment = capabilities.get("environment")
     if (
         type(environment) is not dict
@@ -669,6 +868,18 @@ def aggregate_manifest(
 ) -> dict[str, object]:
     checkout_sha = _commit(checkout_sha)
     build_id = _validate_package(package, checkout_sha)
+    matrix = package["support_matrix"]
+    if (
+        type(matrix) is not dict
+        or type(matrix.get("unavailable_normal_rows")) is not list
+    ):
+        raise ValueError("Package mandatory rows are missing")
+    unavailable_rows = matrix["unavailable_normal_rows"]
+    if unavailable_rows:
+        blockers = ", ".join(
+            str(row.get("profile_id")) for row in unavailable_rows if type(row) is dict
+        )
+        raise ValueError("Mandatory normal rows unavailable: " + blockers)
     if not normal_receipts:
         raise ValueError("No current mandatory normal receipts were supplied")
     if not compatibility_receipts:
@@ -714,10 +925,10 @@ def aggregate_manifest(
         raise ValueError("Licensed IDA version coverage is incomplete")
 
     normal_hashes: dict[str, str] = {}
-    matrix = package["support_matrix"]
     if (
         type(matrix) is not dict
         or type(matrix.get("mandatory_normal_rows")) is not list
+        or type(matrix.get("unavailable_normal_rows")) is not list
     ):
         raise ValueError("Package mandatory rows are missing")
     expected_rows = {
@@ -741,6 +952,7 @@ def aggregate_manifest(
             checkout_sha=checkout_sha,
             build_id=build_id,
             path=path,
+            expected_executable_sha256=expected_ida_executable_sha256,
         )
         covered_rows.add(identity)
         normal_hashes[path.name] = sha256(path)

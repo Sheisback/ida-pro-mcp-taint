@@ -14,6 +14,10 @@ on:
         description: Reviewed commit shared by every release-gate job
         required: true
         type: string
+    secrets:
+      container_registry_token:
+        description: Read-only token for the pinned licensed IDA image
+        required: true
 
 permissions:
   contents: read
@@ -70,7 +74,7 @@ jobs:
       image: ghcr.io/mrexodia/ida-docker/ida@${{ matrix.image-digest }}
       credentials:
         username: ${{ github.repository_owner }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+        password: ${{ secrets.container_registry_token || secrets.GITHUB_TOKEN }}
     env:
       EXPECTED_SHA: ${{ inputs.release_sha || github.sha }}
     steps:
@@ -100,10 +104,34 @@ jobs:
       - name: Record current actual normal semantic receipts
         if: matrix.ida-version == '9.3'
         run: |
+          test "$(zig version)" = "0.16.0-dev.1484+d0ba6642b" || \
+            [[ "$(zig version)" == 0.16.* ]]
+          uv run python scripts/build_flow_isa_profiles.py \
+            licensed-reports/current-build
+          uv run python scripts/record_flow_profile_receipts.py \
+            --root "$PWD" \
+            --build-manifest licensed-reports/current-build/build.json \
+            --output-dir licensed-reports/current-p0 \
+            --ida-executable "$(command -v idat)"
+          uv run python scripts/record_flow_profile_semantics.py \
+            --rebuilt-manifest licensed-reports/current-build/build.json \
+            --build-root licensed-reports/current-build \
+            --p0-root licensed-reports/current-p0 \
+            --output licensed-reports/current-normal \
+            --ida "$(command -v idat)"
+          uv run python scripts/record_flow_profile_semantics.py \
+            --rebuilt-manifest licensed-reports/current-build/build.json \
+            --build-root licensed-reports/current-build \
+            --p0-root licensed-reports/current-p0 \
+            --output licensed-reports/current-format \
+            --ida "$(command -v idat)" \
+            --format-only
           uv run python scripts/record_flow_licensed_normal.py \
             --checkout-sha "$EXPECTED_SHA" \
             --ida "$(command -v idat)" \
             --expected-ida-executable-sha256 "${{ vars.IDA_93_EXECUTABLE_SHA256 }}" \
+            --current-normal-dir licensed-reports/current-normal \
+            --current-format-dir licensed-reports/current-format \
             --output licensed-reports/normal
       - name: Record fresh protected 5x30 licensed IDA benchmark
         if: matrix.ida-version == '9.3'

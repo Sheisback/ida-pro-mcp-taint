@@ -395,11 +395,27 @@ class ProfileRegistry(Model):
             "Unmeasured extraction profile configuration",
         )
         provenance = profile.get("abi_provenance")
-        require(
-            type(provenance) is dict
-            and provenance.get("kind") == "measured_anchor_build",
-            "Extraction profile lacks measured build provenance",
-        )
+        if type(provenance) is not dict:
+            raise ContractError("Extraction profile lacks provenance")
+        kind = provenance.get("kind")
+        if kind == "measured_anchor_build":
+            pass
+        elif kind == "analyst_selected_profile":
+            require(
+                provenance.get("selected_profile_id") == profile_id
+                and provenance.get("selected_abi_id") == receipt.abi,
+                "Analyst-selected profile/ABI mismatch",
+            )
+            observed_binary_digest = provenance.get("observed_binary_digest")
+            if type(observed_binary_digest) is not str:
+                raise ContractError("Analyst selection lacks binary scope")
+            check_digest(observed_binary_digest)
+            require(
+                provenance.get("configuration_fixture_digest") == receipt.binary_digest,
+                "Analyst selection changed configuration evidence",
+            )
+        else:
+            raise ContractError("Extraction profile lacks measured build provenance")
         return spec
 
 

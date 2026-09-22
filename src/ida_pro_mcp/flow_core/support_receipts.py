@@ -14,7 +14,11 @@ from .states import check_digest, require
 
 SUPPORT_RECEIPT_SCHEMA = "flow-support-receipts/1"
 P0_MATRIX_SCHEMA = "flow-profile-receipt-matrix/1"
-RV32_PROFILE_ID = "RV32-LE"
+
+_SEMANTIC_STATUS = {
+    "normal": "success_partial_with_named_limitations",
+    "fallback": "accepted_candidate_partial_normal_failed",
+}
 
 
 def _rows(value: Any, key: str, message: str) -> list[dict[str, Any]]:
@@ -42,9 +46,10 @@ def _canonical_p0_rows(matrix: dict[str, Any]) -> dict[str, dict[str, Any]]:
         by_profile[profile_id] = row
     require(tuple(by_profile) == PROFILE_IDS, "P0 profile rows/order mismatch")
     require(len(by_profile) == len(rows), "Duplicate P0 profile row")
-    for profile_id, row in by_profile.items():
-        expected = "failed" if profile_id == RV32_PROFILE_ID else "success"
-        require(row.get("status") == expected, "P0 observation status mismatch")
+    require(
+        all(row.get("status") in {"success", "failed"} for row in by_profile.values()),
+        "P0 observation status mismatch",
+    )
     return by_profile
 
 
@@ -64,22 +69,19 @@ def _canonical_semantic_rows(matrix: dict[str, Any]) -> dict[str, dict[str, Any]
         by_profile[profile_id] = row
     require(set(by_profile) == set(PROFILE_IDS), "Semantic profile rows mismatch")
     require(len(by_profile) == len(rows), "Duplicate semantic profile row")
-    for profile_id in PROFILE_IDS:
-        row = by_profile[profile_id]
-        if profile_id == RV32_PROFILE_ID:
-            require(row.get("evidence_path") == "fallback", "RV32 must remain fallback")
-            require(
-                row.get("status") == "accepted_candidate_partial_normal_failed",
-                "RV32 partial status mismatch",
-            )
-        else:
-            require(
-                row.get("evidence_path") == "normal", "Normal evidence path mismatch"
-            )
-            require(
-                row.get("status") == "success_partial_with_named_limitations",
-                "Normal partial status mismatch",
-            )
+    for row in by_profile.values():
+        evidence_path = row.get("evidence_path")
+        expected_status = _SEMANTIC_STATUS.get(
+            evidence_path if type(evidence_path) is str else ""
+        )
+        require(
+            expected_status is not None,
+            "Semantic evidence path mismatch",
+        )
+        require(
+            row.get("status") == expected_status,
+            "Semantic partial status mismatch",
+        )
     return by_profile
 
 
@@ -100,6 +102,11 @@ def build_support_receipt_manifest(
             "Registry support was promoted",
         )
         semantic = semantic_rows[spec.profile_id]
+        expected_p0 = "success" if semantic["evidence_path"] == "normal" else "failed"
+        require(
+            p0_rows[spec.profile_id]["status"] == expected_p0,
+            "P0/semantic availability mismatch",
+        )
         rows.append(
             {
                 "profile_id": spec.profile_id,
@@ -121,7 +128,7 @@ def build_support_receipt_manifest(
         "format_variant_count": semantic_matrix["format_variant_count"],
         "target_executed": False,
         "support_promoted": False,
-        "status": "complete_with_explicit_rv32_fallback",
+        "status": "complete_with_explicit_fallbacks",
         "source_digests": {
             "inventory": digest(inventory),
             "p0_matrix": digest(p0_matrix),
@@ -161,16 +168,14 @@ def validate_support_receipt_manifest(value: Any) -> None:
         value["profile_count"] == len(PROFILE_IDS), "Support profile count mismatch"
     )
     require(
-        value["normal_observation_count"] == 16, "Normal observation count mismatch"
+        type(value["format_variant_count"]) is int
+        and value["format_variant_count"] >= 0,
+        "Format variant count mismatch",
     )
-    require(
-        value["fallback_observation_count"] == 1, "Fallback observation count mismatch"
-    )
-    require(value["format_variant_count"] == 4, "Format variant count mismatch")
     require(value["target_executed"] is False, "Support audit executed target")
     require(value["support_promoted"] is False, "Support audit promoted support")
     require(
-        value["status"] == "complete_with_explicit_rv32_fallback",
+        value["status"] == "complete_with_explicit_fallbacks",
         "Support audit status mismatch",
     )
     source_digests = value["source_digests"]
@@ -188,6 +193,16 @@ def validate_support_receipt_manifest(value: Any) -> None:
         tuple(row.get("profile_id") for row in profiles) == PROFILE_IDS,
         "Support profile rows/order mismatch",
     )
+    require(
+        value["normal_observation_count"]
+        == sum(row.get("semantic_evidence_path") == "normal" for row in profiles),
+        "Normal observation count mismatch",
+    )
+    require(
+        value["fallback_observation_count"]
+        == sum(row.get("semantic_evidence_path") == "fallback" for row in profiles),
+        "Fallback observation count mismatch",
+    )
     for row in profiles:
         require(
             set(row)
@@ -201,22 +216,14 @@ def validate_support_receipt_manifest(value: Any) -> None:
             "Support profile fields mismatch",
         )
         require(row["support_status"] == "unverified", "Profile support promoted")
-        is_rv32 = row["profile_id"] == RV32_PROFILE_ID
+        evidence_path = row["semantic_evidence_path"]
+        require(evidence_path in _SEMANTIC_STATUS, "Profile semantic path mismatch")
         require(
-            row["p0_status"] == ("failed" if is_rv32 else "success"),
+            row["p0_status"] == ("success" if evidence_path == "normal" else "failed"),
             "Profile P0 status mismatch",
         )
         require(
-            row["semantic_evidence_path"] == ("fallback" if is_rv32 else "normal"),
-            "Profile semantic path mismatch",
-        )
-        require(
-            row["semantic_status"]
-            == (
-                "accepted_candidate_partial_normal_failed"
-                if is_rv32
-                else "success_partial_with_named_limitations"
-            ),
+            row["semantic_status"] == _SEMANTIC_STATUS[evidence_path],
             "Profile semantic status mismatch",
         )
     body = {key: item for key, item in value.items() if key != "receipt_digest"}

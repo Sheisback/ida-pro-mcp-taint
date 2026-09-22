@@ -1,10 +1,13 @@
-"""Exact public routing over frozen, static semantic-profile evidence.
+"""Public routing over frozen evidence and explicit analyst selections.
 
 The canonical registry remains conservative: its rows are configuration facts,
-not broad support claims.  Public routing admits one extraction profile only when
-the open database exactly matches a committed normal semantic receipt.  The
-result is an ephemeral one-row measured registry, never a mutation or promotion
-of :data:`profile_registry.REGISTRY`.
+not broad support claims. Exact-fixture routing admits an extraction profile only
+when the open database matches a committed normal semantic receipt. Analyst mode
+instead requires an explicit profile and ABI whose observed processor, bitness,
+endianness, format, and IDA/Hex-Rays builds match that same evidence. The current
+binary digest scopes runtime state and staleness; it is never treated as ABI or
+support evidence. Both modes build an ephemeral one-row measured registry and
+never mutate or promote :data:`profile_registry.REGISTRY`.
 """
 
 from __future__ import annotations
@@ -24,6 +27,7 @@ from .states import Endian, check_digest, nonempty, require
 MANIFEST_DIGEST = (
     "sha256-v1:a6e8d41dfab09875b439ac726d0a1dcf067abc3354ccadb1cd20c8d462f46b9a"
 )
+RoutingMode = Literal["exact_fixture", "analyst_selected"]
 
 
 @dataclass(frozen=True)
@@ -94,7 +98,6 @@ class FrozenProfileEvidence(Model):
         ):
             check_digest(value)
         spec = REGISTRY.get(self.profile_id)
-        require(self.profile_id != "RV32-LE", "RV32 has no normal routing evidence")
         require(self.abi_id in spec.abi_ids, "Frozen route ABI/profile mismatch")
 
     @property
@@ -164,7 +167,7 @@ class FrozenProfileEvidence(Model):
 
 @dataclass(frozen=True)
 class ResolvedProfile:
-    evidence: FrozenProfileEvidence | RegistryProfileEvidence
+    evidence: FrozenProfileEvidence | RegistryProfileEvidence | AnalystProfileEvidence
     profile: dict
     registry: ProfileRegistry
 
@@ -213,6 +216,63 @@ class RegistryProfileEvidence:
 
     def extraction_profile(self) -> tuple[dict, ProfileRegistry]:
         return REGISTRY.measured_extraction_profile(self.profile_id), REGISTRY
+
+
+@dataclass(frozen=True)
+class AnalystProfileEvidence:
+    """Explicit analyst selection bound to the currently observed binary.
+
+    ``source`` remains the reviewed extraction-configuration evidence. The open
+    binary digest is recorded separately so arbitrary matching user binaries do
+    not masquerade as the measured semantic fixture.
+    """
+
+    source: FrozenProfileEvidence
+    binary_digest: str
+    evidence_path: Literal["analyst_selected"] = "analyst_selected"
+
+    def __post_init__(self) -> None:
+        check_digest(self.binary_digest)
+        require(
+            self.source.evidence_path in ("normal", "format"),
+            "analyst_selection_requires_normal_evidence",
+        )
+
+    @property
+    def profile_id(self) -> str:
+        return self.source.profile_id
+
+    @property
+    def abi_id(self) -> str:
+        return self.source.abi_id
+
+    @property
+    def format_id(self) -> FormatId:
+        return self.source.format_id
+
+    @property
+    def observed_identity(self) -> tuple[str, int, Endian, FormatId, str, str]:
+        return self.source.observed_identity
+
+    def extraction_profile(self) -> tuple[dict, ProfileRegistry]:
+        profile, registry = self.source.extraction_profile()
+        profile = dict(profile)
+        profile["abi_provenance"] = {
+            "kind": "analyst_selected_profile",
+            "selected_profile_id": self.profile_id,
+            "selected_abi_id": self.abi_id,
+            "observed_binary_digest": self.binary_digest,
+            "configuration_fixture_digest": self.source.binary_digest,
+            "semantic_receipt_file": self.source.semantic_receipt_file,
+            "semantic_receipt_digest": self.source.semantic_receipt_digest,
+            "scope": (
+                "analyst-selected profile/ABI for this exact open-binary digest; "
+                "reviewed configuration evidence only, not fixture conformance or "
+                "support promotion"
+            ),
+        }
+        registry.validate_extraction_profile(profile)
+        return profile, registry
 
 
 REGISTRY_PROFILE_EVIDENCE = (
@@ -605,9 +665,46 @@ FROZEN_PROFILE_EVIDENCE = (
 
 
 def resolve_open_database_profile(
-    observed: OpenDatabaseEvidence, requested_profile: str | None = None
+    observed: OpenDatabaseEvidence,
+    requested_profile: str | None = None,
+    requested_abi: str | None = None,
+    routing_mode: RoutingMode = "exact_fixture",
 ) -> ResolvedProfile:
-    """Resolve one exact route or fail closed without guessing an ABI/profile."""
+    """Resolve one route or fail closed without guessing an ABI/profile."""
+
+    require(
+        routing_mode in ("exact_fixture", "analyst_selected"),
+        "invalid_profile_routing_mode",
+    )
+    if routing_mode == "analyst_selected":
+        require(
+            type(requested_profile) is str and bool(requested_profile),
+            "analyst_profile_required",
+        )
+        require(
+            type(requested_abi) is str and bool(requested_abi),
+            "analyst_abi_required",
+        )
+        candidates = tuple(
+            item
+            for item in FROZEN_PROFILE_EVIDENCE
+            if item.profile_id == requested_profile
+            and item.abi_id == requested_abi
+            and item.observed_identity
+            == (
+                observed.processor,
+                observed.bits,
+                observed.data_endian,
+                observed.format_id,
+                observed.ida_build,
+                observed.hexrays_build,
+            )
+        )
+        require(bool(candidates), "analyst_profile_evidence_mismatch")
+        require(len(candidates) == 1, "ambiguous_profile_evidence")
+        selected = AnalystProfileEvidence(candidates[0], observed.binary_digest)
+        profile, registry = selected.extraction_profile()
+        return ResolvedProfile(selected, profile, registry)
 
     matches = tuple(
         item
@@ -630,35 +727,12 @@ def resolve_open_database_profile(
             "profile_evidence_mismatch",
         )
     else:
-        legacy = tuple(
-            item
-            for item in REGISTRY_PROFILE_EVIDENCE
-            if item.observed_identity
-            == (
-                observed.processor,
-                observed.bits,
-                observed.data_endian,
-                observed.format_id,
-                observed.ida_build,
-                observed.hexrays_build,
-            )
-        )
-        if legacy:
-            require(len(legacy) == 1, "ambiguous_profile_evidence")
-            evidence = legacy[0]
-        elif (
-            observed.processor == "riscv"
-            and observed.bits == 32
-            and observed.data_endian == "little"
-            and observed.format_id == "FMT-ELF"
-        ):
-            raise ContractError("rv32_normal_profile_unavailable")
-        else:
-            raise ContractError("experimental_profile_unavailable")
+        raise ContractError("experimental_profile_unavailable")
     require(
         requested_profile in (None, evidence.profile_id),
         "profile_mismatch",
     )
+    require(requested_abi in (None, evidence.abi_id), "abi_mismatch")
     profile, registry = evidence.extraction_profile()
     return ResolvedProfile(evidence, profile, registry)
 
@@ -667,9 +741,11 @@ __all__ = [
     "FROZEN_PROFILE_EVIDENCE",
     "MANIFEST_DIGEST",
     "REGISTRY_PROFILE_EVIDENCE",
+    "AnalystProfileEvidence",
     "FrozenProfileEvidence",
     "OpenDatabaseEvidence",
     "RegistryProfileEvidence",
     "ResolvedProfile",
+    "RoutingMode",
     "resolve_open_database_profile",
 ]

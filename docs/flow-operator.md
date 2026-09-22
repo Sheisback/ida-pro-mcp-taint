@@ -55,6 +55,17 @@ it is not a support promotion or a P6 release-readiness verdict.
   that extraction succeeds. Only an actual static receipt can prove the exact
   observed configuration.
 
+For a pinned conformance fixture, call `flow_create_snapshot` with its reviewed
+`profile`; the default `routing_mode=exact_fixture` also requires the frozen
+input digest. For another analyst-owned binary, set
+`routing_mode=analyst_selected` and provide both the explicit `profile` and
+`abi`. This mode validates the open database's processor, bitness, data
+endianness, format, and exact IDA/Hex-Rays builds against reviewed normal
+configuration evidence. It does not infer the ABI from the binary or claim that
+the binary was previously measured. The worker binds the selection to the
+current binary digest and fails follow-up work as stale if the input changes.
+RV32 cannot be selected until normal evidence exists.
+
 ## Packaging and release expectations
 
 - Run focused support-audit tests before the full suite.
@@ -63,6 +74,10 @@ it is not a support promotion or a P6 release-readiness verdict.
 - Verify build-ID parity across every process mode actually exercised.
 - Aggregate protected licensed-IDA results into release CI without exposing
   credentials to untrusted jobs.
+- Treat `record_flow_licensed_normal.py` as a content/binding validator, not a
+  standalone clock or provenance authority. Temporal freshness comes from the
+  protected workflow producing the P0 and semantic matrices in the same job;
+  never copy archival receipts to a new directory and label them a current run.
 - Retain receipt inputs, source digests, named limitations, and
   `target_executed: false`; do not delete or weaken evidence to make a gate pass.
 - Require a current, normal receipt for every mandatory profile. A fallback,

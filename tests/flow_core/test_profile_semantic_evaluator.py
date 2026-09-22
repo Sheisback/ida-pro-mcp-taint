@@ -319,6 +319,118 @@ def test_committed_complete_matrix_is_reproducible_and_cross_validated():
     assert matrix["registry_service_capabilities_promoted"] is False
 
 
+def test_artifact_validator_derives_normal_and_fallback_backends_from_rows(monkeypatch):
+    matrix = deepcopy(evaluator.read_json(MATRIX_PATH))
+    normal_matrix_path = ROOT / matrix["normal_matrix_file"]
+    normal_matrix = deepcopy(evaluator.read_json(normal_matrix_path))
+    x86 = next(
+        row
+        for row in matrix["profiles"]
+        if row["profile_id"] == "X86-LE" and row["evidence_path"] == "normal"
+    )
+    rv32 = next(row for row in matrix["profiles"] if row["profile_id"] == "RV32-LE")
+
+    rv32_normal = {
+        "profile_id": "RV32-LE",
+        "receipt_digest": "sha256-v1:" + "1" * 64,
+    }
+    fallback_body = {
+        "schema_version": "flow-profile-semantics-fallback/1",
+        "profile_id": "X86-LE",
+        "evidence_path": "fallback",
+        "status": "partial",
+        "candidate_status": "accepted_candidate",
+        "support_status": "unverified",
+        "normal_backend": {
+            "probe_status": "failed",
+            "support_status": "unverified",
+            "target_executed": False,
+        },
+        "limitations": ["normal_backend_unavailable"],
+        "input_preserved": True,
+        "target_executed": False,
+        "registry_promoted": False,
+        "service_promoted": False,
+    }
+    x86_fallback = {**fallback_body, "receipt_digest": digest(fallback_body)}
+    x86.update(
+        evidence_path="fallback",
+        status="accepted_candidate_partial_normal_failed",
+        receipt_file="tests/flow_fixtures/manifests/profile_semantics/x86-fallback.json",
+        receipt_digest=x86_fallback["receipt_digest"],
+    )
+    rv32.update(
+        evidence_path="normal",
+        status="success_partial_with_named_limitations",
+        receipt_file="tests/flow_fixtures/manifests/profile_semantics/normal/rv32-le.json",
+        receipt_digest=rv32_normal["receipt_digest"],
+    )
+    matrix["rv32_normal_failure_count"] = 0
+    matrix["rv32_fallback_count"] = 0
+
+    normal_matrix["profiles"] = [
+        row for row in normal_matrix["profiles"] if row["profile_id"] != "X86-LE"
+    ] + [
+        {
+            "profile_id": "RV32-LE",
+            "status": "success",
+            "result_file": "rv32-le.json",
+            "receipt_digest": rv32_normal["receipt_digest"],
+        }
+    ]
+    normal_matrix["success_count"] = len(normal_matrix["profiles"])
+    _redigest(normal_matrix)
+    matrix["normal_matrix_digest"] = normal_matrix["receipt_digest"]
+    _redigest(matrix)
+
+    documents = {
+        normal_matrix_path.resolve(): normal_matrix,
+        (ROOT / x86["receipt_file"]).resolve(): x86_fallback,
+        (ROOT / rv32["receipt_file"]).resolve(): rv32_normal,
+    }
+    original_read = evaluator.read_json
+
+    def read(path: Path):
+        resolved = path.resolve()
+        return (
+            deepcopy(documents[resolved])
+            if resolved in documents
+            else original_read(path)
+        )
+
+    validated = []
+    monkeypatch.setattr(evaluator, "read_json", read)
+    monkeypatch.setattr(
+        evaluator,
+        "validate_normal_receipt",
+        lambda _root, value, _build, _oracle: validated.append(value["profile_id"]),
+    )
+    fallback_validated = []
+    monkeypatch.setattr(
+        evaluator,
+        "_validate_fallback_receipt",
+        lambda _root, value: fallback_validated.append(value["profile_id"]),
+    )
+
+    evaluator.validate_complete_matrix_artifacts(ROOT, matrix)
+    assert "RV32-LE" in validated
+    assert "X86-LE" not in validated
+    assert fallback_validated == ["X86-LE"]
+
+
+def test_fallback_dispatch_rejects_unbacked_generic_envelopes():
+    with pytest.raises(
+        ValueError, match="Unsupported fallback semantic receipt schema"
+    ):
+        evaluator._validate_fallback_receipt(
+            ROOT,
+            {
+                "schema_version": "flow-profile-semantics-fallback/1",
+                "profile_id": "X86-LE",
+            },
+        )
+
+
 @pytest.mark.parametrize("endian", ["le", "be"])
 def test_ppc64_closes_direct_target_argument_return_and_void_facts(endian):
     receipt = evaluator.read_json(NORMAL_ROOT / f"ppc64-{endian}.json")
@@ -458,6 +570,10 @@ def test_rv32_fallback_rejects_hostile_tampering_even_when_redigested(
         _set_top("capabilities_promoted", True),
         _set_nested("implementation", "scripts/flow_profile_semantics.py", "0" * 64),
         _set_nested("invocations", 0, "shell", True),
+        _set_top(
+            "fresh_process_receipt_digests",
+            ["sha256-v1:" + "0" * 64, "sha256-v1:" + "0" * 64],
+        ),
         _set_nested("evaluation", "status", "pass"),
         _drop_normal_function,
         _duplicate_normal_function,
@@ -475,6 +591,7 @@ def test_rv32_fallback_rejects_hostile_tampering_even_when_redigested(
         "capability-promotion",
         "implementation-digest",
         "shell-invocation",
+        "process-digest-payload-mismatch",
         "partiality-removed",
         "missing-function",
         "duplicate-function",

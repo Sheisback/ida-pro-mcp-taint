@@ -41,7 +41,10 @@ def main(build_dir, output):
     receipts = []
     foreign_job = None
     try:
-        for arch, profile in (("x86_64", "X64-LE"), ("arm64", "A64-LE")):
+        for arch, profile, abi in (
+            ("x86_64", "X64-LE", "darwin-x86_64-sysv-derived"),
+            ("arm64", "A64-LE", "darwin-aarch64"),
+        ):
             source_binary = Path(build_dir) / ("memory_" + arch)
             source_digest = hashlib.sha256(source_binary.read_bytes()).hexdigest()
             binary = work / source_binary.name
@@ -87,14 +90,11 @@ def main(build_dir, output):
                 return data
 
             capabilities = call("flow_get_capabilities")
-            assert capabilities["supported_profiles"] == [profile]
+            assert capabilities["supported_profiles"] == []
             assert (
                 capabilities["features"]["microcode_extraction"]["status"]
-                == "available"
+                == "unavailable"
             )
-            if foreign_job is not None:
-                foreign = call("flow_get_job", job_id=foreign_job)
-                assert foreign["error"]["code"] == "wrong_database_or_unknown_id"
             denied = sm._handle_tools_call(
                 {
                     "jsonrpc": "2.0",
@@ -115,7 +115,12 @@ def main(build_dir, output):
                 function="_memory_before_after",
                 profile=profile,
                 request_key="snapshot",
+                abi=abi,
+                routing_mode="analyst_selected",
             )
+            if foreign_job is not None:
+                foreign = call("flow_get_job", job_id=foreign_job)
+                assert foreign["error"]["code"] == "wrong_database_or_unknown_id"
             for _ in range(200):
                 job = call("flow_get_job", job_id=queued["job_id"])
                 if job["state"] in {
@@ -134,6 +139,8 @@ def main(build_dir, output):
                     function="_memory_before_after",
                     profile=profile,
                     request_key="snapshot",
+                    abi=abi,
+                    routing_mode="analyst_selected",
                 )["job_id"]
                 == queued["job_id"]
             )
@@ -440,6 +447,8 @@ def main(build_dir, output):
             receipts.append(
                 {
                     "profile": profile,
+                    "abi_id": abi,
+                    "routing_mode": "analyst_selected",
                     "binary_sha256": hashlib.sha256(binary.read_bytes()).hexdigest(),
                     "job": job,
                     "nodes": len(nodes),

@@ -1,6 +1,7 @@
 """Release workflow and aggregate contracts stay fail-closed."""
 
 import ast
+import hashlib
 import importlib.util
 import json
 import subprocess
@@ -12,7 +13,10 @@ from typing import cast
 
 import pytest
 
-from ida_pro_mcp.flow_core.serialization import digest
+from ida_pro_mcp.flow_core.serialization import ContractError, digest
+from ida_pro_mcp.flow_core.semantic_equivalence import (
+    normal_semantic_equivalence_digest,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location(
@@ -21,9 +25,31 @@ SPEC = importlib.util.spec_from_file_location(
 assert SPEC is not None and SPEC.loader is not None
 release_gate = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(release_gate)
+VALIDATE_PACKAGE = release_gate._validate_package
 COMMIT = "a" * 40
 BUILD_ID = "flow-build-sha256-v1:" + "b" * 64
 VERSIONS = ("9.0.1", "9.1.2", "9.2.3", "9.3.4")
+
+
+def test_normal_semantic_equivalence_excludes_run_provenance_not_meaning():
+    path = ROOT / "tests/flow_fixtures/manifests/profile_semantics/normal/x86-le.json"
+    archival = json.loads(path.read_text())
+    fresh = deepcopy(archival)
+    for invocation in fresh["invocations"]:
+        invocation["ida_executable_name"] = "idat-current"
+        invocation["ida_executable_sha256"] = "f" * 64
+    fresh["fresh_process_receipt_digests"] = [
+        "sha256-v1:" + "e" * 64,
+        "sha256-v1:" + "e" * 64,
+    ]
+    assert normal_semantic_equivalence_digest(fresh) == (
+        normal_semantic_equivalence_digest(archival)
+    )
+
+    fresh["evaluation"]["alias_status"] = "forged_known_aliases"
+    assert normal_semantic_equivalence_digest(fresh) != (
+        normal_semantic_equivalence_digest(archival)
+    )
 
 
 def mandatory_rows() -> list[dict[str, object]]:
@@ -42,7 +68,6 @@ def mandatory_rows() -> list[dict[str, object]]:
                 "maturity": "MMAT_CALLS",
                 "ida_build": ida_build,
                 "hexrays_build": "9.3.0.260213",
-                "ida_executable_sha256": f"{index + 101:064x}",
                 "processor": processor,
                 "bits": bits,
                 "endian": endian,
@@ -50,6 +75,7 @@ def mandatory_rows() -> list[dict[str, object]]:
                 "normal_status": "pass",
                 "semantic_receipt_file": f"semantic/{index:02d}.json",
                 "semantic_receipt_digest": "sha256-v1:" + f"{index + 201:064x}",
+                "semantic_equivalence_digest": "sha256-v1:" + f"{index + 301:064x}",
             }
         )
     return rows
@@ -71,13 +97,41 @@ def package() -> dict[str, object]:
             "semantic_row_count": 21,
             "normal_success_count": 17,
             "format_success_count": 4,
-            "rv32_fallback_count": 1,
+            "rv32_fallback_count": 0,
+            "required_row_count": 21,
             "mandatory_normal_rows": mandatory_rows(),
+            "unavailable_normal_rows": [],
             "fallback_promotes_readiness": False,
         },
         "target_executed": False,
         "gui_process_e2e": False,
     }
+
+
+def canonical_package() -> dict[str, object]:
+    value = package()
+    readiness = release_gate._canonical_readiness_contract()
+    available = cast(list[dict[str, object]], readiness["mandatory_normal_rows"])
+    unavailable = cast(list[dict[str, object]], readiness["unavailable_normal_rows"])
+    matrix = cast(dict[str, object], value["support_matrix"])
+    matrix.update(
+        {
+            "sha256": release_gate.sha256(ROOT / release_gate.SEMANTIC_MATRIX),
+            "profile_count": len(readiness["required_profiles"]),
+            "semantic_row_count": len(available) + len(unavailable),
+            "normal_success_count": sum(
+                row["evidence_path"] == "normal" for row in available
+            ),
+            "format_success_count": sum(
+                row["evidence_path"] == "format" for row in available
+            ),
+            "rv32_fallback_count": len(unavailable),
+            "required_row_count": len(available) + len(unavailable),
+            "mandatory_normal_rows": deepcopy(available),
+            "unavailable_normal_rows": deepcopy(unavailable),
+        }
+    )
+    return value
 
 
 def licensed(path: Path, row: dict[str, object]) -> tuple[Path, dict[str, object]]:
@@ -107,7 +161,7 @@ def licensed(path: Path, row: dict[str, object]) -> tuple[Path, dict[str, object
         "maturity": "MMAT_CALLS",
         "normal_status": "pass",
         "ida_build": row["ida_build"],
-        "ida_executable_sha256": row["ida_executable_sha256"],
+        "ida_executable_sha256": "f" * 64,
         "hexrays_build": row["hexrays_build"],
         "flow_build_id": BUILD_ID,
         "capabilities": capabilities,
@@ -119,6 +173,25 @@ def licensed(path: Path, row: dict[str, object]) -> tuple[Path, dict[str, object
         "debugger_attached": False,
         "semantic_receipt_file": row["semantic_receipt_file"],
         "semantic_receipt_digest": row["semantic_receipt_digest"],
+        "semantic_equivalence_digest": row["semantic_equivalence_digest"],
+        "extraction_digest": "sha256-v1:" + "4" * 64,
+        "public_profile_digest": "sha256-v1:" + "5" * 64,
+        "current_run": {
+            "kind": "current_checkout_actual_ida",
+            "matrix_receipt_digest": "sha256-v1:" + "6" * 64,
+            "semantic_receipt_digest": "sha256-v1:" + "7" * 64,
+            "semantic_equivalence_digest": row["semantic_equivalence_digest"],
+            "process_receipt_digests": [
+                "sha256-v1:" + "8" * 64,
+                "sha256-v1:" + "8" * 64,
+            ],
+            "build_evidence_digest": "sha256-v1:" + "9" * 64,
+            "implementation": {
+                "scripts/flow_release_gate.py": hashlib.sha256(
+                    (ROOT / "scripts/flow_release_gate.py").read_bytes()
+                ).hexdigest()
+            },
+        },
     }
     path.write_text(json.dumps(value))
     return path, value
@@ -199,6 +272,12 @@ def gui_receipt() -> dict[str, object]:
         "ida_build": "9.3.4",
         "hexrays_build": "9.3.4.123",
         "ida_executable_sha256": "9" * 64,
+        "module_origin": (
+            "/tmp/flow-gui-ci-proof/idausr/plugins/"
+            "_ida_pro_mcp_runtime/ida_mcp/api_flow.py"
+        ),
+        "loader_sha256": "7" * 64,
+        "bundle_manifest_sha256": "8" * 64,
         "capabilities": capabilities,
         "capabilities_digest": digest(capabilities),
         "process_kind": "ida-gui",
@@ -209,7 +288,15 @@ def gui_receipt() -> dict[str, object]:
     }
 
 
-def aggregate(monkeypatch, tmp_path, pkg=None, items=None, **overrides):
+def aggregate(
+    monkeypatch,
+    tmp_path,
+    pkg=None,
+    items=None,
+    *,
+    validate_package=False,
+    **overrides,
+):
     monkeypatch.setattr(
         release_gate,
         "_load_benchmark_gate",
@@ -218,6 +305,12 @@ def aggregate(monkeypatch, tmp_path, pkg=None, items=None, **overrides):
             validate_release_report=lambda *args, **kwargs: None,
         ),
     )
+    if not validate_package:
+        monkeypatch.setattr(
+            release_gate,
+            "_validate_package",
+            lambda _package, _checkout_sha: BUILD_ID,
+        )
     limits_path = tmp_path / "limits.json"
     limits_path.write_text("{}")
     arguments = {
@@ -248,12 +341,56 @@ def test_release_aggregate_requires_every_normal_row_and_version(monkeypatch, tm
 
     with pytest.raises(ValueError, match="mandatory normal row coverage"):
         aggregate(monkeypatch, tmp_path, items=receipts(tmp_path)[:-1])
+
+
+def test_release_aggregate_binds_fresh_receipts_to_reviewed_executable(
+    monkeypatch, tmp_path
+):
+    with pytest.raises(ValueError, match="IDA executable digest mismatch"):
+        aggregate(
+            monkeypatch,
+            tmp_path,
+            expected_ida_executable_sha256="0" * 64,
+        )
     with pytest.raises(ValueError, match="version coverage"):
         aggregate(
             monkeypatch,
             tmp_path,
             compatibility_receipts=compatibility_receipts(tmp_path)[:-1],
         )
+
+
+def test_canonical_readiness_keeps_unavailable_normal_row_as_release_blocker(
+    monkeypatch, tmp_path
+):
+    readiness = release_gate._canonical_readiness_contract()
+    available = cast(list[dict[str, object]], readiness["mandatory_normal_rows"])
+    unavailable = cast(list[dict[str, object]], readiness["unavailable_normal_rows"])
+    assert {row["profile_id"] for row in unavailable} == {"RV32-LE"}
+    assert all(row["profile_id"] != "RV32-LE" for row in available)
+    assert unavailable[0]["normal_status"] == "unavailable"
+    assert unavailable[0]["blocker"] == "normal_backend_unavailable"
+
+    manifest = canonical_package()
+    with pytest.raises(ValueError, match="Mandatory normal rows unavailable: RV32-LE"):
+        aggregate(
+            monkeypatch,
+            tmp_path,
+            pkg=manifest,
+            items=[],
+            validate_package=True,
+        )
+
+
+def test_package_rejects_fallback_promotion_and_unbound_matrix_digest():
+    with pytest.raises(ValueError, match="canonical readiness evidence"):
+        release_gate._validate_package(package(), COMMIT)
+
+    manifest = canonical_package()
+    matrix = cast(dict[str, object], manifest["support_matrix"])
+    matrix["sha256"] = "0" * 64
+    with pytest.raises(ValueError, match="canonical readiness evidence"):
+        VALIDATE_PACKAGE(manifest, COMMIT)
 
 
 def test_compatibility_receipts_are_separate_and_non_promoting(monkeypatch, tmp_path):
@@ -311,35 +448,35 @@ def test_release_rejects_empty_profiles_fallback_and_nonpass(monkeypatch, tmp_pa
     with pytest.raises(ValueError, match="supported profiles"):
         aggregate(monkeypatch, tmp_path, items=items)
 
-    manifest = package()
+    manifest = canonical_package()
     rows = cast(dict[str, object], manifest["support_matrix"])["mandatory_normal_rows"]
     cast(list[dict[str, object]], rows)[0]["evidence_path"] = "fallback"
     with pytest.raises(ValueError, match="passing normal row"):
-        aggregate(monkeypatch, tmp_path, pkg=manifest)
+        VALIDATE_PACKAGE(manifest, COMMIT)
 
-    manifest = package()
+    manifest = canonical_package()
     rows = cast(dict[str, object], manifest["support_matrix"])["mandatory_normal_rows"]
     cast(list[dict[str, object]], rows).pop()
-    with pytest.raises(ValueError, match="every mandatory normal row"):
-        aggregate(monkeypatch, tmp_path, pkg=manifest)
+    with pytest.raises(ValueError, match="canonical readiness"):
+        VALIDATE_PACKAGE(manifest, COMMIT)
 
-    manifest = package()
+    manifest = canonical_package()
     rows = cast(
         list[dict[str, object]],
         cast(dict, manifest["support_matrix"])["mandatory_normal_rows"],
     )
     rows[-1]["profile_id"] = "UNKNOWN-LE"
-    with pytest.raises(ValueError, match="mandatory row coverage"):
-        aggregate(monkeypatch, tmp_path, pkg=manifest)
+    with pytest.raises(ValueError, match="canonical readiness"):
+        VALIDATE_PACKAGE(manifest, COMMIT)
 
-    manifest = package()
+    manifest = canonical_package()
     rows = cast(
         list[dict[str, object]],
         cast(dict, manifest["support_matrix"])["mandatory_normal_rows"],
     )
     rows[0]["bits"] = 64
-    with pytest.raises(ValueError, match="mandatory row coverage"):
-        aggregate(monkeypatch, tmp_path, pkg=manifest)
+    with pytest.raises(ValueError, match="canonical readiness"):
+        VALIDATE_PACKAGE(manifest, COMMIT)
 
     items = receipts(tmp_path)
     path, receipt = items[0]
@@ -422,11 +559,11 @@ def test_release_requires_gui_and_benchmark_evidence(monkeypatch, tmp_path):
 
 
 def test_release_aggregate_rejects_incomplete_support_matrix(monkeypatch, tmp_path):
-    manifest = deepcopy(package())
+    manifest = canonical_package()
     support_matrix = cast(dict[str, object], manifest["support_matrix"])
-    support_matrix["normal_success_count"] = 16
+    support_matrix["normal_success_count"] = 15
     with pytest.raises(ValueError, match="support matrix"):
-        aggregate(monkeypatch, tmp_path, pkg=manifest)
+        VALIDATE_PACKAGE(manifest, COMMIT)
 
 
 def test_release_artifacts_are_rehashed_after_download(tmp_path):
@@ -464,23 +601,34 @@ def test_licensed_cli_imports_idapro_before_sdk_modules():
 def test_gui_producer_isolated_missing_executable_records_blocker(tmp_path):
     fixture = tmp_path / "fixture.elf"
     fixture.write_bytes(b"static fixture")
+    arguments = [
+        sys.executable,
+        str(ROOT / "scripts/record_flow_gui_ci.py"),
+        "--fixture",
+        str(fixture),
+        "--checkout-sha",
+        COMMIT,
+        "--ida",
+        str(tmp_path / "missing-ida"),
+        "--expected-ida-executable-sha256",
+        "9" * 64,
+        "--output",
+    ]
+    stale = tmp_path / "stale-gui-process.json"
+    stale.write_text('{"stale": true}')
+    refused = subprocess.run(
+        [*arguments, str(stale)],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert refused.returncode != 0
+    assert stale.read_text() == '{"stale": true}'
+
     output = tmp_path / "gui-process.json"
-    output.write_text('{"stale": true}')
     completed = subprocess.run(
-        [
-            sys.executable,
-            str(ROOT / "scripts/record_flow_gui_ci.py"),
-            "--fixture",
-            str(fixture),
-            "--checkout-sha",
-            COMMIT,
-            "--ida",
-            str(tmp_path / "missing-ida"),
-            "--expected-ida-executable-sha256",
-            "9" * 64,
-            "--output",
-            str(output),
-        ],
+        [*arguments, str(output)],
         cwd=ROOT,
         check=True,
         capture_output=True,
@@ -515,14 +663,25 @@ def test_gui_timeout_escalates_to_sigkill_and_reaps(monkeypatch, tmp_path):
         pid = 123
         returncode = None
 
-        def communicate(self, timeout=None):
+        def communicate(self, timeout: float | None = None):
             calls.append(("communicate", timeout))
             if len([item for item in calls if item[0] == "communicate"]) < 3:
-                raise subprocess.TimeoutExpired("ida", timeout)
+                raise subprocess.TimeoutExpired(
+                    "ida", 0 if timeout is None else timeout
+                )
             self.returncode = -9
             return "stdout", "stderr"
 
     monkeypatch.setattr(recorder.subprocess, "Popen", lambda *args, **kwargs: Process())
+    monkeypatch.setattr(
+        recorder,
+        "build_and_install_gui_bundle",
+        lambda work, user: (
+            user / "plugins" / "ida_mcp.py",
+            user / "plugins" / "_ida_pro_mcp_runtime" / "install-manifest.json",
+        ),
+    )
+    monkeypatch.setattr(recorder, "sha256", lambda path: "a" * 64)
     monkeypatch.setattr(
         recorder.os, "killpg", lambda pid, sig: calls.append(("killpg", pid, sig))
     )
@@ -541,7 +700,7 @@ def test_gui_timeout_escalates_to_sigkill_and_reaps(monkeypatch, tmp_path):
     assert calls[-1] == ("communicate", None)
 
 
-def test_normal_producer_emits_only_actual_normal_rows(tmp_path):
+def test_normal_producer_binds_content_addressed_actual_rows(tmp_path):
     spec = importlib.util.spec_from_file_location(
         "record_flow_licensed_normal",
         ROOT / "scripts/record_flow_licensed_normal.py",
@@ -549,16 +708,58 @@ def test_normal_producer_emits_only_actual_normal_rows(tmp_path):
     assert spec is not None and spec.loader is not None
     producer = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(producer)
-    executable_sha256 = (
-        "044e7d28a17ecaacaeb4e7d78147c11c7faaba79c6eec657f7924ec3d22a0380"
-    )
+    executable_sha256 = "f" * 64
     output = tmp_path / "normal"
+    canonical = json.loads(
+        (
+            ROOT / "tests/flow_fixtures/manifests/profile_semantics/matrix.json"
+        ).read_text()
+    )
+    current_dirs = {}
+    for evidence_path in ("normal", "format"):
+        directory = tmp_path / ("current-" + evidence_path)
+        directory.mkdir()
+        profiles = []
+        for index, item in enumerate(canonical["profiles"]):
+            if item["evidence_path"] != evidence_path:
+                continue
+            name = f"row-{index:02d}.json"
+            current_receipt = json.loads((ROOT / item["receipt_file"]).read_text())
+            for invocation in current_receipt["invocations"]:
+                invocation["ida_executable_name"] = "idat-current"
+                invocation["ida_executable_sha256"] = executable_sha256
+            current_receipt.pop("receipt_digest")
+            current_receipt["receipt_digest"] = digest(current_receipt)
+            (directory / name).write_text(json.dumps(current_receipt))
+            row = {
+                "profile_id": item["profile_id"],
+                "status": "success",
+                "result_file": name,
+                "receipt_digest": current_receipt["receipt_digest"],
+            }
+            if evidence_path == "format":
+                row["format"] = item["format"]
+            profiles.append(row)
+        matrix = {
+            "schema_version": "test-current-matrix/1",
+            "profiles": profiles,
+            "success_count": len(profiles),
+            "failure_count": 0,
+            "target_executed": False,
+            "input_preserved": True,
+            "status": "success",
+        }
+        matrix["receipt_digest"] = digest(matrix)
+        (directory / "matrix.json").write_text(json.dumps(matrix))
+        current_dirs[evidence_path] = directory
     paths = producer.record(
         root=ROOT,
         output_dir=output,
         checkout_sha=COMMIT,
         executable_sha256=executable_sha256,
         expected_executable_sha256=executable_sha256,
+        current_normal_dir=current_dirs["normal"],
+        current_format_dir=current_dirs["format"],
     )
     assert len(paths) == 20
     receipts_by_identity = {}
@@ -569,15 +770,19 @@ def test_normal_producer_emits_only_actual_normal_rows(tmp_path):
         assert value["target_executed"] is False
         assert value["input_preserved"] is True
         assert value["profile_id"] != "RV32-LE"
+        assert value["ida_executable_sha256"] == executable_sha256
+        assert (
+            value["current_run"]["semantic_receipt_digest"]
+            != value["semantic_receipt_digest"]
+        )
+        assert (
+            value["current_run"]["semantic_equivalence_digest"]
+            == value["semantic_equivalence_digest"]
+        )
         receipts_by_identity[
             (value["profile_id"], value["abi_id"], value["format_id"])
         ] = (path, value)
-    matrix = json.loads(
-        (
-            ROOT / "tests/flow_fixtures/manifests/profile_semantics/matrix.json"
-        ).read_text()
-    )
-    expected_rows = release_gate._mandatory_normal_rows(matrix)
+    expected_rows = release_gate._mandatory_normal_rows(canonical)
     assert set(receipts_by_identity) == {
         (row["profile_id"], row["abi_id"], row["format_id"]) for row in expected_rows
     }
@@ -595,6 +800,129 @@ def test_normal_producer_emits_only_actual_normal_rows(tmp_path):
             path=path,
         )
 
+    first_normal = current_dirs["normal"] / "row-00.json"
+    normal_matrix_path = current_dirs["normal"] / "matrix.json"
+    original_normal = first_normal.read_text()
+    original_matrix = normal_matrix_path.read_text()
+    semantic_drift = json.loads(original_normal)
+    semantic_drift["evaluation"]["alias_status"] = "forged_known_aliases"
+    semantic_drift.pop("receipt_digest")
+    semantic_drift["receipt_digest"] = digest(semantic_drift)
+    first_normal.write_text(json.dumps(semantic_drift))
+    drift_matrix = json.loads(original_matrix)
+    drift_matrix["profiles"][0]["receipt_digest"] = semantic_drift["receipt_digest"]
+    drift_matrix.pop("receipt_digest")
+    drift_matrix["receipt_digest"] = digest(drift_matrix)
+    normal_matrix_path.write_text(json.dumps(drift_matrix))
+    with pytest.raises((ValueError, ContractError)):
+        producer.record(
+            root=ROOT,
+            output_dir=tmp_path / "semantic-drift",
+            checkout_sha=COMMIT,
+            executable_sha256=executable_sha256,
+            expected_executable_sha256=executable_sha256,
+            current_normal_dir=current_dirs["normal"],
+            current_format_dir=current_dirs["format"],
+        )
+    first_normal.write_text(original_normal)
+    normal_matrix_path.write_text(original_matrix)
+
+    process_drift = json.loads(original_normal)
+    process_drift["fresh_process_receipt_digests"] = [
+        "sha256-v1:" + "0" * 64,
+        "sha256-v1:" + "0" * 64,
+    ]
+    process_drift.pop("receipt_digest")
+    process_drift["receipt_digest"] = digest(process_drift)
+    first_normal.write_text(json.dumps(process_drift))
+    drift_matrix = json.loads(original_matrix)
+    drift_matrix["profiles"][0]["receipt_digest"] = process_drift["receipt_digest"]
+    drift_matrix.pop("receipt_digest")
+    drift_matrix["receipt_digest"] = digest(drift_matrix)
+    normal_matrix_path.write_text(json.dumps(drift_matrix))
+    with pytest.raises((ValueError, ContractError)):
+        producer.record(
+            root=ROOT,
+            output_dir=tmp_path / "process-drift",
+            checkout_sha=COMMIT,
+            executable_sha256=executable_sha256,
+            expected_executable_sha256=executable_sha256,
+            current_normal_dir=current_dirs["normal"],
+            current_format_dir=current_dirs["format"],
+        )
+    first_normal.write_text(original_normal)
+    normal_matrix_path.write_text(original_matrix)
+
+    preserved = tmp_path / "preserved"
+    preserved.mkdir()
+    sentinel = preserved / "sentinel"
+    sentinel.write_text("keep")
+    with pytest.raises(FileExistsError, match="Refusing to replace"):
+        producer.record(
+            root=ROOT,
+            output_dir=preserved,
+            checkout_sha=COMMIT,
+            executable_sha256=executable_sha256,
+            expected_executable_sha256=executable_sha256,
+            current_normal_dir=current_dirs["normal"],
+            current_format_dir=current_dirs["format"],
+        )
+    assert sentinel.read_text() == "keep"
+
+    symlink = tmp_path / "symlink-output"
+    symlink.symlink_to(preserved, target_is_directory=True)
+    with pytest.raises(ValueError, match="contains a symlink"):
+        producer.record(
+            root=ROOT,
+            output_dir=symlink,
+            checkout_sha=COMMIT,
+            executable_sha256=executable_sha256,
+            expected_executable_sha256=executable_sha256,
+            current_normal_dir=current_dirs["normal"],
+            current_format_dir=current_dirs["format"],
+        )
+
+    tampered_normal = json.loads(original_normal)
+    tampered_normal["status"] = "failed"
+    first_normal.write_text(json.dumps(tampered_normal))
+    with pytest.raises(ValueError, match="semantic receipt digest is invalid"):
+        producer.record(
+            root=ROOT,
+            output_dir=tmp_path / "tampered-receipt",
+            checkout_sha=COMMIT,
+            executable_sha256=executable_sha256,
+            expected_executable_sha256=executable_sha256,
+            current_normal_dir=current_dirs["normal"],
+            current_format_dir=current_dirs["format"],
+        )
+    first_normal.write_text(original_normal)
+
+    tampered_matrix = json.loads(normal_matrix_path.read_text())
+    tampered_matrix["success_count"] -= 1
+    normal_matrix_path.write_text(json.dumps(tampered_matrix))
+    with pytest.raises(ValueError, match="semantic matrix digest is invalid"):
+        producer.record(
+            root=ROOT,
+            output_dir=tmp_path / "tampered-matrix",
+            checkout_sha=COMMIT,
+            executable_sha256=executable_sha256,
+            expected_executable_sha256=executable_sha256,
+            current_normal_dir=current_dirs["normal"],
+            current_format_dir=current_dirs["format"],
+        )
+
+    archival = ROOT / "tests/flow_fixtures/manifests/profile_semantics"
+    with pytest.raises(ValueError, match="archival, not fresh"):
+        producer.record(
+            root=ROOT,
+            output_dir=tmp_path / "archival-refused",
+            checkout_sha=COMMIT,
+            executable_sha256=executable_sha256,
+            expected_executable_sha256=executable_sha256,
+            current_normal_dir=archival,
+            current_format_dir=archival,
+        )
+
 
 def test_workflows_keep_untrusted_and_release_paths_separate_and_pinned():
     licensed = (ROOT / ".github/workflows/idalib-tests.yml").read_text()
@@ -606,6 +934,8 @@ def test_workflows_keep_untrusted_and_release_paths_separate_and_pinned():
     assert "workflow_call:" in licensed and "workflow_dispatch:" in licensed
     assert "scripts/flow_licensed_ci.py" in licensed
     assert "scripts/record_flow_licensed_normal.py" in licensed
+    assert "--current-normal-dir licensed-reports/current-normal" in licensed
+    assert "--current-format-dir licensed-reports/current-format" in licensed
     assert "uses: ./.github/workflows/idalib-tests.yml" in release
     assert "needs: [package-parity, licensed-ida]" in release
     assert "scripts/flow_release_gate.py package" in release
@@ -618,6 +948,12 @@ def test_workflows_keep_untrusted_and_release_paths_separate_and_pinned():
     assert "IDA_93_EXECUTABLE_SHA256" in licensed + release
     assert "IDA_93_GUI_EXECUTABLE_SHA256" in licensed + release
     assert "continue-on-error" not in release
+    assert "secrets: inherit" not in release
+    assert "container_registry_token: ${{ secrets.GITHUB_TOKEN }}" in release
+    assert (
+        "password: ${{ secrets.container_registry_token || secrets.GITHUB_TOKEN }}"
+        in licensed
+    )
     assert "actions/checkout@v" not in combined
     assert "astral-sh/setup-uv@v" not in combined
     assert "actions/upload-artifact@v" not in combined

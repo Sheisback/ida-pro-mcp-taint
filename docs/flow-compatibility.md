@@ -56,6 +56,26 @@ receipts, not general claims about every PE, Mach-O, or raw input.
 The source of truth for exact rows and artifact identities remains the JSON
 receipt set. This document is an operator-readable summary only.
 
+## Runtime routing modes
+
+`flow_create_snapshot` exposes two distinct routing contracts:
+
+- `exact_fixture` is the default conformance mode. The open input digest and
+  observed processor, bitness, data endianness, format, IDA build, and Hex-Rays
+  build must match one frozen normal semantic receipt.
+- `analyst_selected` accepts a different input digest only when the caller
+  supplies both `profile` and `abi`. The same observed environment fields must
+  match reviewed normal evidence for that exact selection. ARM and Thumb are
+  therefore distinguished by the explicit profile, not guessed from IDA's
+  coarse processor metadata.
+
+Analyst selection records the current binary digest separately from the
+configuration fixture digest. The former scopes runtime state and stale-context
+checks; the latter remains the reviewed extraction-configuration evidence. This
+mode is not fixture conformance, ABI inference, or a support promotion. An input
+change invalidates the retained selection, and RV32 is rejected because no
+normal route exists.
+
 ## Audit and release boundary
 
 The support audit recomputes every referenced receipt body. It validates the
@@ -72,3 +92,8 @@ format, maturity, and observed IDA and Hex-Rays builds. RV32 fallback evidence
 remains separate and cannot satisfy a mandatory normal row. Required benchmark
 and permitted GUI-process evidence must also be present; absence remains an
 explicit release blocker rather than a successful or skipped gate.
+
+Release row counts and availability are derived from the canonical semantic
+matrix and profile build manifest. A fallback row remains in
+`unavailable_normal_rows` with its concrete blocker; it is not removed from the
+required identity set or counted as a passing normal row.

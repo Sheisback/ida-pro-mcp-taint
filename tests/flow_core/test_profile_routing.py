@@ -9,6 +9,7 @@ import pytest
 
 from ida_pro_mcp.flow_core.profile_registry import REGISTRY
 from ida_pro_mcp.flow_core.profile_routing import (
+    AnalystProfileEvidence,
     FROZEN_PROFILE_EVIDENCE,
     REGISTRY_PROFILE_EVIDENCE,
     OpenDatabaseEvidence,
@@ -52,8 +53,10 @@ def test_frozen_routes_exactly_match_every_normal_semantic_identity():
         )
         == expected
     )
-    assert len(FROZEN_PROFILE_EVIDENCE) == 20
-    assert len({route.binary_digest for route in FROZEN_PROFILE_EVIDENCE}) == 20
+    assert len(FROZEN_PROFILE_EVIDENCE) == len(expected)
+    assert len({route.binary_digest for route in FROZEN_PROFILE_EVIDENCE}) == len(
+        expected
+    )
 
     for route in FROZEN_PROFILE_EVIDENCE:
         receipt = read(ROOT / route.semantic_receipt_file)
@@ -120,31 +123,37 @@ def test_route_rejects_profile_substitution_unknown_input_and_stale_pin():
 
 
 @pytest.mark.parametrize("route", REGISTRY_PROFILE_EVIDENCE)
-def test_existing_measured_macho_configuration_routes_remain_available(route):
+def test_legacy_macho_configuration_cannot_bypass_explicit_analyst_selection(route):
     processor, bits, endian, format_id, ida_build, hexrays_build = (
         route.observed_identity
     )
-    resolved = resolve_open_database_profile(
-        OpenDatabaseEvidence(
-            "sha256-v1:" + "f" * 64,
-            processor,
-            bits,
-            endian,
-            format_id,
-            ida_build,
-            hexrays_build,
-        ),
-        route.profile_id,
+    current = OpenDatabaseEvidence(
+        "sha256-v1:" + "f" * 64,
+        processor,
+        bits,
+        endian,
+        format_id,
+        ida_build,
+        hexrays_build,
     )
-    assert resolved.evidence == route
-    assert resolved.registry is REGISTRY
-    assert resolved.profile == REGISTRY.measured_extraction_profile(route.profile_id)
+    with pytest.raises(ContractError, match="experimental_profile_unavailable"):
+        resolve_open_database_profile(current, route.profile_id)
+
+    resolved = resolve_open_database_profile(
+        current,
+        route.profile_id,
+        route.abi_id,
+        "analyst_selected",
+    )
+    assert isinstance(resolved.evidence, AnalystProfileEvidence)
+    assert resolved.profile["profile_id"] == route.profile_id
+    assert resolved.profile["abi"] == route.abi_id
 
 
-def test_rv32_remains_explicit_normal_failure_and_local_unpinned_elf_fails_closed():
+def test_profiles_without_normal_manifest_rows_and_local_unpinned_elf_fail_closed():
     build = read(BUILD_MANIFEST)
     rv32 = next(row for row in build["profiles"] if row["profile_id"] == "RV32-LE")
-    with pytest.raises(ContractError, match="rv32_normal_profile_unavailable"):
+    with pytest.raises(ContractError, match="experimental_profile_unavailable"):
         resolve_open_database_profile(
             OpenDatabaseEvidence(
                 "sha256-v1:" + rv32["binary_sha256"],
@@ -170,4 +179,113 @@ def test_rv32_remains_explicit_normal_failure_and_local_unpinned_elf_fails_close
                 "9.3",
                 "9.3.0.260213",
             )
+        )
+
+
+@pytest.mark.parametrize(
+    "route",
+    FROZEN_PROFILE_EVIDENCE,
+    ids=lambda row: "analyst-" + row.profile_id + "-" + row.format_id,
+)
+def test_analyst_selected_routes_accept_arbitrary_binary_with_exact_contract(route):
+    current_binary = (
+        "sha256-v1:"
+        + hashlib.sha256((route.profile_id + route.format_id).encode()).hexdigest()
+    )
+    resolved = resolve_open_database_profile(
+        replace(observed(route), binary_digest=current_binary),
+        route.profile_id,
+        route.abi_id,
+        "analyst_selected",
+    )
+    assert isinstance(resolved.evidence, AnalystProfileEvidence)
+    assert resolved.evidence.binary_digest == current_binary
+    assert resolved.profile["profile_id"] == route.profile_id
+    assert resolved.profile["abi"] == route.abi_id
+    assert resolved.profile["receipt_evidence"]["binary_digest"] == route.binary_digest
+    provenance = resolved.profile["abi_provenance"]
+    assert provenance["kind"] == "analyst_selected_profile"
+    assert provenance["observed_binary_digest"] == current_binary
+    assert provenance["configuration_fixture_digest"] == route.binary_digest
+    assert resolved.registry.validate_extraction_profile(resolved.profile)
+
+
+def test_analyst_selected_route_fails_closed_on_missing_or_conflicting_selection():
+    route = next(
+        row
+        for row in FROZEN_PROFILE_EVIDENCE
+        if row.profile_id == "THUMB-LE" and row.format_id == "FMT-ELF"
+    )
+    current = replace(observed(route), binary_digest="sha256-v1:" + "a" * 64)
+    with pytest.raises(ContractError, match="analyst_profile_required"):
+        resolve_open_database_profile(
+            current, requested_abi=route.abi_id, routing_mode="analyst_selected"
+        )
+    with pytest.raises(ContractError, match="analyst_abi_required"):
+        resolve_open_database_profile(
+            current, route.profile_id, routing_mode="analyst_selected"
+        )
+    with pytest.raises(ContractError, match="analyst_profile_evidence_mismatch"):
+        resolve_open_database_profile(current, "A64-LE", "aapcs64", "analyst_selected")
+    with pytest.raises(ContractError, match="analyst_profile_evidence_mismatch"):
+        resolve_open_database_profile(
+            current, route.profile_id, "wrong-abi", "analyst_selected"
+        )
+    with pytest.raises(ContractError, match="analyst_profile_evidence_mismatch"):
+        resolve_open_database_profile(
+            replace(current, ida_build="9.2"),
+            route.profile_id,
+            route.abi_id,
+            "analyst_selected",
+        )
+
+    # IDA exposes the same coarse processor/bitness/endian tuple for these two
+    # modes, so the analyst's explicit profile selection is the disambiguator.
+    arm = resolve_open_database_profile(
+        current, "ARM32-LE", "aapcs32", "analyst_selected"
+    )
+    thumb = resolve_open_database_profile(
+        current, "THUMB-LE", "aapcs32", "analyst_selected"
+    )
+    assert arm.profile["mode"] == "ARM32"
+    assert thumb.profile["mode"] == "THUMB"
+
+
+def test_analyst_selected_route_scopes_provenance_and_requires_manifest_row():
+    route = next(
+        row
+        for row in FROZEN_PROFILE_EVIDENCE
+        if row.profile_id == "X64-LE" and row.format_id == "FMT-ELF"
+    )
+    first = resolve_open_database_profile(
+        replace(observed(route), binary_digest="sha256-v1:" + "a" * 64),
+        route.profile_id,
+        route.abi_id,
+        "analyst_selected",
+    )
+    second = resolve_open_database_profile(
+        replace(observed(route), binary_digest="sha256-v1:" + "b" * 64),
+        route.profile_id,
+        route.abi_id,
+        "analyst_selected",
+    )
+    assert first.profile != second.profile
+    assert digest(first.profile) != digest(second.profile)
+
+    build = read(BUILD_MANIFEST)
+    rv32 = next(row for row in build["profiles"] if row["profile_id"] == "RV32-LE")
+    with pytest.raises(ContractError, match="analyst_profile_evidence_mismatch"):
+        resolve_open_database_profile(
+            OpenDatabaseEvidence(
+                "sha256-v1:" + rv32["binary_sha256"],
+                rv32["processor"],
+                rv32["bitness"],
+                "little",
+                rv32["format"],
+                "9.3",
+                "9.3.0.260213",
+            ),
+            "RV32-LE",
+            "riscv-ilp32",
+            "analyst_selected",
         )

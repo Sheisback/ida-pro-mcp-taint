@@ -3,16 +3,15 @@
 import functools
 import os
 import platform
-from typing import Any, Literal, TypedDict
+from typing import Any, Literal, TypedDict, cast
 
 import ida_hexrays
 import ida_ida
 import ida_kernwin
+import ida_loader
 import ida_nalt
 
 from ida_pro_mcp.flow_core.build_identity import BUILD_ID, BUILD_SCOPE
-from ida_pro_mcp.flow_core.profile_routing import resolve_open_database_profile
-
 from .flow.profile_routing import observe_open_database
 from .rpc import tool
 from .sync import idasync
@@ -35,11 +34,19 @@ class FlowEnvironment(TypedDict):
     hexrays_initialization: FlowFeature
 
 
+class FlowRouting(TypedDict):
+    mode: str | None
+    profile_id: str | None
+    abi_id: str | None
+    binary_digest: str | None
+
+
 class FlowCapabilities(TypedDict):
     schema_version: str
     build_id: str
     build_scope: str
     environment: FlowEnvironment
+    routing: FlowRouting
     features: dict[str, FlowFeature]
     supported_profiles: list[str]
     limitations: list[str]
@@ -159,20 +166,26 @@ def flow_get_capabilities() -> FlowCapabilities:
         64 if ida_ida.inf_is_64bit() else 32 if ida_ida.inf_is_32bit_exactly() else 16
     )
     endian = "big" if ida_ida.inf_is_be() else "little"
-    resolved = None
+    resolved: dict[str, str] | None = None
+    route_format: str | None = None
     route_error = "Hex-Rays initialization unavailable"
     try:
         if os.name == "posix" and ready:
             if version is None:
                 raise RuntimeError("Hex-Rays version unavailable after initialization")
-            resolved = resolve_open_database_profile(
-                observe_open_database(
-                    ida_ida,
-                    ida_nalt,
-                    ida_build=ida_kernwin.get_kernel_version(),
-                    hexrays_build=version,
-                )
+            observed = observe_open_database(
+                ida_ida,
+                ida_nalt,
+                ida_build=ida_kernwin.get_kernel_version(),
+                hexrays_build=version,
             )
+            info = _service().resolve_observed_context(
+                ida_loader.get_path(ida_loader.PATH_TYPE_IDB),
+                observed,
+                ida_ida.inf_get_database_change_count(),
+            )
+            resolved = cast(dict[str, str], info["routing"])
+            route_format = observed.format_id
             target_supported = True
         else:
             target_supported = False
@@ -187,25 +200,39 @@ def flow_get_capabilities() -> FlowCapabilities:
         else "unavailable"
     )
     if resolved is not None:
-        if resolved.evidence.evidence_path == "registry":
+        assert route_format is not None
+        if resolved["routing_mode"] == "analyst_selected":
             support_reason = (
-                "Experimental measured registry-configuration route for "
-                f"{resolved.evidence.profile_id}/{resolved.evidence.abi_id}/"
-                f"{resolved.evidence.format_id} at MMAT_CALLS; current-binary ABI "
-                "is not inferred"
+                "Validated active analyst-selected route for "
+                f"{resolved['profile_id']}/{resolved['abi_id']}/{route_format} at "
+                "MMAT_CALLS; "
+                "selection is bound to this database snapshot and runtime build"
             )
         else:
             support_reason = (
                 "Experimental exact static-evidence route for "
-                f"{resolved.evidence.profile_id}/{resolved.evidence.abi_id}/"
-                f"{resolved.evidence.format_id} at MMAT_CALLS"
+                f"{resolved['profile_id']}/{resolved['abi_id']}/{route_format} at "
+                "MMAT_CALLS"
             )
-        supported_profiles = [resolved.evidence.profile_id]
+        supported_profiles = [resolved["profile_id"]]
+        routing: FlowRouting = {
+            "mode": resolved["routing_mode"],
+            "profile_id": resolved["profile_id"],
+            "abi_id": resolved["abi_id"],
+            "binary_digest": resolved["binary_digest"],
+        }
     else:
         support_reason = (
-            "Current database has no exact frozen normal-profile route: " + route_error
+            "Current database has no validated active normal-profile route: "
+            + route_error
         )
         supported_profiles = []
+        routing = {
+            "mode": None,
+            "profile_id": None,
+            "abi_id": None,
+            "binary_digest": None,
+        }
     features: dict[str, FlowFeature] = {
         name: {"status": "unavailable", "reason": "Not implemented in this build"}
         for name in (
@@ -255,6 +282,7 @@ def flow_get_capabilities() -> FlowCapabilities:
             "hexrays_version": version,
             "hexrays_initialization": probe,
         },
+        "routing": routing,
         "features": features,
         "supported_profiles": supported_profiles,
         "limitations": [
@@ -296,15 +324,23 @@ def _service() -> Any:
 @tool
 @_flow_api
 def flow_create_snapshot(
-    function: str, profile: str, request_key: str
+    function: str,
+    profile: str,
+    request_key: str,
+    abi: str | None = None,
+    routing_mode: str = "exact_fixture",
 ) -> FlowJobSubmission | FlowError:
-    """Queue an experimental MMAT_CALLS scalar snapshot for an exact function entry.
+    """Queue an experimental MMAT_CALLS snapshot for an exact function entry.
 
-    The requested profile must exactly match frozen static semantic evidence for
-    the open database identity. No target execution or ABI inference occurs.
-    Reuse request_key only for the identical request.
+    ``exact_fixture`` requires the open input to match frozen static semantic
+    evidence. ``analyst_selected`` accepts another binary only when ``profile``
+    and ``abi`` are explicit and its observed processor, bitness, endianness,
+    format, and exact IDA/Hex-Rays builds match reviewed normal evidence. The
+    current binary digest scopes all runtime state; selection never promotes
+    support or infers an ABI. RV32 has no normal route and is rejected. Reuse
+    ``request_key`` only for the identical request.
     """
-    return _service().create(function, profile, request_key)
+    return _service().create(function, profile, request_key, abi, routing_mode)
 
 
 @tool

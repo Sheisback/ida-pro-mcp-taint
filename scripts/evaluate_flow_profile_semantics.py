@@ -1036,8 +1036,7 @@ def validate_normal_receipt(
         raise ValueError("Normal semantic receipt digest mismatch")
     profile_id = build_row["profile_id"]
     if (
-        profile_id not in NORMAL_PROFILE_IDS
-        or receipt["profile_id"] != profile_id
+        receipt["profile_id"] != profile_id
         or receipt["binary_sha256"] != build_row["binary_sha256"]
     ):
         raise ValueError("Normal profile/binary mismatch")
@@ -1085,6 +1084,25 @@ def validate_normal_receipt(
         or len(set(receipt["fresh_process_receipt_digests"])) != 1
     ):
         raise ValueError("Normal fresh-process receipt digest mismatch")
+    process_view = {
+        "schema_version": "flow-profile-semantics-process/1",
+        "registry": receipt["registry"],
+        "profile": receipt["profile"],
+        "profile_digest": receipt["profile_digest"],
+        "binary_sha256": receipt["binary_sha256"],
+        "image_base": receipt["image_base"],
+        "environment": receipt["environment"],
+        "functions": receipt["functions"],
+        "implementation": receipt["implementation"],
+        "target_executed": receipt["target_executed"],
+        "input_preserved": receipt["input_preserved"],
+    }
+    expected_process_digest = digest(process_view)
+    if receipt["fresh_process_receipt_digests"] != [
+        expected_process_digest,
+        expected_process_digest,
+    ]:
+        raise ValueError("Normal fresh-process receipt digest/payload mismatch")
 
     build_path = root / PROFILE_BUILD
     evidence = receipt["build_evidence"]
@@ -1369,7 +1387,7 @@ def build_complete_matrix_receipt(root: Path) -> dict[str, Any]:
     if (
         normal_matrix.get("schema_version") != NORMAL_MATRIX_SCHEMA
         or normal_matrix.get("status") != "success"
-        or normal_matrix.get("success_count") != 16
+        or normal_matrix.get("success_count") != len(NORMAL_PROFILE_IDS)
         or normal_matrix.get("failure_count") != 0
         or normal_matrix.get("target_executed") is not False
         or normal_matrix.get("input_preserved") is not True
@@ -1383,7 +1401,7 @@ def build_complete_matrix_receipt(root: Path) -> dict[str, Any]:
     if (
         format_matrix.get("schema_version") != FORMAT_MATRIX_SCHEMA
         or format_matrix.get("status") != "success"
-        or format_matrix.get("success_count") != 4
+        or format_matrix.get("success_count") != len(FORMAT_VARIANT_KEYS)
         or format_matrix.get("failure_count") != 0
         or format_matrix.get("target_executed") is not False
         or format_matrix.get("input_preserved") is not True
@@ -1445,26 +1463,35 @@ def build_complete_matrix_receipt(root: Path) -> dict[str, Any]:
             "receipt_digest": rv32["receipt_digest"],
         }
     )
-    if len(rows) != 21 or {
-        (item["profile_id"], item["format"], item["evidence_path"]) for item in rows
-    } != (
+    expected_rows = (
         {(profile_id, "FMT-ELF", "normal") for profile_id in NORMAL_PROFILE_IDS}
         | {
             (profile_id, binary_format, "format")
             for profile_id, binary_format in FORMAT_VARIANT_KEYS
         }
         | {(RV32_PROFILE_ID, "FMT-ELF", "fallback")}
+    )
+    if (
+        len(rows) != len(expected_rows)
+        or {
+            (item["profile_id"], item["format"], item["evidence_path"]) for item in rows
+        }
+        != expected_rows
     ):
         raise ValueError("Semantic profile completeness mismatch")
+    backend_counts = {
+        evidence_path: sum(row["evidence_path"] == evidence_path for row in rows)
+        for evidence_path in ("normal", "format", "fallback")
+    }
     body = {
         "schema_version": COMPLETE_MATRIX_SCHEMA,
-        "profile_count": 17,
-        "semantic_row_count": 21,
-        "normal_success_count": 16,
-        "format_variant_count": 4,
-        "format_success_count": 4,
-        "rv32_normal_failure_count": 1,
-        "rv32_fallback_count": 1,
+        "profile_count": len(build["profiles"]),
+        "semantic_row_count": len(rows),
+        "normal_success_count": backend_counts["normal"],
+        "format_variant_count": len(build["format_variants"]),
+        "format_success_count": backend_counts["format"],
+        "rv32_normal_failure_count": backend_counts["fallback"],
+        "rv32_fallback_count": backend_counts["fallback"],
         "profiles": rows,
         "build_manifest": PROFILE_BUILD.as_posix(),
         "build_manifest_digest": digest(build),
@@ -1484,9 +1511,115 @@ def build_complete_matrix_receipt(root: Path) -> dict[str, Any]:
 
 
 def validate_complete_matrix_artifacts(root: Path, receipt: dict[str, Any]) -> None:
+    """Validate the declared canonical rows without inferring backend by profile name."""
+
     validate_core_complete_matrix_receipt(receipt)
-    if receipt != build_complete_matrix_receipt(root):
-        raise ValueError("Complete semantic matrix receipt mismatch")
+    root = root.resolve()
+
+    def artifact(relative: Any, label: str) -> tuple[Path, dict[str, Any]]:
+        if type(relative) is not str:
+            raise ValueError(label + " path is invalid")
+        path = Path(relative)
+        if path.is_absolute() or ".." in path.parts:
+            raise ValueError(label + " path escapes checkout")
+        resolved = (root / path).resolve()
+        resolved.relative_to(root)
+        value = read_json(resolved)
+        if type(value) is not dict:
+            raise ValueError(label + " must be an object")
+        return resolved, value
+
+    _build_path, build = artifact(receipt["build_manifest"], "Build manifest")
+    _oracle_path, oracle = artifact(receipt["oracle_file"], "ISA oracle")
+    _normal_path, normal_matrix = artifact(
+        receipt["normal_matrix_file"], "Normal semantic matrix"
+    )
+    _format_path, format_matrix = artifact(
+        receipt["format_matrix_file"], "Format semantic matrix"
+    )
+    if (
+        receipt["build_manifest_digest"] != digest(build)
+        or receipt["oracle_digest"] != digest(oracle)
+        or receipt["normal_matrix_digest"] != normal_matrix.get("receipt_digest")
+        or receipt["format_matrix_digest"] != format_matrix.get("receipt_digest")
+    ):
+        raise ValueError("Complete semantic matrix source digest mismatch")
+    for matrix, label in (
+        (normal_matrix, "Normal semantic matrix"),
+        (format_matrix, "Format semantic matrix"),
+    ):
+        unsigned = dict(matrix)
+        matrix_digest = unsigned.pop("receipt_digest", None)
+        profiles = matrix.get("profiles")
+        if (
+            matrix_digest != digest(unsigned)
+            or type(profiles) is not list
+            or matrix.get("success_count") != len(profiles)
+            or matrix.get("failure_count") != 0
+            or matrix.get("target_executed") is not False
+            or matrix.get("input_preserved") is not True
+            or matrix.get("status") != "success"
+        ):
+            raise ValueError(label + " is incomplete")
+
+    build_profiles = {item["profile_id"]: item for item in build.get("profiles", [])}
+    build_formats = {
+        (item["profile_id"], item["format"]): item
+        for item in build.get("format_variants", [])
+    }
+    oracle_profiles = {item["profile_id"]: item for item in oracle.get("profiles", [])}
+    normal_sources = {item["profile_id"]: item for item in normal_matrix["profiles"]}
+    format_sources = {
+        (item["profile_id"], item["format"]): item for item in format_matrix["profiles"]
+    }
+
+    for row in receipt["profiles"]:
+        evidence_path = row["evidence_path"]
+        _path, value = artifact(row["receipt_file"], "Semantic receipt")
+        if (
+            value.get("profile_id") != row["profile_id"]
+            or value.get("receipt_digest") != row["receipt_digest"]
+        ):
+            raise ValueError("Semantic matrix row/receipt mismatch")
+        if evidence_path == "normal":
+            source = normal_sources.get(row["profile_id"])
+            build_row = build_profiles.get(row["profile_id"])
+            oracle_row = oracle_profiles.get(row["profile_id"])
+            if (
+                source is None
+                or source.get("receipt_digest") != row["receipt_digest"]
+                or build_row is None
+                or oracle_row is None
+            ):
+                raise ValueError("Normal semantic source row mismatch")
+            validate_normal_receipt(root, value, build_row, oracle_row)
+        elif evidence_path == "format":
+            key = (row["profile_id"], row["format"])
+            source = format_sources.get(key)
+            build_row = build_formats.get(key)
+            oracle_row = oracle_profiles.get(row["profile_id"])
+            if (
+                source is None
+                or source.get("receipt_digest") != row["receipt_digest"]
+                or build_row is None
+                or oracle_row is None
+            ):
+                raise ValueError("Format semantic source row mismatch")
+            validate_normal_receipt(root, value, build_row, oracle_row)
+        elif evidence_path == "fallback":
+            _validate_fallback_receipt(root, value)
+        else:
+            raise ValueError("Unknown semantic evidence path")
+
+
+def _validate_fallback_receipt(root: Path, receipt: dict[str, Any]) -> None:
+    """Dispatch only fallback schemas with artifact-backed deep validation."""
+
+    schema = receipt.get("schema_version")
+    if schema == RV32_RECEIPT_SCHEMA:
+        validate_rv32_fallback_receipt(root, receipt)
+        return
+    raise ValueError("Unsupported fallback semantic receipt schema")
 
 
 def validate_rv32_fallback_receipt(root: Path, receipt: dict[str, Any]) -> None:

@@ -34,7 +34,7 @@ jobs:
           uv run --no-project --with pytest --with jsonschema --with tomli-w
           python -m pytest
           tests/flow_core tests/test_flow_capabilities.py
-          tests/test_gui_installer_bundle.py -q
+          tests/test_gui_installer_bundle.py tests/test_flow_gui_deploy.py -q
       - name: Build the release distributions
         run: uv build --sdist --wheel --out-dir dist-release
       - name: Verify wheel imports and source/wheel parity
@@ -60,7 +60,8 @@ jobs:
     uses: ./.github/workflows/idalib-tests.yml
     with:
       release_sha: ${{ inputs.release_sha || github.sha }}
-    secrets: inherit
+    secrets:
+      container_registry_token: ${{ secrets.GITHUB_TOKEN }}
 
   release-aggregate:
     if: always()

@@ -51,6 +51,7 @@ def test_committed_support_manifest_is_complete_reproducible_and_static_only():
     assert committed["normal_observation_count"] == 16
     assert committed["fallback_observation_count"] == 1
     assert committed["format_variant_count"] == 4
+    assert committed["status"] == "complete_with_explicit_fallbacks"
     assert committed["target_executed"] is False
     assert committed["support_promoted"] is False
     assert {row["support_status"] for row in committed["profiles"]} == {"unverified"}
@@ -85,12 +86,52 @@ def test_support_manifest_rejects_promotion_and_coverage_drift(mutation):
         validate_support_receipt_manifest(receipt)
 
 
-def test_builder_rejects_forged_rv32_normal_success():
+def test_builder_rejects_p0_status_that_contradicts_semantic_availability():
     inventory, p0_matrix, semantic_matrix = _sources()
     row = next(row for row in p0_matrix["rows"] if row["profile_id"] == "RV32-LE")
     row["status"] = "success"
-    with pytest.raises(ContractError, match="P0 observation status mismatch"):
+    with pytest.raises(ContractError, match="P0/semantic availability mismatch"):
         build_support_receipt_manifest(inventory, p0_matrix, semantic_matrix)
+
+
+def test_builder_derives_normal_and_fallback_eligibility_from_rows_not_names():
+    inventory, p0_matrix, semantic_matrix = _sources()
+    rv32_semantic = next(
+        row for row in semantic_matrix["profiles"] if row["profile_id"] == "RV32-LE"
+    )
+    x86_semantic = next(
+        row
+        for row in semantic_matrix["profiles"]
+        if row["profile_id"] == "X86-LE" and row["evidence_path"] == "normal"
+    )
+    rv32_semantic.update(
+        evidence_path="normal", status="success_partial_with_named_limitations"
+    )
+    x86_semantic.update(
+        evidence_path="fallback", status="accepted_candidate_partial_normal_failed"
+    )
+    semantic_matrix["rv32_normal_failure_count"] = 0
+    semantic_matrix["rv32_fallback_count"] = 0
+    semantic_matrix["receipt_digest"] = digest(
+        {
+            key: value
+            for key, value in semantic_matrix.items()
+            if key != "receipt_digest"
+        }
+    )
+    next(row for row in p0_matrix["rows"] if row["profile_id"] == "RV32-LE")[
+        "status"
+    ] = "success"
+    next(row for row in p0_matrix["rows"] if row["profile_id"] == "X86-LE")[
+        "status"
+    ] = "failed"
+
+    result = build_support_receipt_manifest(inventory, p0_matrix, semantic_matrix)
+    by_profile = {row["profile_id"]: row for row in result["profiles"]}
+    assert by_profile["RV32-LE"]["semantic_evidence_path"] == "normal"
+    assert by_profile["RV32-LE"]["p0_status"] == "success"
+    assert by_profile["X86-LE"]["semantic_evidence_path"] == "fallback"
+    assert by_profile["X86-LE"]["p0_status"] == "failed"
 
 
 def test_audit_rejects_p0_body_tamper_with_copied_digest_label(monkeypatch):

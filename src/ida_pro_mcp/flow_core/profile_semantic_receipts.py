@@ -7,9 +7,9 @@ from typing import Any, cast
 from .contracts import StructuredSnapshot
 from .profile_semantics import (
     FORMAT_VARIANT_KEYS,
-    NORMAL_PROFILE_IDS,
     verify_receipt_digest,
 )
+from .profile_registry import PROFILE_IDS
 from .serialization import ContractError, digest
 from .states import require
 
@@ -209,7 +209,7 @@ def validate_rv32_receipt(value: dict[str, Any]) -> None:
 
 
 def validate_complete_matrix_receipt(value: dict[str, Any]) -> None:
-    """Validate the canonical 17-profile semantic completeness receipt."""
+    """Validate semantic completeness against the canonical identity sets."""
 
     _exact_keys(
         value,
@@ -245,19 +245,6 @@ def validate_complete_matrix_receipt(value: dict[str, Any]) -> None:
         "Complete matrix schema mismatch",
     )
     verify_receipt_digest(value)
-    require(value["profile_count"] == 17, "Complete matrix profile count mismatch")
-    require(value["semantic_row_count"] == 21, "Complete semantic row count mismatch")
-    require(
-        value["normal_success_count"] == 16,
-        "Normal semantic success count mismatch",
-    )
-    require(value["format_variant_count"] == 4, "Format variant count mismatch")
-    require(value["format_success_count"] == 4, "Format success count mismatch")
-    require(
-        value["rv32_normal_failure_count"] == 1,
-        "RV32 normal failure count mismatch",
-    )
-    require(value["rv32_fallback_count"] == 1, "RV32 fallback count mismatch")
     require(value["target_executed"] is False, "Complete matrix executed target")
     require(value["input_preserved"] is True, "Complete matrix input changed")
     require(
@@ -273,10 +260,7 @@ def validate_complete_matrix_receipt(value: dict[str, Any]) -> None:
         "Complete matrix status mismatch",
     )
     raw_profiles = value["profiles"]
-    require(
-        type(raw_profiles) is list and len(raw_profiles) == 21,
-        "Complete matrix rows mismatch",
-    )
+    require(type(raw_profiles) is list, "Complete matrix rows mismatch")
     profiles = cast(list[dict[str, Any]], raw_profiles)
     for item in profiles:
         _exact_keys(
@@ -291,27 +275,76 @@ def validate_complete_matrix_receipt(value: dict[str, Any]) -> None:
             },
             "complete semantic profile row",
         )
-    expected = (
-        {(profile_id, "FMT-ELF", "normal") for profile_id in NORMAL_PROFILE_IDS}
-        | {
-            (profile_id, binary_format, "format")
-            for profile_id, binary_format in FORMAT_VARIANT_KEYS
-        }
-        | {("RV32-LE", "FMT-ELF", "fallback")}
+    identities = [
+        (item.get("profile_id"), item.get("format"), item.get("evidence_path"))
+        for item in profiles
+    ]
+    require(len(identities) == len(set(identities)), "Duplicate semantic matrix row")
+    primary = [item for item in profiles if item.get("evidence_path") != "format"]
+    formats = [item for item in profiles if item.get("evidence_path") == "format"]
+    require(
+        len(primary) == len(PROFILE_IDS)
+        and {item.get("profile_id") for item in primary} == set(PROFILE_IDS)
+        and all(
+            item.get("format") == "FMT-ELF"
+            and item.get("evidence_path") in {"normal", "fallback"}
+            for item in primary
+        ),
+        "Complete primary profile coverage mismatch",
     )
     require(
-        {
-            (item["profile_id"], item["format"], item["evidence_path"])
-            for item in profiles
-        }
-        == expected,
-        "Complete profile coverage mismatch",
+        {(item.get("profile_id"), item.get("format")) for item in formats}
+        == set(FORMAT_VARIANT_KEYS),
+        "Complete format coverage mismatch",
+    )
+    for item in profiles:
+        evidence_path = item.get("evidence_path")
+        expected_status = {
+            "normal": "success_partial_with_named_limitations",
+            "format": "success_partial_with_named_limitations",
+            "fallback": "accepted_candidate_partial_normal_failed",
+        }.get(evidence_path if type(evidence_path) is str else "")
+        require(
+            expected_status is not None and item.get("status") == expected_status,
+            "Complete semantic row status mismatch",
+        )
+    expected_backend_counts = {
+        evidence_path: sum(
+            item.get("evidence_path") == evidence_path for item in profiles
+        )
+        for evidence_path in ("normal", "format", "fallback")
+    }
+    rv32_fallback_count = sum(
+        item.get("profile_id") == "RV32-LE" and item.get("evidence_path") == "fallback"
+        for item in primary
     )
     require(
-        sum(item["evidence_path"] == "normal" for item in profiles) == 16
-        and sum(item["evidence_path"] == "format" for item in profiles) == 4
-        and sum(item["evidence_path"] == "fallback" for item in profiles) == 1,
-        "Complete backend coverage mismatch",
+        value["profile_count"] == len(PROFILE_IDS),
+        "Complete matrix profile count mismatch",
+    )
+    require(
+        value["semantic_row_count"] == len(profiles),
+        "Complete semantic row count mismatch",
+    )
+    require(
+        value["normal_success_count"] == expected_backend_counts["normal"],
+        "Normal semantic success count mismatch",
+    )
+    require(
+        value["format_variant_count"] == expected_backend_counts["format"],
+        "Format variant count mismatch",
+    )
+    require(
+        value["format_success_count"] == expected_backend_counts["format"],
+        "Format success count mismatch",
+    )
+    require(
+        value["rv32_normal_failure_count"] == rv32_fallback_count,
+        "RV32 normal failure count mismatch",
+    )
+    require(
+        value["rv32_fallback_count"] == rv32_fallback_count,
+        "RV32 fallback count mismatch",
     )
 
 

@@ -4,7 +4,7 @@ import json
 import os
 import re
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 from ida_pro_mcp.flow_core import canonical_json, digest
 from ida_pro_mcp.flow_core.analysis import Seed
@@ -20,7 +20,10 @@ from ida_pro_mcp.flow_core.implicit_analysis import (
 )
 from ida_pro_mcp.flow_core.memory_graph import build_memory_graph
 from ida_pro_mcp.flow_core.persistence import require
-from ida_pro_mcp.flow_core.profile_routing import resolve_open_database_profile
+from ida_pro_mcp.flow_core.profile_routing import (
+    RoutingMode,
+    resolve_open_database_profile,
+)
 from ida_pro_mcp.flow_core.proof import (
     ProofResult,
     ReferenceProofEngine,
@@ -38,8 +41,17 @@ from .profile_routing import observe_open_database
 from .summary_catalog import EMPTY_CATALOG, CallBinding, bind_call, compose_binding
 
 
+_ROUTING_SELECTION_SCHEMA = "flow-routing-selection/1"
+
+
 def build_digest():
     return BUILD_ID
+
+
+def _state_root():
+    return Path(
+        os.environ.get("IDA_MCP_FLOW_STATE_ROOT", str(Path.home() / ".ida-mcp-flow"))
+    ).absolute()
 
 
 def reviewed_catalog(_info=None):
@@ -53,7 +65,146 @@ def reviewed_catalog(_info=None):
     return EMPTY_CATALOG
 
 
-def _context(selector=None, requested_profile=None):
+def _runtime_scope(info: dict[str, Any], namespace: str):
+    catalog = reviewed_catalog(info)
+    return RuntimeScope(
+        namespace,
+        _fingerprint(info),
+        info["binary"],
+        digest(info["profile"]),
+        digest(extractor.RULES),
+        catalog.catalog_digest,
+        digest(extractor.POLICY),
+    )
+
+
+def _database_snapshot_digest(info: dict[str, Any]):
+    return digest({k: info[k] for k in ("dbpath", "binary", "count", "ida", "hexrays")})
+
+
+def _routing_selection(info: dict[str, Any], scope) -> dict[str, object]:
+    return {
+        "schema_version": _ROUTING_SELECTION_SCHEMA,
+        "namespace": scope.namespace,
+        "database_path_digest": digest(
+            {"database_path": str(Path(info["dbpath"]).absolute())}
+        ),
+        "database_snapshot_digest": _database_snapshot_digest(info),
+        "database_fingerprint": scope.fingerprint,
+        "database_change_count": info["count"],
+        "routing_mode": info["routing"]["routing_mode"],
+        "profile_id": info["routing"]["profile_id"],
+        "abi_id": info["routing"]["abi_id"],
+        "binary_digest": info["binary"],
+        "profile_digest": scope.profile_digest,
+        "ida_build": info["ida"],
+        "hexrays_build": info["hexrays"],
+        "extension_build": build_digest(),
+        "rule_digest": scope.rule_digest,
+        "summary_digest": scope.summary_digest,
+        "policy_digest": scope.policy_digest,
+        "scope_digest": scope.scope_digest,
+    }
+
+
+def resolve_observed_context(
+    dbpath,
+    observed,
+    count,
+    requested_profile=None,
+    requested_abi=None,
+    routing_mode: RoutingMode = "exact_fixture",
+    *,
+    retain_selection=True,
+):
+    """Resolve a route, restoring only an exact owned durable selection."""
+
+    require(type(dbpath) is str and bool(dbpath), "open_database_required")
+    require(type(count) is int and count >= 0, "invalid_database_change_count")
+    explicit_selection = (
+        requested_profile is not None
+        or requested_abi is not None
+        or routing_mode != "exact_fixture"
+    )
+    restored = None
+    if not explicit_selection:
+        restored = runtime.load_routing_selection(_state_root(), dbpath)
+        if restored is not None:
+            _namespace, selection = restored
+            require(
+                set(selection)
+                == {
+                    "schema_version",
+                    "namespace",
+                    "database_path_digest",
+                    "database_snapshot_digest",
+                    "database_fingerprint",
+                    "database_change_count",
+                    "routing_mode",
+                    "profile_id",
+                    "abi_id",
+                    "binary_digest",
+                    "profile_digest",
+                    "ida_build",
+                    "hexrays_build",
+                    "extension_build",
+                    "rule_digest",
+                    "summary_digest",
+                    "policy_digest",
+                    "scope_digest",
+                }
+                and selection["schema_version"] == _ROUTING_SELECTION_SCHEMA,
+                "invalid_routing_selection",
+            )
+            require(
+                type(selection["database_change_count"]) is int
+                and all(
+                    type(selection[key]) is str
+                    for key in set(selection) - {"database_change_count"}
+                ),
+                "invalid_routing_selection",
+            )
+            requested_profile = cast(str, selection["profile_id"])
+            requested_abi = cast(str, selection["abi_id"])
+            routing_mode = cast(RoutingMode, selection["routing_mode"])
+    resolved = resolve_open_database_profile(
+        observed,
+        requested_profile=requested_profile,
+        requested_abi=requested_abi,
+        routing_mode=routing_mode,
+    )
+    info = {
+        "dbpath": dbpath,
+        "profile": resolved.profile,
+        "registry": resolved.registry,
+        "binary": observed.binary_digest,
+        "count": count,
+        "ida": observed.ida_build,
+        "hexrays": observed.hexrays_build,
+        "routing": {
+            "routing_mode": routing_mode,
+            "profile_id": resolved.evidence.profile_id,
+            "abi_id": resolved.evidence.abi_id,
+            "binary_digest": observed.binary_digest,
+        },
+        "persist_selection": explicit_selection and retain_selection,
+    }
+    if restored is not None:
+        namespace, selection = restored
+        scope = _runtime_scope(info, namespace)
+        require(selection == _routing_selection(info, scope), "stale_profile_selection")
+        info["restored_selection"] = selection
+    return info
+
+
+def _context(
+    selector=None,
+    requested_profile=None,
+    requested_abi=None,
+    routing_mode: RoutingMode = "exact_fixture",
+    *,
+    retain_selection=True,
+):
     import ida_funcs
     import ida_hexrays
     import ida_ida
@@ -75,19 +226,16 @@ def _context(selector=None, requested_profile=None):
         ida_build=ida_build,
         hexrays_build=hexrays_build,
     )
-    resolved = resolve_open_database_profile(
-        observed, requested_profile=requested_profile
-    )
     count = ida_ida.inf_get_database_change_count()
-    result = {
-        "dbpath": dbpath,
-        "profile": resolved.profile,
-        "registry": resolved.registry,
-        "binary": observed.binary_digest,
-        "count": count,
-        "ida": ida_build,
-        "hexrays": hexrays_build,
-    }
+    result = resolve_observed_context(
+        dbpath,
+        observed,
+        count,
+        requested_profile,
+        requested_abi,
+        routing_mode,
+        retain_selection=retain_selection,
+    )
     if selector is not None:
         ea = parse_address(selector)
         func = ida_funcs.get_func(ea)
@@ -106,9 +254,30 @@ def _fingerprint(info):
     )
 
 
+def _context_for_request(request, *, synchronized=False):
+    routing = request.get("routing")
+    if routing is None:
+        # Compatibility for already queued exact-fixture requests.
+        return context() if synchronized else _context()
+    require(
+        type(routing) is dict
+        and set(routing) == {"routing_mode", "profile_id", "abi_id", "binary_digest"},
+        "invalid_profile_selection",
+    )
+    reader = context if synchronized else _context
+    info = reader(
+        requested_profile=routing["profile_id"],
+        requested_abi=routing["abi_id"],
+        routing_mode=cast(RoutingMode, routing["routing_mode"]),
+        retain_selection=False,
+    )
+    require(info["binary"] == routing["binary_digest"], "stale_profile_selection")
+    return info
+
+
 @idasync
 def _extract(ctx, request):
-    before = _context()
+    before = _context_for_request(request)
     require(_fingerprint(before) == request["fingerprint"], "stale_database")
     require(before["profile"] == request["profile"], "stale_profile_evidence")
     require(
@@ -126,7 +295,10 @@ def _extract(ctx, request):
         include_calls=True,
         registry=before["registry"],
     )
-    require(_fingerprint(_context()) == request["fingerprint"], "stale_database")
+    require(
+        _fingerprint(_context_for_request(request)) == request["fingerprint"],
+        "stale_database",
+    )
     return snapshot, request
 
 
@@ -136,9 +308,10 @@ def _analyze(ctx, extracted):
     memory = build_memory_graph(snapshot)
     program = memory.program
     ctx.check()
-    require(_fingerprint(context()) == request["fingerprint"], "stale_database")
-    current = get_runtime(context())
-    catalog = reviewed_catalog(context())
+    info = _context_for_request(request, synchronized=True)
+    require(_fingerprint(info) == request["fingerprint"], "stale_database")
+    current = get_runtime(info)
+    catalog = reviewed_catalog(info)
     require(current.store.scope.fingerprint == request["fingerprint"], "stale_database")
     require(
         snapshot.identity.summary_digest
@@ -191,7 +364,7 @@ def _analyze(ctx, extracted):
 
 
 def _request_runtime(request, info=None):
-    info = info or context()
+    info = info or _context_for_request(request, synchronized=True)
     require(_fingerprint(info) == request["fingerprint"], "stale_database")
     current = get_runtime(info)
     require(
@@ -203,7 +376,7 @@ def _request_runtime(request, info=None):
 
 @idasync
 def _extract_implicit(ctx, request):
-    current = _request_runtime(request, _context())
+    current = _request_runtime(request, _context_for_request(request))
     program = cast(
         SSAProgram,
         SSAProgram.from_data(current.store.artifact(request["ssa_artifact"])),
@@ -275,7 +448,7 @@ def _validate_path_query(graph: Graph, query: ConstraintQuery) -> None:
 
 @idasync
 def _extract_path_proof(ctx, request):
-    current = _request_runtime(request, _context())
+    current = _request_runtime(request, _context_for_request(request))
     graph = cast(
         Graph, Graph.from_data(current.store.artifact(request["graph_artifact"]))
     )
@@ -321,25 +494,25 @@ HANDLERS = {
 
 def get_runtime(info=None):
     info = info or context()
-    catalog = reviewed_catalog(info)
-    root = Path(
-        os.environ.get("IDA_MCP_FLOW_STATE_ROOT", str(Path.home() / ".ida-mcp-flow"))
-    ).absolute()
+    root = _state_root()
     namespace, owner = identity(root, info["dbpath"])
-    scope = RuntimeScope(
-        namespace,
-        _fingerprint(info),
-        info["binary"],
-        digest(info["profile"]),
-        digest(extractor.RULES),
-        catalog.catalog_digest,
-        digest(extractor.POLICY),
-    )
+    scope = _runtime_scope(info, namespace)
+    if "restored_selection" in info:
+        require(
+            info["restored_selection"] == _routing_selection(info, scope),
+            "stale_profile_selection",
+        )
     return runtime.refresh_runtime(root / namespace, scope, owner, HANDLERS)
 
 
-def create(selector, profile, request_key):
-    info = context(selector, profile)
+def create(
+    selector,
+    profile,
+    request_key,
+    abi=None,
+    routing_mode: RoutingMode = "exact_fixture",
+):
+    info = context(selector, profile, abi, routing_mode)
     engine = get_runtime(info)
     request = {
         "ea": info["ea"],
@@ -348,10 +521,18 @@ def create(selector, profile, request_key):
         "fingerprint": engine.store.scope.fingerprint,
         "summary_digest": engine.store.scope.summary_digest,
         "function_key": "function-entry:" + str(info["ea"]),
+        "routing": info["routing"],
     }
+    if info["persist_selection"]:
+        runtime.persist_routing_selection(
+            engine.store,
+            info["dbpath"],
+            _routing_selection(info, engine.store.scope),
+        )
+    job_id = engine.submit("snapshot_ssa_v1", request, request_key, timeout=120)
     return {
         "schema_version": "flow-job/1",
-        "job_id": engine.submit("snapshot_ssa_v1", request, request_key, timeout=120),
+        "job_id": job_id,
         "experimental": True,
     }
 
@@ -370,6 +551,7 @@ def create_implicit(ssa_artifact, seeds, request_key, max_evaluations=100000):
         "max_evaluations": max_evaluations,
         "fingerprint": engine.store.scope.fingerprint,
         "scope_digest": engine.store.scope.scope_digest,
+        "routing": info["routing"],
     }
     return {
         "schema_version": "flow-job/1",
@@ -389,6 +571,7 @@ def create_path_proof(graph_artifact, query, request_key):
         "query": query,
         "fingerprint": engine.store.scope.fingerprint,
         "scope_digest": engine.store.scope.scope_digest,
+        "routing": info["routing"],
     }
     return {
         "schema_version": "flow-job/1",

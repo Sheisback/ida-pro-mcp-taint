@@ -69,7 +69,7 @@ from ida_pro_mcp.flow_core.persistence import Store
 from ida_pro_mcp.flow_core.runtime import Runtime
 from ida_pro_mcp.flow_core.query import Queries
 from ida_pro_mcp.flow_core.host_identity import identity
-from ida_pro_mcp.flow_core.profile_registry import REGISTRY
+from ida_pro_mcp.flow_core.profile_registry import PROFILE_IDS, REGISTRY
 from ida_pro_mcp.flow_core.constraints import ConstraintBindings, ConstraintExpression, ConstraintQuery, ConstraintVariable, DeclaredCoverage, PathConstraint, ProofBounds, ProofBudget, variable_domain_digest
 from ida_pro_mcp.flow_core.proof import ProofResult, ReferenceProofEngine, classify_proof
 from ida_pro_mcp.flow_core.build_identity import BUILD_ID
@@ -118,7 +118,7 @@ assert proof.status == "feasible"
 assert ProofResult.from_json(canonical_json(proof)) == proof
 assert BUILD_ID.startswith("flow-build-sha256-v1:")
 assert BUILD_ID == sys.argv[2]
-assert len(REGISTRY.profiles) == 17
+assert tuple(profile.profile_id for profile in REGISTRY.profiles) == PROFILE_IDS
 print("Wheel core import/roundtrip passed without SDK imports")
 """
         subprocess.run(

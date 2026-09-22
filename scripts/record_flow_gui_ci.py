@@ -15,7 +15,8 @@ import signal
 import subprocess
 import sys
 import tempfile
-from pathlib import Path
+import zipfile
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -28,9 +29,24 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _absolute_unresolved(path: Path) -> Path:
+    return Path(os.path.abspath(os.fspath(path)))
+
+
+def _reject_symlink_components(path: Path) -> Path:
+    result = _absolute_unresolved(path)
+    for candidate in reversed([result, *result.parents]):
+        if os.path.lexists(candidate) and candidate.is_symlink():
+            raise ValueError(
+                f"GUI evidence output path contains a symlink: {candidate}"
+            )
+    return result
+
+
 def write_json(path: Path, value: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n")
+    with path.open("x", encoding="utf-8") as stream:
+        stream.write(json.dumps(value, indent=2, sort_keys=True) + "\n")
 
 
 def blocker_path(output: Path) -> Path:
@@ -60,6 +76,78 @@ def record_blocker(
     return value
 
 
+def build_and_install_gui_bundle(work: Path, user: Path) -> tuple[Path, Path]:
+    """Build the current wheel and install its plugin into disposable IDAUSR."""
+    uv = shutil.which("uv")
+    if uv is None:
+        raise RuntimeError("uv is required to build disposable GUI evidence")
+    sdists = work / "sdist"
+    sdists.mkdir()
+    wheels = work / "wheel"
+    wheels.mkdir()
+    build_environment = os.environ.copy()
+    build_environment.pop("PYTHONPATH", None)
+    subprocess.run(
+        [uv, "build", "--sdist", "--out-dir", str(sdists), str(ROOT)],
+        cwd=work,
+        env=build_environment,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    sources = tuple(sdists.glob("*.tar.gz"))
+    if len(sources) != 1:
+        raise RuntimeError("Expected exactly one current-checkout GUI evidence sdist")
+    # Build the wheel from the fresh sdist rather than ROOT. Backends are allowed
+    # to reuse an ignored build/lib tree for a direct wheel build, which can make
+    # the installed GUI bundle stale even though the checkout itself is current.
+    subprocess.run(
+        [uv, "build", "--wheel", "--out-dir", str(wheels), str(sources[0])],
+        cwd=work,
+        env=build_environment,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    built = tuple(wheels.glob("*.whl"))
+    if len(built) != 1:
+        raise RuntimeError("Expected exactly one current-checkout GUI evidence wheel")
+    site = work / "wheel-site"
+    site.mkdir()
+    with zipfile.ZipFile(built[0]) as archive:
+        for member in archive.infolist():
+            parts = PurePosixPath(member.filename).parts
+            if member.filename.startswith("/") or ".." in parts:
+                raise RuntimeError("Unsafe path in GUI evidence wheel")
+        archive.extractall(site)
+    plugins = user / "plugins"
+    plugins.mkdir()
+    install = """
+import pathlib
+import sys
+site = pathlib.Path(sys.argv[1]).resolve()
+plugins = pathlib.Path(sys.argv[2]).resolve()
+sys.path.insert(0, str(site))
+from ida_pro_mcp import installer
+if not pathlib.Path(installer.__file__).resolve().is_relative_to(site):
+    raise RuntimeError("GUI installer did not load from the built wheel")
+installer._install_gui_bundle(str(plugins))
+"""
+    subprocess.run(
+        [sys.executable, "-I", "-c", install, str(site), str(plugins)],
+        cwd=work,
+        env=build_environment,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    loader = plugins / "ida_mcp.py"
+    manifest = plugins / "_ida_pro_mcp_runtime" / "install-manifest.json"
+    if not loader.is_file() or not manifest.is_file():
+        raise RuntimeError("Disposable GUI plugin installation is incomplete")
+    return loader, manifest
+
+
 def _release_gate():
     path = ROOT / "scripts/flow_release_gate.py"
     spec = importlib.util.spec_from_file_location("flow_gui_release_gate", path)
@@ -70,15 +158,36 @@ def _release_gate():
     return module
 
 
+def validate_installed_receipt(
+    receipt: dict[str, Any],
+    *,
+    user: Path,
+    loader_sha256: str,
+    bundle_manifest_sha256: str,
+) -> None:
+    expected_origin = (
+        user / "plugins" / "_ida_pro_mcp_runtime" / "ida_mcp" / "api_flow.py"
+    ).resolve()
+    origin = receipt.get("module_origin")
+    if type(origin) is not str or Path(origin).resolve() != expected_origin:
+        raise ValueError("GUI receipt module origin does not match installed bundle")
+    if receipt.get("loader_sha256") != loader_sha256:
+        raise ValueError("GUI receipt loader digest does not match installed loader")
+    if receipt.get("bundle_manifest_sha256") != bundle_manifest_sha256:
+        raise ValueError("GUI receipt manifest digest does not match installed bundle")
+
+
 def record(args: argparse.Namespace) -> dict[str, Any]:
     fixture = args.fixture.resolve()
     ida = args.ida.resolve()
-    output = args.output.resolve()
-    # A failed or blocked retry must never leave an earlier success looking
-    # current.  Remove both mutually exclusive outcomes before validating or
-    # launching the disposable process.
-    output.unlink(missing_ok=True)
-    blocker_path(output).unlink(missing_ok=True)
+    output = _reject_symlink_components(args.output)
+    blocker = _reject_symlink_components(blocker_path(output))
+    if output in {fixture, ida} or blocker in {fixture, ida}:
+        raise ValueError("GUI evidence output aliases an input")
+    # Publication requires a fresh destination. Never erase an unrelated or
+    # stale-looking file merely because the caller selected its path.
+    if os.path.lexists(output) or os.path.lexists(blocker):
+        raise FileExistsError("Refusing to replace existing GUI evidence output")
     if SHA1.fullmatch(args.checkout_sha) is None:
         raise ValueError("checkout_sha must be a full lowercase commit SHA")
     if SHA256.fullmatch(args.expected_ida_executable_sha256) is None:
@@ -111,24 +220,27 @@ def record(args: argparse.Namespace) -> dict[str, Any]:
         temp = work / "tmp"
         for directory in (home, user, temp):
             directory.mkdir()
+        loader, bundle_manifest = build_and_install_gui_bundle(work, user)
         disposable = work / fixture.name
         shutil.copyfile(fixture, disposable)
         request_path = work / "request.json"
         process_output = work / "gui-process.json"
         database = work / "gui-probe.i64"
         log = work / "ida.log"
+        loader_sha256 = sha256(loader)
+        bundle_manifest_sha256 = sha256(bundle_manifest)
         write_json(
             request_path,
             {
-                "schema_version": "flow-gui-request/1",
+                "schema_version": "flow-gui-request/2",
                 "checkout_sha": args.checkout_sha,
                 "fixture_sha256": original,
                 "ida_executable_sha256": observed_gui,
+                "loader_sha256": loader_sha256,
+                "bundle_manifest_sha256": bundle_manifest_sha256,
             },
         )
-        script = shlex.join(
-            [str(ENTRY), str(ROOT), str(process_output), str(request_path)]
-        )
+        script = shlex.join([str(ENTRY), str(process_output), str(request_path)])
         command = [
             str(ida),
             "-A",
@@ -139,6 +251,9 @@ def record(args: argparse.Namespace) -> dict[str, Any]:
             str(disposable),
         ]
         environment = os.environ.copy()
+        # The GUI process must prove the installed bundle, not an import made
+        # available by the calling checkout or its virtual environment.
+        environment.pop("PYTHONPATH", None)
         environment.update(
             {"HOME": str(home), "IDAUSR": str(user), "TMPDIR": str(temp)}
         )
@@ -187,6 +302,12 @@ def record(args: argparse.Namespace) -> dict[str, Any]:
         if sha256(disposable) != original or sha256(fixture) != original:
             raise RuntimeError("GUI evidence probe changed its input")
         receipt = json.loads(process_output.read_text())
+        validate_installed_receipt(
+            receipt,
+            user=user,
+            loader_sha256=loader_sha256,
+            bundle_manifest_sha256=bundle_manifest_sha256,
+        )
         from ida_pro_mcp.flow_core.build_identity import BUILD_ID
 
         gate = _release_gate()
