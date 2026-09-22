@@ -1,0 +1,107 @@
+{
+  "authority": {
+    "binary_observations": "authoritative",
+    "pdb_symbols": "authoritative only after GUID-age proof",
+    "source": "reference_only_unproven_correspondence"
+  },
+  "cases": [
+    {
+      "case_id": "pointer-value-versus-pointed-bytes",
+      "evidence_rvas": [
+        "main+0x89 (0x12e1): store company pointer in user_info.company",
+        "main+0x96 (0x12ee): read a byte through the company pointer",
+        "main+0xa0 (0x12f8): pass the company pointer to custom_crc32",
+        "custom_crc32+0xb (0x10f7): read pointed byte"
+      ],
+      "expected_relations": [
+        "user_info.company pointer value reaches the callee buffer argument",
+        "bytes addressed by user_info.company reach custom_crc32 data reads"
+      ],
+      "forbidden_relations": [
+        "pointer address bits are treated as pointed string bytes",
+        "pointed string bytes are collapsed into pointer identity"
+      ],
+      "seed_domains": {
+        "pointed_bytes": "memory[*user_info.company, NUL-terminated bounded read)",
+        "pointer_value": "user_info bytes [0,8)"
+      }
+    },
+    {
+      "case_id": "user-info-field-range",
+      "evidence_rvas": [
+        "compute_hash+0x20 (0x1154): load field [0,8)",
+        "compute_hash+0x35 (0x1169): load field [8,16)",
+        "compute_hash+0x4e (0x1182): load field [16,24)",
+        "compute_hash+0x67 (0x119b): load field [24,32)"
+      ],
+      "expected_relations": [
+        "a seed on user_info.company [0,8) applies to that pointer field only",
+        "the company and name pointed bytes contribute to the binary-observed key computation"
+      ],
+      "field_ranges": {
+        "bad": [40, 48],
+        "company": [0, 8],
+        "dep": [8, 16],
+        "good": [32, 40],
+        "name": [16, 24],
+        "progname": [24, 32]
+      },
+      "forbidden_relations": [
+        "seeding company [0,8) taints dep [8,16) by whole-struct contamination",
+        "seeding company [0,8) taints name [16,24) by whole-struct contamination"
+      ]
+    },
+    {
+      "case_id": "caller-callee-pointer-boundary",
+      "evidence_rvas": [
+        "main 0x12f5 moves company pointer into Win64 argument 1 before call 0x12f8",
+        "custom_crc32 0x10f0 consumes length and 0x10f7 dereferences buffer"
+      ],
+      "expected_relations": [
+        "main company pointer crosses the call boundary into custom_crc32 buf",
+        "custom_crc32 return reaches main multiplication at 0x1313"
+      ],
+      "forbidden_relations": [
+        "callee-local register names are used as cross-function object identity"
+      ]
+    },
+    {
+      "case_id": "buffer-write-dependency",
+      "evidence_rvas": [
+        "compute_hash 0x1164 calls sprintf with output buffer and company bytes",
+        "compute_hash 0x11fd calls mbedtls_sha1 over the assembled buffer",
+        "compute_hash 0x1224 appends digest bytes through sprintf"
+      ],
+      "expected_relations": [
+        "company pointed bytes reach bytes written to the caller-provided output buffer",
+        "assembled output-buffer bytes reach the SHA-1 input boundary"
+      ],
+      "forbidden_relations": [
+        "an output-buffer write is inferred solely from source text without a binary callsite"
+      ]
+    },
+    {
+      "case_id": "unresolved-call-conservatism",
+      "evidence_rvas": [
+        "main 0x138e unresolved indirect call through user_info.bad",
+        "main 0x1397 unresolved indirect call through user_info.good",
+        "compute_hash has library calls whose full side effects are not proven by this receipt"
+      ],
+      "expected_relations": [
+        "unresolved indirect or unsupported library effects are partial or unknown",
+        "absence of a resolved target is retained in the result evidence"
+      ],
+      "forbidden_relations": [
+        "an unresolved call is reported as clean",
+        "an unresolved call is used to prove no-flow"
+      ]
+    }
+  ],
+  "oracle_origin": "hand-authored independently from project semantics and binary-level IDA observations; not copied from BinCAT analysis expectations",
+  "schema_version": "bincat-x64-oracle/1",
+  "status": [
+    "bounded_integration_oracle",
+    "not_engine_validation",
+    "not_vulnerability_or_safety_verdict"
+  ]
+}

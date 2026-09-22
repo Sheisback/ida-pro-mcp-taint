@@ -1,0 +1,59 @@
+{
+  "schema_version": "public-sample-oracle/1",
+  "corpus": "svf-test-suite",
+  "oracle_origin": "project-hand-authored-from-source-and-native-structure",
+  "upstream_annotations_authoritative": false,
+  "native_mismatch_policy": "exclude_or_modify_fixture_never_force_llvm_expectation",
+  "automatic_vulnerability_verdict": false,
+  "cases": [
+    {
+      "case_id": "svf-pointer-copy",
+      "source": "src/basic_c_tests/global-simple.c",
+      "semantic": "pointer_copy",
+      "expected_relations": [
+        "q_int points to the same a_int object as p_int",
+        "the pointer loaded through qq_int points to the same object as q_int"
+      ],
+      "forbidden_relations": [
+        "copying a pointer copies the pointed integer value instead of pointer provenance"
+      ]
+    },
+    {
+      "case_id": "svf-pointer-store-load",
+      "source": "src/basic_c_tests/ptr-dereference2.c",
+      "semantic": "pointer_store_load",
+      "expected_relations": [
+        "storing &c through b then loading through a yields x pointing to c",
+        "loading y through x depends on c memory"
+      ],
+      "forbidden_relations": [
+        "the address of b is treated as the pointee loaded into x"
+      ]
+    },
+    {
+      "case_id": "svf-field-sensitivity",
+      "source": "src/fs_tests/struct_1.c",
+      "semantic": "field_sensitivity",
+      "expected_relations": [
+        "s1.f1 initially points to x and s1.f2 points to y",
+        "after the explicit update s1.f1 and s2.f1 both point to y"
+      ],
+      "forbidden_relations": [
+        "s1.f1 and s1.f2 alias merely because they are fields of the same struct"
+      ]
+    },
+    {
+      "case_id": "svf-context-call",
+      "source": "src/cs_tests/cs0.c",
+      "semantic": "cross_function_context",
+      "expected_relations": [
+        "foo returns its input pointer",
+        "the foo(p) result points to a while the foo(q) result points to b"
+      ],
+      "forbidden_relations": [
+        "the two calls are merged into one cross-contaminated return provenance"
+      ]
+    }
+  ],
+  "target_executed": false
+}

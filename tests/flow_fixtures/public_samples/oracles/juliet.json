@@ -1,0 +1,71 @@
+{
+  "schema_version": "public-sample-oracle/1",
+  "corpus": "nist-juliet-c-cpp-1.3",
+  "oracle_origin": "project-hand-authored-from-source-and-native-structure",
+  "automatic_vulnerability_verdict": false,
+  "cwe_metadata_is_analysis_truth": false,
+  "cases": [
+    {
+      "case_id": "juliet-cwe789-31",
+      "flow_variant": 31,
+      "transfer": "same_function_copy",
+      "external_source": "stdin.fgets",
+      "bad": {"juliet_label": "bad", "provenance_at_sink": ["external_stdin"]},
+      "goodB2G": {
+        "juliet_label": "good",
+        "provenance_at_sink": ["external_stdin"],
+        "sanitization": "data > strlen(HELLO_STRING) && data < 100"
+      }
+    },
+    {
+      "case_id": "juliet-cwe789-32",
+      "flow_variant": 32,
+      "transfer": "two_aliasing_pointers",
+      "external_source": "stdin.fgets",
+      "bad": {"juliet_label": "bad", "provenance_at_sink": ["external_stdin"]},
+      "goodB2G": {
+        "juliet_label": "good",
+        "provenance_at_sink": ["external_stdin"],
+        "sanitization": "data > strlen(HELLO_STRING) && data < 100"
+      }
+    },
+    {
+      "case_id": "juliet-cwe789-33",
+      "flow_variant": 33,
+      "transfer": "cpp_reference",
+      "external_source": "stdin.fgets",
+      "bad": {"juliet_label": "bad", "provenance_at_sink": ["external_stdin"]},
+      "goodB2G": {
+        "juliet_label": "good",
+        "provenance_at_sink": ["external_stdin"],
+        "sanitization": "data > strlen(HELLO_STRING) && data < 100"
+      }
+    },
+    {
+      "case_id": "juliet-cwe789-34",
+      "flow_variant": 34,
+      "transfer": "union_members",
+      "external_source": "stdin.fgets",
+      "bad": {"juliet_label": "bad", "provenance_at_sink": ["external_stdin"]},
+      "goodB2G": {
+        "juliet_label": "good",
+        "provenance_at_sink": ["external_stdin"],
+        "sanitization": "data > strlen(HELLO_STRING) && data < 100"
+      }
+    },
+    {
+      "case_id": "juliet-cwe789-41",
+      "flow_variant": 41,
+      "transfer": "cross_function_argument",
+      "external_source": "stdin.fgets",
+      "bad": {"juliet_label": "bad", "provenance_at_sink": ["external_stdin"]},
+      "goodB2G": {
+        "juliet_label": "good",
+        "provenance_at_sink": ["external_stdin"],
+        "sanitization": "data > strlen(HELLO_STRING) && data < 100",
+        "callee": "goodB2GSink"
+      }
+    }
+  ],
+  "target_executed": false
+}

@@ -1,0 +1,121 @@
+{
+  "acquisition": {
+    "command": [
+      "python",
+      "scripts/acquire_bincat_x64.py",
+      "--output",
+      "<empty-isolated-directory>"
+    ],
+    "network_required": true,
+    "ordinary_tests_require_network": false,
+    "target_executed": false
+  },
+  "artifact_policy": {
+    "binary_and_pdb": "fetch_only_not_redistributed",
+    "large_archive_committed": false,
+    "reason": "retain compact provenance and receipts; avoid redistributing upstream executable/debug artifacts"
+  },
+  "corpus_id": "bincat-get-key-windows-x64",
+  "files": [
+    {
+      "license_basis": "repository AGPL statement; fetch-only policy retained",
+      "path": "README.md",
+      "role": "license_statement",
+      "sha256": "e8391e9e5b2f910a3c9de49456fde146ca5aae5cae311fd076247343135d7c5b",
+      "size": 4829,
+      "url": "https://raw.githubusercontent.com/airbus-seclab/bincat/5d0ee3b56867059427eb0f4123c4d9de0b8059dd/README.md"
+    },
+    {
+      "license_basis": "Apache-2.0 license text referenced by sha1.c and sha1.h",
+      "path": "doc/Apache-license-2.0",
+      "role": "license_text",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "size": 11358,
+      "url": "https://raw.githubusercontent.com/airbus-seclab/bincat/5d0ee3b56867059427eb0f4123c4d9de0b8059dd/doc/Apache-license-2.0"
+    },
+    {
+      "license_basis": "repository license text named by README.md",
+      "path": "doc/COPYING",
+      "role": "license_text",
+      "sha256": "57c8ff33c9c0cfc3ef00e650a1cc910d7ee479a8bc509f6c9209a7c2a11399d6",
+      "size": 34520,
+      "url": "https://raw.githubusercontent.com/airbus-seclab/bincat/5d0ee3b56867059427eb0f4123c4d9de0b8059dd/doc/COPYING"
+    },
+    {
+      "license_basis": "repository AGPL statement; not proof of the Windows build command",
+      "path": "doc/get_key/Makefile",
+      "role": "reference_build",
+      "sha256": "8cf3ffc8203ab3da830e6466f70778d57f22cc5953eb757881875f5246b54db5",
+      "size": 820,
+      "url": "https://raw.githubusercontent.com/airbus-seclab/bincat/5d0ee3b56867059427eb0f4123c4d9de0b8059dd/doc/get_key/Makefile"
+    },
+    {
+      "license_basis": "repository AGPL statement; source correspondence remains unproven",
+      "path": "doc/get_key/get_key.c",
+      "role": "reference_source",
+      "sha256": "5419d21aa987bb32ebbedf96f0eb6d96296ea9964c75bf984dd4d4a359388122",
+      "size": 2701,
+      "url": "https://raw.githubusercontent.com/airbus-seclab/bincat/5d0ee3b56867059427eb0f4123c4d9de0b8059dd/doc/get_key/get_key.c"
+    },
+    {
+      "license_basis": "repository AGPL statement; fetch-only policy retained",
+      "path": "doc/get_key/get_key_x64_win.exe",
+      "role": "binary",
+      "sha256": "687a36f98a8b62fc0411e0e9e8d09c42608f201a7fe68d2e3ea4272b98fe0a70",
+      "size": 17408,
+      "url": "https://raw.githubusercontent.com/airbus-seclab/bincat/5d0ee3b56867059427eb0f4123c4d9de0b8059dd/doc/get_key/get_key_x64_win.exe"
+    },
+    {
+      "license_basis": "repository AGPL statement; fetch-only policy retained",
+      "path": "doc/get_key/get_key_x64_win.pdb",
+      "role": "pdb",
+      "sha256": "dde5e815e9c7c25f7b73319b9a491aa9ac2c860317164fbe067353993ab0563d",
+      "size": 397312,
+      "url": "https://raw.githubusercontent.com/airbus-seclab/bincat/5d0ee3b56867059427eb0f4123c4d9de0b8059dd/doc/get_key/get_key_x64_win.pdb"
+    },
+    {
+      "license_basis": "file header declares SPDX Apache-2.0",
+      "path": "doc/get_key/sha1.c",
+      "role": "reference_source",
+      "sha256": "332577f44b1d1045f4e131f8eba5f1a86067c5874d0f8fd2cf045066b189711d",
+      "size": 11654,
+      "url": "https://raw.githubusercontent.com/airbus-seclab/bincat/5d0ee3b56867059427eb0f4123c4d9de0b8059dd/doc/get_key/sha1.c"
+    },
+    {
+      "license_basis": "file header declares SPDX Apache-2.0",
+      "path": "doc/get_key/sha1.h",
+      "role": "reference_header",
+      "sha256": "031bc4dfb72788d01fb9c74e69c9216c7b656a0e913787ba7ad04b901a003118",
+      "size": 3330,
+      "url": "https://raw.githubusercontent.com/airbus-seclab/bincat/5d0ee3b56867059427eb0f4123c4d9de0b8059dd/doc/get_key/sha1.h"
+    }
+  ],
+  "license_evidence": [
+    {
+      "conclusion": "BinCAT repository statement: GNU AGPL",
+      "path": "README.md"
+    },
+    {
+      "conclusion": "GNU Affero General Public License version 3 text",
+      "path": "doc/COPYING"
+    },
+    {
+      "conclusion": "Apache License 2.0 text for the bundled SHA-1 source",
+      "path": "doc/Apache-license-2.0"
+    },
+    {
+      "conclusion": "Direct SPDX Apache-2.0 header",
+      "path": "doc/get_key/sha1.c"
+    },
+    {
+      "conclusion": "Direct SPDX Apache-2.0 header",
+      "path": "doc/get_key/sha1.h"
+    }
+  ],
+  "schema_version": "bincat-x64-provenance/1",
+  "upstream": {
+    "commit": "5d0ee3b56867059427eb0f4123c4d9de0b8059dd",
+    "commit_date": "2025-02-25T17:53:49+01:00",
+    "repository": "https://github.com/airbus-seclab/bincat"
+  }
+}

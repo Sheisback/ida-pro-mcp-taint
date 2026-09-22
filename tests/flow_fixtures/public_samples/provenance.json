@@ -1,0 +1,79 @@
+{
+  "schema_version": "public-sample-provenance/1",
+  "svf": {
+    "upstream_url": "https://github.com/SVF-tools/Test-Suite.git",
+    "commit": "9c6e5d5fb6c783fb66529e189b44bd5b76ee7a59",
+    "commit_url": "https://github.com/SVF-tools/Test-Suite/commit/9c6e5d5fb6c783fb66529e189b44bd5b76ee7a59",
+    "selected_files": {
+      "aliascheck.h": "ea4a480d786efa35f98783547e94c7dbb16032f317d34956573ea38aa3b5a0ab",
+      "src/basic_c_tests/global-simple.c": "3fc6be8d0069d23fff7dacd7ed33ab2ead368c39dd657d243aa2f13c743ea11c",
+      "src/basic_c_tests/ptr-dereference2.c": "57b58ca0d9ad55f329ec8cb2359bf879fb8533533a6ecbc3ad2968bbf9536e2b",
+      "src/fs_tests/struct_1.c": "6fee1a76b3fd3991c6c281356521fd429b2f4e2bda8bcba796f4b217fc32e3be",
+      "src/cs_tests/cs0.c": "ace7937bcfdae75206409030dccdb7e55f7a17b853082803cccf692cf4a82dc8"
+    },
+    "selection": {
+      "svf-pointer-copy": "src/basic_c_tests/global-simple.c",
+      "svf-pointer-store-load": "src/basic_c_tests/ptr-dereference2.c",
+      "svf-field-sensitivity": "src/fs_tests/struct_1.c",
+      "svf-context-call": "src/cs_tests/cs0.c"
+    },
+    "license": {
+      "status": "unproven",
+      "spdx": null,
+      "repository_license_file": null,
+      "github_api_license": null,
+      "redistribution": false,
+      "handling": "Selected sources are fetched into an isolated build root, hash-verified, and not committed or redistributed. This is a named evidence limitation, not an inferred license grant."
+    },
+    "adaptation": {
+      "kind": "build-only",
+      "details": "Exact upstream sources and aliascheck.h are compiled as separate native Mach-O fixtures. Upstream annotation calls remain in the binary but are not reused as this project's truth oracle.",
+      "excluded": [
+        "prebuilt LLVM bitcode",
+        "SVF analysis drivers",
+        "whole-suite CMake harness",
+        "test execution"
+      ]
+    }
+  },
+  "juliet": {
+    "suite_page": "https://samate.nist.gov/SARD/test-suites/112",
+    "archive_url": "https://samate.nist.gov/SARD/downloads/test-suites/2017-10-01-juliet-test-suite-for-c-cplusplus-v1-3.zip",
+    "archive_sha256": "ada9d7e1c323d283446df3f55bdee0d00bda1fed786785fe98764d58688f38eb",
+    "archive_size": 152957342,
+    "published_hash_matches": true,
+    "selected_files": {
+      "C/testcasesupport/std_testcase.h": "a78aaf3a54a6210260ad70123c09c3c283c6edf7808b6244205e00b8f2d9b8d0",
+      "C/testcasesupport/std_testcase_io.h": "6459df50d22697bb61619e2effd688ebb98915db25f7eb1bdbb767f888066fb6",
+      "C/testcasesupport/io.c": "50ace91d0f9cd9f281d5d8ff3a9ca879ee2779d737030ae84e8e4be3df5b299c",
+      "C/testcases/CWE789_Uncontrolled_Mem_Alloc/s01/CWE789_Uncontrolled_Mem_Alloc__malloc_char_fgets_31.c": "c0cbfe0ae9ee7d31fe5b077414abd27b13199931d746e06cb8028017ce88ca01",
+      "C/testcases/CWE789_Uncontrolled_Mem_Alloc/s01/CWE789_Uncontrolled_Mem_Alloc__malloc_char_fgets_32.c": "918d535668f53d7bdc3d74d14bb277d1eeb60f639b4a12a7ff0fc3b387b9d4bb",
+      "C/testcases/CWE789_Uncontrolled_Mem_Alloc/s01/CWE789_Uncontrolled_Mem_Alloc__malloc_char_fgets_33.cpp": "39093a83b06551b449dcbadb1e7929f688b19c34c7ccd4bc7aaf1687e398c52f",
+      "C/testcases/CWE789_Uncontrolled_Mem_Alloc/s01/CWE789_Uncontrolled_Mem_Alloc__malloc_char_fgets_34.c": "038cdc37b8bb21fd9df1dcacbf2c7f748d32111651f5603140b50635eaa5ad1b",
+      "C/testcases/CWE789_Uncontrolled_Mem_Alloc/s01/CWE789_Uncontrolled_Mem_Alloc__malloc_char_fgets_41.c": "5fa56d120b566c5d6aa3779ee01085be4ed64b3ecef6b54961abadc14cf50508"
+    },
+    "license": {
+      "status": "published",
+      "spdx": "CC0-1.0",
+      "url": "https://samate.nist.gov/SARD/test-suites/112",
+      "notice": "NIST identifies Juliet C/C++ 1.3 as public domain in the United States and offers any claimed foreign rights under CC0 1.0."
+    },
+    "selection": {
+      "cwe": 789,
+      "source": "fgets",
+      "sink": "malloc_char",
+      "flow_variants": [31, 32, 33, 34, 41],
+      "reason": "One compact family covers same-function copy, aliased pointers, C++ reference, union, and cross-function argument flow while retaining an external source in goodB2G."
+    },
+    "adaptation": {
+      "kind": "build-only",
+      "details": "Each exact source is linked only with the exact std_testcase headers and io.c using INCLUDEMAIN. No wrapper changes source semantics and no produced binary is executed.",
+      "excluded": [
+        "whole-CWE monolithic harness",
+        "random/network source variants",
+        "test execution"
+      ]
+    }
+  },
+  "target_executed": false
+}
