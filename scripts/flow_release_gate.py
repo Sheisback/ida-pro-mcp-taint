@@ -22,6 +22,7 @@ LICENSED_SCHEMA = "flow-licensed-ci/2"
 NORMAL_LICENSED_SCHEMA = "flow-licensed-normal/2"
 GUI_SCHEMA = "flow-gui-process/2"
 AGGREGATE_SCHEMA = "flow-release-aggregate/2"
+REQUIRED_IDA_VERSIONS = frozenset({"9.3"})
 SEMANTIC_MATRIX = Path("tests/flow_fixtures/manifests/profile_semantics/matrix.json")
 PROFILE_BUILD_MANIFEST = Path("tests/flow_fixtures/manifests/profiles/build.json")
 RELEASE_SCOPE = Path("profiles/flow-release-scope.json")
@@ -928,6 +929,8 @@ def aggregate_manifest(
     expected_gui_executable_sha256: str | None = None,
 ) -> dict[str, object]:
     checkout_sha = _commit(checkout_sha)
+    if expected_versions != REQUIRED_IDA_VERSIONS:
+        raise ValueError("Release requires exactly IDA 9.3")
     build_id = _validate_package(package, checkout_sha)
     matrix = package["support_matrix"]
     if (

@@ -7,6 +7,10 @@ profiles and deliberately does not promote runtime support. All registry rows
 remain `unverified` until a separately reviewed product decision changes that
 contract.
 
+The required licensed release test version is **IDA 9.3 only**. Versions
+9.0–9.2 are no longer release gates. This does not change the required ISA
+profiles or turn archival receipts into current-run evidence.
+
 ## Required release profiles (16)
 
 | Profile | P0 observation | Semantic evidence | Runtime support claim |

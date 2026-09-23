@@ -28,12 +28,6 @@ jobs:
     strategy:
       matrix:
         include:
-          - ida-version: '9.0'
-            image-digest: ${{ vars.IDA_IMAGE_90_DIGEST }}
-          - ida-version: '9.1'
-            image-digest: ${{ vars.IDA_IMAGE_91_DIGEST }}
-          - ida-version: '9.2'
-            image-digest: ${{ vars.IDA_IMAGE_92_DIGEST }}
           - ida-version: '9.3'
             image-digest: ${{ vars.IDA_IMAGE_93_DIGEST }}
     steps:
@@ -61,12 +55,6 @@ jobs:
     strategy:
       matrix:
         include:
-          - ida-version: '9.0'
-            image-digest: ${{ vars.IDA_IMAGE_90_DIGEST }}
-          - ida-version: '9.1'
-            image-digest: ${{ vars.IDA_IMAGE_91_DIGEST }}
-          - ida-version: '9.2'
-            image-digest: ${{ vars.IDA_IMAGE_92_DIGEST }}
           - ida-version: '9.3'
             image-digest: ${{ vars.IDA_IMAGE_93_DIGEST }}
     container:

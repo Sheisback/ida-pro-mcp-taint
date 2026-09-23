@@ -28,7 +28,7 @@ SPEC.loader.exec_module(release_gate)
 VALIDATE_PACKAGE = release_gate._validate_package
 COMMIT = "a" * 40
 BUILD_ID = "flow-build-sha256-v1:" + "b" * 64
-VERSIONS = ("9.0.1", "9.1.2", "9.2.3", "9.3.4")
+VERSIONS = ("9.3.4",)
 
 
 def test_normal_semantic_equivalence_excludes_run_provenance_not_meaning():
@@ -300,6 +300,7 @@ def aggregate(
     items=None,
     *,
     validate_package=False,
+    expected_versions=None,
     **overrides,
 ):
     monkeypatch.setattr(
@@ -331,13 +332,15 @@ def aggregate(
     return release_gate.aggregate_manifest(
         package() if pkg is None else pkg,
         receipts(tmp_path) if items is None else items,
-        {"9.0", "9.1", "9.2", "9.3"},
+        {"9.3"} if expected_versions is None else expected_versions,
         COMMIT,
         **arguments,
     )
 
 
-def test_release_aggregate_requires_every_normal_row_and_version(monkeypatch, tmp_path):
+def test_release_aggregate_requires_every_normal_row_and_only_ida_93(
+    monkeypatch, tmp_path
+):
     result = aggregate(monkeypatch, tmp_path)
     assert result["schema_version"] == release_gate.AGGREGATE_SCHEMA
     assert result["build_id"] == BUILD_ID
@@ -346,6 +349,9 @@ def test_release_aggregate_requires_every_normal_row_and_version(monkeypatch, tm
 
     with pytest.raises(ValueError, match="mandatory normal row coverage"):
         aggregate(monkeypatch, tmp_path, items=receipts(tmp_path)[:-1])
+
+    with pytest.raises(ValueError, match="exactly IDA 9.3"):
+        aggregate(monkeypatch, tmp_path, expected_versions={"9.0", "9.3"})
 
 
 def test_release_aggregate_binds_fresh_receipts_to_reviewed_executable(
@@ -361,7 +367,9 @@ def test_release_aggregate_binds_fresh_receipts_to_reviewed_executable(
         aggregate(
             monkeypatch,
             tmp_path,
-            compatibility_receipts=compatibility_receipts(tmp_path)[:-1],
+            compatibility_receipts=[
+                compatibility(tmp_path / "licensed-9.2.json", "9.2.3")
+            ],
         )
 
 
@@ -1002,6 +1010,15 @@ def test_workflows_keep_untrusted_and_release_paths_separate_and_pinned():
     assert "--ida-metrics licensed-reports/benchmark-ida.json" in release
     assert "IDA_93_EXECUTABLE_SHA256" in licensed + release
     assert "IDA_93_GUI_EXECUTABLE_SHA256" in licensed + release
+    assert licensed.count("ida-version: '9.3'") == 2
+    assert all(
+        f"IDA_IMAGE_{version}_DIGEST" not in licensed for version in ("90", "91", "92")
+    )
+    assert "--expected-ida-version 9.3" in release
+    assert all(
+        f"--expected-ida-version 9.{version}" not in release
+        for version in ("0", "1", "2")
+    )
     assert "continue-on-error" not in release
     assert "secrets: inherit" not in release
     assert "container_registry_token: ${{ secrets.GITHUB_TOKEN }}" in release
