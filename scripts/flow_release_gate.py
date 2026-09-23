@@ -17,13 +17,18 @@ from typing import cast
 ROOT = Path(__file__).resolve().parents[1]
 SHA1 = re.compile(r"[0-9a-f]{40}")
 BUILD_ID = re.compile(r"flow-build-sha256-v1:[0-9a-f]{64}")
-PACKAGE_SCHEMA = "flow-release-package/1"
+PACKAGE_SCHEMA = "flow-release-package/2"
 LICENSED_SCHEMA = "flow-licensed-ci/2"
 NORMAL_LICENSED_SCHEMA = "flow-licensed-normal/2"
 GUI_SCHEMA = "flow-gui-process/2"
-AGGREGATE_SCHEMA = "flow-release-aggregate/1"
+AGGREGATE_SCHEMA = "flow-release-aggregate/2"
 SEMANTIC_MATRIX = Path("tests/flow_fixtures/manifests/profile_semantics/matrix.json")
 PROFILE_BUILD_MANIFEST = Path("tests/flow_fixtures/manifests/profiles/build.json")
+RELEASE_SCOPE = Path("profiles/flow-release-scope.json")
+# Reviewed user-approved scope revision; changing the policy requires code review.
+APPROVED_RELEASE_SCOPE_SHA256 = (
+    "47f8dbcc449ab66dbbd3d9ed4787dfff7cf41ef413847981117d03055553708d"
+)
 
 
 def sha256(path: Path) -> str:
@@ -172,28 +177,80 @@ def _mandatory_normal_rows(matrix: dict[str, object]) -> list[dict[str, object]]
     return rows
 
 
+def _release_scope(
+    profile_ids: tuple[object, ...],
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    from ida_pro_mcp.flow_core.profile_registry import PROFILE_IDS
+
+    if profile_ids != PROFILE_IDS or any(type(item) is not str for item in profile_ids):
+        raise ValueError("Canonical release scope inventory mismatch")
+    path = ROOT / RELEASE_SCOPE
+    if sha256(path) != APPROVED_RELEASE_SCOPE_SHA256:
+        raise ValueError("Approved release scope digest mismatch")
+    scope = read_json(path)
+    if (
+        set(scope)
+        != {
+            "schema_version",
+            "decision",
+            "required_profile_ids",
+            "optional_profile_ids",
+        }
+        or scope.get("schema_version") != "flow-release-scope/1"
+    ):
+        raise ValueError("Invalid release scope schema")
+    required = scope["required_profile_ids"]
+    optional = scope["optional_profile_ids"]
+    if (
+        type(scope["decision"]) is not str
+        or not scope["decision"]
+        or type(required) is not list
+        or type(optional) is not list
+        or not required
+        or any(type(item) is not str for item in [*required, *optional])
+        or len(set([*required, *optional])) != len(profile_ids)
+        or tuple(item for item in profile_ids if item in required) != tuple(required)
+        or tuple(item for item in profile_ids if item in optional) != tuple(optional)
+        or set([*required, *optional]) != set(profile_ids)
+    ):
+        raise ValueError("Invalid release scope profile partition")
+    return cast(tuple[str, ...], tuple(required)), cast(
+        tuple[str, ...], tuple(optional)
+    )
+
+
 def _readiness_contract(
     matrix: dict[str, object], build_manifest: dict[str, object]
 ) -> dict[str, object]:
     """Derive strict normal requirements and blockers from canonical data.
 
-    Successful normal/format semantic rows are eligible requirements. Fallback
-    rows remain required normal identities but are recorded separately as
-    unavailable, so the package lane can complete while the strict aggregate
-    continues to fail closed with an exact blocker.
+    Successful normal/format semantic rows are eligible requirements only for
+    profiles in the reviewed release scope. A fallback for a required profile
+    is recorded as unavailable and blocks the aggregate. An optional fallback
+    remains in the audited inventory without becoming a normal support claim.
     """
 
-    available = _mandatory_normal_rows(matrix)
+    normal_rows = _mandatory_normal_rows(matrix)
     build_rows = build_manifest.get("profiles")
     semantic_rows = matrix.get("profiles")
     if type(build_rows) is not list or type(semantic_rows) is not list:
         raise ValueError("Canonical readiness manifests are malformed")
     builds = {row.get("profile_id"): row for row in build_rows if type(row) is dict}
+    profile_ids = tuple(
+        row.get("profile_id") for row in build_rows if type(row) is dict
+    )
+    if len(profile_ids) != len(build_rows):
+        raise ValueError("Canonical build profile identities are invalid")
+    required_profiles, optional_profiles = _release_scope(profile_ids)
+    required_set = set(required_profiles)
+    available = [row for row in normal_rows if row["profile_id"] in required_set]
     unavailable: list[dict[str, object]] = []
     for item in semantic_rows:
         if type(item) is not dict or item.get("evidence_path") != "fallback":
             continue
         profile_id = item.get("profile_id")
+        if profile_id not in required_set:
+            continue
         build = builds.get(profile_id)
         if type(profile_id) is not str or type(build) is not dict:
             raise ValueError("Fallback readiness row lacks canonical build identity")
@@ -228,11 +285,6 @@ def _readiness_contract(
                 "fallback_receipt_digest": item.get("receipt_digest"),
             }
         )
-    profile_ids = tuple(
-        row.get("profile_id") for row in build_rows if type(row) is dict
-    )
-    if len(profile_ids) != len(set(profile_ids)) or not profile_ids:
-        raise ValueError("Canonical build profile identities are invalid")
     identities = [
         (row["profile_id"], row["abi_id"], row["format_id"])
         for row in [*available, *unavailable]
@@ -240,7 +292,8 @@ def _readiness_contract(
     if len(identities) != len(set(identities)):
         raise ValueError("Canonical readiness row identities are duplicated")
     return {
-        "required_profiles": profile_ids,
+        "required_profiles": required_profiles,
+        "optional_profiles": optional_profiles,
         "required_row_identities": tuple(identities),
         "mandatory_normal_rows": available,
         "unavailable_normal_rows": unavailable,
@@ -315,6 +368,10 @@ def package_manifest(dist: Path, checkout_sha: str) -> dict[str, object]:
         "artifacts": {path.name: sha256(path) for path in (wheels[0], sdists[0])},
         "support_matrix": {
             "sha256": sha256(matrix_path),
+            "release_scope_sha256": sha256(ROOT / RELEASE_SCOPE),
+            "optional_profile_ids": list(
+                cast(tuple[str, ...], readiness["optional_profiles"])
+            ),
             "profile_count": matrix["profile_count"],
             "semantic_row_count": matrix["semantic_row_count"],
             "normal_success_count": matrix["normal_success_count"],
@@ -468,17 +525,21 @@ def _validate_package(value: dict[str, object], checkout_sha: str) -> str:
         identity = (row["processor"], row["bits"], row["endian"])
         previous = facts.setdefault(row["profile_id"], identity)
         facts_match = facts_match and previous == identity
+    semantic_matrix = read_json(ROOT / SEMANTIC_MATRIX)
     counts = {
-        "profile_count": len(profiles),
-        "semantic_row_count": len(all_rows),
-        "normal_success_count": sum(row["evidence_path"] == "normal" for row in rows),
-        "format_success_count": sum(row["evidence_path"] == "format" for row in rows),
-        "rv32_fallback_count": len(unavailable),
+        "profile_count": semantic_matrix["profile_count"],
+        "semantic_row_count": semantic_matrix["semantic_row_count"],
+        "normal_success_count": semantic_matrix["normal_success_count"],
+        "format_success_count": semantic_matrix["format_success_count"],
+        "rv32_fallback_count": semantic_matrix["rv32_fallback_count"],
         "required_row_count": len(all_rows),
     }
     canonical_matrix_sha256 = sha256(ROOT / SEMANTIC_MATRIX)
     if (
         matrix.get("sha256") != canonical_matrix_sha256
+        or matrix.get("release_scope_sha256") != sha256(ROOT / RELEASE_SCOPE)
+        or matrix.get("optional_profile_ids")
+        != list(cast(tuple[str, ...], _CANONICAL_READINESS["optional_profiles"]))
         or rows != _CANONICAL_AVAILABLE
         or unavailable != _CANONICAL_UNAVAILABLE
     ):

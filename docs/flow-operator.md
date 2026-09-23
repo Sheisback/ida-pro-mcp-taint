@@ -80,9 +80,11 @@ RV32 cannot be selected until normal evidence exists.
   never copy archival receipts to a new directory and label them a current run.
 - Retain receipt inputs, source digests, named limitations, and
   `target_executed: false`; do not delete or weaken evidence to make a gate pass.
-- Require a current, normal receipt for every mandatory profile. A fallback,
-  skip, empty profile list, stale/unbound receipt, missing benchmark, or absent
-  permitted GUI-process observation must leave strict release readiness blocked.
+- Require a current, normal receipt for each of the 16 mandatory profiles in
+  `profiles/flow-release-scope.json`. RV32 is an optional, partial fallback,
+  never a passing normal receipt. A fallback for any **required** profile,
+  skip, empty required profile list, stale/unbound receipt, missing benchmark,
+  or absent permitted GUI-process observation still blocks release.
 
 If IDA, a processor/decompiler module, license entitlement, or GUI acceptance
 is unavailable, report that exact blocker and leave the corresponding claim

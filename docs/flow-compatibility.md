@@ -2,12 +2,12 @@
 
 The flow-analysis profile matrix records **static observations**, not blanket
 architecture support. The committed audit in
-`tests/flow_fixtures/manifests/support_receipts.json` covers every required
-profile and deliberately does not promote runtime support. All registry rows
+`tests/flow_fixtures/manifests/support_receipts.json` covers all 17 inventoried
+profiles and deliberately does not promote runtime support. All registry rows
 remain `unverified` until a separately reviewed product decision changes that
 contract.
 
-## Required profiles
+## Required release profiles (16)
 
 | Profile | P0 observation | Semantic evidence | Runtime support claim |
 | --- | --- | --- | --- |
@@ -26,8 +26,16 @@ contract.
 | `PPC32-BE` | normal success | normal, partial with named limits | unverified |
 | `PPC64-LE` | normal success | normal, partial with named limits | unverified |
 | `PPC64-BE` | normal success | normal, partial with named limits | unverified |
-| `RV32-LE` | normal microcode failed | explicit fallback, partial | unverified |
 | `RV64-LE` | normal success | normal, partial with named limits | unverified |
+
+`RV32-LE` remains an **optional, unverified** inventory row: its normal
+microcode probe returned `MERR_LICENSE` (`-23`), and its separate fallback is
+partial. The user explicitly removed RV32 from the required goal on
+2026-09-23. Neither that fallback nor this scope change promotes RV32 support.
+The reviewed release partition is pinned in
+`profiles/flow-release-scope.json`. This later approval supersedes only RV32's
+mandatory-release classification in the original design contract; the other
+profile, format, safety, and final verification requirements remain in force.
 
 The matrix also contains four format-specific observations: X64 PE, X64
 Mach-O, A64 Mach-O, and ARM32 raw. They are exact fixture/configuration
@@ -35,7 +43,8 @@ receipts, not general claims about every PE, Mach-O, or raw input.
 
 ## What the evidence proves
 
-- The 17 required profile identities are present in canonical order.
+- The 17 inventory identities are present in canonical order; 16 remain
+  required for release and RV32 is optional.
 - Sixteen profiles have normal P0 and semantic observations.
 - RV32 has a recorded normal-backend failure and a separate partial fallback.
 - Inputs were preserved and every receipt states that the target was not
@@ -89,11 +98,12 @@ internally consistent. It does not establish P6 release readiness. Strict P6
 readiness requires current, checkout-bound normal evidence for every mandatory
 profile and exact bindings for the build, fixture SHA-256, processor, ABI,
 format, maturity, and observed IDA and Hex-Rays builds. RV32 fallback evidence
-remains separate and cannot satisfy a mandatory normal row. Required benchmark
+remains separate and is not a mandatory normal row. Required benchmark
 and permitted GUI-process evidence must also be present; absence remains an
 explicit release blocker rather than a successful or skipped gate.
 
 Release row counts and availability are derived from the canonical semantic
-matrix and profile build manifest. A fallback row remains in
-`unavailable_normal_rows` with its concrete blocker; it is not removed from the
-required identity set or counted as a passing normal row.
+matrix, profile build manifest, and hash-pinned release-scope policy. A fallback
+row for a **required** profile remains in `unavailable_normal_rows` and blocks
+release; the optional RV32 fallback stays in the audited inventory but outside
+the mandatory row set. Its recorded failure is never counted as a normal pass.

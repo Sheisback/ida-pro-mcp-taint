@@ -93,6 +93,10 @@ def package() -> dict[str, object]:
         "artifacts": {"project.whl": "c" * 64, "project.tar.gz": "d" * 64},
         "support_matrix": {
             "sha256": "e" * 64,
+            "release_scope_sha256": release_gate.sha256(
+                ROOT / release_gate.RELEASE_SCOPE
+            ),
+            "optional_profile_ids": ["RV32-LE"],
             "profile_count": 17,
             "semantic_row_count": 21,
             "normal_success_count": 17,
@@ -113,19 +117,20 @@ def canonical_package() -> dict[str, object]:
     readiness = release_gate._canonical_readiness_contract()
     available = cast(list[dict[str, object]], readiness["mandatory_normal_rows"])
     unavailable = cast(list[dict[str, object]], readiness["unavailable_normal_rows"])
+    semantic = json.loads((ROOT / release_gate.SEMANTIC_MATRIX).read_text())
     matrix = cast(dict[str, object], value["support_matrix"])
     matrix.update(
         {
             "sha256": release_gate.sha256(ROOT / release_gate.SEMANTIC_MATRIX),
-            "profile_count": len(readiness["required_profiles"]),
-            "semantic_row_count": len(available) + len(unavailable),
-            "normal_success_count": sum(
-                row["evidence_path"] == "normal" for row in available
+            "release_scope_sha256": release_gate.sha256(
+                ROOT / release_gate.RELEASE_SCOPE
             ),
-            "format_success_count": sum(
-                row["evidence_path"] == "format" for row in available
-            ),
-            "rv32_fallback_count": len(unavailable),
+            "optional_profile_ids": list(readiness["optional_profiles"]),
+            "profile_count": semantic["profile_count"],
+            "semantic_row_count": semantic["semantic_row_count"],
+            "normal_success_count": semantic["normal_success_count"],
+            "format_success_count": semantic["format_success_count"],
+            "rv32_fallback_count": semantic["rv32_fallback_count"],
             "required_row_count": len(available) + len(unavailable),
             "mandatory_normal_rows": deepcopy(available),
             "unavailable_normal_rows": deepcopy(unavailable),
@@ -360,19 +365,23 @@ def test_release_aggregate_binds_fresh_receipts_to_reviewed_executable(
         )
 
 
-def test_canonical_readiness_keeps_unavailable_normal_row_as_release_blocker(
+def test_canonical_readiness_retains_optional_rv32_without_release_promotion(
     monkeypatch, tmp_path
 ):
     readiness = release_gate._canonical_readiness_contract()
     available = cast(list[dict[str, object]], readiness["mandatory_normal_rows"])
     unavailable = cast(list[dict[str, object]], readiness["unavailable_normal_rows"])
-    assert {row["profile_id"] for row in unavailable} == {"RV32-LE"}
+    assert len(readiness["required_profiles"]) == 16
+    assert readiness["optional_profiles"] == ("RV32-LE",)
+    assert unavailable == []
     assert all(row["profile_id"] != "RV32-LE" for row in available)
-    assert unavailable[0]["normal_status"] == "unavailable"
-    assert unavailable[0]["blocker"] == "normal_backend_unavailable"
+    assert len(available) == 20
 
     manifest = canonical_package()
-    with pytest.raises(ValueError, match="Mandatory normal rows unavailable: RV32-LE"):
+    assert (
+        cast(dict[str, object], manifest["support_matrix"])["rv32_fallback_count"] == 1
+    )
+    with pytest.raises(ValueError, match="No current mandatory normal receipts"):
         aggregate(
             monkeypatch,
             tmp_path,
@@ -380,6 +389,47 @@ def test_canonical_readiness_keeps_unavailable_normal_row_as_release_blocker(
             items=[],
             validate_package=True,
         )
+
+
+def test_release_scope_rejects_missing_or_reclassified_required_profile(
+    monkeypatch, tmp_path
+):
+    scope = json.loads((ROOT / release_gate.RELEASE_SCOPE).read_text())
+    scope["required_profile_ids"].remove("X64-LE")
+    scope["optional_profile_ids"].append("X64-LE")
+    path = tmp_path / "release-scope.json"
+    path.write_text(json.dumps(scope))
+    monkeypatch.setattr(release_gate, "RELEASE_SCOPE", path)
+    with pytest.raises(ValueError, match="release scope"):
+        release_gate._canonical_readiness_contract()
+
+
+def test_required_profile_fallback_still_blocks_readiness(tmp_path):
+    matrix = json.loads((ROOT / release_gate.SEMANTIC_MATRIX).read_text())
+    build = json.loads((ROOT / release_gate.PROFILE_BUILD_MANIFEST).read_text())
+    x64 = next(
+        row
+        for row in matrix["profiles"]
+        if row["profile_id"] == "X64-LE" and row["evidence_path"] == "normal"
+    )
+    fallback = tmp_path / "x64-fallback.json"
+    fallback.write_text(
+        json.dumps(
+            {
+                "profile_id": "X64-LE",
+                "normal_backend": {
+                    "probe_status": "failed",
+                    "support_status": "unverified",
+                },
+            }
+        )
+    )
+    x64["evidence_path"] = "fallback"
+    x64["receipt_file"] = str(fallback)
+    readiness = release_gate._readiness_contract(matrix, build)
+    unavailable = cast(list[dict[str, object]], readiness["unavailable_normal_rows"])
+    assert [row["profile_id"] for row in unavailable] == ["X64-LE"]
+    assert unavailable[0]["blocker"] == "normal_backend_unavailable"
 
 
 def test_package_rejects_fallback_promotion_and_unbound_matrix_digest():
