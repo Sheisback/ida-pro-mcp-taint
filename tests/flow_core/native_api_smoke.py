@@ -14,6 +14,7 @@ import tempfile
 import time
 
 from ida_pro_mcp import idalib_supervisor as sm
+from ida_pro_mcp.flow_core.serialization import digest
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -230,13 +231,39 @@ def main(build_dir, output):
                 memory_relation["source"],
                 memory_relation["target"],
             } <= selected_memory_nodes
+
+            def trace_edges(item):
+                if "edges" in item:
+                    assert "edges_externalized" not in item
+                    return item["edges"]
+                reference = item["edges_externalized"]
+                assert reference["retrieval_tool"] == "flow_get_graph"
+                assert reference["graph_artifact"] == result["graph_artifact"]
+                assert reference["graph_digest"] == result["graph_digest"]
+                assert reference["node_id"] == item["node_id"]
+                assert reference["direction"] in {"forward", "backward"}
+                endpoint = "source" if reference["direction"] == "forward" else "target"
+                selected = [
+                    edge
+                    for edge in graph
+                    if edge["type"] == "edge"
+                    and edge["kind"] in reference["edge_kinds"]
+                    and edge[endpoint] == item["node_id"]
+                ]
+                assert len(selected) == reference["edge_count"]
+                assert (
+                    digest(sorted(edge["edge_id"] for edge in selected))
+                    == reference["edge_ids_digest"]
+                )
+                return selected
+
             assert any(
                 edge["kind"] == "memory_data_dependency"
                 and edge["interval"] == memory_relation["interval"]
                 and edge["axes"]["precision"] == "exact"
                 and edge["evidence_ids"]
                 for item in memory_page["items"]
-                for edge in item["edges"]
+                for edge in trace_edges(item)
             )
 
             def reachable(start, backward=False):

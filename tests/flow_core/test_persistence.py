@@ -10,6 +10,7 @@ import threading
 import pytest
 
 from ida_pro_mcp.flow_core import ContractError, digest, stable_id
+import ida_pro_mcp.flow_core.persistence as persistence_module
 from ida_pro_mcp.flow_core.contracts import Node, NodeKey, ValueSource
 from ida_pro_mcp.flow_core.persistence import (
     PAGE_HARD_CHARS,
@@ -272,6 +273,63 @@ def test_symlink_root_blob_and_database_fail_closed(tmp_path):
     db.symlink_to(tmp_path / "elsewhere")
     with pytest.raises(PersistenceError):
         Store(store.root, store.scope, OWNER)
+
+
+@pytest.mark.parametrize("suffix", ["-wal", "-shm"])
+def test_disappearing_sqlite_sidecar_does_not_break_file_check(
+    tmp_path, monkeypatch, suffix
+):
+    store, _, _ = setup(tmp_path)
+    connection = sqlite3.connect(store.db)
+    connection.execute("PRAGMA journal_mode=WAL")
+    connection.execute("SELECT count(*) FROM sqlite_master")
+    sidecar = Path(str(store.db) + suffix)
+    assert sidecar.exists()
+    original_check = persistence_module._file_check
+    disappeared = False
+
+    def close_before_lstat(path):
+        nonlocal disappeared
+        if path == sidecar and not disappeared:
+            disappeared = True
+            connection.close()
+            assert not sidecar.exists()
+        return original_check(path)
+
+    monkeypatch.setattr(persistence_module, "_file_check", close_before_lstat)
+    try:
+        store._check_files()
+        assert disappeared
+    finally:
+        if not disappeared:
+            connection.close()
+        store.close()
+
+
+def test_sqlite_sidecar_symlink_and_disappearing_main_db_still_fail(
+    tmp_path, monkeypatch
+):
+    store, _, _ = setup(tmp_path)
+    sidecar = Path(str(store.db) + "-shm")
+    outside = tmp_path / "outside"
+    outside.write_text("not an SQLite sidecar")
+    sidecar.symlink_to(outside)
+    try:
+        with pytest.raises(PersistenceError, match="insecure_file"):
+            store._check_files()
+        sidecar.unlink()
+        original_check = persistence_module._file_check
+
+        def remove_main_before_lstat(path):
+            if path == store.db:
+                store.db.unlink()
+            return original_check(path)
+
+        monkeypatch.setattr(persistence_module, "_file_check", remove_main_before_lstat)
+        with pytest.raises(FileNotFoundError):
+            store._check_files()
+    finally:
+        store.close()
 
 
 def test_sqlite_corruption_and_schema_version_rejected(tmp_path):

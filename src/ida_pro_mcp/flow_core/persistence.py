@@ -391,9 +391,16 @@ class Store:
         require(identity == self.identity, "replaced_store_directory")
         _file_check(self.marker)
         require(self.marker.read_bytes() == self.marker_bytes, "invalid_store_marker")
-        for path in (self.db, Path(str(self.db) + "-wal"), Path(str(self.db) + "-shm")):
+        # The primary database is mandatory; SQLite's WAL/SHM sidecars are not.
+        _file_check(self.db)
+        for path in (Path(str(self.db) + "-wal"), Path(str(self.db) + "-shm")):
             if path.exists() or path.is_symlink():
-                _file_check(path)
+                try:
+                    _file_check(path)
+                except FileNotFoundError:
+                    # SQLite removes transient sidecars when its last
+                    # connection closes, possibly after the existence probe.
+                    pass
 
     @contextmanager
     def _connect(self, busy_timeout_ms=5000):

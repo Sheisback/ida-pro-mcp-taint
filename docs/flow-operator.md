@@ -121,6 +121,26 @@ If IDA, a processor/decompiler module, license entitlement, or GUI acceptance
 is unavailable, report that exact blocker and leave the corresponding claim
 unverified.
 
+## Large trace items
+
+`flow_trace_forward` and `flow_trace_backward` return structural reachability,
+not an automatic source-to-sink or vulnerability verdict. Continue an active
+trace with `flow_continue_trace(trace_id, expected_revision, cursor,
+request_key)` using the IDs from the previous page.
+
+When one node has too many selected relations for a bounded response, its
+trace item has `edges_externalized` **instead of** an inline `edges` list. The
+reference names the immutable `graph_artifact`/`graph_digest`, `node_id`,
+`direction`, `edge_kinds`, `edge_count`, and `edge_ids_digest`. Page that
+artifact with `flow_get_graph` until `next_cursor` is null. Keep edges of the
+listed kinds whose `source` matches `node_id` for forward traces or whose
+`target` matches it for backward traces; the count and digest bind the complete
+set. `edge_ids_digest` is the project's `sha256-v1` digest of canonical JSON
+for the lexicographically sorted selected `edge_id` strings. This is output
+externalization only: traversal still visits every selected
+relation and preserves unresolved/opaque status. Do not treat absent inline
+`edges` as zero edges or as evidence of a safe path.
+
 ## Program-derived bounded path checks
 
 `flow_check_path` is the sole registered path-proof tool. Submit with

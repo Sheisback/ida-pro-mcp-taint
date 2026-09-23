@@ -333,7 +333,8 @@ enough. Related tools include `flow_cancel_job`, `flow_trace_forward`,
 `flow_get_call_compositions`, and `flow_check_path`. The last tool accepts only
 program-derived, bounded CFG-prefix selectors; unsupported paths and unknown
 effects remain `partial`/`unknown`. See the [operator guide](docs/flow-operator.md)
-for its exact request shape and limitations.
+for its exact request shape, large-trace `edges_externalized` handling, and
+limitations.
 
 Analysis never executes the target, but MCP call tracing and IDA close/save
 policies can change a **working** IDB. Use a disposable database copy when the

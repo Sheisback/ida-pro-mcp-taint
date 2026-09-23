@@ -6,6 +6,7 @@ import json
 import pytest
 
 from ida_pro_mcp.flow_core import digest
+from ida_pro_mcp.flow_core.contracts import Edge, Graph, Node, NodeKey
 from ida_pro_mcp.flow_core.persistence import PersistenceError, Store
 from ida_pro_mcp.flow_core.query import Queries, artifact_page
 from ida_pro_mcp.flow_core.ssa import build_ssa
@@ -132,6 +133,136 @@ def test_artifact_cursor_binding_and_nonascii_bound():
         artifact_page("b", "evidence", items, {}, page["next_cursor"])
     with pytest.raises(PersistenceError, match="item_too_large"):
         artifact_page("a", "evidence", [{"text": "한" * 10000}], {})
+
+
+@pytest.mark.parametrize("direction", ["forward", "backward"])
+def test_high_degree_trace_externalizes_edges_without_losing_reachability(
+    tmp_path, direction
+):
+    store, program, sid, _ = setup(tmp_path)
+    try:
+        base = program.graph
+        snapshot = base.snapshot
+        evidence_id = base.evidence[0].evidence_id
+        root = Node(
+            NodeKey(
+                snapshot.snapshot_id,
+                snapshot.function.function_id,
+                synthetic="fan-root",
+            ),
+            "OpaqueEffect",
+            None,
+            (evidence_id,),
+        )
+        leaves = tuple(
+            Node(
+                NodeKey(
+                    snapshot.snapshot_id,
+                    snapshot.function.function_id,
+                    synthetic=f"fan-leaf-{index:03d}",
+                ),
+                "OpaqueEffect",
+                None,
+                (evidence_id,),
+            )
+            for index in range(250)
+        )
+        fan_edges = tuple(
+            Edge(
+                root.node_id if direction == "forward" else leaf.node_id,
+                leaf.node_id if direction == "forward" else root.node_id,
+                "value_dependency",
+                (evidence_id,),
+                base.axes,
+            )
+            for leaf in leaves
+        )
+        graph = Graph(
+            snapshot,
+            tuple(sorted((*base.nodes, root, *leaves), key=lambda node: node.node_id)),
+            tuple(sorted((*base.edges, *fan_edges), key=lambda edge: edge.edge_id)),
+            base.evidence,
+            base.axes,
+        )
+        gid = store.put_artifact("graph", graph)
+        query = Queries(store)
+        first = query.start(
+            sid,
+            gid,
+            {"kind": "value", "node_id": root.node_id},
+            direction,
+            f"fan-{direction}",
+            limit=1,
+        )
+        item = first["items"][0]
+        assert "edges" not in item
+        assert item["edges_externalized"] == {
+            "graph_artifact": gid,
+            "graph_digest": graph.graph_digest,
+            "node_id": root.node_id,
+            "direction": direction,
+            "edge_kinds": ["memory_data_dependency", "phi_input", "value_dependency"],
+            "edge_count": len(fan_edges),
+            "edge_ids_digest": digest(sorted(edge.edge_id for edge in fan_edges)),
+            "retrieval_tool": "flow_get_graph",
+        }
+        assert len(json.dumps(first)) < 40000
+        assert (
+            query.start(
+                sid,
+                gid,
+                {"kind": "value", "node_id": root.node_id},
+                direction,
+                f"fan-{direction}",
+                limit=1,
+            )
+            == first
+        )
+
+        graph_items = [
+            *(
+                {"type": "node", "node_id": node.node_id, **node.to_data()}
+                for node in graph.nodes
+            ),
+            *(
+                {"type": "edge", "edge_id": edge.edge_id, **edge.to_data()}
+                for edge in graph.edges
+            ),
+        ]
+        cursor = None
+        recovered_edges = set()
+        fan_edge_ids = {edge.edge_id for edge in fan_edges}
+        while True:
+            page = artifact_page(gid, "graph", graph_items, {}, cursor, 100)
+            recovered_edges.update(
+                item["edge_id"]
+                for item in page["items"]
+                if item["type"] == "edge" and item["edge_id"] in fan_edge_ids
+            )
+            cursor = page["next_cursor"]
+            if cursor is None:
+                break
+        assert recovered_edges == fan_edge_ids
+
+        emitted = [item["node_id"] for item in first["items"]]
+        page = first
+        while page["status"] != "frontier_exhausted":
+            args = (
+                page["trace_id"],
+                page["revision"],
+                page["cursor"],
+                f"next-{page['revision']}",
+            )
+            next_page = query.continue_trace(*args, limit=20)
+            assert query.continue_trace(*args, limit=20) == next_page
+            assert len(json.dumps(next_page)) < 40000
+            emitted.extend(item["node_id"] for item in next_page["items"])
+            page = next_page
+        assert set(emitted) == {root.node_id, *(node.node_id for node in leaves)}
+        assert len(emitted) == 251
+        assert page["unresolved_count"] == 251
+    finally:
+        store.close()
 
 
 def test_prompt_like_graph_text_is_inert_quoted_data():

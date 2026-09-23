@@ -240,6 +240,25 @@ class Queries:
             size = len(json.dumps(items + [item])) + 1500
             if items and size > PAGE_TARGET_CHARS:
                 break
+            if size > PAGE_HARD_CHARS:
+                # An indivisible high-degree node must not silently lose edges.
+                # The immutable graph can be paged separately to reconstruct
+                # the exact selected adjacency while traversal still visits all
+                # relations below.
+                item.pop("edges")
+                item["edges_externalized"] = {
+                    "graph_artifact": spec.graph_artifact,
+                    "graph_digest": graph.graph_digest,
+                    "node_id": nid,
+                    "direction": spec.direction,
+                    "edge_kinds": list(spec.edge_kinds),
+                    "edge_count": len(relations),
+                    "edge_ids_digest": digest(
+                        sorted(edge.edge_id for _, edge in relations)
+                    ),
+                    "retrieval_tool": "flow_get_graph",
+                }
+                size = len(json.dumps(items + [item])) + 1500
             require(size <= PAGE_HARD_CHARS, "item_too_large")
             queue.pop(0)
             seen.add(nid)
