@@ -11,17 +11,24 @@ from .heap import (
     HeapTransition,
 )
 from .memory import PointerSeed
-from .serialization import digest
-from .states import Lifetime, PointerCandidate, PointerValue, canonical_set, require
+from .serialization import ContractError, digest
+from .states import (
+    Liveness,
+    Lifetime,
+    PointerCandidate,
+    PointerValue,
+    canonical_set,
+    require,
+)
 
-ALL_LIVENESS = ("freed", "live", "not_allocated")
+ALL_LIVENESS: tuple[Liveness, ...] = ("freed", "live", "not_allocated")
 INITIAL = Lifetime(("not_allocated",), "local")
 TOP = Lifetime(ALL_LIVENESS, "unknown")
 
 
 def allocate_lifetime(before: Lifetime, *, singleton: bool, nullable: bool):
     fresh = singleton and before.possible == ("not_allocated",)
-    states = {"live"}
+    states: set[Liveness] = {"live"}
     if nullable:
         states.add("not_allocated")
     if not fresh:
@@ -33,7 +40,9 @@ def free_lifetime(before: Lifetime, *, definite: bool):
     if definite and before.possible == ("live",):
         return Lifetime(("freed",), before.escape), True, False
     nonlive = bool(set(before.possible) - {"live"})
-    states = set(ALL_LIVENESS) if nonlive else set(before.possible) | {"freed"}
+    states: set[Liveness] = set(ALL_LIVENESS) if nonlive else set(before.possible)
+    if not nonlive:
+        states.add("freed")
     return Lifetime(tuple(sorted(states)), before.escape), False, nonlive
 
 
@@ -46,11 +55,11 @@ def escape_lifetime(before: Lifetime, *, definite: bool):
     return Lifetime(before.possible, escape)
 
 
-def _top(space, bits):
+def _top(space: str, bits: int) -> PointerValue:
     return PointerValue(space, bits, any_compatible_location=True, may_be_null=True)
 
 
-def _join_pointer(a, b):
+def _join_pointer(a: PointerValue, b: PointerValue) -> PointerValue:
     if a.address_space == b.address_space and a.width_bits == b.width_bits:
         return a.join(b)
     return _top("*", max(a.width_bits, b.width_bits))
@@ -78,8 +87,8 @@ class _Engine:
         self.visits, self.updates, self.iterations = 0, 0, 0
         self.budget = False
 
-    def bounded(self, pointer):
-        if pointer is not None and len(pointer.candidates) > self.policy.max_candidates:
+    def bounded(self, pointer: PointerValue) -> PointerValue:
+        if len(pointer.candidates) > self.policy.max_candidates:
             self.diagnostics.add("heap_candidate_budget_widened")
             return _top(pointer.address_space, pointer.width_bits)
         return pointer
@@ -133,7 +142,7 @@ class _Engine:
     def resolve(self, event, state):
         if event.scope == "all":
             return _top(self.space, self.bits), set(self.registry), False, True
-        pointer = None
+        pointer: PointerValue | None = None
         for root in event.roots:
             value = self.facts.get(root) or _top(self.space, self.bits)
             pointer = value if pointer is None else _join_pointer(pointer, value)
@@ -179,6 +188,8 @@ class _Engine:
         if event.kind == "allocate":
             obj = self.site_map[event.node_id]
             pointer = self.facts[event.node_id]
+            if pointer is None:
+                raise ContractError("Missing allocation pointer")
             targets = {obj.object_id}
             definite = obj.singleton and not self.policy.allocation_nullable
             unresolved = False

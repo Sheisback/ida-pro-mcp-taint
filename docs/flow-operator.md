@@ -25,6 +25,10 @@ baseline.
    not evidence of GUI success. Do not create or overwrite EULA acceptance
    during the evidence probe.
 
+The GUI-process receipt proves installed-bundle loading and capability discovery
+in a real IDA GUI process. It does **not** prove GUI semantic flow extraction;
+use completed static flow jobs for that narrower claim.
+
 For an explicitly authorized local GUI check on a host that **already** accepted
 the IDA EULA, `record_flow_gui_ci.py --accepted-registry ~/.idapro/ida.reg`
 copies the existing IDA registry into a disposable `IDAUSR`. It does not alter

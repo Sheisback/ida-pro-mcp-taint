@@ -8,7 +8,7 @@ from dataclasses import replace
 import json
 
 from .contracts import Graph, MemorySource, ValueSource
-from .persistence import PAGE_HARD_CHARS, PAGE_TARGET_CHARS, require
+from .persistence import PAGE_HARD_CHARS, PAGE_TARGET_CHARS, PersistenceError, require
 from .runtime_contracts import TraceSpec, TraceState
 from .serialization import digest, canonical_json
 
@@ -35,7 +35,7 @@ def artifact_page(artifact_id, section, items, metadata, cursor=None, limit=50):
             index, token = cursor.split("/", 1)
             offset = int(index)
         except (ValueError, TypeError):
-            require(False, "invalid_cursor")
+            raise PersistenceError("invalid_cursor") from None
         require(0 <= offset <= len(items), "invalid_cursor")
         require(
             token == digest({"identity": identity, "offset": offset}), "invalid_cursor"

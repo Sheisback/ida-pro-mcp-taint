@@ -131,6 +131,7 @@ def _value(node, values):
         if len(values) != 1:
             return top, True
         source = values[0]
+        offset = 0
         if op in {"neg", "not"}:
             valid = bits == source.width_bits
         elif op == "logical_not":

@@ -19,7 +19,7 @@ from .contracts import (
     Snapshot,
     StructuredSnapshot,
 )
-from .serialization import Model
+from .serialization import ContractError, Model
 from .states import (
     ByteRange,
     MemoryReference,
@@ -640,10 +640,14 @@ class _Builder:
             if info.immediate is not None:
                 children[info.immediate].append(info.block)
         # Iterative dominator-tree traversal avoids Python recursion on long CFGs.
-        events = [(entry, False, None)]
+        events: list[tuple[int, bool, dict[StorageLocation, int] | None]] = [
+            (entry, False, None)
+        ]
         while events:
             b, exiting, saved = events.pop()
             if exiting:
+                if saved is None:
+                    raise ContractError("Invalid SSA traversal state")
                 for atom, count in saved.items():
                     del self.stacks[atom][count:]
                 continue

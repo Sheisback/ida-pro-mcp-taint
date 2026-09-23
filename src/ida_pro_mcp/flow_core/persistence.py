@@ -430,10 +430,8 @@ class Store:
             "SELECT owner_digest,scope_digest FROM namespaces WHERE namespace=?",
             (self.scope.namespace,),
         ).fetchone()
-        require(
-            row is not None and row["owner_digest"] == self.owner_digest,
-            "wrong_database_owner",
-        )
+        if row is None or row["owner_digest"] != self.owner_digest:
+            raise PersistenceError("wrong_database_owner")
         require(row["scope_digest"] == self.scope.scope_digest, "stale_context")
 
     @contextmanager
@@ -535,6 +533,8 @@ class Store:
             value = snapshot.to_data()
         if kind == "graph":
             graph = value if type(value) is Graph else Graph.from_data(value)
+            if not isinstance(graph.snapshot, Snapshot):
+                raise PersistenceError("structured_graph_not_supported")
             identity = graph.snapshot.identity
             actual = RuntimeScope(
                 identity.namespace,

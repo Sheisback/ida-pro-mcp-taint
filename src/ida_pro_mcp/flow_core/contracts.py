@@ -8,7 +8,7 @@ Database namespace is an ownership boundary, not a content fingerprint.
 from dataclasses import dataclass
 from typing import Literal
 
-from .serialization import Model, digest, stable_id
+from .serialization import ContractError, Model, digest, stable_id
 from .states import (
     ByteRange,
     Endian,
@@ -217,7 +217,9 @@ class Operand(Model):
         )
         if self.constant is not None:
             require(
-                self.constant >= 0 and self.constant.bit_length() <= self.width_bits,
+                self.width_bits is not None
+                and self.constant >= 0
+                and self.constant.bit_length() <= self.width_bits,
                 "Constant outside width",
             )
         if self.storage is not None:
@@ -624,9 +626,11 @@ class Node(Model):
             (self.memory is not None) == memory_kind, "Memory payload/kind mismatch"
         )
         if memory_kind:
+            memory = self.memory
+            if memory is None:
+                raise ContractError("Memory payload/kind mismatch")
             require(
-                self.width_bits
-                == 8 * (self.memory.interval.end - self.memory.interval.start),
+                self.width_bits == 8 * (memory.interval.end - memory.interval.start),
                 "Memory node width/range mismatch",
             )
         if self.kind == "Store":
@@ -657,7 +661,10 @@ class Node(Model):
         require(not self.phi_inputs or phi, "Non-phi has phi inputs")
         if phi:
             require(
-                self.phi_block >= 0 and bool(self.phi_inputs) and not self.inputs,
+                self.phi_block is not None
+                and self.phi_block >= 0
+                and bool(self.phi_inputs)
+                and not self.inputs,
                 "Invalid phi inputs",
             )
             canonical_set(tuple(p.predecessor for p in self.phi_inputs))
@@ -719,6 +726,8 @@ class Edge(Model):
                 "Memory derivation belongs on a memory-data edge",
             )
             check_id(self.memory_object_id, "object")
+            if self.memory_rule_id is None:
+                raise ContractError("Memory edge object/rule must be paired")
             nonempty(self.memory_rule_id)
 
     @property
@@ -1003,7 +1012,8 @@ class Graph(Model):
             if edge.kind == "phi_input":
                 target = by_id[edge.target]
                 require(
-                    PhiInput(edge.predecessor, edge.source) in target.phi_inputs,
+                    edge.predecessor is not None
+                    and PhiInput(edge.predecessor, edge.source) in target.phi_inputs,
                     "Phi edge/input mismatch",
                 )
 

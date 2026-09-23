@@ -34,6 +34,7 @@ class JobContext:
         self.deadline = deadline
         self.clock = clock
         self._report = report
+        self.budget = MappingProxyType({})
 
     def report(self, progress, checkpoint=None):
         self.check()

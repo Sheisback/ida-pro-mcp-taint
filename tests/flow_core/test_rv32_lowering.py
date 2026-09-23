@@ -34,6 +34,8 @@ from ida_pro_mcp.flow_core.memory_graph import (
     RV32_FLAT_USERSPACE_ASSUMPTION,
     build_memory_graph,
 )
+from ida_pro_mcp.flow_core.persistence import PersistenceError, Store
+from ida_pro_mcp.flow_core.runtime_contracts import RuntimeScope
 from ida_pro_mcp.flow_core.rv32_capture import (
     CaptureBundle,
     InstructionCapture,
@@ -257,6 +259,28 @@ def test_structured_snapshot_is_distinct_strict_and_graph_roundtrips():
         target[path[-1]] = value
         with pytest.raises(ContractError):
             StructuredSnapshot.from_data(data)
+
+
+def test_structured_graph_store_fails_closed(tmp_path):
+    structured = _structured_snapshot()
+    identity = structured.identity
+    scope = RuntimeScope(
+        identity.namespace,
+        identity.semantic_digest,
+        identity.binary_digest,
+        identity.profile_digest,
+        identity.lowering_rule_digest,
+        identity.summary_digest,
+        identity.policy_digest,
+    )
+    store = Store(
+        tmp_path / "structured-store", scope, "structured-test-owner-secret-0001"
+    )
+    try:
+        with pytest.raises(PersistenceError, match="structured_graph_not_supported"):
+            store.put_artifact("graph", Graph(structured, (), (), (), ResultAxes()))
+    finally:
+        store.close()
 
 
 def test_every_structured_identity_input_changes_the_snapshot_id():

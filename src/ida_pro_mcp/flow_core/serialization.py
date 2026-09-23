@@ -5,7 +5,7 @@ import hashlib
 import json
 import math
 import types
-from typing import Literal, Union, get_args, get_origin, get_type_hints
+from typing import Any, Literal, Self, Union, cast, get_args, get_origin, get_type_hints
 
 SCHEMA_VERSION = 1
 
@@ -104,23 +104,26 @@ class Model:
 
     def __post_init__(self):
         hints = get_type_hints(type(self))
-        for field in fields(self):
+        for field in fields(cast(Any, self)):
             _typed(getattr(self, field.name), hints[field.name])
 
     def to_data(self) -> dict:
-        def encode(value):
+        def encode(value: Any) -> Any:
             if isinstance(value, Model):
-                return {f.name: encode(getattr(value, f.name)) for f in fields(value)}
+                return {
+                    f.name: encode(getattr(value, f.name))
+                    for f in fields(cast(Any, value))
+                }
             if type(value) is tuple:
                 return [encode(item) for item in value]
             return value
 
-        result = encode(self)
+        result = cast(dict[str, Any], encode(self))
         _json_value(result)
         return result
 
     @classmethod
-    def from_data(cls, data):
+    def from_data(cls: type[Self], data: object) -> Self:
         if type(data) is not dict or not is_dataclass(cls):
             raise ContractError("Expected a model object")
         if set(data) != {f.name for f in fields(cls)}:
@@ -135,7 +138,7 @@ class Model:
             raise ContractError("Cyclic or excessively deep model document") from exc
 
     @classmethod
-    def from_json(cls, text: str):
+    def from_json(cls: type[Self], text: str) -> Self:
         def pairs(items):
             result = {}
             for key, value in items:

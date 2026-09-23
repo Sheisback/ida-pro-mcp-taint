@@ -193,25 +193,22 @@ def build_memory_graph(
     nodes = []
     for node in base_program.graph.nodes:
         access = accesses.get(node.node_id)
-        if (
-            access is not None
-            and len(access.candidates) == 1
-            and access.candidates[0].interval is not None
-        ):
+        if access is not None and len(access.candidates) == 1:
             candidate = access.candidates[0]
-            obj = object_by_id[candidate.object_id]
-            node = replace(
-                node,
-                memory=MemoryReference(
-                    candidate.object_id,
-                    steps[node.node_id].after
-                    if node.kind == "Store"
-                    else access.version_id,
-                    obj.address_space,
-                    candidate.interval,
-                    snapshot.identity.environment.data_endian,
-                ),
-            )
+            if candidate.interval is not None:
+                obj = object_by_id[candidate.object_id]
+                node = replace(
+                    node,
+                    memory=MemoryReference(
+                        candidate.object_id,
+                        steps[node.node_id].after
+                        if node.kind == "Store"
+                        else access.version_id,
+                        obj.address_space,
+                        candidate.interval,
+                        snapshot.identity.environment.data_endian,
+                    ),
+                )
         nodes.append(node)
 
     edges = {edge.edge_id: edge for edge in base_program.graph.edges}

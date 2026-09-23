@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from .contracts import Alias, MemoryObject, MemoryVersion
-from .serialization import Model, digest
+from .serialization import ContractError, Model, digest
 from .ssa import SSAProgram
 from .states import (
     BitValue,
@@ -488,9 +488,12 @@ class MemoryResult(Model):
                 node.kind in {"Load", "Store"} and access.node_id in steps,
                 "Access is not a memory operation",
             )
+            memory_operands = node.memory_operands
+            if memory_operands is None:
+                raise ContractError("Access is not a memory operation")
             require(
                 access.version_id == steps[access.node_id].before
-                and access.address_node == node.memory_operands.address
+                and access.address_node == memory_operands.address
                 and access.width_bits == node.width_bits
                 and access.evidence_ids == node.evidence_ids,
                 "Access/plan reference mismatch",
