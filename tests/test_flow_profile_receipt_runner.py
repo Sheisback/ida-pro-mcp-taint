@@ -630,11 +630,7 @@ def test_probe_receipt_cannot_promote_support_or_claim_target_execution(
         if stage == "bootstrap":
             receipt[field] = value
             receipt["receipt_digest"] = probe.digest(
-                {
-                    key: item
-                    for key, item in receipt.items()
-                    if key != "receipt_digest"
-                }
+                {key: item for key, item in receipt.items() if key != "receipt_digest"}
             )
         return receipt
 
@@ -671,11 +667,50 @@ def test_matrix_continues_after_one_row_hash_failure(tmp_path, monkeypatch):
         build_manifest=manifest,
         output_dir=output,
         ida_executable=ida,
+        repeat_final=True,
     )
 
     assert matrix["status"] == "partial"
     assert matrix["status_counts"] == {"success": 1, "failed": 1, "blocked": 0}
-    assert [call["stage"] for call in fake.calls] == ["bootstrap", "final"]
+    scope = {
+        "schema_version": "flow-release-scope/1",
+        "decision": "Test optional profile failure",
+        "required_profile_ids": ["ARM32-LE"],
+        "optional_profile_ids": ["X64-LE"],
+    }
+    assert runner.release_scope_accepted(matrix, scope)
+    without_repeat = json.loads(json.dumps(matrix))
+    without_repeat["repeat_final"] = False
+    without_repeat["receipt_digest"] = runner.digest(
+        {key: value for key, value in without_repeat.items() if key != "receipt_digest"}
+    )
+    with pytest.raises(ValueError, match="repeat evidence"):
+        runner.release_scope_accepted(without_repeat, scope)
+    scope_path = tmp_path / "release-scope.json"
+    scope_path.write_text(json.dumps(scope))
+    monkeypatch.setattr(runner, "run_matrix", lambda **_kwargs: matrix)
+    cli_args = [
+        "--root",
+        str(ROOT),
+        "--build-manifest",
+        str(manifest),
+        "--output-dir",
+        str(output),
+        "--ida-executable",
+        str(ida),
+        "--release-scope",
+        str(scope_path),
+    ]
+    assert runner.main(cli_args) == 0
+    scope["required_profile_ids"] = ["X64-LE"]
+    scope["optional_profile_ids"] = ["ARM32-LE"]
+    assert not runner.release_scope_accepted(matrix, scope)
+    scope_path.write_text(json.dumps(scope))
+    assert runner.main(cli_args) == 1
+    scope["optional_profile_ids"] = ["X64-LE"]
+    with pytest.raises(ValueError, match="overlap"):
+        runner.release_scope_accepted(matrix, scope)
+    assert [call["stage"] for call in fake.calls] == ["bootstrap", "final", "repeat"]
     results = [
         json.loads((output / row["result_file"]).read_text()) for row in matrix["rows"]
     ]

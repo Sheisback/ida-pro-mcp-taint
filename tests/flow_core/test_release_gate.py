@@ -984,6 +984,11 @@ def test_workflows_keep_untrusted_and_release_paths_separate_and_pinned():
     assert "workflow_call:" in licensed and "workflow_dispatch:" in licensed
     assert "scripts/flow_licensed_ci.py" in licensed
     assert "scripts/record_flow_licensed_normal.py" in licensed
+    p0_command = licensed.split("scripts/record_flow_profile_receipts.py", 1)[1].split(
+        "scripts/record_flow_profile_semantics.py", 1
+    )[0]
+    assert "--repeat-final" in p0_command
+    assert "--release-scope profiles/flow-release-scope.json" in p0_command
     assert "--current-normal-dir licensed-reports/current-normal" in licensed
     assert "--current-format-dir licensed-reports/current-format" in licensed
     assert "uses: ./.github/workflows/idalib-tests.yml" in release

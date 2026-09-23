@@ -111,7 +111,9 @@ jobs:
             --root "$PWD" \
             --build-manifest licensed-reports/current-build/build.json \
             --output-dir licensed-reports/current-p0 \
-            --ida-executable "$(command -v idat)"
+            --ida-executable "$(command -v idat)" \
+            --repeat-final \
+            --release-scope profiles/flow-release-scope.json
           uv run python scripts/record_flow_profile_semantics.py \
             --rebuilt-manifest licensed-reports/current-build/build.json \
             --build-root licensed-reports/current-build \

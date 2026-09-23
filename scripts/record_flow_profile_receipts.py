@@ -216,7 +216,9 @@ def _raw_configuration(
     load_address = config.get("load_address")
     entry_offset = config.get("entry_offset")
     entry_point = config.get("entry_point")
-    if any(type(value) is not int for value in (load_address, entry_offset, entry_point)):
+    if any(
+        type(value) is not int for value in (load_address, entry_offset, entry_point)
+    ):
         raise RowFailure(
             "unsupported_raw_configuration",
             "Raw load and entry fields must be integers",
@@ -1137,6 +1139,42 @@ def run_matrix(
     return result
 
 
+def release_scope_accepted(matrix: dict[str, Any], scope: dict[str, Any]) -> bool:
+    """Allow optional P0 failures without concealing a failed required row."""
+    validate_matrix_result(matrix)
+    _exact_keys(
+        scope,
+        {"schema_version", "decision", "required_profile_ids", "optional_profile_ids"},
+        "release scope",
+    )
+    if scope["schema_version"] != "flow-release-scope/1":
+        raise ValueError("Unsupported release scope schema")
+    if type(scope["decision"]) is not str or not scope["decision"]:
+        raise ValueError("Release scope decision missing")
+    required = scope["required_profile_ids"]
+    optional = scope["optional_profile_ids"]
+    for label, values in (("required", required), ("optional", optional)):
+        if (
+            type(values) is not list
+            or any(type(value) is not str or not value for value in values)
+            or len(values) != len(set(values))
+        ):
+            raise ValueError(f"Invalid {label} release profiles")
+    required_ids, optional_ids = set(required), set(optional)
+    if not required_ids or required_ids & optional_ids:
+        raise ValueError("Release profiles are empty or overlap")
+    if matrix["repeat_final"] is not True:
+        raise ValueError("Release scope requires P0 fresh-process repeat evidence")
+    if matrix["profile_filter"] != []:
+        raise ValueError("Release scope requires an unfiltered P0 matrix")
+    rows = matrix["rows"]
+    if {row["profile_id"] for row in rows} != required_ids | optional_ids:
+        raise ValueError("Release scope does not match P0 profile inventory")
+    return all(
+        row["status"] == "success" for row in rows if row["profile_id"] in required_ids
+    )
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, required=True)
@@ -1154,11 +1192,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Run each accepted final request twice and require exact semantics",
     )
+    parser.add_argument(
+        "--release-scope",
+        type=Path,
+        help="Keep optional failures in the matrix but exit successfully only if every required profile succeeds",
+    )
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
+    if args.release_scope is not None and args.profile:
+        raise ValueError("Release scope cannot be combined with a profile filter")
     result = run_matrix(
         root=args.root,
         build_manifest=args.build_manifest,
@@ -1168,6 +1213,8 @@ def main(argv: list[str] | None = None) -> int:
         repeat_final=args.repeat_final,
     )
     print(json.dumps(result, sort_keys=True))
+    if args.release_scope is not None:
+        return int(not release_scope_accepted(result, read_json(args.release_scope)))
     return 0 if result["status"] == "success" else 1
 
 
