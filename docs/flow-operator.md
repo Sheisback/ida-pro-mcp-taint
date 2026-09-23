@@ -9,6 +9,10 @@ validating these receipts. Every committed receipt must retain
 release environment; untrusted pull requests must not receive license secrets
 or a licensed runner.
 
+The licensed release gate requires **IDA 9.3 only**. Its frozen performance
+baseline is for a protected `linux-x86_64` runner; the same static extraction
+can be measured on macOS, but those timings do not satisfy the Linux baseline.
+
 ## Install and activate IDA
 
 1. Install Python 3.11 or newer, `uv`, and a supported IDA Pro installation.
@@ -18,6 +22,11 @@ or a licensed runner.
 4. Confirm the source, wheel, headless process, and (when actually available)
    GUI process report the same build ID. A GUI acceptance gate is a blocker,
    not evidence of GUI success; do not accept an EULA as part of automation.
+
+For an explicitly authorized local GUI check on a host that **already** accepted
+the IDA EULA, `record_flow_gui_ci.py --accepted-registry ~/.idapro/ida.reg`
+copies the existing IDA registry into a disposable `IDAUSR`. It does not alter
+the original registry, accept a new agreement, or substitute for protected CI.
 
 ## Audit committed support evidence
 

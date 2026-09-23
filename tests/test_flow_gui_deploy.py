@@ -61,6 +61,8 @@ def test_gui_recorder_installs_bundle_and_proves_process_origin(monkeypatch, tmp
     fixture.write_bytes(b"static fixture")
     ida = tmp_path / "ida"
     ida.write_bytes(b"reviewed GUI")
+    accepted_registry = tmp_path / "ida.reg"
+    accepted_registry.write_bytes(b"existing IDA-owned acceptance state")
     output = tmp_path / "gui-process.json"
     observed: dict[str, object] = {}
 
@@ -88,6 +90,7 @@ def test_gui_recorder_installs_bundle_and_proves_process_origin(monkeypatch, tmp
         entry, process_output, request_path = shlex.split(script_argument)
         request = json.loads(Path(request_path).read_text())
         user = Path(env["IDAUSR"])
+        assert (user / "ida.reg").read_bytes() == accepted_registry.read_bytes()
         bundle = user / "plugins" / "_ida_pro_mcp_runtime"
         loader = user / "plugins" / "ida_mcp.py"
         manifest = bundle / "install-manifest.json"
@@ -136,6 +139,7 @@ def test_gui_recorder_installs_bundle_and_proves_process_origin(monkeypatch, tmp
             output=output,
             checkout_sha=COMMIT,
             expected_ida_executable_sha256=recorder.sha256(ida),
+            accepted_registry=accepted_registry,
             timeout=7,
         )
     )
@@ -165,6 +169,27 @@ def test_gui_entry_never_injects_checkout_source():
     assert 'os.environ["IDAUSR"]' in source
     assert "loader._prepare_runtime()" in source
     assert "module_origin.is_relative_to(bundle.resolve())" in source
+
+
+def test_gui_registry_seed_is_disposable_and_rejects_symlinks(tmp_path):
+    recorder = load_script("record_flow_gui_ci")
+    source = tmp_path / "ida.reg"
+    original = b"existing IDA-owned acceptance state"
+    source.write_bytes(original)
+    user = tmp_path / "idausr"
+    user.mkdir()
+
+    recorder.seed_existing_registry(source, user)
+    destination = user / "ida.reg"
+    assert destination.read_bytes() == source.read_bytes() == original
+    assert destination.stat().st_mode & 0o777 == 0o600
+
+    linked = tmp_path / "linked"
+    linked.mkdir()
+    (linked / "ida.reg").symlink_to(source)
+    with pytest.raises(ValueError, match="symlink"):
+        recorder.seed_existing_registry(linked / "ida.reg", tmp_path / "other-user")
+    assert source.read_bytes() == original
 
 
 def test_gui_bundle_is_installed_from_current_checkout_wheel(tmp_path):

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Attempt isolated GUI-process evidence without accepting EULA or touching profiles."""
+"""Attempt isolated GUI-process evidence without mutating persistent profiles."""
 
 from __future__ import annotations
 
@@ -51,6 +51,17 @@ def write_json(path: Path, value: dict[str, Any]) -> None:
 
 def blocker_path(output: Path) -> Path:
     return output.with_name(output.stem + ".blocker.json")
+
+
+def seed_existing_registry(source: Path, user: Path) -> None:
+    """Reuse an already accepted IDA registry in a disposable user directory."""
+    source = _reject_symlink_components(source.expanduser())
+    if source.name != "ida.reg" or not source.is_file():
+        raise ValueError("Accepted IDA registry must be an existing ida.reg file")
+    destination = user / "ida.reg"
+    with source.open("rb") as reader, destination.open("xb") as writer:
+        shutil.copyfileobj(reader, writer)
+    destination.chmod(0o600)
 
 
 def record_blocker(
@@ -220,6 +231,9 @@ def record(args: argparse.Namespace) -> dict[str, Any]:
         temp = work / "tmp"
         for directory in (home, user, temp):
             directory.mkdir()
+        accepted_registry = getattr(args, "accepted_registry", None)
+        if accepted_registry is not None:
+            seed_existing_registry(accepted_registry, user)
         loader, bundle_manifest = build_and_install_gui_bundle(work, user)
         disposable = work / fixture.name
         shutil.copyfile(fixture, disposable)
@@ -329,6 +343,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--expected-ida-executable-sha256", required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--timeout", type=int, default=60)
+    parser.add_argument(
+        "--accepted-registry",
+        type=Path,
+        help="Copy an existing user-accepted ida.reg into the disposable IDAUSR; never change the original",
+    )
     return parser.parse_args()
 
 
