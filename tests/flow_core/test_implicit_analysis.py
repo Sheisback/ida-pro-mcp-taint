@@ -8,7 +8,7 @@ from typing import Literal
 import pytest
 
 from ida_pro_mcp.flow_core import ContractError, canonical_json, digest
-from ida_pro_mcp.flow_core.analysis import Seed
+from ida_pro_mcp.flow_core.analysis import Seed, analyze
 from ida_pro_mcp.flow_core.contracts import Block, FunctionInput, Instruction, Operand
 from ida_pro_mcp.flow_core.implicit_analysis import (
     ImplicitPolicy,
@@ -20,9 +20,16 @@ from ida_pro_mcp.flow_core.implicit_cfg import (
     ImplicitCFGPolicy,
     analyze_implicit_cfg,
 )
+from ida_pro_mcp.flow_core.memory_graph import build_memory_graph
 from ida_pro_mcp.flow_core.ssa import SSAProgram, build_ssa
 from ida_pro_mcp.flow_core.states import Labels, StorageLocation
 from ida_pro_mcp.flow_core.contracts import Snapshot
+from test_memory import const as memory_const
+from test_memory import load as memory_load
+from test_memory import plan as memory_plan
+from test_memory import reg as memory_reg
+from test_memory import ret as memory_ret
+from test_memory import store as memory_store
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -460,6 +467,104 @@ def test_control_labels_follow_memory_data_but_not_address_relations():
     address_program = with_edge("address_dependency")
     address = result(address_program, (seed,))
     assert facts(address)[copy].control == ()
+
+
+def test_verified_memory_data_carries_explicit_labels_without_pointer_bleed():
+    base = memory_plan(
+        (
+            memory_store(0, memory_reg(192, 8)),
+            memory_load(1),
+            memory_ret(2),
+        )
+    )
+    bundle = build_memory_graph(base.program.graph.snapshot)
+    program = bundle.program
+    nodes = {node.node_id: node for node in bundle.graph.nodes}
+    load_id = next(node.node_id for node in bundle.graph.nodes if node.kind == "Load")
+    return_id = next(
+        node.node_id for node in bundle.graph.nodes if node.kind == "Return"
+    )
+    reaching = [
+        edge
+        for edge in bundle.graph.edges
+        if edge.kind == "memory_data_dependency" and edge.target == load_id
+    ]
+    assert len(reaching) == 1
+    assert nodes[reaching[0].source].kind == "Store"
+    assert reaching[0].axes.precision == "exact"
+    assert reaching[0].memory_rule_id == "byte-reaching-store-v1"
+
+    data_seed = entry_seed(program, 192, "DATA")
+    address_seed = entry_seed(program, 0, "ADDRESS")
+    store_seed = Seed(reaching[0].source, Labels(("STORED_BYTES",)))
+    for evaluate in (
+        lambda seeds: {
+            fact.node_id: fact.labels for fact in analyze(bundle.graph, seeds).facts
+        },
+        lambda seeds: facts(result(program, seeds)),
+    ):
+        data = evaluate((data_seed,))
+        assert data[load_id].explicit == ("DATA",)
+        assert data[return_id].explicit == ("DATA",)
+        assert data[load_id].unknown_provenance
+
+        address = evaluate((address_seed,))
+        assert address[load_id].explicit == ()
+        assert address[return_id].explicit == ()
+        assert address[load_id].unknown_provenance
+
+        directly_seeded_store = evaluate((store_seed,))
+        assert directly_seeded_store[load_id].explicit == ("STORED_BYTES",)
+        assert directly_seeded_store[return_id].explicit == ("STORED_BYTES",)
+
+
+def test_memory_labels_require_bound_derivation_and_stop_at_overwrite():
+    base = memory_plan(
+        (memory_store(0, memory_reg(192, 8)), memory_load(1), memory_ret(2))
+    )
+    bundle = build_memory_graph(base.program.graph.snapshot)
+    memory_edge = next(
+        edge
+        for edge in bundle.graph.edges
+        if edge.kind == "memory_data_dependency"
+        and edge.memory_rule_id == "byte-reaching-store-v1"
+    )
+    unbound = replace(
+        memory_edge,
+        memory_object_id=None,
+        memory_rule_id=None,
+        width_bits=None,
+        interval=None,
+    )
+    graph = replace(
+        bundle.graph,
+        edges=tuple(
+            sorted(
+                (
+                    unbound if edge == memory_edge else edge
+                    for edge in bundle.graph.edges
+                ),
+                key=lambda edge: edge.edge_id,
+            )
+        ),
+    )
+    program = replace(bundle.program, graph=graph)
+    seed = entry_seed(program, 192, "DATA")
+    unverified = result(program, (seed,))
+    assert facts(unverified)[memory_edge.target].explicit == ()
+    assert facts(unverified)[memory_edge.target].unknown_provenance
+
+    overwritten = memory_plan(
+        (
+            memory_store(0, memory_reg(192, 8)),
+            memory_store(1, memory_const(0)),
+            memory_load(2),
+            memory_ret(3),
+        )
+    )
+    final = build_memory_graph(overwritten.program.graph.snapshot)
+    output = result(final.program, (entry_seed(final.program, 192, "DATA"),))
+    assert returned(final.program, output).explicit == ()
 
 
 def test_roundtrip_cache_separation_budget_and_stale_certificate():

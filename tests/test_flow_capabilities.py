@@ -2,6 +2,7 @@
 
 import importlib.util
 import json
+import sqlite3
 import sys
 import types
 from dataclasses import replace
@@ -1332,6 +1333,34 @@ def test_public_errors_are_structured_without_tracebacks(flow, monkeypatch):
         "schema_version": "flow-error/1",
         "error": {"code": "wrong_database_or_unknown_id"},
     }
+
+
+@pytest.mark.parametrize("cancel", (False, True))
+def test_public_job_poll_reconciles_finished_worker_after_sqlite_lock(
+    flow, monkeypatch, tmp_path, cancel
+):
+    from ida_pro_mcp.flow_core.persistence import Store
+    from ida_pro_mcp.flow_core.runtime import Runtime
+    from ida_pro_mcp.flow_core.runtime_contracts import RuntimeScope
+    from ida_pro_mcp.flow_core.serialization import digest
+
+    module, _ = flow
+    binding = digest("public-job-lock")
+    scope = RuntimeScope("public-job-test", *(binding for _ in range(6)))
+    store = Store(tmp_path / "store", scope, "public-job-owner-secret-0001-long")
+    engine = Runtime(store, {})
+    monkeypatch.setattr(module._service(), "get_runtime", lambda: engine)
+    job = engine.store.create_job("snapshot_ssa_v1", {}, "public-finish-lock")
+    engine.store.transition_job(job, "queued", "extracting", owner=engine.owner)
+    engine.store.transition_job(job, "extracting", "analyzing", owner=engine.owner)
+    with sqlite3.connect(engine.store.db, isolation_level=None) as connection:
+        connection.execute("BEGIN IMMEDIATE")
+        engine._finish(job, "failed", {"code": "handler_failed"}, nonblocking=True)
+        connection.execute("ROLLBACK")
+    response = module.flow_cancel_job(job) if cancel else module.flow_get_job(job)
+    assert response["state"] == "failed"
+    assert response["error"] == {"code": "handler_failed"}
+    store.close()
 
 
 @pytest.mark.parametrize("phase", ["cfg", "explicit", "implicit"])

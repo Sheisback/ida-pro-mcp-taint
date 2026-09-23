@@ -267,6 +267,7 @@ def analyze(
         diagnostics.add("partial_input_graph")
     nodes = {n.node_id: n for n in graph.nodes}
     consumers = {nid: set() for nid in nodes}
+    memory_label_sources: dict[str, set[str]] = {nid: set() for nid in nodes}
     for node in graph.nodes:
         if checkpoint is not None:
             checkpoint()
@@ -274,6 +275,27 @@ def analyze(
             if checkpoint is not None:
                 checkpoint()
             consumers[dep].add(node.node_id)
+    for edge in graph.edges:
+        if checkpoint is not None:
+            checkpoint()
+        if (
+            edge.kind != "memory_data_dependency"
+            or edge.memory_object_id is None
+            or edge.memory_rule_id != "byte-reaching-store-v1"
+            or edge.interval is None
+            or edge.axes.precision not in {"exact", "may_alias"}
+            or nodes[edge.target].kind != "Load"
+        ):
+            continue
+        source = nodes[edge.source]
+        if source.kind in {"Store", "InputMemory"}:
+            # Store facts contain data-operand and direct Store seeds, not its
+            # address; the memory edge carries those content labels to Load.
+            label_source = edge.source
+        else:
+            continue
+        memory_label_sources[edge.target].add(label_source)
+        consumers[label_source].add(edge.target)
     pending, evaluations = set(nodes), 0
     while pending and evaluations < policy.max_evaluations:
         if checkpoint is not None:
@@ -294,8 +316,17 @@ def analyze(
         ):
             continue
         labels = seed_map.get(nid, Labels())
-        label_deps = deps[1:] if node.kind == "Select" else deps
-        for dep in label_deps:
+        if node.kind == "Select":
+            label_deps = deps[1:]
+        elif node.kind == "Load":
+            # Address and segment select a location; they are not its content.
+            label_deps = ()
+        elif node.kind == "Store":
+            data = node.memory_operands.data if node.memory_operands else None
+            label_deps = (data,) if data is not None else ()
+        else:
+            label_deps = deps
+        for dep in (*label_deps, *sorted(memory_label_sources[nid])):
             if checkpoint is not None:
                 checkpoint()
             if dep in facts:

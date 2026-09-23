@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from contextlib import contextmanager
+import sqlite3
 import threading
 import time
 import uuid
@@ -81,6 +82,8 @@ class Runtime:
         self._closing_event = threading.Event()
         self._jobs = {}
         self._retired = set()
+        self._pending_finish = {}
+        self._finish_failures = {}
         self._closing = False
 
     @contextmanager
@@ -145,35 +148,91 @@ class Runtime:
             )
             raise PersistenceError("runtime_closing")
 
+    @staticmethod
+    def _retryable_finish_error(exc):
+        if str(exc) in {"store_busy", "job_conflict"}:
+            return True
+        cause = exc.__cause__
+        code = getattr(cause, "sqlite_errorcode", 0)
+        return (
+            str(exc) == "sqlite_failure"
+            and isinstance(cause, sqlite3.OperationalError)
+            and code & 0xFF in {sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED}
+        )
+
     def _finish(self, identifier, state, error=None, *, nonblocking=False):
-        busy = 0 if nonblocking or self._closing else 5000
-        try:
-            row = self.store.job(identifier, _busy_timeout_ms=busy)
-            if row["state"] in TERMINAL:
+        # Preserve the terminal intent if contention outlasts this bounded try.
+        # Status/wait/cancel can reconcile it after the worker has exited.
+        with self._lock:
+            if identifier in self._finish_failures:
                 return
-            target = state
-            if target == "cancelled" and row["state"] != "cancel_requested":
-                self.store.request_cancel(identifier, _busy_timeout_ms=busy)
+            state, error = self._pending_finish.setdefault(identifier, (state, error))
+        attempts = 1 if nonblocking or self._closing else 3
+        for attempt in range(attempts):
+            busy = 0 if nonblocking or self._closing else 50
+            try:
                 row = self.store.job(identifier, _busy_timeout_ms=busy)
-                if row["state"] in TERMINAL:
-                    return
-            if row["state"] == "cancel_requested" and target not in {
-                "interrupted",
-                "stale",
-            }:
-                target = "cancelled"
-            self.store.transition_job(
-                identifier,
-                row["state"],
-                target,
-                owner=self.owner,
-                error=error,
-                _busy_timeout_ms=busy,
-            )
-        except PersistenceError:
-            # Another terminal transition, invalidated scope, or closed runtime
-            # won. Never retry by mutating a terminal row or a different DB.
+                if row["state"] not in TERMINAL:
+                    require(row["owner"] in (None, self.owner), "wrong_job_owner")
+                    target = state
+                    if target == "cancelled" and row["state"] != "cancel_requested":
+                        self.store.transition_job(
+                            identifier,
+                            row["state"],
+                            "cancel_requested",
+                            owner=self.owner,
+                            _busy_timeout_ms=busy,
+                        )
+                        row = self.store.job(identifier, _busy_timeout_ms=busy)
+                    if row["state"] not in TERMINAL:
+                        if row["state"] == "cancel_requested" and target not in {
+                            "interrupted",
+                            "stale",
+                        }:
+                            target = "cancelled"
+                        self.store.transition_job(
+                            identifier,
+                            row["state"],
+                            target,
+                            owner=self.owner,
+                            error=error,
+                            _busy_timeout_ms=busy,
+                        )
+            except PersistenceError as exc:
+                if self._retryable_finish_error(exc):
+                    if attempt + 1 < attempts:
+                        self._closing_event.wait(0.05)
+                    continue
+                with self._lock:
+                    self._finish_failures[identifier] = str(exc)
+                # Closed/invalidated scopes and ownership failures are not
+                # contention: never bypass Store checks or retry into a new DB.
+            with self._lock:
+                self._pending_finish.pop(identifier, None)
             return
+
+    def _recover_finishes(self, identifier=None):
+        with self._lock:
+            pending = tuple(self._pending_finish.items())
+        for job_id, (state, error) in pending:
+            if identifier is None or job_id == identifier:
+                self._finish(job_id, state, error, nonblocking=True)
+
+    def _check_finish_failure(self, identifier):
+        with self._lock:
+            failure = self._finish_failures.get(identifier)
+        if failure is not None:
+            raise PersistenceError(failure)
+
+    def status(self, identifier):
+        """Reconcile terminal intent, then return the authoritative stored row.
+
+        Storage failures propagate; a finished thread alone is not evidence of a
+        durable terminal state. Pending contention never fabricates completion.
+        """
+        self._recover_finishes(identifier)
+        self._check_finish_failure(identifier)
+        return self.store.job(identifier)
 
     def _run(self, identifier, handler, cancel, done, deadline):
         context = JobContext(
@@ -229,9 +288,22 @@ class Runtime:
             job = self._jobs.get(identifier)
             if job is not None:
                 job[1].set()
+        # A late cancellation must not replace an already-computed terminal
+        # outcome merely because its persistence was temporarily blocked.
+        self._recover_finishes(identifier)
+        self._check_finish_failure(identifier)
         # Cooperative signalling is immediate. Persistence may win, conflict or
         # fail; propagate that actual outcome rather than inventing an ack.
-        return self.store.request_cancel(identifier)
+        state = self.store.request_cancel(identifier)
+        if job is not None and job[2].is_set() and state not in TERMINAL:
+            with self._lock:
+                intent = self._pending_finish.get(identifier)
+            if intent is None:
+                intent = ("cancelled", {"code": "cancelled"})
+            self._finish(identifier, *intent)
+            self._check_finish_failure(identifier)
+            state = self.store.job(identifier)["state"]
+        return state
 
     @property
     def inflight_job_count(self):
@@ -242,6 +314,7 @@ class Runtime:
 
     @property
     def active_job_count(self):
+        self._recover_finishes()
         now = self.clock()
         expired = []
         with self._lock:
@@ -305,4 +378,9 @@ class Runtime:
             job = self._jobs.get(identifier)
         if job is None:
             return self.store.job(identifier)["state"] in TERMINAL
-        return job[2].wait(timeout)
+        if not job[2].wait(timeout):
+            return False
+        self._recover_finishes(identifier)
+        self._check_finish_failure(identifier)
+        with self._lock:
+            return identifier not in self._pending_finish

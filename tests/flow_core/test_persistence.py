@@ -1741,3 +1741,287 @@ def test_factory_invalid_handler_releases_store_lease_and_admission(tmp_path):
     job = runtime.submit("pure", {}, "valid")
     assert runtime.wait(job)
     module.shutdown(0)
+
+
+def test_runtime_recovers_terminal_write_after_sqlite_lock(tmp_path, monkeypatch):
+    store, _, _ = setup(tmp_path)
+    entered = threading.Event()
+    release = threading.Event()
+
+    def analyze(ctx, value):
+        entered.set()
+        assert release.wait(5)
+        raise ValueError("handler failed")
+
+    runtime = Runtime(store, {"pure": Handler(lambda ctx, x: x, analyze)})
+    job = runtime.submit("pure", {}, "terminal-lock")
+    assert entered.wait(5)
+    # Exercise actual SQLite BUSY without waiting for the default five seconds.
+    original = store.job
+
+    def immediate_job(identifier, **kwargs):
+        return original(identifier, _busy_timeout_ms=0)
+
+    monkeypatch.setattr(store, "job", immediate_job)
+    with sqlite3.connect(store.db, isolation_level=None) as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        release.set()
+        assert runtime._jobs[job][2].wait(5)
+        assert not runtime.wait(job, timeout=0)
+        conn.execute("ROLLBACK")
+    assert runtime.wait(job)
+    assert store.job(job)["state"] == "failed"
+    runtime.shutdown()
+    store.close()
+
+
+def test_runtime_cancel_recovers_finished_worker_after_sqlite_lock(tmp_path):
+    store, _, _ = setup(tmp_path)
+    runtime = Runtime(store, {"pure": Handler(lambda ctx, x: x, lambda ctx, x: x)})
+    job = store.create_job("pure", {}, "cancel-finished")
+    store.transition_job(job, "queued", "extracting", owner=runtime.owner)
+    store.transition_job(job, "extracting", "analyzing", owner=runtime.owner)
+    done = threading.Event()
+    done.set()
+    runtime._jobs[job] = (threading.current_thread(), threading.Event(), done, 0)
+    with sqlite3.connect(store.db, isolation_level=None) as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        runtime._finish(job, "failed", {"code": "handler_failed"}, nonblocking=True)
+        conn.execute("ROLLBACK")
+    assert runtime.cancel(job) == "failed"
+    assert store.job(job)["state"] == "failed"
+    assert store.job(job)["error"] == {"code": "handler_failed"}
+    runtime.shutdown()
+    store.close()
+
+
+def test_runtime_finish_retries_cancel_transition_race(tmp_path, monkeypatch):
+    store, _, _ = setup(tmp_path)
+    runtime = Runtime(store, {"pure": Handler(lambda ctx, x: x, lambda ctx, x: x)})
+    job = store.create_job("pure", {}, "finish-race")
+    original = store.transition_job
+    raced = False
+
+    def transition(identifier, expected, state, **kwargs):
+        nonlocal raced
+        if not raced:
+            raced = True
+            store.request_cancel(identifier)
+        return original(identifier, expected, state, **kwargs)
+
+    monkeypatch.setattr(store, "transition_job", transition)
+    runtime._finish(job, "failed", {"code": "handler_failed"})
+    assert store.job(job)["state"] == "cancelled"
+    runtime.shutdown()
+    store.close()
+
+
+def test_runtime_finish_retries_transient_store_busy(tmp_path, monkeypatch):
+    store, _, _ = setup(tmp_path)
+    runtime = Runtime(store, {})
+    job = store.create_job("pure", {}, "transient-finish")
+    original = store.job
+    calls = 0
+
+    def busy_once(identifier, **kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise PersistenceError("store_busy")
+        return original(identifier, **kwargs)
+
+    monkeypatch.setattr(store, "job", busy_once)
+    runtime._finish(job, "failed", {"code": "handler_failed"})
+    assert calls == 2
+    assert store.job(job)["state"] == "failed"
+    assert not runtime._pending_finish
+    store.close()
+
+
+@pytest.mark.parametrize(
+    "code", ["stale_context", "wrong_database_owner", "store_closed", "sqlite_failure"]
+)
+def test_runtime_finish_does_not_retry_nontransient_failure(
+    tmp_path, monkeypatch, code
+):
+    store, _, _ = setup(tmp_path)
+    runtime = Runtime(store, {})
+    job = store.create_job("pure", {}, "permanent-finish")
+    calls = 0
+
+    def fail(identifier, **kwargs):
+        nonlocal calls
+        calls += 1
+        raise PersistenceError(code)
+
+    monkeypatch.setattr(store, "job", fail)
+    runtime._finish(job, "failed", {"code": "handler_failed"})
+    runtime._recover_finishes()
+    assert calls == 1
+    assert not runtime._pending_finish
+    store.close()
+
+
+def test_runtime_finish_never_cancels_another_executor_job(tmp_path):
+    store, _, _ = setup(tmp_path)
+    runtime = Runtime(store, {})
+    job = store.create_job("pure", {}, "foreign-finish")
+    store.transition_job(job, "queued", "extracting", owner="other-executor")
+    runtime._finish(job, "cancelled", {"code": "cancelled"})
+    assert store.job(job)["state"] == "extracting"
+    assert not runtime._pending_finish
+    store.close()
+
+
+def test_runtime_status_recovers_pending_terminal_state(tmp_path):
+    store, _, _ = setup(tmp_path)
+    runtime = Runtime(store, {})
+    job = store.create_job("pure", {}, "status-finish")
+    with sqlite3.connect(store.db, isolation_level=None) as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        runtime._finish(job, "interrupted", {"code": "lease_expired"}, nonblocking=True)
+        conn.execute("ROLLBACK")
+    assert runtime.active_job_count == 0
+    assert store.job(job)["state"] == "interrupted"
+    assert not runtime._pending_finish
+    store.close()
+
+
+def test_runtime_finish_bounds_retries_and_preserves_winning_terminal(
+    tmp_path, monkeypatch
+):
+    store, _, _ = setup(tmp_path)
+    runtime = Runtime(store, {})
+    job = store.create_job("pure", {}, "bounded-finish")
+    original = store.job
+    calls = 0
+
+    def busy(identifier, **kwargs):
+        nonlocal calls
+        calls += 1
+        raise PersistenceError("store_busy")
+
+    monkeypatch.setattr(store, "job", busy)
+    runtime._finish(job, "failed", {"code": "handler_failed"})
+    assert calls == 3
+    assert job in runtime._pending_finish
+    monkeypatch.setattr(store, "job", original)
+    store.transition_job(job, "queued", "interrupted", owner=runtime.owner)
+    before = store.job(job)
+    runtime._recover_finishes()
+    assert store.job(job) == before
+    assert not runtime._pending_finish
+    store.close()
+
+
+@pytest.mark.parametrize("terminal", ["failed", "interrupted", "stale"])
+@pytest.mark.parametrize("first_recovery_busy", [False, True])
+def test_late_cancel_preserves_pending_terminal_diagnostics(
+    tmp_path, monkeypatch, terminal, first_recovery_busy
+):
+    store, _, _ = setup(tmp_path)
+    runtime = Runtime(store, {})
+    job = store.create_job("pure", {}, "late-cancel")
+    done = threading.Event()
+    done.set()
+    runtime._jobs[job] = (threading.current_thread(), threading.Event(), done, 0)
+    error = {"code": "original_failure", "detail": "preserve me"}
+    with sqlite3.connect(store.db, isolation_level=None) as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        runtime._finish(job, terminal, error, nonblocking=True)
+        conn.execute("ROLLBACK")
+    original = store.job
+    calls = 0
+
+    def read(identifier, **kwargs):
+        nonlocal calls
+        calls += 1
+        if first_recovery_busy and calls == 1:
+            raise PersistenceError("store_busy")
+        return original(identifier, **kwargs)
+
+    monkeypatch.setattr(store, "job", read)
+    expected = "cancelled" if terminal == "failed" and first_recovery_busy else terminal
+    assert runtime.cancel(job) == expected
+    assert store.job(job)["error"] == error
+    assert runtime.wait(job)
+    store.close()
+
+
+@pytest.mark.parametrize("sqlite_code", [sqlite3.SQLITE_FULL, sqlite3.SQLITE_IOERR])
+def test_wait_surfaces_nonretryable_terminal_persistence_failure(
+    tmp_path, monkeypatch, sqlite_code
+):
+    store, _, _ = setup(tmp_path)
+    runtime = Runtime(store, {})
+    job = store.create_job("pure", {}, "terminal-write-failure")
+    done = threading.Event()
+    done.set()
+    runtime._jobs[job] = (threading.current_thread(), threading.Event(), done, 0)
+    calls = 0
+
+    def fail(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        cause = sqlite3.OperationalError("injected storage failure")
+        cause.sqlite_errorcode = sqlite_code
+        raise PersistenceError("sqlite_failure") from cause
+
+    monkeypatch.setattr(store, "transition_job", fail)
+    runtime._finish(job, "failed", {"code": "handler_failed"})
+    assert store.job(job)["state"] == "queued"
+    with pytest.raises(PersistenceError, match="sqlite_failure"):
+        runtime.wait(job)
+    with pytest.raises(PersistenceError, match="sqlite_failure"):
+        runtime.cancel(job)
+    with pytest.raises(PersistenceError, match="sqlite_failure"):
+        runtime.status(job)
+    assert store.job(job)["state"] == "queued"
+    assert calls == 1
+    store.close()
+
+
+def test_runtime_status_record_recovers_only_requested_pending_job(tmp_path):
+    store, _, _ = setup(tmp_path)
+    runtime = Runtime(store, {})
+    jobs = [store.create_job("pure", {}, key) for key in ("status-one", "status-two")]
+    error = {"code": "handler_failed"}
+    with sqlite3.connect(store.db, isolation_level=None) as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        for job in jobs:
+            runtime._finish(job, "failed", error, nonblocking=True)
+        with pytest.raises(PersistenceError, match="sqlite_failure"):
+            runtime.status(jobs[0])
+        conn.execute("ROLLBACK")
+    row = runtime.status(jobs[0])
+    assert row["state"] == "failed" and row["error"] == error
+    assert store.job(jobs[1])["state"] == "queued"
+    assert jobs[1] in runtime._pending_finish
+    store.close()
+
+
+def test_runtime_finish_cancel_owner_claim_race_is_atomic(tmp_path, monkeypatch):
+    store, _, _ = setup(tmp_path)
+    runtime = Runtime(store, {})
+    job = store.create_job("pure", {}, "owner-claim-race")
+    original = store.job
+    claimed = False
+
+    def claim_after_read(identifier, **kwargs):
+        nonlocal claimed
+        row = original(identifier, **kwargs)
+        if not claimed:
+            claimed = True
+            store.transition_job(
+                identifier, "queued", "extracting", owner="other-executor"
+            )
+        return row
+
+    monkeypatch.setattr(store, "job", claim_after_read)
+    runtime._finish(job, "cancelled", {"code": "cancelled"})
+    row = store.job(job)
+    assert row["state"] == "extracting"
+    assert row["owner"] == "other-executor"
+    assert row["error"] is None
+    assert runtime._finish_failures[job] == "wrong_job_owner"
+    store.close()

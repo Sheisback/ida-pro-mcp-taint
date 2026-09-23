@@ -575,7 +575,7 @@ def job(identifier, cancel=False):
     engine = get_runtime()
     if cancel:
         engine.cancel(identifier)
-    row = engine.store.job(identifier)
+    row = engine.status(identifier)
     return {
         "schema_version": "flow-job/1",
         **{
