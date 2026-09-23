@@ -1,5 +1,8 @@
 # Flow compatibility and evidence boundary
 
+The pinned [Codex GitHub-source installation](flow-installation.md) is a
+developer/tester route, not a distribution or runtime-support promotion.
+
 The flow-analysis profile matrix records **static observations**, not blanket
 architecture support. The committed audit in
 `tests/flow_fixtures/manifests/support_receipts.json` covers all 17 inventoried

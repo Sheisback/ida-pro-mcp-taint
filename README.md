@@ -64,9 +64,13 @@ claude plugin uninstall ida-pro-mcp@mrexodia
 claude plugin install ida-pro-mcp@mrexodia
 ```
 
-## Installation (Codex)
+## Installation (Codex — upstream project)
 
-To install the latest IDA Pro MCP in Codex:
+These commands install the original `mrexodia/ida-pro-mcp`, **not** this fork's
+experimental `flow_*` tools. For the fork, use the pinned GitHub-source
+[development installation](docs/flow-installation.md) instead.
+
+To install the latest original IDA Pro MCP in Codex:
 
 ```bash
 codex plugin marketplace add mrexodia/codex-marketplace
@@ -267,9 +271,13 @@ The bundled Codex plugin forwards the runtime's `IDA_MCP_*` configuration variab
 This fork adds static `flow_*` MCP tools for microcode extraction, value and
 memory SSA, provenance/taint tracing, bounded implicit and path analysis, and
 reviewed call compositions. The marketplace installation commands above point
-to upstream `mrexodia/ida-pro-mcp`; run this checkout to use these additions.
+to upstream `mrexodia/ida-pro-mcp`; use the
+[fork installation guide](docs/flow-installation.md) for a pinned GitHub
+revision or run this checkout to use these additions.
 They are **experimental analysis tools**, not an automatic vulnerability
 verdict, exploit generator, debugger, or target-program runner.
+The [upstream audit](docs/upstream-sync-2026-09-23.md) records which fixes from
+the original project were integrated and how they were tested.
 
 From this repository root, after activating idalib as described in
 [Prerequisites](#prerequisites), start a headless MCP server with the restricted
