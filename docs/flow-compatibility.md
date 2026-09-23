@@ -98,13 +98,17 @@ Copied digest labels are not accepted as proof that the referenced bodies are
 intact.
 
 Passing that audit proves only that the committed static observation graph is
-internally consistent. It does not establish P6 release readiness. Strict P6
-readiness requires current, checkout-bound normal evidence for every mandatory
-profile and exact bindings for the build, fixture SHA-256, processor, ABI,
+internally consistent. It does not establish distribution release readiness.
+The user-approved implementation-completion scope does **not** require a
+protected Linux runner or an official licensed 5×30 benchmark receipt.
+The separate strict distribution gate requires current, checkout-bound normal
+evidence for every mandatory profile and exact bindings for the build, fixture
+SHA-256, processor, ABI,
 format, maturity, and observed IDA and Hex-Rays builds. RV32 fallback evidence
-remains separate and is not a mandatory normal row. Required benchmark
-and permitted GUI-process evidence must also be present; absence remains an
-explicit release blocker rather than a successful or skipped gate.
+remains separate and is not a mandatory normal row. For that separate gate,
+licensed benchmark and permitted GUI-process evidence must also be present;
+absence remains an explicit distribution blocker rather than a successful or
+skipped gate.
 
 Release row counts and availability are derived from the canonical semantic
 matrix, profile build manifest, and hash-pinned release-scope policy. A fallback

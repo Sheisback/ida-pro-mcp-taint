@@ -5,13 +5,14 @@
 Use the flow pipeline for static analysis only. **Never execute the target**,
 attach a debugger, or use a dynamic proof-of-concept while producing or
 validating these receipts. Every committed receipt must retain
-`target_executed: false`. Run licensed IDA capture only in the protected CI or
-release environment; untrusted pull requests must not receive license secrets
-or a licensed runner.
+`target_executed: false`. Run licensed IDA capture only in a trusted local
+analyst environment or protected CI/release environment; untrusted pull
+requests must not receive license secrets or a licensed runner.
 
-The licensed release gate requires **IDA 9.3 only**. Its frozen performance
-baseline is for a protected `linux-x86_64` runner; the same static extraction
-can be measured on macOS, but those timings do not satisfy the Linux baseline.
+The separate licensed distribution gate requires **IDA 9.3 only**. Its frozen
+performance baseline is for a protected `linux-x86_64` runner; the same static
+extraction can be measured on macOS, but those timings do not satisfy the Linux
+baseline.
 
 ## Install and activate IDA
 
@@ -83,23 +84,38 @@ RV32 cannot be selected until normal evidence exists.
 
 ## Packaging and release expectations
 
+The **implementation-completion** scope approved on 2026-09-23 uses actual
+IDA 9.3 static/GUI evidence, the 16 required profiles plus four format rows,
+support-receipt audit, package/build-ID parity, retained regressions, and
+independent final review. Provisioning a protected Linux runner and producing
+an official licensed 5-warmup/30-measurement benchmark receipt are **not**
+implementation-completion requirements. A local Mac timing result remains
+diagnostic, not a Linux benchmark pass.
+
+The separate tag/manual `flow-release` workflow is a stricter distribution
+gate. It retains the protected licensed runner and frozen Linux benchmark checks;
+without those inputs it must fail closed and must not produce a verified
+release aggregate. A passing implementation audit must not be described as a
+passing distribution release gate.
+
 - Run focused support-audit tests before the full suite.
 - Require Ruff, scoped Pyright, compileall, sdist/wheel builds, and isolated
   wheel imports.
 - Verify build-ID parity across every process mode actually exercised.
-- Aggregate protected licensed-IDA results into release CI without exposing
-  credentials to untrusted jobs.
+- If running the separate distribution gate, aggregate protected licensed-IDA
+  results without exposing credentials to untrusted jobs.
 - Treat `record_flow_licensed_normal.py` as a content/binding validator, not a
   standalone clock or provenance authority. Temporal freshness comes from the
   protected workflow producing the P0 and semantic matrices in the same job;
   never copy archival receipts to a new directory and label them a current run.
 - Retain receipt inputs, source digests, named limitations, and
   `target_executed: false`; do not delete or weaken evidence to make a gate pass.
-- Require a current, normal receipt for each of the 16 mandatory profiles in
+- Require current normal evidence for each of the 16 mandatory profiles in
   `profiles/flow-release-scope.json`. RV32 is an optional, partial fallback,
-  never a passing normal receipt. A fallback for any **required** profile,
-  skip, empty required profile list, stale/unbound receipt, missing benchmark,
-  or absent permitted GUI-process observation still blocks release.
+  never a passing normal receipt. For the separate distribution gate, a fallback
+  for any **required** profile, skip, empty required profile list,
+  stale/unbound receipt, missing benchmark, or absent permitted GUI-process
+  observation still blocks its release aggregate.
 
 If IDA, a processor/decompiler module, license entitlement, or GUI acceptance
 is unavailable, report that exact blocker and leave the corresponding claim
