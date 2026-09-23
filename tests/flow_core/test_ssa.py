@@ -11,6 +11,7 @@ from ida_pro_mcp.flow_core.analysis import AnalysisResult, ScalarPolicy, Seed, a
 from ida_pro_mcp.flow_core.cfg import dominance
 from ida_pro_mcp.flow_core.contracts import (
     Block,
+    Diagnostic,
     FunctionInput,
     Instruction,
     Operand,
@@ -862,3 +863,121 @@ def test_shift_support_revision_invalidates_old_policy_cache_identity():
     assert digest(policy) != digest(previous)
     with pytest.raises(ContractError):
         ScalarPolicy.from_data(previous)
+
+
+@pytest.mark.parametrize(
+    "diagnostics,expected",
+    [
+        ((), "complete_in_scope"),
+        (
+            (Diagnostic("note", "informational note", "information"),),
+            "complete_in_scope",
+        ),
+        ((Diagnostic("unsupported", "missing semantics"),), "partial"),
+        (
+            (
+                Diagnostic("note", "informational note", "information"),
+                Diagnostic("unsupported", "missing semantics"),
+            ),
+            "partial",
+        ),
+    ],
+)
+def test_information_diagnostic_does_not_degrade_scalar_semantics(
+    diagnostics, expected
+):
+    original = linear(
+        (
+            ins(0, "m_mov", const(7), dest=reg(8, role="destination")),
+            ins(1, "m_ret", reg(8)),
+        )
+    )
+    function = replace(original.function, diagnostics=diagnostics)
+    identity = replace(original.identity, input_digest=digest(function))
+    source = Snapshot(identity, function, identity.snapshot_id)
+    program = build_ssa(source)
+
+    assert program.graph.snapshot.function.diagnostics == diagnostics
+    assert program.graph.axes.analysis == expected
+    assert program.graph.axes.precision == (
+        "exact" if expected == "complete_in_scope" else "opaque"
+    )
+    assert analyze(program.graph).status == expected
+    assert program.diagnostics == (("unsupported",) if expected == "partial" else ())
+
+
+def test_instruction_derived_evidence_carries_only_its_cited_native_eas():
+    source = linear(
+        (
+            replace(
+                ins(0, "m_mov", const(7), dest=reg(8, role="destination")),
+                source_eas=(0x401000,),
+            ),
+            replace(ins(1, "m_ret", reg(8)), source_eas=(0x401004,)),
+        )
+    )
+    graph = build_ssa(source).graph
+    by_instruction = {
+        index: [
+            evidence
+            for evidence in graph.evidence
+            if any(site.instruction_index == index for site in evidence.sites)
+        ]
+        for index in (0, 1)
+    }
+    assert all(by_instruction.values())
+    for index, expected in ((0, (0x401000,)), (1, (0x401004,))):
+        assert all(
+            evidence.source_eas == expected for evidence in by_instruction[index]
+        )
+    assert all(
+        not evidence.source_eas for evidence in graph.evidence if not evidence.sites
+    )
+    assert type(graph).from_json(canonical_json(graph)) == graph
+
+    without_native_ea = linear(
+        (
+            ins(0, "m_mov", const(7), dest=reg(8, role="destination")),
+            ins(1, "m_ret", reg(8)),
+        )
+    )
+    assert all(
+        not evidence.source_eas
+        for evidence in build_ssa(without_native_ea).graph.evidence
+    )
+
+    branched = snapshot(
+        (
+            Block(0, (), ()),
+            Block(
+                1,
+                (0,),
+                (
+                    replace(
+                        ins(0, "m_mov", const(1), dest=reg(8, role="destination")),
+                        source_eas=(0x401010,),
+                    ),
+                ),
+            ),
+            Block(
+                2,
+                (0,),
+                (
+                    replace(
+                        ins(0, "m_mov", const(2), dest=reg(8, role="destination")),
+                        source_eas=(0x401020,),
+                    ),
+                ),
+            ),
+            Block(3, (1, 2), (ins(0, "m_ret", reg(8)),)),
+        )
+    )
+    graph = build_ssa(branched).graph
+    phis = [node for node in graph.nodes if node.kind == "Phi"]
+    assert phis
+    by_id = {evidence.evidence_id: evidence for evidence in graph.evidence}
+    assert all(
+        not by_id[evidence_id].source_eas
+        for phi in phis
+        for evidence_id in phi.evidence_ids
+    )

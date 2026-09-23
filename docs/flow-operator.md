@@ -67,6 +67,14 @@ it is not a support promotion or a P6 release-readiness verdict.
   never merge it into normal evidence or label it fully supported.
 - `partial` and `unknown` are soundness states. Preserve unresolved calls,
   memory effects, paths, and unsupported operations in downstream reports.
+- Information-level extraction diagnostics remain visible on the snapshot but
+  do not by themselves downgrade SSA or memory semantics. Unsupported
+  diagnostics and actual unknown effects still require `partial`/`opaque`.
+- `complete_in_scope` means the modeled computation finished; it does not turn
+  an edge marked `may_alias` into a definite alias or data-flow proof.
+- Instruction-derived SSA evidence copies only the native EAs observed on its
+  cited snapshot instruction. Synthetic/no-origin evidence may have no EA, and
+  optimized-away native origins are not reconstructed.
 - A processor/decompiler file inventory or license declaration is not proof
   that extraction succeeds. Only an actual static receipt can prove the exact
   observed configuration.

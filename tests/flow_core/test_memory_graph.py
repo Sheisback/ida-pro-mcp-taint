@@ -143,7 +143,10 @@ def test_unknown_cross_object_relation_is_may_alias_not_exact():
     for arch in ("x86_64", "arm64"):
         bundle = extracted(arch, "memory_global_roundtrip")
         assert any(edge.axes.precision == "may_alias" for edge in memory_edges(bundle))
-        assert bundle.result.status == "partial"
+        # Completion of the modeled computation does not promote an uncertain
+        # relation to must-alias; edge precision carries that uncertainty.
+        assert bundle.result.status == "complete_in_scope"
+        assert "partial_scalar_input" not in bundle.result.diagnostics
 
 
 @pytest.mark.parametrize("extension", ("m_xdu", "m_xds"))

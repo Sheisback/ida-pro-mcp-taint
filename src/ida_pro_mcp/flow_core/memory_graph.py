@@ -172,7 +172,7 @@ def _objects_and_pointers(plan):
 def build_memory_graph(
     snapshot: Snapshot | StructuredSnapshot,
 ) -> MemoryGraphAnalysis:
-    """Build an alias-aware query graph; uncertainty remains opaque/partial."""
+    """Build an alias-aware graph; relation precision is separate from completion."""
     flat_assumption = (
         RV32_FLAT_USERSPACE_ASSUMPTION
         if type(snapshot) is StructuredSnapshot

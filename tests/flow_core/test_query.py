@@ -533,7 +533,11 @@ def test_public_native_receipt_current_and_untruncated():
     for anchor in receipt["anchors"]:
         assert anchor["binary_sha256"] in binaries
         assert anchor["job"]["state"] == "complete"
-        assert anchor["job"]["result"]["analysis"] == "partial"
+        assert anchor["job"]["result"]["analysis"] == "complete_in_scope"
+        assert (
+            "partial_scalar_input" not in anchor["job"]["result"]["memory_diagnostics"]
+        )
+        assert anchor["native_evidence"] > 0
         assert (
             anchor["adoption_detach_preserved_job"]
             and anchor["readonly_direct_call_denied"]

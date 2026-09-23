@@ -197,7 +197,9 @@ class _Builder:
         self.nodes, self.evidence, self.definitions = {}, {}, {}
         self.objects, self.versions = {}, {}
         self.diagnostics = {f"unreachable_block:{b}" for b in self.dom.unreachable}
-        self.diagnostics.update(d.code for d in snapshot.function.diagnostics)
+        self.diagnostics.update(
+            d.code for d in snapshot.function.diagnostics if d.severity != "information"
+        )
         self.current_block, self.order, self.site = (
             snapshot.function.entry_block,
             0,
@@ -272,10 +274,18 @@ class _Builder:
             + (tag or f"ssa:b{self.current_block}:n{self.serial}"),
         )
         rule = "scalar-ssa-v1:" + (operation or kind)
+        source_eas = (
+            self.snapshot.function.blocks[self.site.block_index]
+            .instructions[self.site.instruction_index]
+            .source_eas
+            if self.site is not None
+            else ()
+        )
         ev = Evidence(
             self.snapshot.snapshot_id,
             rule,
             sites=(self.site,) if self.site else (),
+            source_eas=source_eas,
             synthetic=True,
         )
         self.evidence[ev.evidence_id] = ev

@@ -64,11 +64,14 @@ supervisor database-management tools. Close an owned test session with
 ## Distribution boundary
 
 GitHub-source installation is the **developer/tester lane**, not a support or
-vulnerability-detection claim. Current real-sample validation covers one
-selected function in each of 137 local binaries; every analysis was `partial`
-and one very large Go graph exceeded the full-page scan timeout. The API
-reports evidence and unknown boundaries, not an automatic vulnerability
-verdict. See the [compatibility matrix](flow-compatibility.md).
+vulnerability-detection claim. An earlier 137-binary selected-function smoke
+scan ran before the information-diagnostic correction, so its all-`partial`
+count is **not** a post-fix completeness statistic; one very large Go graph
+also exceeded the full-page scan timeout. After the correction, an IDA 9.3
+`memcpy_small_dest_ssa` sample returned `complete_in_scope`, while a
+`recv`/`system` sample retained named unknown effects and `partial`. These are
+bounded smoke observations, not a full-corpus or vulnerability verdict. See
+the [compatibility matrix](flow-compatibility.md).
 
 The planned next lane is a **distinctly named fork plugin in a Git-backed
 Codex marketplace**; public distribution is later and requires its own release

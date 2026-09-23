@@ -184,6 +184,12 @@ def main(build_dir, output):
                 )
                 graph.extend(graph_first["items"])
             evidence = pages("flow_get_evidence", result["graph_artifact"])
+            native_evidence = [
+                item
+                for item in evidence
+                if item.get("sites") and item.get("source_eas")
+            ]
+            assert native_evidence
             edges = [
                 e
                 for e in graph
@@ -450,6 +456,7 @@ def main(build_dir, output):
                     "edges": len(edges),
                     "cfg_blocks": len(cfg),
                     "evidence": len(evidence),
+                    "native_evidence": len(native_evidence),
                     "calls": calls,
                     "tools": [t["name"] for t in worker_tools],
                     "adoption_detach_preserved_job": True,

@@ -9,7 +9,7 @@
     "src/ida_pro_mcp/idalib_supervisor.py": "43ad1428f2e8ceec19b63fe0f0f9727d05c1192f2c3baf9093a414ccf7260539",
     "src/ida_pro_mcp/installer.py": "18ef1b3aad1cea8dbd038c909c19220b02f2299372253fdd4e5288d2efcdab7d",
     "profiles/flow-readonly.txt": "c7c2f8ef8e5760dc997849f76378c8a2a8983e547c0f98fd0c98a90047d8e389",
-    "tests/flow_core/native_api_smoke.py": "ed6d6fb311acb42c4aa96161b81f75a23704b44eab2a41de7adbf49e9975435d",
+    "tests/flow_core/native_api_smoke.py": "045d581a7643a27b59d776951c73bb8173fdb99733ddb99b607bade5a43cc1c6",
     "src/ida_pro_mcp/flow_core/__init__.py": "1e03446910ecbbe1cd389ca6eeebec64f35d9d520a3006bc748f53bccff87e73",
     "src/ida_pro_mcp/flow_core/_reviewed_fixture_data.py": "2c61b67a426d83951b963d9732320ba928fbdf245d6eaf5e3edae6f2830ae6e6",
     "src/ida_pro_mcp/flow_core/analysis.py": "15014e2d8fef814bec748f86e919d79ecea3e738b35cf440a07ebd81e4acb0f7",
@@ -26,11 +26,11 @@
     "src/ida_pro_mcp/flow_core/interproc.py": "f14587342ed8ac2e21ec2c03013b1899f45f7d21cc90c19bf0c6929af11e3a14",
     "src/ida_pro_mcp/flow_core/memory.py": "7960fce27069016664271da7d3d6e69a5be586f6dc17d6ea0a899ed1e56363af",
     "src/ida_pro_mcp/flow_core/memory_analysis.py": "7071ff4027e24249aca7cc653e220f0d2bbe8b3cbe9dddb61279bfaa0c7f80d5",
-    "src/ida_pro_mcp/flow_core/memory_graph.py": "c878d56291fbbf8391551206ea0406271c9e7de68f207776049a24cc2d434755",
+    "src/ida_pro_mcp/flow_core/memory_graph.py": "6faf360d4724264f3b9c6ff63242139fdefde4e0ac51673dfca2f899622805ca",
     "src/ida_pro_mcp/flow_core/path_conditions.py": "1a47eff9aa375e9cee7829573d051d4338a170e4a634f1011d614beb9a1ece9a",
     "src/ida_pro_mcp/flow_core/persistence.py": "5c952ae3c877eb2ba4dbd44e01c2dc5058a1bc99bd81973b8db7b3238b500f09",
     "src/ida_pro_mcp/flow_core/profile_registry.py": "7f358be2a4dfcf4122f6b9b309409d593e3b58a48daedb9587e5d29870c40e28",
-    "src/ida_pro_mcp/flow_core/profile_routing.py": "98e5338409e344af9541ae503a132dceda060427fa1af6d639f48ffe660d24bb",
+    "src/ida_pro_mcp/flow_core/profile_routing.py": "74568bc5abddd3bed30f1fb1ee6ec0ab13545178649052df32228a5b389bb8d6",
     "src/ida_pro_mcp/flow_core/profile_semantic_receipts.py": "d7c9899c3947a19bbae5fd3c99b261765e7b8a472e9729871360e723bd5c13ae",
     "src/ida_pro_mcp/flow_core/profile_semantics.py": "d32c1bb1ba3432094ce9f59bde26c3b0d9fce70fa6dfb5f7da7950a763087a7d",
     "src/ida_pro_mcp/flow_core/proof.py": "f6b0de3f3f712f686e38d9745f906edbfb5c4dae6423cb7812b950d467c8c0b4",
@@ -42,7 +42,7 @@
     "src/ida_pro_mcp/flow_core/rv32_lowering.py": "a7f4a8e225cf38b41d7df736ae86a9d93050e2ad8c161be02886f691a5659c3f",
     "src/ida_pro_mcp/flow_core/semantic_equivalence.py": "4bb4e25dbeeba9b8471137114931e269365ec719c56c53e306881cddbb19507d",
     "src/ida_pro_mcp/flow_core/serialization.py": "e3901094566002edb58c887c4cbd2db21050b30f4bc1c92cb466268534baf214",
-    "src/ida_pro_mcp/flow_core/ssa.py": "9f37017efc701977cfefba34a3fdd586be23f63b56a17765a3282e2759dd02d1",
+    "src/ida_pro_mcp/flow_core/ssa.py": "9fcf84ae909a5d1791ff6fce2a7fb2550e609f3f189705aeb298d8a604142a19",
     "src/ida_pro_mcp/flow_core/states.py": "4a03c1eec0e86893a58faf81b06853ffd75de7daf40d3eec3b7ace2b5187ee78",
     "src/ida_pro_mcp/flow_core/summaries.py": "acf58464917a9c31440c523654d10a3eb1d9584277596197393af6df9b72452d",
     "src/ida_pro_mcp/flow_core/support_receipts.py": "1f2ad71420f4ceb0b8c192d8ac0afdc81b5e5c91df7a5738caee63a2316696e6",
@@ -65,15 +65,15 @@
       "binary_sha256": "e98ee1f96dead5f8988573b9e8ce2e1466f30f8d5881af4b71a66b7b6e73436a",
       "job": {
         "schema_version": "flow-job/1",
-        "id": "job_bcfce9197c994f48bb0c304157a0c072",
+        "id": "job_1ab07d55c25c476b886ee9877abbb10e",
         "state": "complete",
         "revision": 4,
         "progress": {},
         "budget": {},
         "error": null,
         "result": {
-          "analysis": "partial",
-          "call_composition_artifact": "artifact_182a6afc4678441480f4e160271951ce",
+          "analysis": "complete_in_scope",
+          "call_composition_artifact": "artifact_b9ef2b3e66b043fdb498b62d396cbec9",
           "call_composition_count": 0,
           "callee_closure": {
             "boundaries": [],
@@ -81,18 +81,16 @@
             "max_functions": 64,
             "visited_rvas": []
           },
-          "graph_artifact": "artifact_77c3abf814ae462fb67c69e5f1f20b6e",
-          "graph_digest": "sha256-v1:a52b07dae5cc38cc8dc38a62043529fec11117b61a8ee9c75550a847a5cd6ff7",
+          "graph_artifact": "artifact_27d640cef82c4aeb8fad23e96e7e1b27",
+          "graph_digest": "sha256-v1:e7c082facbb8efbb951bf8939e84ad9b2107c9bb0cf4b4524ad449048f8f1cf1",
           "maturity": "MMAT_CALLS",
-          "memory_diagnostics": [
-            "partial_scalar_input"
-          ],
-          "memory_plan_artifact": "artifact_0d0b65c7049c4df8b94a4221d1f6c109",
-          "memory_result_artifact": "artifact_3830c1af925a4a56bde453361b98e1d7",
+          "memory_diagnostics": [],
+          "memory_plan_artifact": "artifact_66404c39d25d43ae8f3b9cf161278547",
+          "memory_result_artifact": "artifact_b14d8e35fab44317b9b44a51d12048c6",
           "profile": "X64-LE",
-          "snapshot_artifact": "artifact_3c38c50e5f5f4f1a8748c4f33df5b455",
-          "snapshot_id": "snapshot-v1:57ed126fb4f583490aaaeb2c9731b7f2f8cf497b664fbcc2642407ee2b040419",
-          "ssa_artifact": "artifact_5d9b8deb02d14030a80f6e9c7254e937",
+          "snapshot_artifact": "artifact_1d7df2980669481bb666941378215a83",
+          "snapshot_id": "snapshot-v1:03c6a28d44af1dcf60041abe342abfc0b5c15061886d62aa915d90daa1ce67b9",
+          "ssa_artifact": "artifact_4eb433f76f6846d581af0674460f15ed",
           "summary_digest": "sha256-v1:79f01e4de0cc97f8807a0447d2a2b0c8e72e4c93a5062efbc31db393b08abcfc",
           "summary_limitations": [
             "Reviewed summaries cover only the packaged owned fixtures, with fresh full-identity callee validation; arbitrary libraries remain unresolved.",
@@ -105,6 +103,7 @@
       "edges": 1,
       "cfg_blocks": 3,
       "evidence": 16,
+      "native_evidence": 11,
       "calls": [
         {
           "tool": "flow_get_capabilities",
@@ -123,7 +122,7 @@
         },
         {
           "tool": "flow_get_job",
-          "response_chars": 1385,
+          "response_chars": 1373,
           "error": null
         },
         {
@@ -133,7 +132,7 @@
         },
         {
           "tool": "flow_cancel_job",
-          "response_chars": 1385,
+          "response_chars": 1373,
           "error": null
         },
         {
@@ -143,87 +142,87 @@
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 6731,
+          "response_chars": 5526,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 5433,
+          "response_chars": 6067,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 5929,
+          "response_chars": 5975,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 2475,
+          "response_chars": 3040,
           "error": null
         },
         {
           "tool": "flow_get_cfg",
-          "response_chars": 2200,
+          "response_chars": 2210,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 6813,
+          "response_chars": 5608,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5515,
+          "response_chars": 6149,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 6011,
+          "response_chars": 6057,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5554,
+          "response_chars": 6121,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5604,
+          "response_chars": 5630,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5883,
+          "response_chars": 5634,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 3909,
+          "response_chars": 4200,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 4617,
+          "response_chars": 4648,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 3951,
+          "response_chars": 4646,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 4597,
+          "response_chars": 3944,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 2221,
+          "response_chars": 2298,
           "error": null
         },
         {
           "tool": "flow_trace_backward",
-          "response_chars": 7712,
+          "response_chars": 2667,
           "error": null
         },
         {
@@ -238,17 +237,17 @@
         },
         {
           "tool": "flow_get_job",
-          "response_chars": 467,
+          "response_chars": 444,
           "error": null
         },
         {
           "tool": "flow_get_implicit_analysis",
-          "response_chars": 6491,
+          "response_chars": 6468,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 3268,
+          "response_chars": 3131,
           "error": null
         },
         {
@@ -273,49 +272,22 @@
         },
         {
           "tool": "flow_trace_forward",
-          "response_chars": 1194,
+          "response_chars": 1204,
           "error": null
         },
         {
           "tool": "flow_trace_forward",
-          "response_chars": 1194,
+          "response_chars": 1204,
           "error": null
         },
         {
           "tool": "flow_continue_trace",
-          "response_chars": 551,
+          "response_chars": 561,
           "error": null
         },
         {
           "tool": "flow_continue_trace",
-          "response_chars": 551,
-          "error": null
-        },
-        {
-          "tool": "flow_continue_trace",
-          "response_chars": 74,
-          "error": {
-            "code": "revision_conflict"
-          }
-        },
-        {
-          "tool": "flow_trace_backward",
-          "response_chars": 1195,
-          "error": null
-        },
-        {
-          "tool": "flow_trace_backward",
-          "response_chars": 1195,
-          "error": null
-        },
-        {
-          "tool": "flow_continue_trace",
-          "response_chars": 550,
-          "error": null
-        },
-        {
-          "tool": "flow_continue_trace",
-          "response_chars": 550,
+          "response_chars": 561,
           "error": null
         },
         {
@@ -327,7 +299,34 @@
         },
         {
           "tool": "flow_trace_backward",
-          "response_chars": 1195,
+          "response_chars": 1205,
+          "error": null
+        },
+        {
+          "tool": "flow_trace_backward",
+          "response_chars": 1205,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 560,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 560,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 74,
+          "error": {
+            "code": "revision_conflict"
+          }
+        },
+        {
+          "tool": "flow_trace_backward",
+          "response_chars": 1205,
           "error": null
         },
         {
@@ -337,7 +336,7 @@
         },
         {
           "tool": "flow_get_job",
-          "response_chars": 1385,
+          "response_chars": 1373,
           "error": null
         }
       ],
@@ -365,38 +364,38 @@
         "idb_list"
       ],
       "adoption_detach_preserved_job": true,
-      "flow_build_id": "flow-build-sha256-v1:6da15628f3245c775796c7844593e520827f50148b682d4a744a34202d6f2a2f",
+      "flow_build_id": "flow-build-sha256-v1:4d68a37081838c37219e24d839fb8a297b51de3af0471d46d316e82b91af28f3",
       "readonly_direct_call_denied": true,
       "memory_source_selected_exact_access": true,
       "memory_dependency": {
         "interval": {
-          "start": 6,
-          "end": 7
+          "start": 0,
+          "end": 1
         },
         "precision": "exact",
-        "object_id": "object-v1:08fc2d59acc2c02a2e2d962027343f824cf09fc128035ce2c6adb9147c391235",
+        "object_id": "object-v1:92fe4436b21585c770a80da0f3b02497649d04057f350ede87223ed45476fb22",
         "rule_id": "byte-reaching-store-v1",
         "evidence_ids": [
-          "evidence-v1:123c504f43435e4bdc56d78437de518d08a118614b8a372f61639ea6100aef73",
-          "evidence-v1:3284b3abe25e6dc832c4e399bbb769fdfb0a3a9ce963b07c7de8fe384da0676a",
-          "evidence-v1:4440d56d6f74116cd11fb6ad349c8a4b86e732f4ea0735ea1be640d674944bc9"
+          "evidence-v1:9a7b2f626a9b51aff6c14c85f4f2d9c8e9745f2dd1e2e308f720e8c74dd2300b",
+          "evidence-v1:b9c37ee6a0cf75c6a4156172738389287069c2cf7a8b0b16807a365b74b44e71",
+          "evidence-v1:eae73e1bb89ace302e2410098b099ec6b5b1d904cad940644ccb3d15e64fbbcc"
         ],
         "derivation_evidence": {
-          "evidence_id": "evidence-v1:123c504f43435e4bdc56d78437de518d08a118614b8a372f61639ea6100aef73",
-          "snapshot_id": "snapshot-v1:57ed126fb4f583490aaaeb2c9731b7f2f8cf497b664fbcc2642407ee2b040419",
+          "evidence_id": "evidence-v1:9a7b2f626a9b51aff6c14c85f4f2d9c8e9745f2dd1e2e308f720e8c74dd2300b",
+          "snapshot_id": "snapshot-v1:03c6a28d44af1dcf60041abe342abfc0b5c15061886d62aa915d90daa1ce67b9",
           "rule_id": "byte-reaching-store-v1",
           "sites": [],
           "source_eas": [],
           "synthetic": true,
           "origins": [
-            "node-v1:2e48ed09be392d5534e3e5af83cd9198f11c02f0646c4cb3d1ad1449b1e3dd36",
-            "node-v1:b6bb6428d6fa1c8660f117feed74bd771547516351bd62262c0c857381e0b909"
+            "node-v1:0d2c764d874a56479e23569bced0e915aa055352842080974a097302d1fc9457",
+            "node-v1:5d3f030c5cad3ab99b12a9dbef0462ae260e2551495e4840396bcf295e05d43a"
           ],
           "assumptions": [
             "automatic object identity is structural and conservative; no ABI argument numbering",
             "experimental Mach-O flat user-space address model; no TLS or MMIO semantics"
           ],
-          "memory_object_id": "object-v1:08fc2d59acc2c02a2e2d962027343f824cf09fc128035ce2c6adb9147c391235"
+          "memory_object_id": "object-v1:92fe4436b21585c770a80da0f3b02497649d04057f350ede87223ed45476fb22"
         }
       },
       "input_preserved": true,
@@ -409,15 +408,15 @@
       "binary_sha256": "fe9acefb7f883e942ebf836ae36b411b3ae110d20ff5dc442d9539334ef0c1cf",
       "job": {
         "schema_version": "flow-job/1",
-        "id": "job_a2f1f950287349c7b4d19aa5574f6956",
+        "id": "job_349851cf615541afbebff3a234311ea5",
         "state": "complete",
         "revision": 4,
         "progress": {},
         "budget": {},
         "error": null,
         "result": {
-          "analysis": "partial",
-          "call_composition_artifact": "artifact_49a739b3c09141619933a118ba059f68",
+          "analysis": "complete_in_scope",
+          "call_composition_artifact": "artifact_4e5277be28154798894ff4b3e642da04",
           "call_composition_count": 0,
           "callee_closure": {
             "boundaries": [],
@@ -425,18 +424,16 @@
             "max_functions": 64,
             "visited_rvas": []
           },
-          "graph_artifact": "artifact_98d1064852674cc7849c944a05635ea0",
-          "graph_digest": "sha256-v1:90e2b930e73bd68d383867597c31d32dd695a1a6ef7f3ed3771e56f83b028eaa",
+          "graph_artifact": "artifact_c55eef277b0d4676a7ff68cc3237c072",
+          "graph_digest": "sha256-v1:053728837a5f3825d39ba33a97a3118bd97f8997b443a66b88340318b51c3c0d",
           "maturity": "MMAT_CALLS",
-          "memory_diagnostics": [
-            "partial_scalar_input"
-          ],
-          "memory_plan_artifact": "artifact_a721555c89d9444397591ac5b5f47954",
-          "memory_result_artifact": "artifact_aa5a5c1df0aa48d592d9923ef36aa4b1",
+          "memory_diagnostics": [],
+          "memory_plan_artifact": "artifact_521cb5a5592d41a99e87c754ac4399fe",
+          "memory_result_artifact": "artifact_8e12f290bea54b0fa7cfc2f133b1c12a",
           "profile": "A64-LE",
-          "snapshot_artifact": "artifact_b6f07107625c44f28c162d24b0eed852",
-          "snapshot_id": "snapshot-v1:915d3496b3cf55c64a12b2f0c5be9f5e8ae8e10f2c7829596ded186e160ff03f",
-          "ssa_artifact": "artifact_acd5e56f660645fa8fab58b651a3db69",
+          "snapshot_artifact": "artifact_39d9feab68b1494fb208d793bbd58739",
+          "snapshot_id": "snapshot-v1:0f3db0b3ee5fb7a74e6d374f97cd794e5d079ce732c0671f3538fd987513d96c",
+          "ssa_artifact": "artifact_d6a11bd8a5684d70a58ac843ada501d3",
           "summary_digest": "sha256-v1:79f01e4de0cc97f8807a0447d2a2b0c8e72e4c93a5062efbc31db393b08abcfc",
           "summary_limitations": [
             "Reviewed summaries cover only the packaged owned fixtures, with fresh full-identity callee validation; arbitrary libraries remain unresolved.",
@@ -449,6 +446,7 @@
       "edges": 7,
       "cfg_blocks": 3,
       "evidence": 15,
+      "native_evidence": 11,
       "calls": [
         {
           "tool": "flow_get_capabilities",
@@ -474,7 +472,7 @@
         },
         {
           "tool": "flow_get_job",
-          "response_chars": 1385,
+          "response_chars": 1373,
           "error": null
         },
         {
@@ -484,7 +482,7 @@
         },
         {
           "tool": "flow_cancel_job",
-          "response_chars": 1385,
+          "response_chars": 1373,
           "error": null
         },
         {
@@ -494,87 +492,87 @@
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 6824,
+          "response_chars": 5699,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 5440,
+          "response_chars": 6013,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 5491,
+          "response_chars": 6105,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 3097,
+          "response_chars": 3075,
           "error": null
         },
         {
           "tool": "flow_get_cfg",
-          "response_chars": 2185,
+          "response_chars": 2195,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 6906,
+          "response_chars": 5781,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5522,
+          "response_chars": 6095,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5573,
+          "response_chars": 6187,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5504,
+          "response_chars": 5212,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5592,
+          "response_chars": 5607,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5319,
+          "response_chars": 5614,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5311,
+          "response_chars": 5611,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 3492,
+          "response_chars": 3222,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 3872,
+          "response_chars": 4348,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 4275,
+          "response_chars": 4311,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 4505,
+          "response_chars": 4349,
           "error": null
         },
         {
           "tool": "flow_trace_backward",
-          "response_chars": 2627,
+          "response_chars": 4775,
           "error": null
         },
         {
@@ -594,17 +592,17 @@
         },
         {
           "tool": "flow_get_job",
-          "response_chars": 467,
+          "response_chars": 444,
           "error": null
         },
         {
           "tool": "flow_get_implicit_analysis",
-          "response_chars": 6900,
+          "response_chars": 6877,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 2667,
+          "response_chars": 2677,
           "error": null
         },
         {
@@ -619,6 +617,11 @@
         },
         {
           "tool": "flow_get_job",
+          "response_chars": 176,
+          "error": null
+        },
+        {
+          "tool": "flow_get_job",
           "response_chars": 436,
           "error": null
         },
@@ -629,39 +632,22 @@
         },
         {
           "tool": "flow_trace_forward",
-          "response_chars": 1194,
+          "response_chars": 1204,
           "error": null
         },
         {
           "tool": "flow_trace_forward",
-          "response_chars": 1194,
+          "response_chars": 1204,
           "error": null
         },
         {
           "tool": "flow_continue_trace",
-          "response_chars": 1195,
+          "response_chars": 1205,
           "error": null
         },
         {
           "tool": "flow_continue_trace",
-          "response_chars": 1195,
-          "error": null
-        },
-        {
-          "tool": "flow_continue_trace",
-          "response_chars": 74,
-          "error": {
-            "code": "revision_conflict"
-          }
-        },
-        {
-          "tool": "flow_continue_trace",
-          "response_chars": 1196,
-          "error": null
-        },
-        {
-          "tool": "flow_continue_trace",
-          "response_chars": 1196,
+          "response_chars": 1205,
           "error": null
         },
         {
@@ -673,56 +659,12 @@
         },
         {
           "tool": "flow_continue_trace",
-          "response_chars": 1196,
+          "response_chars": 1206,
           "error": null
         },
         {
           "tool": "flow_continue_trace",
-          "response_chars": 1196,
-          "error": null
-        },
-        {
-          "tool": "flow_continue_trace",
-          "response_chars": 74,
-          "error": {
-            "code": "revision_conflict"
-          }
-        },
-        {
-          "tool": "flow_continue_trace",
-          "response_chars": 551,
-          "error": null
-        },
-        {
-          "tool": "flow_continue_trace",
-          "response_chars": 551,
-          "error": null
-        },
-        {
-          "tool": "flow_continue_trace",
-          "response_chars": 74,
-          "error": {
-            "code": "revision_conflict"
-          }
-        },
-        {
-          "tool": "flow_trace_backward",
-          "response_chars": 1195,
-          "error": null
-        },
-        {
-          "tool": "flow_trace_backward",
-          "response_chars": 1195,
-          "error": null
-        },
-        {
-          "tool": "flow_continue_trace",
-          "response_chars": 1854,
-          "error": null
-        },
-        {
-          "tool": "flow_continue_trace",
-          "response_chars": 1854,
+          "response_chars": 1206,
           "error": null
         },
         {
@@ -734,29 +676,12 @@
         },
         {
           "tool": "flow_continue_trace",
-          "response_chars": 1854,
+          "response_chars": 1206,
           "error": null
         },
         {
           "tool": "flow_continue_trace",
-          "response_chars": 1854,
-          "error": null
-        },
-        {
-          "tool": "flow_continue_trace",
-          "response_chars": 74,
-          "error": {
-            "code": "revision_conflict"
-          }
-        },
-        {
-          "tool": "flow_continue_trace",
-          "response_chars": 1195,
-          "error": null
-        },
-        {
-          "tool": "flow_continue_trace",
-          "response_chars": 1195,
+          "response_chars": 1206,
           "error": null
         },
         {
@@ -768,63 +693,12 @@
         },
         {
           "tool": "flow_continue_trace",
-          "response_chars": 542,
+          "response_chars": 561,
           "error": null
         },
         {
           "tool": "flow_continue_trace",
-          "response_chars": 542,
-          "error": null
-        },
-        {
-          "tool": "flow_continue_trace",
-          "response_chars": 74,
-          "error": {
-            "code": "revision_conflict"
-          }
-        },
-        {
-          "tool": "flow_continue_trace",
-          "response_chars": 1195,
-          "error": null
-        },
-        {
-          "tool": "flow_continue_trace",
-          "response_chars": 1195,
-          "error": null
-        },
-        {
-          "tool": "flow_continue_trace",
-          "response_chars": 74,
-          "error": {
-            "code": "revision_conflict"
-          }
-        },
-        {
-          "tool": "flow_continue_trace",
-          "response_chars": 538,
-          "error": null
-        },
-        {
-          "tool": "flow_continue_trace",
-          "response_chars": 538,
-          "error": null
-        },
-        {
-          "tool": "flow_continue_trace",
-          "response_chars": 74,
-          "error": {
-            "code": "revision_conflict"
-          }
-        },
-        {
-          "tool": "flow_continue_trace",
-          "response_chars": 550,
-          "error": null
-        },
-        {
-          "tool": "flow_continue_trace",
-          "response_chars": 550,
+          "response_chars": 561,
           "error": null
         },
         {
@@ -836,7 +710,136 @@
         },
         {
           "tool": "flow_trace_backward",
-          "response_chars": 1195,
+          "response_chars": 1205,
+          "error": null
+        },
+        {
+          "tool": "flow_trace_backward",
+          "response_chars": 1205,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 1864,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 1864,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 74,
+          "error": {
+            "code": "revision_conflict"
+          }
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 1864,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 1864,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 74,
+          "error": {
+            "code": "revision_conflict"
+          }
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 1205,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 1205,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 74,
+          "error": {
+            "code": "revision_conflict"
+          }
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 1205,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 1205,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 74,
+          "error": {
+            "code": "revision_conflict"
+          }
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 552,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 552,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 74,
+          "error": {
+            "code": "revision_conflict"
+          }
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 548,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 548,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 74,
+          "error": {
+            "code": "revision_conflict"
+          }
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 560,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 560,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 74,
+          "error": {
+            "code": "revision_conflict"
+          }
+        },
+        {
+          "tool": "flow_trace_backward",
+          "response_chars": 1205,
           "error": null
         },
         {
@@ -846,7 +849,7 @@
         },
         {
           "tool": "flow_get_job",
-          "response_chars": 1385,
+          "response_chars": 1373,
           "error": null
         }
       ],
@@ -874,38 +877,38 @@
         "idb_list"
       ],
       "adoption_detach_preserved_job": true,
-      "flow_build_id": "flow-build-sha256-v1:6da15628f3245c775796c7844593e520827f50148b682d4a744a34202d6f2a2f",
+      "flow_build_id": "flow-build-sha256-v1:4d68a37081838c37219e24d839fb8a297b51de3af0471d46d316e82b91af28f3",
       "readonly_direct_call_denied": true,
       "memory_source_selected_exact_access": true,
       "memory_dependency": {
         "interval": {
-          "start": 0,
-          "end": 1
+          "start": 7,
+          "end": 8
         },
         "precision": "exact",
-        "object_id": "object-v1:cf916a2c83e5d395e0506d2e3900956ce960527bbfcb57330f5f77d36804d735",
+        "object_id": "object-v1:217660bf56399452f84ed2e5f28db3fb00a7be04185fa10ecfa5c94006944fc4",
         "rule_id": "byte-reaching-store-v1",
         "evidence_ids": [
-          "evidence-v1:63ba9b2fc09d46e06b48142206680dc50c2dd65b923d4a33024ca643513d2215",
-          "evidence-v1:833b6def3ec6773d0fc5bee82cce8d15798b2379885c9efb84ed6f8b6b7db8e7",
-          "evidence-v1:e2b24e66d873424b1a702b8871ed79f91a7c91f7d10dc8975a2004a0931c8623"
+          "evidence-v1:1b2de217faeef8ea410199f72d4745ff34f680e993c806c5f86a923864d1c94e",
+          "evidence-v1:d35337a0a10952575f1105993889d4bf066137194f01ad008d18c76ba4659a4f",
+          "evidence-v1:dd8e6052bfc9c2b3052bdab9a4fbe4971c853c4efdc7973a34a69b5b2a38f390"
         ],
         "derivation_evidence": {
-          "evidence_id": "evidence-v1:e2b24e66d873424b1a702b8871ed79f91a7c91f7d10dc8975a2004a0931c8623",
-          "snapshot_id": "snapshot-v1:915d3496b3cf55c64a12b2f0c5be9f5e8ae8e10f2c7829596ded186e160ff03f",
+          "evidence_id": "evidence-v1:d35337a0a10952575f1105993889d4bf066137194f01ad008d18c76ba4659a4f",
+          "snapshot_id": "snapshot-v1:0f3db0b3ee5fb7a74e6d374f97cd794e5d079ce732c0671f3538fd987513d96c",
           "rule_id": "byte-reaching-store-v1",
           "sites": [],
           "source_eas": [],
           "synthetic": true,
           "origins": [
-            "node-v1:0980b394112ddba81b0ea3095696f7e7ae466012758e9ecb0bd7d55aacc5b8bd",
-            "node-v1:1ce7c866f6af4a8c6414c78086e0e7aabd1a66c554c56f902325763c8aff72cf"
+            "node-v1:55af6637eac5cc279e1b9763705947cca792e40b475532ef443a0c2d3758401d",
+            "node-v1:83ddb4795589a2cc6105877d671f41732ff4a6a354a0300992a9c2f53309b7b7"
           ],
           "assumptions": [
             "automatic object identity is structural and conservative; no ABI argument numbering",
             "experimental Mach-O flat user-space address model; no TLS or MMIO semantics"
           ],
-          "memory_object_id": "object-v1:cf916a2c83e5d395e0506d2e3900956ce960527bbfcb57330f5f77d36804d735"
+          "memory_object_id": "object-v1:217660bf56399452f84ed2e5f28db3fb00a7be04185fa10ecfa5c94006944fc4"
         }
       },
       "input_preserved": true,

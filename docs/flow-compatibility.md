@@ -59,6 +59,11 @@ receipts, not general claims about every PE, Mach-O, or raw input.
 - Unknown call effects, unresolved memory boundaries, and unsupported
   operations remain explicit partial/unknown results rather than false-clean
   results.
+- The eight G007 memory-analysis receipts now have six
+  `complete_in_scope` modeled computations and two indexed-stack `partial`
+  results with actual opaque effects. Information-only extraction notes no
+  longer force partiality; `may_alias` edge precision remains separate from
+  analysis completion. This is not a support or vulnerability verdict.
 
 ## What the evidence does not prove
 

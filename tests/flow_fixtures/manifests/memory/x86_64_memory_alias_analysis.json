@@ -1,15 +1,15 @@
 {
-  "analysis_status": "partial",
+  "analysis_status": "complete_in_scope",
   "arch": "x86_64",
   "assumptions": [
     "Valid fixture objects; sequential recovered CFG; ordinary flat user-space C data accesses, no TLS/MMIO"
   ],
-  "cache_key": "sha256-v1:7a9b9adbbc4ebadb8e9df02bc0228655ef70a094fdffe8df7fd580f504b1390f",
+  "cache_key": "sha256-v1:8bbbdb0fead7e206d53da1828bfedf99aa29e6174aff3c7bb6731a56c2fe2253",
   "dependencies": [
     {
       "evidence_ids": [
-        "evidence-v1:31f38cab746f189b48a634331410640621167ecb0e06b6e84e2cd2a5e1080a84",
-        "evidence-v1:bd659540b18b60f0160b9d96dec6d71416e3c7e027ca64aaad996a0bc2b50d3f"
+        "evidence-v1:438a34e2555d9d12cab9fe47d4af07a3705e3b7725dd705667a258b2c5886ce8",
+        "evidence-v1:b920856203693e5ea24da65c5f64b09cce1b9617f79a27a2b76a9764b6256ef7"
       ],
       "interval": {
         "end": 1,
@@ -23,22 +23,20 @@
       "target": "node-v1:c7dbc27ae6103a28aa8c06339c92ebee25b37c05c227a57b3a8ff183546ac717"
     }
   ],
-  "diagnostics": [
-    "partial_scalar_input"
-  ],
+  "diagnostics": [],
   "extraction_file": "tests/flow_fixtures/manifests/memory/x86_64_memory_alias.json",
   "extraction_file_sha256": "e6ae44d57627e5bf88be967382cc73b5eb3e66c8846d64e0ffbba2d370208fcf",
   "fresh_static_ida_extraction": true,
   "function": "memory_alias",
   "generator_sha256": "f3bca447461394912ee7f249f3076be261e358fab03c88b8b7fe01e2a0c9c153",
-  "graph_digest": "sha256-v1:d5562c48f1033eb19899dc672cef77f03449089d3859d743bee324404f250045",
+  "graph_digest": "sha256-v1:6737a785fece7f116be9ba325b07e8b27de3bf6126704211f5c8f0687b96a479",
   "implementation_sha256": {
     "analysis.py": "15014e2d8fef814bec748f86e919d79ecea3e738b35cf440a07ebd81e4acb0f7",
     "cfg.py": "167a4491b93278888cda50641c8c1c4d5cc444ab5b57b8f078e76931c7f7749f",
     "contracts.py": "ff0968563d0b08458dc092774c1c8ce3352d4adffc7a9eb52b5cc3be6ea4a6da",
     "memory.py": "7960fce27069016664271da7d3d6e69a5be586f6dc17d6ea0a899ed1e56363af",
     "memory_analysis.py": "7071ff4027e24249aca7cc653e220f0d2bbe8b3cbe9dddb61279bfaa0c7f80d5",
-    "ssa.py": "9f37017efc701977cfefba34a3fdd586be23f63b56a17765a3282e2759dd02d1",
+    "ssa.py": "9fcf84ae909a5d1791ff6fce2a7fb2550e609f3f189705aeb298d8a604142a19",
     "states.py": "4a03c1eec0e86893a58faf81b06853ffd75de7daf40d3eec3b7ace2b5187ee78"
   },
   "iterations": 2,
@@ -57,7 +55,7 @@
           }
         ],
         "evidence_ids": [
-          "evidence-v1:bd659540b18b60f0160b9d96dec6d71416e3c7e027ca64aaad996a0bc2b50d3f"
+          "evidence-v1:b920856203693e5ea24da65c5f64b09cce1b9617f79a27a2b76a9764b6256ef7"
         ],
         "node_id": "node-v1:c7dbc27ae6103a28aa8c06339c92ebee25b37c05c227a57b3a8ff183546ac717",
         "precision": "exact",
@@ -142,7 +140,7 @@
       "snapshot_id": "snapshot-v1:cde7b4d9ae4517a26a7c158a264f4ac9462aadd8a0bd0497c1ff8e17eea09b35"
     }
   ],
-  "plan_digest": "sha256-v1:a6ffa4b457e53c101e85a363314d1522e0855fc70ce18891d36c852d4e763125",
+  "plan_digest": "sha256-v1:b26ea446eab2a0f3f795d895d4708eed50ab271fad95ec57006b6b272d7a2f2e",
   "pointer_seeds": [
     {
       "node_id": "node-v1:6db30874ee77c2ac54b6ac9982cc61faa3a4d5904a61d75a5986fec5900fea55",
@@ -198,7 +196,7 @@
         }
       ],
       "evidence_ids": [
-        "evidence-v1:31f38cab746f189b48a634331410640621167ecb0e06b6e84e2cd2a5e1080a84"
+        "evidence-v1:438a34e2555d9d12cab9fe47d4af07a3705e3b7725dd705667a258b2c5886ce8"
       ],
       "node_id": "node-v1:cc99d0d7a7020ac6e2bb69fe0b157ff6d3658c2f735b17f9cb9b012c28ff20a5",
       "precision": "exact",

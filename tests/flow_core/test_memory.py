@@ -10,6 +10,7 @@ from ida_pro_mcp.flow_core import ContractError, canonical_json, digest
 from ida_pro_mcp.flow_core.analysis import Seed
 from ida_pro_mcp.flow_core.contracts import (
     Block,
+    Diagnostic,
     FunctionInput,
     Instruction,
     MemoryObject,
@@ -1019,3 +1020,30 @@ def test_nonnull_full_width_negative_displacement(opcode, expected_offset):
     assert fact(r, nodes(p, "Return")[0].node_id).pointer.candidates == (
         PointerCandidate(a.object_id, expected_offset),
     )
+
+
+@pytest.mark.parametrize(
+    "severity,expected_status,expected_diagnostics",
+    [
+        ("information", "complete_in_scope", ()),
+        ("unsupported", "partial", ("partial_scalar_input",)),
+    ],
+)
+def test_information_diagnostic_does_not_make_memory_input_partial(
+    severity, expected_status, expected_diagnostics
+):
+    original = plan(
+        (
+            Instruction(0, "m_mov", (const(7, 8), reg(128, 8, "destination"))),
+            ret(1, 128, 8),
+        )
+    ).program.graph.snapshot
+    function = replace(
+        original.function,
+        diagnostics=(Diagnostic("note", "diagnostic only", severity),),
+    )
+    identity = replace(original.identity, input_digest=digest(function))
+    source = Snapshot(identity, function, identity.snapshot_id)
+    result = run(build_memory_plan(build_ssa(source)), (), ())
+    assert result.status == expected_status
+    assert result.diagnostics == expected_diagnostics
