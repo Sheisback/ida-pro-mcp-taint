@@ -323,9 +323,11 @@ flow_trace_backward(snapshot_artifact="<result.snapshot_artifact>",
 idb_close(database="typed", save=False)
 ```
 
-Before a valid route is selected, `flow_get_capabilities` may report an empty
-`supported_profiles` list; check it again after snapshot submission. A job
-result is available only when `flow_get_job.state` becomes `complete`.
+`flow_get_capabilities.routing` reports a configured route; an
+`analyst_selected` route deliberately leaves `supported_profiles` empty and
+analysis features `unverified`, even after submission. This query does not
+prove that extraction succeeded on the current binary. Poll the exact
+`flow_get_job` ID and inspect its `complete` result for that evidence.
 
 `analyst_selected` requires an explicit profile and ABI and validates the open
 binary's processor, bitness, endianness, format, and observed IDA/Hex-Rays

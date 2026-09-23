@@ -678,8 +678,30 @@ def test_capabilities_follow_durable_analyst_selection_and_invalidation(
         "abi_id": route.abi_id,
         "binary_digest": "sha256-v1:" + current_digest,
     }
-    assert selected["supported_profiles"] == [route.profile_id]
+    assert selected["supported_profiles"] == []
     assert "analyst-selected" in selected["features"]["snapshot"]["reason"]
+    assert "flow_get_job" in selected["features"]["snapshot"]["reason"]
+    for name in (
+        "snapshot",
+        "value_ssa",
+        "memory_ssa",
+        "taint",
+        "implicit_flow",
+        "path_proof",
+        "microcode_extraction",
+    ):
+        assert selected["features"][name]["status"] == "unverified"
+
+    pending = engine.store.create_job("snapshot_ssa_v1", {}, "pending-capability")
+    assert module.flow_get_capabilities()["features"]["snapshot"]["status"] == (
+        "unverified"
+    )
+    engine.store.transition_job(
+        pending, "queued", "failed", error={"code": "MERR_LICENSE"}
+    )
+    failed = module.flow_get_capabilities()
+    assert failed["supported_profiles"] == []
+    assert failed["features"]["microcode_extraction"]["status"] == "unverified"
 
     change_count = 4
     invalidated = module.flow_get_capabilities()

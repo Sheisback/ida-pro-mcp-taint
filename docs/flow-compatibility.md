@@ -97,6 +97,13 @@ mode is not fixture conformance, ABI inference, or a support promotion. An input
 change invalidates the retained selection, and RV32 is rejected because no
 normal route exists.
 
+For an active `analyst_selected` route, `flow_get_capabilities.routing` may name
+the selected profile while `supported_profiles` remains empty and analysis
+features remain `unverified`. A queued, failed, or completed job does not turn
+this discovery call into current-binary support proof. Only the corresponding
+`flow_get_job` terminal `complete` result binds actual extraction to that
+binary/profile/build; failed or stale jobs never do.
+
 ## Audit and release boundary
 
 The support audit recomputes every referenced receipt body. It validates the

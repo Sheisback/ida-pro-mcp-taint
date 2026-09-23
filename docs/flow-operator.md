@@ -75,6 +75,11 @@ it is not a support promotion or a P6 release-readiness verdict.
 - Instruction-derived SSA evidence copies only the native EAs observed on its
   cited snapshot instruction. Synthetic/no-origin evidence may have no EA, and
   optimized-away native origins are not reconstructed.
+- For `analyst_selected`, a selected `routing.profile_id` means the current
+  configuration is eligible, not that Hex-Rays extracted this binary.
+  `supported_profiles` stays empty and analysis features stay `unverified`;
+  inspect the exact completed `flow_get_job` result before claiming a current
+  observation. A queued or failed job is not support evidence.
 - A processor/decompiler file inventory or license declaration is not proof
   that extraction succeeds. Only an actual static receipt can prove the exact
   observed configuration.

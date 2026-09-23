@@ -538,6 +538,7 @@ def test_public_native_receipt_current_and_untruncated():
             "partial_scalar_input" not in anchor["job"]["result"]["memory_diagnostics"]
         )
         assert anchor["native_evidence"] > 0
+        assert anchor["analyst_route_not_runtime_support"] is True
         assert (
             anchor["adoption_detach_preserved_job"]
             and anchor["readonly_direct_call_denied"]

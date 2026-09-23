@@ -124,6 +124,14 @@ def main(build_dir, output):
                     break
                 time.sleep(0.05)
             assert job["state"] == "complete", job
+            selected_capabilities = call("flow_get_capabilities")
+            assert selected_capabilities["routing"]["mode"] == "analyst_selected"
+            assert selected_capabilities["routing"]["profile_id"] == profile
+            assert selected_capabilities["supported_profiles"] == []
+            assert (
+                selected_capabilities["features"]["microcode_extraction"]["status"]
+                == "unverified"
+            )
             assert (
                 call(
                     "flow_create_snapshot",
@@ -463,6 +471,7 @@ def main(build_dir, output):
                     "flow_build_id": capabilities["build_id"],
                     "readonly_direct_call_denied": True,
                     "memory_source_selected_exact_access": True,
+                    "analyst_route_not_runtime_support": True,
                     "memory_dependency": {
                         "interval": memory_relation["interval"],
                         "precision": memory_relation["axes"]["precision"],

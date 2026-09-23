@@ -48,7 +48,7 @@ class FlowCapabilities(TypedDict):
     environment: FlowEnvironment
     routing: FlowRouting
     features: dict[str, FlowFeature]
-    supported_profiles: list[str]
+    supported_profiles: list[str]  # Excludes unverified analyst-selected routes.
     limitations: list[str]
 
 
@@ -188,27 +188,33 @@ def flow_get_capabilities() -> FlowCapabilities:
             resolved = cast(dict[str, str], info["routing"])
             reviewed_calls = bool(_service().reviewed_catalog(info).summaries)
             route_format = observed.format_id
-            target_supported = True
+            route_ready = True
         else:
-            target_supported = False
+            route_ready = False
     except Exception as exc:  # noqa: BLE001 - discovery must fail closed, not abort.
-        target_supported = False
+        route_ready = False
         route_error = str(exc)
-    support_status = (
-        "available"
-        if target_supported
-        else "unverified"
-        if probe["status"] == "unverified"
-        else "unavailable"
+    analyst_route_only = (
+        resolved is not None and resolved["routing_mode"] == "analyst_selected"
     )
+    if analyst_route_only:
+        support_status = "unverified"
+    elif route_ready:
+        support_status = "available"
+    elif probe["status"] == "unverified":
+        support_status = "unverified"
+    else:
+        support_status = "unavailable"
     if resolved is not None:
         assert route_format is not None
         if resolved["routing_mode"] == "analyst_selected":
             support_reason = (
-                "Validated active analyst-selected route for "
+                "Matched active analyst-selected route for "
                 f"{resolved['profile_id']}/{resolved['abi_id']}/{route_format} at "
                 "MMAT_CALLS; "
-                "selection is bound to this database snapshot and runtime build"
+                "selection is bound to this database snapshot and runtime build, "
+                "but no current-binary extraction is proven by this query; "
+                "inspect a completed flow_get_job result"
             )
         else:
             support_reason = (
@@ -216,7 +222,7 @@ def flow_get_capabilities() -> FlowCapabilities:
                 f"{resolved['profile_id']}/{resolved['abi_id']}/{route_format} at "
                 "MMAT_CALLS"
             )
-        supported_profiles = [resolved["profile_id"]]
+        supported_profiles = [] if analyst_route_only else [resolved["profile_id"]]
         routing: FlowRouting = {
             "mode": resolved["routing_mode"],
             "profile_id": resolved["profile_id"],
@@ -272,11 +278,20 @@ def flow_get_capabilities() -> FlowCapabilities:
             "reason": support_reason,
         }
     features["interprocedural"] = {
-        "status": "available" if target_supported and reviewed_calls else "unavailable",
+        "status": (
+            "unverified"
+            if analyst_route_only and reviewed_calls
+            else "available"
+            if route_ready and reviewed_calls
+            else "unavailable"
+        ),
         "reason": (
-            "Packaged owned-fixture reviewed summaries with fresh full-identity "
+            "Packaged reviewed summaries match this route, but current-binary "
+            "extraction remains unverified; inspect a completed flow_get_job result"
+            if analyst_route_only and reviewed_calls
+            else "Packaged owned-fixture reviewed summaries with fresh full-identity "
             "callee checks and bounded closure; unresolved remainders stay partial"
-            if target_supported and reviewed_calls
+            if route_ready and reviewed_calls
             else "No reviewed summary catalog for this runtime scope; call observations "
             "remain available as conservative Unknown compositions"
         ),
@@ -300,6 +315,7 @@ def flow_get_capabilities() -> FlowCapabilities:
         "limitations": [
             "No ISA, ABI, maturity, or decompiler entitlement has been validated by this tool.",
             "This capability query performs no snapshot, SSA, taint, proof, call composition, or target execution.",
+            "An analyst-selected route is configuration eligibility, not current-binary extraction success; only a completed flow_get_job result supplies that evidence.",
             "Implicit results publish explicit partial/frontier evidence; bounded proof results apply only to program-derived CFG-prefix constraints; unsupported correspondence remains Unknown.",
             "Reviewed call effects are restricted to packaged owned fixtures; arbitrary libraries and unresolved callees remain Unknown, never whole-program completeness.",
             "No flow tool emits an automatic vulnerability or safety verdict.",
