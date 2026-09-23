@@ -1,11 +1,30 @@
 """idalib supervisor tests that do not require IDA/idalib."""
 
+import os
+import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 
 from ida_pro_mcp import idalib_supervisor as supmod
+
+
+@pytest.mark.parametrize("value", ["", "  ", "not-a-number", "0"])
+def test_supervisor_accepts_blank_invalid_and_zero_env_defaults(value):
+    env = os.environ.copy()
+    env["IDA_MCP_OPEN_TIMEOUT"] = value
+    env["IDA_MCP_MAX_WORKERS"] = value
+    result = subprocess.run(
+        [sys.executable, "-m", "ida_pro_mcp.idalib_supervisor", "--help"],
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=20,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "--max-workers" in result.stdout
 
 
 class _FakeProcess:
