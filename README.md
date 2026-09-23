@@ -262,6 +262,93 @@ The bundled Codex plugin forwards the runtime's `IDA_MCP_*` configuration variab
 - Worker behavior: `IDA_MCP_TOOL_TIMEOUT_SEC`, `IDA_MCP_ANALYSIS_PROMPT`, `IDA_MCP_URL`.
 - Request logging: `IDA_MCP_LOG_REQUESTS`, `IDA_MCP_LOG_SKIP_METHODS`.
 
+## Experimental SSA and Memory-Taint Analysis (This Fork)
+
+This fork adds static `flow_*` MCP tools for microcode extraction, value and
+memory SSA, provenance/taint tracing, bounded implicit and path analysis, and
+reviewed call compositions. The marketplace installation commands above point
+to upstream `mrexodia/ida-pro-mcp`; run this checkout to use these additions.
+They are **experimental analysis tools**, not an automatic vulnerability
+verdict, exploit generator, debugger, or target-program runner.
+
+From this repository root, after activating idalib as described in
+[Prerequisites](#prerequisites), start a headless MCP server with the restricted
+flow profile:
+
+```sh
+uv sync --dev
+uv run idalib-mcp --stdio --profile profiles/flow-readonly.txt
+```
+
+Configure your MCP client to launch that command from this checkout. For HTTP
+instead of stdio, run:
+
+```sh
+uv run idalib-mcp --host 127.0.0.1 --port 8745 --profile profiles/flow-readonly.txt
+```
+
+Every analysis tool call needs the `database` session ID returned by
+`idb_open`; do not pass a filename as `database`.
+
+Example **MCP tool calls** (illustrative, not shell commands; replace the
+bracketed IDs with values returned by the previous call). First copy
+`tests/typed_fixture.elf` to a disposable path:
+
+```text
+idb_open(input_path="/absolute/path/to/disposable/typed_fixture.elf",
+         mode="force_headless", preferred_session_id="typed")
+# Use the returned session.session_id as database below.
+flow_get_capabilities(database="typed")
+flow_create_snapshot(function="sum_point", profile="X64-LE", abi="sysv-amd64",
+                     routing_mode="analyst_selected", request_key="sum-point-1",
+                     database="typed")
+flow_get_job(job_id="<job_id>", database="typed")
+# Poll until state is complete; take IDs from result, not from this example.
+flow_get_function_ssa(artifact_id="<result.ssa_artifact>", database="typed")
+flow_get_graph(artifact_id="<result.graph_artifact>", database="typed")
+flow_trace_backward(snapshot_artifact="<result.snapshot_artifact>",
+                    graph_artifact="<result.graph_artifact>",
+                    source={"kind":"value","node_id":"<node_id from graph>"},
+                    request_key="sum-point-trace-1", database="typed")
+idb_close(database="typed", save=False)
+```
+
+Before a valid route is selected, `flow_get_capabilities` may report an empty
+`supported_profiles` list; check it again after snapshot submission. A job
+result is available only when `flow_get_job.state` becomes `complete`.
+
+`analyst_selected` requires an explicit profile and ABI and validates the open
+binary's processor, bitness, endianness, format, and observed IDA/Hex-Rays
+builds against reviewed normal evidence. The default `exact_fixture` mode is
+for byte-identical pinned fixtures. A rejected route is not a reason to force a
+profile or claim support. The required release-test version is IDA **9.3**;
+RV32 remains optional and unverified. Other processor/ABI/build combinations
+are not implicitly supported.
+
+To trace a memory byte range, use a `source` of kind `memory` with the complete
+`reference` copied from a graph node's `memory` field; an address alone is not
+enough. Related tools include `flow_cancel_job`, `flow_trace_forward`,
+`flow_continue_trace`, `flow_cancel_trace`, `flow_get_cfg`, `flow_get_evidence`,
+`flow_create_implicit_analysis`, `flow_get_implicit_analysis`,
+`flow_get_call_compositions`, and `flow_check_path`. The last tool accepts only
+program-derived, bounded CFG-prefix selectors; unsupported paths and unknown
+effects remain `partial`/`unknown`. See the [operator guide](docs/flow-operator.md)
+for its exact request shape and limitations.
+
+Analysis never executes the target, but MCP call tracing and IDA close/save
+policies can change a **working** IDB. Use a disposable database copy when the
+original must remain unchanged, and close an owned headless session with
+`save=False`. For SDK-free regression checks, run:
+
+```sh
+PYTHONPATH=src:. uv run pytest -q tests/flow_core tests/test_flow_capabilities.py
+```
+
+The separate protected Linux/5×30 `flow-release` distribution gate is stricter
+than this implementation workflow. Its absence is not a passing release result;
+see the [compatibility matrix](docs/flow-compatibility.md) for exact profile
+evidence and support boundaries.
+
 
 ## MCP Resources
 
