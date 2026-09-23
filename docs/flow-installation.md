@@ -31,7 +31,7 @@ revision below is the latest reviewed developer-install pin, not a moving
 included in the Python wheel.
 
 ```sh
-FLOW_REF=e349bc0196aae48caec61c30a74784ce316d04d6
+FLOW_REF=b980b82c494e930abdc59e24d17ee75793a67e72
 PROFILE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/ida-pro-mcp-taint"
 mkdir -p "$PROFILE_DIR"
 curl -fsSL \
