@@ -35,3 +35,33 @@ Validation boundary:
 - The upstream fixes do not expand this fork's reviewed `flow_*` support
   matrix, turn `partial` into a complete analysis, or add a vulnerability
   verdict. The release boundary remains in [flow compatibility](flow-compatibility.md).
+
+## Tracking the next upstream change
+
+The machine-readable [review marker](upstream-sync-state.json) pins
+`fab3505` as the **last reviewed upstream commit** and `e349bc0` as its
+integration commit in this fork. Because that integration was squashed,
+GitHub's “13 behind” includes commits that were already reviewed; it must not
+be used as the count of pending work.
+
+Run from any directory with this checkout available:
+
+```sh
+python /path/to/ida-pro-mcp-taint/scripts/check_upstream_sync.py
+# Optional machine-readable output:
+python /path/to/ida-pro-mcp-taint/scripts/check_upstream_sync.py --json
+```
+
+The checker fetches only the official upstream `main`, verifies the recorded
+commit is still its ancestor, and lists **only commits after that marker**. It
+does not merge code or advance the marker. A rewritten upstream history or a
+missing fork integration fails closed. The default exit code remains zero when
+new commits are listed, so this manual check does not create a failing CI run;
+`--fail-on-new` is available to callers that explicitly want exit code 2.
+CI runs the checker's **offline tests**, not an unattended fetch or merge.
+
+For a future sync, inspect each listed patch, integrate the selected upstream
+change, run targeted and full tests plus affected IDA receipts, commit the
+reviewed code, and only then update the marker to the new upstream SHA and
+fork integration commit. Do not click GitHub's **Sync fork** merely to clear
+the ancestry-based behind badge. No unattended upstream merge is enabled.

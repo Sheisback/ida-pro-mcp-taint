@@ -277,7 +277,9 @@ revision or run this checkout to use these additions.
 They are **experimental analysis tools**, not an automatic vulnerability
 verdict, exploit generator, debugger, or target-program runner.
 The [upstream audit](docs/upstream-sync-2026-09-23.md) records which fixes from
-the original project were integrated and how they were tested.
+the original project were integrated and how they were tested. Run
+`python scripts/check_upstream_sync.py` to list only newer, unreviewed upstream
+commits despite GitHub's squash-related behind count.
 
 From this repository root, after activating idalib as described in
 [Prerequisites](#prerequisites), start a headless MCP server with the restricted

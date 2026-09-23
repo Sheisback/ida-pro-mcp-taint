@@ -20,9 +20,9 @@ jobs:
       - name: Pure contracts and import isolation (no IDA or credentials)
         env:
           PYTHONPATH: src
-        run: uv run --no-project --with pytest python -m pytest tests/flow_core -q
+        run: uv run --no-project --with pytest python -m pytest tests/flow_core tests/test_upstream_sync.py -q
       - name: Lint core and tests
-        run: uvx ruff@0.15.7 check src/ida_pro_mcp/flow_core tests/flow_core src/ida_pro_mcp/ida_mcp/flow/runtime.py src/ida_pro_mcp/idalib_server.py
+        run: uvx ruff@0.15.7 check src/ida_pro_mcp/flow_core tests/flow_core src/ida_pro_mcp/ida_mcp/flow/runtime.py src/ida_pro_mcp/idalib_server.py scripts/check_upstream_sync.py tests/test_upstream_sync.py
       - name: Build wheel
         run: uv build --wheel --out-dir dist-flow-core
       - name: Import core from wheel without application dependencies
