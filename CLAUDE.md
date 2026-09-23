@@ -2,6 +2,10 @@
 
 Guidance for working in this repository.
 
+> For this fork's current cross-agent guidance, especially `flow_*` safety,
+> IDA 9.3 release-test boundaries, and upstream synchronization, follow
+> [AGENTS.md](AGENTS.md). This file preserves the upstream-oriented notes.
+
 ## What this project is
 
 IDA Pro MCP Server: exposes IDA Pro / idalib functionality to MCP clients.
