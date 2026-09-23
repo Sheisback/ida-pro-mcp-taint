@@ -1008,7 +1008,9 @@ def test_workflows_keep_untrusted_and_release_paths_separate_and_pinned():
     assert "scripts/run_ida_flow_benchmark.py" in licensed
     assert "scripts/record_flow_gui_ci.py" in licensed
     assert 'REGISTRY_SOURCE="${IDAUSR:-$HOME/.idapro}/ida.reg"' in licensed
-    assert 'GUI_EULA_ARGS=(--accepted-registry "$REGISTRY_SOURCE")' in licensed
+    assert 'set -- "$@" --accepted-registry "$REGISTRY_SOURCE"' in licensed
+    assert "GUI_EULA_ARGS=()" not in licensed
+    assert '[[ "$(zig version)"' not in licensed
     assert "--ida-metrics licensed-reports/benchmark-ida.json" in release
     assert "IDA_93_EXECUTABLE_SHA256" in licensed + release
     assert "IDA_93_GUI_EXECUTABLE_SHA256" in licensed + release
@@ -1045,3 +1047,22 @@ def test_licensed_workflow_is_opt_in_for_normal_pushes():
     assert "\n  workflow_call:" in triggers
     assert "uses: ./.github/workflows/idalib-tests.yml" in release
     assert 'test "$LICENSED_RESULT" = success' in release
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX container shell")
+def test_licensed_container_steps_parse_with_posix_sh():
+    workflow = (ROOT / ".github/workflows/idalib-tests.yml").read_text()
+    for name in (
+        "Record current actual normal semantic receipts",
+        "Attempt isolated disposable GUI-process evidence",
+    ):
+        step = workflow.split(f"      - name: {name}\n", 1)[1]
+        block = step.split("        run: |\n", 1)[1].split("\n      - name:", 1)[0]
+        script = "\n".join(
+            line.removeprefix("          ") for line in block.splitlines()
+        )
+        script = script.replace("${{ vars.IDA_93_GUI_EXECUTABLE_SHA256 }}", "0" * 64)
+        completed = subprocess.run(
+            ["sh", "-n"], input=script, text=True, capture_output=True
+        )
+        assert completed.returncode == 0, f"{name}: {completed.stderr}"

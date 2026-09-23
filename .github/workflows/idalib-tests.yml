@@ -91,8 +91,10 @@ jobs:
       - name: Record current actual normal semantic receipts
         if: matrix.ida-version == '9.3'
         run: |
-          test "$(zig version)" = "0.16.0-dev.1484+d0ba6642b" || \
-            [[ "$(zig version)" == 0.16.* ]]
+          case "$(zig version)" in
+            0.16.*) ;;
+            *) echo 'Expected Zig 0.16.x' >&2; exit 1 ;;
+          esac
           uv run python scripts/build_flow_isa_profiles.py \
             licensed-reports/current-build
           uv run python scripts/record_flow_profile_receipts.py \
@@ -137,16 +139,14 @@ jobs:
         run: |
           GUI_EXECUTABLE="$(command -v ida || printf /missing/ida)"
           REGISTRY_SOURCE="${IDAUSR:-$HOME/.idapro}/ida.reg"
-          GUI_EULA_ARGS=()
-          if test -f "$REGISTRY_SOURCE"; then
-            GUI_EULA_ARGS=(--accepted-registry "$REGISTRY_SOURCE")
-          fi
-          uv run python scripts/record_flow_gui_ci.py \
-            --fixture tests/crackme03.elf \
+          set -- --fixture tests/crackme03.elf \
             --checkout-sha "$EXPECTED_SHA" \
             --ida "$GUI_EXECUTABLE" \
-            --expected-ida-executable-sha256 "${{ vars.IDA_93_GUI_EXECUTABLE_SHA256 }}" \
-            "${GUI_EULA_ARGS[@]}" \
+            --expected-ida-executable-sha256 "${{ vars.IDA_93_GUI_EXECUTABLE_SHA256 }}"
+          if test -f "$REGISTRY_SOURCE"; then
+            set -- "$@" --accepted-registry "$REGISTRY_SOURCE"
+          fi
+          uv run python scripts/record_flow_gui_ci.py "$@" \
             --output licensed-reports/gui-process.json
       - name: Upload licensed static receipts
         if: always()

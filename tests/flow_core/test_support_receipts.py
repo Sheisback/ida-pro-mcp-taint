@@ -187,7 +187,11 @@ def test_docs_name_every_profile_and_the_static_only_boundary():
     for profile_id in PROFILE_IDS:
         assert f"`{profile_id}`" in compatibility
     assert "does not promote runtime support" in compatibility
-    assert "does not establish P6 release readiness" in compatibility
+    assert "does not establish distribution release readiness" in compatibility
+    assert (
+        "protected Linux runner or an official licensed 5×30 benchmark" in compatibility
+    )
+    assert "separate strict distribution gate" in compatibility
     assert "recomputes every referenced receipt body" in compatibility
     assert "Never execute the target" in operator
     assert "target_executed: false" in operator
