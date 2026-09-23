@@ -136,11 +136,17 @@ jobs:
         if: matrix.ida-version == '9.3'
         run: |
           GUI_EXECUTABLE="$(command -v ida || printf /missing/ida)"
+          REGISTRY_SOURCE="${IDAUSR:-$HOME/.idapro}/ida.reg"
+          GUI_EULA_ARGS=()
+          if test -f "$REGISTRY_SOURCE"; then
+            GUI_EULA_ARGS=(--accepted-registry "$REGISTRY_SOURCE")
+          fi
           uv run python scripts/record_flow_gui_ci.py \
             --fixture tests/crackme03.elf \
             --checkout-sha "$EXPECTED_SHA" \
             --ida "$GUI_EXECUTABLE" \
             --expected-ida-executable-sha256 "${{ vars.IDA_93_GUI_EXECUTABLE_SHA256 }}" \
+            "${GUI_EULA_ARGS[@]}" \
             --output licensed-reports/gui-process.json
       - name: Upload licensed static receipts
         if: always()

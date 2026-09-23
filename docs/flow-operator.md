@@ -21,12 +21,18 @@ can be measured on macOS, but those timings do not satisfy the Linux baseline.
    with `uv sync --dev`.
 4. Confirm the source, wheel, headless process, and (when actually available)
    GUI process report the same build ID. A GUI acceptance gate is a blocker,
-   not evidence of GUI success; do not accept an EULA as part of automation.
+   not evidence of GUI success. Do not create or overwrite EULA acceptance
+   during the evidence probe.
 
 For an explicitly authorized local GUI check on a host that **already** accepted
 the IDA EULA, `record_flow_gui_ci.py --accepted-registry ~/.idapro/ida.reg`
 copies the existing IDA registry into a disposable `IDAUSR`. It does not alter
 the original registry, accept a new agreement, or substitute for protected CI.
+The protected workflow also reuses an existing accepted registry when present;
+if its image lacks one, GUI proof remains blocked. License-owner-approved image
+provisioning can use [Hex-Rays HCLI's documented
+`ida install --accept-eula`](https://hcli.docs.hex-rays.com/advanced/ci-cd-integration/)
+option; the probe itself must not fabricate acceptance.
 
 ## Audit committed support evidence
 

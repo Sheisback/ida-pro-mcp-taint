@@ -1007,6 +1007,8 @@ def test_workflows_keep_untrusted_and_release_paths_separate_and_pinned():
     assert "--benchmark-report" in release and "--gui-receipt" in release
     assert "scripts/run_ida_flow_benchmark.py" in licensed
     assert "scripts/record_flow_gui_ci.py" in licensed
+    assert 'REGISTRY_SOURCE="${IDAUSR:-$HOME/.idapro}/ida.reg"' in licensed
+    assert 'GUI_EULA_ARGS=(--accepted-registry "$REGISTRY_SOURCE")' in licensed
     assert "--ida-metrics licensed-reports/benchmark-ida.json" in release
     assert "IDA_93_EXECUTABLE_SHA256" in licensed + release
     assert "IDA_93_GUI_EXECUTABLE_SHA256" in licensed + release
