@@ -49,8 +49,7 @@ codex mcp list
 If `ida-pro-mcp-taint` is already configured, inspect it with
 `codex mcp get ida-pro-mcp-taint --json`; remove that exact entry with
 `codex mcp remove ida-pro-mcp-taint` only when intentionally replacing it.
-The currently registered local-checkout configuration remains a valid
-development option.
+A local-checkout configuration remains a valid development alternative.
 Start a **new** Codex session after changing MCP configuration. On the first
 use, `uvx` fetches/builds the pinned source and may take longer. The local IDA
 license and decompiler must still be available on that machine.
