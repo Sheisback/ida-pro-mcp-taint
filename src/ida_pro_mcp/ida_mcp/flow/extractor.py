@@ -193,9 +193,12 @@ def make_snapshot(
     binary_sha256,
     *,
     summary_digest=None,
+    wire_version: Literal["flow-wire/1", "flow-wire/2"] = "flow-wire/1",
 ):
     if not namespace.strip():
         raise ContractError("Explicit owner namespace required")
+    if wire_version not in ("flow-wire/1", "flow-wire/2"):
+        raise ContractError("invalid_wire_version")
     if (environment.format_id, environment.platform_tag, environment.abi) != (
         profile["format_id"],
         profile["platform_tag"],
@@ -214,6 +217,7 @@ def make_snapshot(
         digest(POLICY),
         digest(function),
         environment,
+        wire_version=wire_version,
     )
     return Snapshot(identity, function, identity.snapshot_id)
 
@@ -225,6 +229,7 @@ def extract_snapshot(
     function_key,
     profile,
     summary_digest=None,
+    wire_version: Literal["flow-wire/1", "flow-wire/2"] = "flow-wire/1",
     include_calls=False,
     deadline=None,
     cancelled=lambda: False,
@@ -734,6 +739,7 @@ def extract_snapshot(
         namespace,
         binary,
         summary_digest=summary_digest,
+        wire_version=wire_version,
     )
     snapshot = cast(
         Snapshot, Snapshot.from_data(json.loads(json.dumps(snapshot.to_data())))

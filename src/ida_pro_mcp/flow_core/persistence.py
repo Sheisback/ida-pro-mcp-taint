@@ -21,7 +21,7 @@ from .runtime_contracts import (
     TraceSpec,
     TraceState,
 )
-from .serialization import ContractError, canonical_json, digest
+from .serialization import ContractError, canonical_json, digest, to_wire_v2
 
 _MISSING = object()
 PAGE_TARGET_CHARS = 16000
@@ -570,6 +570,35 @@ class Store:
             return self.blobs.read(row["blob"])
 
     @_scope_operation
+    def completed_graph_artifact(self, identifier):
+        """Read only a graph published by a completed job in this database."""
+        require(type(identifier) is str, "wrong_database_or_unknown_id")
+        with self._transaction() as conn:
+            row = conn.execute(
+                "SELECT * FROM artifacts WHERE id=? AND namespace=?",
+                (identifier, self.scope.namespace),
+            ).fetchone()
+            require(row is not None, "wrong_database_or_unknown_id")
+            require(
+                not row["stale"] and row["scope_digest"] == self.scope.scope_digest,
+                "stale_context",
+            )
+            require(row["kind"] == "graph", "wrong_artifact_kind")
+            jobs = conn.execute(
+                "SELECT last_commit FROM jobs WHERE namespace=? AND scope_digest=? "
+                "AND stale=0 AND state='complete' AND last_commit IS NOT NULL",
+                (self.scope.namespace, self.scope.scope_digest),
+            )
+            published = False
+            for job in jobs:
+                result = self.blobs.read(job["last_commit"])
+                if type(result) is dict and result.get("graph_artifact") == identifier:
+                    published = True
+                    break
+            require(published, "graph_artifact_not_complete")
+            return self.blobs.read(row["blob"])
+
+    @_scope_operation
     def evidence_page(self, identifier, offset=0, length=2048):
         require(
             type(offset) is int and offset >= 0 and type(length) is int and length > 0,
@@ -881,7 +910,11 @@ class Store:
                 "pending_remaining": len(next_state.pending),
                 "unresolved_count": len(next_state.unresolved),
             }
-            serialized_chars = len(json.dumps(response))
+            v2 = graph.snapshot.snapshot_id.startswith("snapshot-v2:")
+            if v2:
+                response["wire_version"] = "flow-wire/2"
+                response["snapshot_id"] = graph.snapshot.snapshot_id
+            serialized_chars = len(json.dumps(to_wire_v2(response) if v2 else response))
             require(serialized_chars <= PAGE_HARD_CHARS, "item_too_large")
             require(
                 len(items) <= 1 or serialized_chars <= PAGE_TARGET_CHARS,

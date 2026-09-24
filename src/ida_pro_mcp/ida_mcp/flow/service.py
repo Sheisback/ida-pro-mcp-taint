@@ -1,5 +1,6 @@
 """Lazy worker adapter. Host metadata only on IDA main thread; core jobs off-thread."""
 
+import base64
 import json
 import os
 import re
@@ -7,6 +8,15 @@ from pathlib import Path
 from typing import Any, cast
 
 from ida_pro_mcp.flow_core import canonical_json, digest
+from ida_pro_mcp.flow_core.serialization import (
+    canonical_json_v2,
+    ensure_wire_v1_safe,
+    from_wire_v2,
+    graph_digest_bytes_v2,
+    to_wire_v2,
+    validate_ea,
+)
+from ida_pro_mcp.flow_core.wire_contracts import validate_model_wire_v2, wire_v2_scope
 from ida_pro_mcp.flow_core.analysis import BitSeed, Seed
 from ida_pro_mcp.flow_core.build_identity import BUILD_ID
 from ida_pro_mcp.flow_core.call_composition import CallCompositionResult
@@ -313,12 +323,15 @@ def _extract(ctx, request):
             function_key=request["function_key"],
             profile=request["profile"],
             summary_digest=request["summary_digest"],
+            wire_version=request.get("wire_version", "flow-wire/1"),
             deadline=ctx.deadline,
             cancelled=ctx.cancel.is_set,
             include_calls=True,
             registry=before["registry"],
         ),
     )
+    if request.get("wire_version") == "flow-wire/2":
+        validate_model_wire_v2(snapshot, snapshot.snapshot.identity.environment.bitness)
     if (
         not reviewed_catalog(before).summaries
         and before.get("routing", {}).get("routing_mode") == "analyst_selected"
@@ -410,8 +423,7 @@ def _analyze(ctx, extracted):
             if memory_write is not None:
                 derived_memory_writes.append(memory_write)
         by_site = {
-            (item.block_index, item.instruction_index): item
-            for item in function.calls
+            (item.block_index, item.instruction_index): item for item in function.calls
         }
         for raw_targets in closure.get("finite_target_sets", []):
             ctx.check()
@@ -505,11 +517,13 @@ def _analyze(ctx, extracted):
     derived_indirect_evidence = []
     for effect in derived_indirect_returns:
         observation = next(
-            item for item in function.calls
+            item
+            for item in function.calls
             if (item.block_index, item.instruction_index) == effect.sort_key
         )
         target_data = next(
-            item for item in closure["finite_target_sets"]
+            item
+            for item in closure["finite_target_sets"]
             if (item["block"], item["instruction"]) == effect.sort_key
         )
         candidate_snapshots = [
@@ -756,8 +770,18 @@ def create(
     request_key,
     abi=None,
     routing_mode: RoutingMode = "exact_fixture",
+    wire_version: str = "flow-wire/1",
 ):
+    require(wire_version in ("flow-wire/1", "flow-wire/2"), "invalid_wire_version")
     info = context(selector, profile, abi, routing_mode)
+    if wire_version == "flow-wire/2":
+        validate_ea(info["ea"], info["profile"]["bitness"])
+        require(
+            not reviewed_catalog(info).summaries,
+            "wire_v2_reviewed_summary_unavailable",
+        )
+    else:
+        ensure_wire_v1_safe({"ea": info["ea"]})
     engine = get_runtime(info)
     request = {
         "ea": info["ea"],
@@ -768,6 +792,8 @@ def create(
         "function_key": "function-entry:" + str(info["ea"]),
         "routing": info["routing"],
     }
+    if wire_version == "flow-wire/2":
+        request["wire_version"] = wire_version
     if info["persist_selection"]:
         runtime.persist_routing_selection(
             engine.store,
@@ -783,13 +809,23 @@ def create(
 
 
 def create_implicit(ssa_artifact, seeds, request_key, max_evaluations=100000):
-    require(type(seeds) is list, "invalid_implicit_seeds")
     require(
         type(max_evaluations) is int and 0 < max_evaluations <= 1000000,
         "invalid_implicit_budget",
     )
     info = context()
     engine = get_runtime(info)
+    program = cast(
+        SSAProgram, SSAProgram.from_data(engine.store.artifact(ssa_artifact))
+    )
+    if program.graph.snapshot.snapshot_id.startswith("snapshot-v2:"):
+        seeds = from_wire_v2(seeds)
+        validate_model_wire_v2(
+            seeds, program.graph.snapshot.identity.environment.bitness
+        )
+    else:
+        ensure_wire_v1_safe(seeds)
+    require(type(seeds) is list, "invalid_implicit_seeds")
     request = {
         "ssa_artifact": ssa_artifact,
         "seeds": seeds,
@@ -798,6 +834,8 @@ def create_implicit(ssa_artifact, seeds, request_key, max_evaluations=100000):
         "scope_digest": engine.store.scope.scope_digest,
         "routing": info["routing"],
     }
+    if program.graph.snapshot.snapshot_id.startswith("snapshot-v2:"):
+        request["wire_version"] = "flow-wire/2"
     return {
         "schema_version": "flow-job/1",
         "job_id": engine.submit(
@@ -809,9 +847,25 @@ def create_implicit(ssa_artifact, seeds, request_key, max_evaluations=100000):
 
 def create_path_proof(graph_artifact, query, request_key):
     require(type(query) is dict, "invalid_path_query")
-    PathSelector.from_data(query)
+    try:
+        PathSelector.from_data(query)
+        tagged = False
+    except ContractError as original:
+        try:
+            query = from_wire_v2(query)
+        except ContractError:
+            raise original from None
+        PathSelector.from_data(query)
+        tagged = True
     info = context()
     engine = get_runtime(info)
+    graph = cast(Graph, Queries(engine.store).graph(graph_artifact))
+    graph_v2 = graph.snapshot.snapshot_id.startswith("snapshot-v2:")
+    require(tagged == graph_v2, "mixed_wire_versions")
+    if graph_v2:
+        validate_model_wire_v2(query, graph.snapshot.identity.environment.bitness)
+    else:
+        ensure_wire_v1_safe(query)
     request = {
         "graph_artifact": graph_artifact,
         "query": query,
@@ -819,6 +873,8 @@ def create_path_proof(graph_artifact, query, request_key):
         "scope_digest": engine.store.scope.scope_digest,
         "routing": info["routing"],
     }
+    if graph_v2:
+        request["wire_version"] = "flow-wire/2"
     return {
         "schema_version": "flow-job/1",
         "job_id": engine.submit("path_proof_v1", request, request_key, timeout=120),
@@ -831,7 +887,7 @@ def job(identifier, cancel=False):
     if cancel:
         engine.cancel(identifier)
     row = engine.status(identifier)
-    return {
+    result = {
         "schema_version": "flow-job/1",
         **{
             k: row.get(k)
@@ -846,10 +902,82 @@ def job(identifier, cancel=False):
             )
         },
     }
+    submitted = row.get("input")
+    if (
+        type(submitted) is dict and submitted.get("wire_version") == "flow-wire/2"
+    ) or wire_v2_scope(result.get("result"))[0]:
+        result["wire_version"] = "flow-wire/2"
+    return result
 
 
 def _argument_bindings(program: SSAProgram):
     return argument_bindings(program)
+
+
+GRAPH_EXPORT_CHUNK_BYTES = 16 * 1024
+GRAPH_EXPORT_MAX_BYTES = 16 * 1024 * 1024
+GRAPH_EXPORT_MAX_PAGES = 1024
+GRAPH_EXPORT_RESPONSE_BYTES = 32 * 1024
+
+
+def graph_digest_bytes(artifact_id: str, cursor: str | None = None) -> dict:
+    """Export the complete canonical digest preimage in bounded byte pages."""
+    raw = get_runtime().store.completed_graph_artifact(artifact_id)
+    graph = cast(Graph, Graph.from_data(raw))
+    identity_version = 2 if graph.snapshot.snapshot_id.startswith("snapshot-v2:") else 1
+    payload = (
+        graph_digest_bytes_v2(graph)
+        if identity_version == 2
+        else canonical_json(graph).encode("utf-8")
+    )
+    total = len(payload)
+    require(
+        total <= GRAPH_EXPORT_MAX_BYTES
+        and total <= GRAPH_EXPORT_CHUNK_BYTES * GRAPH_EXPORT_MAX_PAGES,
+        "graph_export_too_large",
+    )
+    binding = {
+        "schema_version": "flow-graph-bytes/1",
+        "artifact_id": artifact_id,
+        "snapshot_id": graph.snapshot.snapshot_id,
+        "graph_digest": graph.graph_digest,
+        "identity_version": identity_version,
+        "build_id": BUILD_ID,
+        "total_bytes": total,
+    }
+
+    def token(offset: int) -> str:
+        return f"{offset}/" + digest({"binding": binding, "offset": offset})
+
+    offset = 0
+    if cursor is not None:
+        require(type(cursor) is str, "invalid_cursor")
+        match = re.fullmatch(r"([1-9][0-9]*)/sha256-v1:[0-9a-f]{64}", cursor)
+        require(match is not None, "invalid_cursor")
+        # Bound conversion as well as the decoded offset.
+        require(len(match[1]) <= 8, "invalid_cursor")
+        offset = int(match[1])
+        require(
+            0 < offset < total
+            and offset % GRAPH_EXPORT_CHUNK_BYTES == 0
+            and cursor == token(offset),
+            "invalid_cursor",
+        )
+    end = min(offset + GRAPH_EXPORT_CHUNK_BYTES, total)
+    response = {
+        **binding,
+        "offset": offset,
+        "byte_count": end - offset,
+        "chunk_base64url": base64.urlsafe_b64encode(payload[offset:end])
+        .decode("ascii")
+        .rstrip("="),
+        "next_cursor": token(end) if end < total else None,
+    }
+    require(
+        len(json.dumps(response).encode("utf-8")) <= GRAPH_EXPORT_RESPONSE_BYTES,
+        "graph_export_too_large",
+    )
+    return response
 
 
 def page(artifact_id, section, cursor=None, limit=50, evidence_ids=None):
@@ -878,6 +1006,9 @@ def page(artifact_id, section, cursor=None, limit=50, evidence_ids=None):
         )
     else:
         graph = cast(Graph, Queries(engine.store).graph(artifact_id))
+        identity_version = (
+            2 if graph.snapshot.snapshot_id.startswith("snapshot-v2:") else 1
+        )
         if section == "graph":
             items = [
                 {"type": "node", "node_id": n.node_id, **n.to_data()}
@@ -894,7 +1025,10 @@ def page(artifact_id, section, cursor=None, limit=50, evidence_ids=None):
                     and len(evidence_ids) <= 100
                     and all(
                         type(item) is str
-                        and re.fullmatch(r"evidence-v1:[0-9a-f]{64}", item) is not None
+                        and re.fullmatch(
+                            rf"evidence-v{identity_version}:[0-9a-f]{{64}}", item
+                        )
+                        is not None
                         for item in evidence_ids
                     )
                 ),
@@ -909,7 +1043,14 @@ def page(artifact_id, section, cursor=None, limit=50, evidence_ids=None):
                 for eid in sorted(selected if selected is not None else available)
             ]
     if section == "evidence":
-        items = evidence_chunks(items)
+        items = evidence_chunks(
+            items,
+            wire_version=(
+                "flow-wire/2"
+                if graph.snapshot.snapshot_id.startswith("snapshot-v2:")
+                else "flow-wire/1"
+            ),
+        )
     require(
         isinstance(graph.snapshot, Snapshot),
         "public_runtime_requires_normal_snapshot",
@@ -938,14 +1079,18 @@ def page(artifact_id, section, cursor=None, limit=50, evidence_ids=None):
             "Supported-anchor memory edges assume successful flat user-space accesses; TLS/MMIO and null/fault feasibility are unresolved.",
         ],
     }
+    if graph.snapshot.snapshot_id.startswith("snapshot-v2:"):
+        meta["wire_version"] = "flow-wire/2"
     return artifact_page(artifact_id, section, items, meta, cursor, limit)
 
 
-def _chunk_large_items(section, items):
+def _chunk_large_items(section, items, *, wire_version="flow-wire/1"):
     result = []
+    v2 = wire_version == "flow-wire/2"
     for index, item in enumerate(items):
-        text = canonical_json(item)
-        if len(json.dumps(item)) < 8000:
+        text = canonical_json_v2(item) if v2 else canonical_json(item)
+        size = len(json.dumps(to_wire_v2(item) if v2 else item))
+        if size < 8000:
             result.append(item)
             continue
         item_id = digest({"section": section, "index": index, "item": item})
@@ -954,7 +1099,9 @@ def _chunk_large_items(section, items):
                 {
                     "type": "canonical_json_chunk",
                     "item_id": item_id,
-                    "encoding": "canonical-json-text",
+                    "encoding": "canonical-json-v2-text"
+                    if v2
+                    else "canonical-json-text",
                     "offset": offset,
                     "length": len(text[offset : offset + 1000]),
                     "total_length": len(text),
@@ -1033,8 +1180,7 @@ def _untyped_frame_alias_boundary(target_id, source_ids, objects):
         for source_id in source_ids
         if source_id in objects
         and target_id in objects
-        and {objects[source_id].kind, objects[target_id].kind}
-        == {"stack", "argument"}
+        and {objects[source_id].kind, objects[target_id].kind} == {"stack", "argument"}
     ]
     if not pairs:
         return None
@@ -1204,8 +1350,7 @@ def _derived_indirect_call_page(raw):
     call = cast(CallInfo, CallInfo.from_data(raw["call_info"]))
     candidate_data = raw["callee_snapshots"]
     require(
-        type(candidate_data) is list
-        and len(candidate_data) == len(targets.targets),
+        type(candidate_data) is list and len(candidate_data) == len(targets.targets),
         "finite_indirect_candidate_count_mismatch",
     )
     callees = {
@@ -1465,10 +1610,17 @@ def analysis_page(artifact_id, section, cursor=None, limit=50):
         items, metadata = _interprocedural_page(raw)
     else:
         raise ValueError("invalid_analysis_section")
+    v2, snapshot_id = wire_v2_scope(raw)
+    if v2:
+        metadata = {**metadata, "wire_version": "flow-wire/2"}
+        if snapshot_id is not None:
+            metadata["snapshot_id"] = snapshot_id
     return artifact_page(
         artifact_id,
         section,
-        _chunk_large_items(section, items),
+        _chunk_large_items(
+            section, items, wire_version="flow-wire/2" if v2 else "flow-wire/1"
+        ),
         metadata,
         cursor,
         limit,
@@ -1527,7 +1679,9 @@ def explain_implicit(
             else None
         )
         boundary_count += boundary is not None
-        cause_items.append({"type": "cause", **cause.to_data(), "alias_boundary": boundary})
+        cause_items.append(
+            {"type": "cause", **cause.to_data(), "alias_boundary": boundary}
+        )
     items = cause_items + [
         {"type": "global_diagnostic", "code": item}
         for item in explanation.global_diagnostics
@@ -1551,10 +1705,18 @@ def explain_implicit(
         "alias_policy": _ALIAS_POLICY,
         "untyped_current_frame_alias_cause_count": boundary_count,
     }
+    v2 = explanation.graph_digest.startswith("sha256-v2:")
+    if v2:
+        metadata["wire_version"] = "flow-wire/2"
+        metadata["snapshot_id"] = program.graph.snapshot.snapshot_id
     return artifact_page(
         artifact_id,
         f"implicit_explanation:{observation_node_id}:{max_nodes}:{max_causes}",
-        _chunk_large_items("implicit_explanation", items),
+        _chunk_large_items(
+            "implicit_explanation",
+            items,
+            wire_version="flow-wire/2" if v2 else "flow-wire/1",
+        ),
         metadata,
         cursor,
         limit,
@@ -1572,6 +1734,12 @@ def trace(
     limit,
 ):
     queries = Queries(get_runtime().store)
+    graph = queries.graph(graph_artifact)
+    if graph.snapshot.snapshot_id.startswith("snapshot-v2:"):
+        source = from_wire_v2(source)
+        validate_model_wire_v2(source, graph.snapshot.identity.environment.bitness)
+    else:
+        ensure_wire_v1_safe(source)
     return queries.start(
         snapshot_artifact,
         graph_artifact,
@@ -1586,6 +1754,13 @@ def trace(
 
 def continue_trace(trace_id, revision, cursor, request_key, limit=50, cancel=False):
     queries = Queries(get_runtime().store)
+    row = queries.store.trace(trace_id)
+    graph = queries.graph(row["spec"].graph_artifact)
+    if graph.snapshot.snapshot_id.startswith("snapshot-v2:"):
+        revision = from_wire_v2(revision)
+        validate_model_wire_v2({"revision": revision}, 64)
+    else:
+        require(type(revision) is int, "mixed_wire_versions")
     return queries.continue_trace(
         trace_id, revision, cursor, request_key, limit=limit, cancel=cancel
     )

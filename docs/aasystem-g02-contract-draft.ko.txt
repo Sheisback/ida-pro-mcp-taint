@@ -1,8 +1,10 @@
-# AASystem G02 공개 계약 초안 (검토용, 미구현)
+# AASystem G02 공개 계약 (실험적 구현)
 
-이 문서는 **graph 전체 검증**과 **손실 없는 정수 wire 표현**의 제안이다.
-외부 분석규칙 등록/model generation 적용은 요청에 따라 보류한다. 이 초안은
-현재 공개 API나 Windows driver 지원을 선언하지 않는다.
+이 문서는 **graph 전체 검증**과 **손실 없는 정수 wire 표현**의 구현 계약이다.
+외부 분석규칙 등록/model generation 적용은 요청에 따라 보류한다. 이 구현은
+Windows driver 지원이나 fork의 공개 배포를 선언하지 않는다.
+`flow_create_snapshot(..., wire_version="flow-wire/2")`로 v2를 선택하고,
+`flow_get_graph_digest_bytes`로 완료된 graph의 digest 원본 바이트를 읽는다.
 
 ## 1. 전체 graph digest 검증: canonical byte stream
 
@@ -14,7 +16,7 @@ UTF-8 그대로 기록한다. 배열 순서는 바꾸지 않는다. `null`과 bo
 유지한다. 이는 **현재 v1 identity 규칙**의 설명이며, 아래 v2 정수 규칙을 v1
 digest에 소급 적용하지 않는다.
 
-제안 도구 `flow_get_graph_digest_bytes`는 **완료된 동일 database의
+도구 `flow_get_graph_digest_bytes`는 **완료된 동일 database의
 `graph_artifact`** 하나를 받아, 그 graph의 canonical UTF-8 바이트를 제한된
 base64url 페이지로 제공한다. 별도 IDB 데이터나 다른 artifact는 내보내지
 않는다. 응답 계약 `flow-graph-bytes/1`:
@@ -39,9 +41,10 @@ base64url 페이지로 제공한다. 별도 IDB 데이터나 다른 artifact는 
 `total_bytes`는 모든 페이지에서 동일해야 한다. 첫 offset은 0, 다음 offset은
 앞 페이지의 `offset + byte_count`이다. `next_cursor=null`이고 마지막 end가
 `total_bytes`일 때만 수집 완료다. cursor는 artifact, graph digest, total bytes,
-다음 offset에 결합되며, 다른 artifact 또는 순서의 cursor 사용은 거절한다.
+다음 offset에 결합되며, 다른 artifact나 잘못된 offset의 cursor는 거절한다.
+소비자는 응답의 offset이 앞 페이지의 끝과 연속되는지도 확인한다.
 
-초안 제한: chunk는 최대 16 KiB 원본 바이트, 응답은 최대 32 KiB JSON, graph
+제한: chunk는 최대 16 KiB 원본 바이트, 응답은 최대 32 KiB JSON, graph
 canonical bytes는 최대 16 MiB, 페이지는 최대 1024개다. 큰 graph나 단일 응답
 한도 초과는 부분 공개/절단 대신 `graph_export_too_large` 오류를 반환한다.
 세션에서 artifact가 사라진 경우 `wrong_database_or_unknown_id`로 실패한다.
@@ -63,9 +66,13 @@ digest를 계산해야 한다.
 ## 2. 정수 wire/identity v2
 
 `flow-wire/2`는 **새 snapshot 생성 시 `wire_version="flow-wire/2"`로 명시
-선택**하는 별도 계약으로 제안한다. 생략하면 `flow-wire/1`이다.
+선택**하는 별도 계약이다. 생략하면 `flow-wire/1`이다.
 v1 numeric artifact를 v2로 표시만 바꾸지 않는다. v2 artifact의 모든 Python
 `int` (boolean 제외)는 중첩 위치와 무관하게 다음 명시적 정수 object로 직렬화한다.
+현재 reviewed summary catalog가 있는 경로는 v2 snapshot 제출 시
+`wire_v2_reviewed_summary_unavailable`로 거절한다. v1에 고정된 reviewed
+callee/summary identity를 v2로 검증·변환하는 별도 작업 전까지 분석 의미를
+조용히 바꾸지 않기 위한 경계다.
 
 ```json
 {"$int":"9007199254740993"}
@@ -82,7 +89,7 @@ v1 numeric artifact를 v2로 표시만 바꾸지 않는다. v2 artifact의 모�
 공개 결과의 RVA는 **unsigned 64-bit** (`0..2^64-1`)이며 환경의 `bitness`가
 16/32이면 해당 폭 밖 EA를 거절한다. `BADADDR`는 정수가 아니라 absent/`null`로
 표현한다. `Node.constant`/`Operand.constant`는 해당 `width_bits`에서 표현
-가능한 bit pattern으로 검사한다. v2의 제안 한도는 다음과 같다.
+가능한 bit pattern으로 검사한다. v2의 한도는 다음과 같다.
 
 | 범주 | 부호·허용 범위 |
 | --- | --- |
@@ -94,8 +101,7 @@ v1 numeric artifact를 v2로 표시만 바꾸지 않는다. v2 artifact의 모�
 
 나머지 정수도 전부 `$int`로 전송하므로 새 경로에 unsafe JSON number가
 잠입하지 않는다. 이 표에서 빠진 필드나 한도 초과 정수는 조용히 통과시키지
-않고 `integer_out_of_range`로 실패해야 한다. 구현 전 모든 public flow
-artifact의 정수 필드 schema audit를 완료한다. 페이지 offset/길이처럼 명시적
+않고 `integer_out_of_range`로 실패한다. 페이지 offset/길이처럼 명시적
 상한이 16 MiB 이하인 **응답 envelope 정수**는 이 tagged graph payload와
 구분하여 안전한 JSON number로 유지할 수 있다.
 

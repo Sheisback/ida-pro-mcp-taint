@@ -54,6 +54,7 @@ def extract_local_direct_callees(ctx, root: extractor.ExtractedFunction, info):
                             function_key="function-entry:" + str(callee_ea),
                             profile=info["profile"],
                             summary_digest=root.snapshot.identity.summary_digest,
+                            wire_version=root.snapshot.identity.wire_version,
                             deadline=ctx.deadline,
                             cancelled=ctx.cancel.is_set,
                             include_calls=True,
@@ -73,6 +74,7 @@ def extract_local_direct_callees(ctx, root: extractor.ExtractedFunction, info):
                         or identity.policy_digest != caller.policy_digest
                         or identity.environment != caller.environment
                         or identity.summary_digest != caller.summary_digest
+                        or identity.wire_version != caller.wire_version
                     ):
                         reason = "foreign_or_stale_callee"
                     else:

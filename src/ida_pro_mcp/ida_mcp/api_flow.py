@@ -3,7 +3,7 @@
 import functools
 import os
 import platform
-from typing import Any, Literal, TypedDict, cast
+from typing import Any, Literal, NotRequired, TypedDict, cast
 
 import ida_hexrays
 import ida_ida
@@ -67,15 +67,20 @@ class FlowJobSubmission(TypedDict):
     experimental: bool
 
 
+FlowTaggedInt = TypedDict("FlowTaggedInt", {"$int": str})
+FlowWireInt = int | FlowTaggedInt
+
+
 class FlowJob(TypedDict):
     schema_version: Literal["flow-job/1"]
     id: str
     state: str
-    revision: int
+    revision: FlowWireInt
     progress: dict
     budget: dict
     error: dict | None
     result: dict | None
+    wire_version: NotRequired[Literal["flow-wire/2"]]
 
 
 class FlowArtifactPage(TypedDict):
@@ -87,21 +92,37 @@ class FlowArtifactPage(TypedDict):
     next_cursor: str | None
 
 
+class FlowGraphBytesPage(TypedDict):
+    schema_version: Literal["flow-graph-bytes/1"]
+    artifact_id: str
+    snapshot_id: str
+    graph_digest: str
+    identity_version: int
+    build_id: str
+    total_bytes: int
+    offset: int
+    byte_count: int
+    chunk_base64url: str
+    next_cursor: str | None
+
+
 class FlowTracePage(TypedDict):
     schema_version: Literal["flow-trace-page/1"]
     trace_id: str
-    revision: int
+    revision: FlowWireInt
     cursor: str
     items: list[dict]
     status: str
-    frontier_remaining: int
-    pending_remaining: int
-    unresolved_count: int
+    frontier_remaining: FlowWireInt
+    pending_remaining: FlowWireInt
+    unresolved_count: FlowWireInt
+    wire_version: NotRequired[Literal["flow-wire/2"]]
+    snapshot_id: NotRequired[str]
 
 
 class FlowByteRangeSpec(TypedDict):
-    start: int
-    end: int
+    start: FlowWireInt
+    end: FlowWireInt
 
 
 class FlowMemoryReferenceSpec(TypedDict):
@@ -140,11 +161,11 @@ class FlowImplicitSeedSpec(TypedDict):
 
 class FlowImplicitBitSeedSpec(TypedDict):
     kind: Literal["bit_range"]
-    schema_version: Literal[1]
+    schema_version: Literal[1] | FlowTaggedInt
     node_id: str
     labels: FlowLabelSpec
-    bit_offset: int
-    width_bits: int
+    bit_offset: FlowWireInt
+    width_bits: FlowWireInt
 
 
 @tool
@@ -338,10 +359,28 @@ def flow_get_capabilities() -> FlowCapabilities:
 def _flow_api(function):
     @functools.wraps(function)
     def wrapped(*args, **kwargs):
-        from ida_pro_mcp.flow_core.serialization import ContractError
+        from ida_pro_mcp.flow_core.serialization import (
+            ContractError,
+            ensure_wire_v1_safe,
+            to_wire_v2,
+        )
+        from ida_pro_mcp.flow_core.wire_contracts import (
+            validate_model_wire_v2,
+            wire_v2_scope,
+        )
 
         try:
-            return function(*args, **kwargs)
+            # Incoming control numbers are JSON numbers only in the bounded v1
+            # request shape. v2 graph payload integers are tagged on export.
+            ensure_wire_v1_safe([list(args), kwargs])
+            response = function(*args, **kwargs)
+            if function.__name__ == "flow_get_graph_digest_bytes":
+                return response  # Offset/length are bounded envelope numbers.
+            if wire_v2_scope(response)[0]:
+                validate_model_wire_v2(response, 64)
+                return to_wire_v2(response)
+            ensure_wire_v1_safe(response)
+            return response
         except (ContractError, ValueError, OSError) as exc:
             code = str(exc)[:300]
             if code == "not_found":
@@ -366,6 +405,7 @@ def flow_create_snapshot(
     request_key: str,
     abi: str | None = None,
     routing_mode: str = "exact_fixture",
+    wire_version: str = "flow-wire/1",
 ) -> FlowJobSubmission | FlowError:
     """Queue an experimental MMAT_CALLS snapshot for an exact function entry.
 
@@ -375,9 +415,15 @@ def flow_create_snapshot(
     format, and exact IDA/Hex-Rays builds match reviewed normal evidence. The
     current binary digest scopes all runtime state; selection never promotes
     support or infers an ABI. RV32 has no normal route and is rejected. Reuse
-    ``request_key`` only for the identical request.
+    ``request_key`` only for the identical request. Opt into ``flow-wire/2``
+    for tagged integers and separate v2 snapshot/graph identities; omitted
+    ``wire_version`` preserves v1.
     """
-    return _service().create(function, profile, request_key, abi, routing_mode)
+    if wire_version == "flow-wire/1":
+        return _service().create(function, profile, request_key, abi, routing_mode)
+    return _service().create(
+        function, profile, request_key, abi, routing_mode, wire_version
+    )
 
 
 @tool
@@ -490,6 +536,21 @@ def flow_get_graph(
 ) -> FlowArtifactPage | FlowError:
     """Page immutable typed nodes and edges from the job's graph_artifact."""
     return _service().page(artifact_id, "graph", cursor, limit)
+
+
+@tool
+@_flow_api
+def flow_get_graph_digest_bytes(
+    artifact_id: str, cursor: str | None = None
+) -> FlowGraphBytesPage | FlowError:
+    """Page the completed graph's canonical digest bytes as unpadded base64url.
+
+    Concatenate decoded chunks in offset order and hash before JSON parsing.
+    Pages contain at most 16 KiB; exports above 16 MiB fail without truncation.
+    Completion requires next_cursor=null and offset+byte_count=total_bytes.
+    For identity_version=2, bytes include the graph domain/version wrapper.
+    """
+    return _service().graph_digest_bytes(artifact_id, cursor)
 
 
 @tool
@@ -653,7 +714,7 @@ def flow_trace_backward(
 @_flow_api
 def flow_continue_trace(
     trace_id: str,
-    expected_revision: int,
+    expected_revision: FlowWireInt,
     cursor: str,
     request_key: str,
     limit: int = 50,
@@ -667,7 +728,7 @@ def flow_continue_trace(
 @tool
 @_flow_api
 def flow_cancel_trace(
-    trace_id: str, expected_revision: int, cursor: str, request_key: str
+    trace_id: str, expected_revision: FlowWireInt, cursor: str, request_key: str
 ) -> FlowTracePage | FlowError:
     """Revision-safe durable trace cancellation; completed traces are immutable."""
     return _service().continue_trace(

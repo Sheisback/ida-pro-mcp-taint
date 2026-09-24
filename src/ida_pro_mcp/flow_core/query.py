@@ -10,7 +10,7 @@ import json
 from .contracts import Graph, MemorySource, ValueSource
 from .persistence import PAGE_HARD_CHARS, PAGE_TARGET_CHARS, PersistenceError, require
 from .runtime_contracts import TraceSpec, TraceState
-from .serialization import digest, canonical_json
+from .serialization import digest, canonical_json, canonical_json_v2, to_wire_v2
 
 DEFAULT_EDGES = ("memory_data_dependency", "phi_input", "value_dependency")
 
@@ -19,15 +19,30 @@ def trace_cursor(trace_id, revision):
     return digest({"trace": trace_id, "revision": revision, "version": 1})
 
 
-def bounded(response):
-    require(len(json.dumps(response)) <= PAGE_HARD_CHARS, "item_too_large")
+def bounded(response, *, v2=False):
+    payload = to_wire_v2(response) if v2 else response
+    require(len(json.dumps(payload)) <= PAGE_HARD_CHARS, "item_too_large")
     return response
 
 
 def artifact_page(artifact_id, section, items, metadata, cursor=None, limit=50):
     """Stateless cursor includes offset AND immutable content/filter identity."""
     require(type(limit) is int and 1 <= limit <= 200, "invalid_page_limit")
-    identity = digest({"artifact": artifact_id, "section": section, "items": items})
+    identity_data = {"artifact": artifact_id, "section": section, "items": items}
+    v2 = type(metadata) is dict and (
+        metadata.get("wire_version") == "flow-wire/2"
+        or str(metadata.get("snapshot_id", "")).startswith("snapshot-v2:")
+        or str(metadata.get("graph_digest", "")).startswith("sha256-v2:")
+    )
+    if v2:
+        identity_data.update(
+            {
+                "wire_version": "flow-wire/2",
+                "snapshot_id": metadata.get("snapshot_id"),
+                "graph_digest": metadata.get("graph_digest"),
+            }
+        )
+    identity = digest(identity_data)
     offset = 0
     if cursor is not None:
         require(type(cursor) is str, "invalid_cursor")
@@ -56,11 +71,12 @@ def artifact_page(artifact_id, section, items, metadata, cursor=None, limit=50):
             if end < len(items)
             else None
         )
-        if response["items"] and len(json.dumps(candidate)) > PAGE_TARGET_CHARS:
+        sized_candidate = to_wire_v2(candidate) if v2 else candidate
+        if response["items"] and len(json.dumps(sized_candidate)) > PAGE_TARGET_CHARS:
             break
-        bounded(candidate)
+        bounded(candidate, v2=v2)
         response = candidate
-    return bounded(response)
+    return bounded(response, v2=v2)
 
 
 class Queries:
@@ -301,19 +317,23 @@ class Queries:
         )
 
 
-def evidence_chunks(items):
+def evidence_chunks(items, *, wire_version="flow-wire/1"):
     """Large evidence remains reconstructible JSON, never a text preview."""
     chunks = []
     for item in items:
-        text = canonical_json(item)
-        if len(json.dumps(item)) < 8000:
+        v2 = wire_version == "flow-wire/2"
+        text = canonical_json_v2(item) if v2 else canonical_json(item)
+        size = len(json.dumps(to_wire_v2(item) if v2 else item))
+        if size < 8000:
             chunks.append(item)
             continue
         for offset in range(0, len(text), 1000):
             chunks.append(
                 {
                     "evidence_id": item["evidence_id"],
-                    "encoding": "canonical-json-text",
+                    "encoding": "canonical-json-v2-text"
+                    if v2
+                    else "canonical-json-text",
                     "offset": offset,
                     "length": len(text[offset : offset + 1000]),
                     "total_length": len(text),

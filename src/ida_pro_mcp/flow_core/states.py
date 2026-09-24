@@ -22,13 +22,13 @@ def nonempty(value: str):
 
 def check_digest(value: str):
     require(
-        re.fullmatch(r"sha256-v1:[0-9a-f]{64}", value) is not None, "Invalid digest"
+        re.fullmatch(r"sha256-v[12]:[0-9a-f]{64}", value) is not None, "Invalid digest"
     )
 
 
 def check_id(value: str, kind: str):
     require(
-        re.fullmatch(rf"{kind}-v1:[0-9a-f]{{64}}", value) is not None,
+        re.fullmatch(rf"{kind}-v[12]:[0-9a-f]{{64}}", value) is not None,
         f"Invalid {kind} ID",
     )
 

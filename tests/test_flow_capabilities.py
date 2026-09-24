@@ -1015,6 +1015,7 @@ def test_exact_tool_schema_and_no_supervisor_database_on_workers(flow):
         "flow_continue_trace",
         "flow_cancel_trace",
         "flow_get_graph",
+        "flow_get_graph_digest_bytes",
         "flow_get_evidence",
     }
     tools = server._mcp_tools_list()["tools"]
@@ -1030,9 +1031,7 @@ def test_exact_tool_schema_and_no_supervisor_database_on_workers(flow):
     assert "Load" in by_name["flow_create_implicit_analysis"]["description"]
     assert "pointee" in by_name["flow_create_implicit_analysis"]["description"]
     assert "pointer value" in by_name["flow_get_function_ssa"]["description"]
-    assert "unknown_provenance" in by_name["flow_get_implicit_analysis"][
-        "description"
-    ]
+    assert "unknown_provenance" in by_name["flow_get_implicit_analysis"]["description"]
     for name in ("flow_trace_forward", "flow_trace_backward"):
         source = by_name[name]["inputSchema"]["properties"]["source"]
         variants = source["anyOf"]
@@ -1057,7 +1056,9 @@ def test_exact_tool_schema_and_no_supervisor_database_on_workers(flow):
         "width_bits",
     }
     assert bit_range["properties"]["kind"]["enum"] == ["bit_range"]
-    assert bit_range["properties"]["schema_version"]["enum"] == [1]
+    version_variants = bit_range["properties"]["schema_version"]["anyOf"]
+    assert any(item.get("enum") == [1] for item in version_variants)
+    assert any("$int" in item.get("properties", {}) for item in version_variants)
     assert all(
         variant["properties"]["labels"]["additionalProperties"] is False
         for variant in (whole, bit_range)
@@ -1190,6 +1191,67 @@ def test_public_snapshot_forwards_explicit_profile_abi_mode(flow, monkeypatch):
         "type": "string",
     }
     assert "abi" not in schema["required"]
+
+
+def test_public_snapshot_forwards_wire_v2_opt_in(flow, monkeypatch):
+    module, _ = flow
+    calls = []
+    monkeypatch.setattr(
+        module,
+        "_service",
+        lambda: types.SimpleNamespace(
+            create=lambda *args: (
+                calls.append(args)
+                or {
+                    "schema_version": "flow-job/1",
+                    "job_id": "v2-job",
+                    "experimental": True,
+                }
+            )
+        ),
+    )
+    result = module.flow_create_snapshot(
+        "0x1000", "X64-LE", "request", wire_version="flow-wire/2"
+    )
+    assert result["job_id"] == "v2-job"
+    assert calls == [
+        ("0x1000", "X64-LE", "request", None, "exact_fixture", "flow-wire/2")
+    ]
+
+
+def test_v1_label_does_not_change_public_integer_encoding(flow):
+    module, _ = flow
+
+    @module._flow_api
+    def view():
+        return {
+            "metadata": {"snapshot_id": "snapshot-v1:" + "a" * 64},
+            "items": [{"width_bits": 64, "labels": ["flow-wire/2"]}],
+        }
+
+    assert view()["items"][0]["width_bits"] == 64
+
+
+def test_wire_v2_rejects_reviewed_catalog_before_submission(flow, monkeypatch):
+    from ida_pro_mcp.flow_core.serialization import ContractError
+
+    module, _ = flow
+    service = module._service()
+    monkeypatch.setattr(
+        service,
+        "context",
+        lambda *args: {"ea": 0x1000, "profile": {"bitness": 64}},
+    )
+    monkeypatch.setattr(
+        service,
+        "reviewed_catalog",
+        lambda info: types.SimpleNamespace(summaries=(object(),)),
+    )
+    monkeypatch.setattr(
+        service, "get_runtime", lambda *args: pytest.fail("no job should be submitted")
+    )
+    with pytest.raises(ContractError, match="wire_v2_reviewed_summary_unavailable"):
+        service.create("0x1000", "X64-LE", "key", wire_version="flow-wire/2")
 
 
 def test_memory_page_exposes_bounded_access_precision_without_verdict(flow):
@@ -1854,14 +1916,15 @@ def test_mcp_pages_name_untyped_input_current_frame_unknown(flow, monkeypatch):
     object_by_id = {obj.object_id: obj for obj in replay.result.objects}
     pair = boundary["source_target_pairs"][0]
     typed_objects = {
-        object_id: replace(obj, kind="typed_entry")
-        if obj.kind == "argument"
-        else obj
+        object_id: replace(obj, kind="typed_entry") if obj.kind == "argument" else obj
         for object_id, obj in object_by_id.items()
     }
-    assert service._untyped_frame_alias_boundary(
-        pair["target_object_id"], (pair["source_object_id"],), typed_objects
-    ) is None
+    assert (
+        service._untyped_frame_alias_boundary(
+            pair["target_object_id"], (pair["source_object_id"],), typed_objects
+        )
+        is None
+    )
     assert memory_page["metadata"]["alias_policy"]["untyped_input_current_frame"] == (
         "may_alias_unknown"
     )

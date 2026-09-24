@@ -5,10 +5,17 @@ Derived graph/evidence IDs depend on that identity, never the other way round.
 Database namespace is an ownership boundary, not a content fingerprint.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal
 
-from .serialization import ContractError, Model, digest, stable_id
+from .serialization import (
+    ContractError,
+    Model,
+    digest,
+    digest_v2,
+    stable_id,
+    stable_id_v2,
+)
 from .states import (
     ByteRange,
     Endian,
@@ -22,6 +29,27 @@ from .states import (
     unique,
     width,
 )
+
+
+def _identity_for_snapshot(kind: str, value: object, snapshot_id: str) -> str:
+    return (
+        stable_id_v2(kind, value)
+        if snapshot_id.startswith("snapshot-v2:")
+        else stable_id(kind, value)
+    )
+
+
+def _same_identity_version(*identifiers: str) -> bool:
+    return (
+        len(
+            {
+                identifier.split(":", 1)[0].rsplit("-v", 1)[-1]
+                for identifier in identifiers
+            }
+        )
+        <= 1
+    )
+
 
 Maturity = Literal["MMAT_CALLS", "MMAT_GLBOPT3"]
 NodeKind = Literal[
@@ -377,6 +405,9 @@ class SnapshotIdentity(Model):
     input_digest: str
     environment: Environment
     schema_version: Literal[1] = 1
+    wire_version: Literal["flow-wire/1", "flow-wire/2"] = field(
+        default="flow-wire/1", metadata={"omit_if_default": True}
+    )
 
     def __post_init__(self):
         super().__post_init__()
@@ -395,7 +426,11 @@ class SnapshotIdentity(Model):
 
     @property
     def snapshot_id(self) -> str:
-        return stable_id("snapshot", self.to_data())
+        return (
+            stable_id_v2("snapshot", self.to_data())
+            if self.wire_version == "flow-wire/2"
+            else stable_id("snapshot", self.to_data())
+        )
 
 
 @dataclass(frozen=True)
@@ -510,7 +545,7 @@ class NodeKey(Model):
 
     @property
     def node_id(self) -> str:
-        return stable_id("node", self.to_data())
+        return _identity_for_snapshot("node", self.to_data(), self.snapshot_id)
 
 
 @dataclass(frozen=True)
@@ -552,7 +587,7 @@ class Evidence(Model):
 
     @property
     def evidence_id(self) -> str:
-        return stable_id("evidence", self.to_data())
+        return _identity_for_snapshot("evidence", self.to_data(), self.snapshot_id)
 
 
 @dataclass(frozen=True)
@@ -718,6 +753,10 @@ class Edge(Model):
         super().__post_init__()
         check_id(self.source, "node")
         check_id(self.target, "node")
+        require(
+            _same_identity_version(self.source, self.target),
+            "Mixed node identity versions",
+        )
         require(bool(self.evidence_ids), "Edge requires evidence")
         canonical_set(self.evidence_ids)
         for eid in self.evidence_ids:
@@ -746,7 +785,11 @@ class Edge(Model):
 
     @property
     def edge_id(self) -> str:
-        return stable_id("edge", self.to_data())
+        return (
+            stable_id_v2("edge", self.to_data())
+            if self.source.startswith("node-v2:")
+            else stable_id("edge", self.to_data())
+        )
 
 
 @dataclass(frozen=True)
@@ -769,6 +812,10 @@ class Snapshot(Model):
         require(
             self.snapshot_id == self.identity.snapshot_id, "Snapshot identity mismatch"
         )
+        if self.identity.wire_version == "flow-wire/2":
+            from .wire_contracts import validate_model_wire_v2
+
+            validate_model_wire_v2(self.function, self.identity.environment.bitness)
 
     def validate_site(self, site: Site):
         require(site.block_index < len(self.function.blocks), "Missing site block")
@@ -853,7 +900,7 @@ class MemoryObject(Model):
 
     @property
     def object_id(self) -> str:
-        return stable_id("object", self.to_data())
+        return _identity_for_snapshot("object", self.to_data(), self.snapshot_id)
 
 
 @dataclass(frozen=True)
@@ -871,7 +918,7 @@ class MemoryVersion(Model):
 
     @property
     def version_id(self) -> str:
-        return stable_id("memory", self.to_data())
+        return _identity_for_snapshot("memory", self.to_data(), self.snapshot_id)
 
 
 @dataclass(frozen=True)
@@ -919,6 +966,21 @@ class Graph(Model):
         evidence_by_id = {item.evidence_id: item for item in self.evidence}
         by_id = {n.node_id: n for n in self.nodes}
         sid = self.snapshot.snapshot_id
+        version = "v2" if sid.startswith("snapshot-v2:") else "v1"
+        all_ids = (
+            node_ids
+            + tuple(edge.edge_id for edge in self.edges)
+            + evidence_ids
+            + tuple(obj.object_id for obj in self.objects)
+            + tuple(item.version_id for item in self.versions)
+        )
+        require(
+            all(
+                identifier.split(":", 1)[0].endswith("-" + version)
+                for identifier in all_ids
+            ),
+            "Mixed graph identity versions",
+        )
         canonical_set(tuple(o.object_id for o in self.objects))
         memory_objects = {obj.object_id for obj in self.objects}
         canonical_set(tuple(v.version_id for v in self.versions))
@@ -1032,6 +1094,13 @@ class Graph(Model):
                     and PhiInput(edge.predecessor, edge.source) in target.phi_inputs,
                     "Phi edge/input mismatch",
                 )
+        if (
+            isinstance(self.snapshot, Snapshot)
+            and self.snapshot.identity.wire_version == "flow-wire/2"
+        ):
+            from .wire_contracts import validate_model_wire_v2
+
+            validate_model_wire_v2(self, self.snapshot.identity.environment.bitness)
 
     def validate_memory(self, reference: MemoryReference):
         objects = {o.object_id: o for o in self.objects}
@@ -1069,4 +1138,16 @@ class Graph(Model):
 
     @property
     def graph_digest(self) -> str:
-        return digest(self)
+        return (
+            self.graph_digest_v2
+            if self.snapshot.snapshot_id.startswith("snapshot-v2:")
+            else digest(self)
+        )
+
+    @property
+    def graph_digest_v2(self) -> str:
+        require(
+            self.snapshot.snapshot_id.startswith("snapshot-v2:"),
+            "graph_digest_v2_requires_wire_v2",
+        )
+        return digest_v2(self)
