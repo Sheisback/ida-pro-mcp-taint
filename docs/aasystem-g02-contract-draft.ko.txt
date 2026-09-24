@@ -1,0 +1,134 @@
+# AASystem G02 공개 계약 초안 (검토용, 미구현)
+
+이 문서는 **graph 전체 검증**과 **손실 없는 정수 wire 표현**의 제안이다.
+외부 분석규칙 등록/model generation 적용은 요청에 따라 보류한다. 이 초안은
+현재 공개 API나 Windows driver 지원을 선언하지 않는다.
+
+## 1. 전체 graph digest 검증: canonical byte stream
+
+현행 `Graph.graph_digest`는 `sha256-v1:` + SHA-256(`canonical_json(Graph)`의
+UTF-8 바이트)이다. `Graph.to_data()`에는 `snapshot`, 순서가 있는 `nodes`,
+`edges`, `evidence`, `axes`, `objects`, `versions`, `schema_version`이 모두
+포함된다. JSON object key는 사전순, 구분자는 `,`/`:`이며 공백은 없고 Unicode는
+UTF-8 그대로 기록한다. 배열 순서는 바꾸지 않는다. `null`과 boolean도 원형을
+유지한다. 이는 **현재 v1 identity 규칙**의 설명이며, 아래 v2 정수 규칙을 v1
+digest에 소급 적용하지 않는다.
+
+제안 도구 `flow_get_graph_digest_bytes`는 **완료된 동일 database의
+`graph_artifact`** 하나를 받아, 그 graph의 canonical UTF-8 바이트를 제한된
+base64url 페이지로 제공한다. 별도 IDB 데이터나 다른 artifact는 내보내지
+않는다. 응답 계약 `flow-graph-bytes/1`:
+
+```json
+{
+  "schema_version": "flow-graph-bytes/1",
+  "artifact_id": "artifact_...",
+  "snapshot_id": "snapshot-v1:...",
+  "graph_digest": "sha256-v1:...",
+  "identity_version": 1,
+  "build_id": "flow-build-sha256-v1:...",
+  "total_bytes": 123456,
+  "offset": 0,
+  "byte_count": 16384,
+  "chunk_base64url": "...",
+  "next_cursor": "..."
+}
+```
+
+`artifact_id`/`snapshot_id`/`graph_digest`/`identity_version`/`build_id`/
+`total_bytes`는 모든 페이지에서 동일해야 한다. 첫 offset은 0, 다음 offset은
+앞 페이지의 `offset + byte_count`이다. `next_cursor=null`이고 마지막 end가
+`total_bytes`일 때만 수집 완료다. cursor는 artifact, graph digest, total bytes,
+다음 offset에 결합되며, 다른 artifact 또는 순서의 cursor 사용은 거절한다.
+
+초안 제한: chunk는 최대 16 KiB 원본 바이트, 응답은 최대 32 KiB JSON, graph
+canonical bytes는 최대 16 MiB, 페이지는 최대 1024개다. 큰 graph나 단일 응답
+한도 초과는 부분 공개/절단 대신 `graph_export_too_large` 오류를 반환한다.
+세션에서 artifact가 사라진 경우 `wrong_database_or_unknown_id`로 실패한다.
+
+소비자는 페이지 결합 뒤 **파싱 전 원본 바이트**의 SHA-256을 계산해
+`graph_digest`와 비교한다. 그 다음 엄격 JSON 파서로 `Graph`의 정확한 필드
+집합과 schema version, `snapshot.snapshot_id == snapshot_id`를 확인한다.
+바이트 길이/offset/종료 검사는 누락·중복·순서 변경을, digest는 변조·다른 graph
+페이지 혼합을 검출한다. v1 바이트에 안전 범위 밖 JSON number가 있으면 JS
+`JSON.parse`로 의미 해석하지 말고 아래 v2 계약을 사용한다. Digest 검증은
+서버가 선택한 graph의 내부 일관성만 증명하며, 분석 의미나 바이너리 대응은
+별도 검증 대상이다.
+
+필수 계약 테스트: 다중 페이지 정상 재조립 성공; 한 바이트/페이지 누락,
+중복·역순, 다른 graph 페이지 삽입 실패; 완결 cursor 없이 성공 불가; 경계
+크기와 초과 오류. 동일 내용의 소형 graph에 대해 소비자 JS와 Python이 같은
+digest를 계산해야 한다.
+
+## 2. 정수 wire/identity v2
+
+`flow-wire/2`는 **새 snapshot 생성 시 `wire_version="flow-wire/2"`로 명시
+선택**하는 별도 계약으로 제안한다. 생략하면 `flow-wire/1`이다.
+v1 numeric artifact를 v2로 표시만 바꾸지 않는다. v2 artifact의 모든 Python
+`int` (boolean 제외)는 중첩 위치와 무관하게 다음 명시적 정수 object로 직렬화한다.
+
+```json
+{"$int":"9007199254740993"}
+```
+
+`$int` 값은 정규 10진수 `0|[1-9][0-9]*|-[1-9][0-9]*`만 허용한다. `+`, 공백,
+지수, 선행 0, `-0`, 소수점, unsafe JSON number 입력은 거절한다. 주소처럼
+부호 없는 필드는 음수도 거절한다. JS 소비자는 문자열을 `BigInt`로 변환하고,
+아무 단계에서도 `Number`를 거치지 않는다.
+
+필드별 제약은 v2 schema가 강제한다. 특히 `Operand.address`,
+`Operand.source_eas`, `Instruction.source_eas`, `Evidence.source_eas`,
+`CallInfo.callee_ea`, snapshot/추출/호출 관측의 EA·image base·target EA 및
+공개 결과의 RVA는 **unsigned 64-bit** (`0..2^64-1`)이며 환경의 `bitness`가
+16/32이면 해당 폭 밖 EA를 거절한다. `BADADDR`는 정수가 아니라 absent/`null`로
+표현한다. `Node.constant`/`Operand.constant`는 해당 `width_bits`에서 표현
+가능한 bit pattern으로 검사한다. v2의 제안 한도는 다음과 같다.
+
+| 범주 | 부호·허용 범위 |
+| --- | --- |
+| EA / image base / target EA | unsigned, `0..2^bitness-1`, bitness는 16/32/64; IDA의 `BADADDR` sentinel은 제외 |
+| RVA | unsigned 64-bit, `0..2^64-1`; EA 합성 시 overflow 거절 |
+| pointer·stack 상대 displacement | signed 64-bit, `-2^63..2^63-1` |
+| `Node.constant`, `Operand.constant`, bit-vector 값 | unsigned `0..2^width_bits-1`, width `1..4096` |
+| byte/bit offset, 크기, index, count 등 구조 정수 | unsigned `0..2^53-1` (별도 작은 한도가 있으면 그것을 우선 적용) |
+
+나머지 정수도 전부 `$int`로 전송하므로 새 경로에 unsafe JSON number가
+잠입하지 않는다. 이 표에서 빠진 필드나 한도 초과 정수는 조용히 통과시키지
+않고 `integer_out_of_range`로 실패해야 한다. 구현 전 모든 public flow
+artifact의 정수 필드 schema audit를 완료한다. 페이지 offset/길이처럼 명시적
+상한이 16 MiB 이하인 **응답 envelope 정수**는 이 tagged graph payload와
+구분하여 안전한 JSON number로 유지할 수 있다.
+
+v2 identity는 wire bytes와 분리된 암묵적 Python 숫자 해시가 아니다.
+`to_wire_v2()`의 **검증된 tagged-int tree**를 object-key 정렬/배열 순서 유지
+compact UTF-8 JSON으로 canonicalize한다. `snapshot-v2`, `node-v2`,
+`evidence-v2`, `edge-v2`, `object-v2`, `memory-v2`는 각각
+`{"domain": KIND, "identity_version": 2, "value": WIRE_TREE}`의 SHA-256이고,
+`Graph.graph_digest_v2`는
+`{"domain":"graph", "identity_version":2, "value":GRAPH_WIRE_TREE}`의
+SHA-256 (`sha256-v2:`)이다. v1 ID와 v2 ID는 비교·혼합하지 않는다.
+`function-entry:<EA>` 같은 문자열 합성 identity도 v2에서 EA를 검증된 정규
+10진수로부터 만들고, snapshot identity를 다시 산출한다. 요청·job·artifact·
+페이지·cache key는 wire/identity version과 snapshot ID를 함께 묶는다.
+
+기존 응답은 `flow-wire/1`로 유지하되, 해당 응답 또는 입력에 JS 안전 범위
+(`|n| <= 2^53-1`)를 벗어나는 정수가 하나라도 있으면 **명시적**
+`unsafe_integer_for_wire_v1` 오류로 실패시킨다. 숫자를 반올림하거나 문자열로
+몰래 바꾸지 않는다. v2는 opt-in이며 v1과 v2 사이의 ID 동일성을 주장하지
+않는다. 혼합 버전 cursor, artifact, 요청은 거절한다.
+
+필수 계약 테스트: `2^53-1`, `2^53`, `2^53+1`, `2^64-2` EA와 서로 인접한
+큰 EA의 독립성; `2^64`, `BADADDR` sentinel, 음수 EA, 비정규 문자열,
+unsafe numeric 입력 거절;
+큰 `Node.constant`와 evidence EA의 왕복; Python/JS가 동일 v2 tree에서
+동일 snapshot/node/evidence/graph identity를 계산; v1 안전 범위에서는 기존
+응답 유지, 범위 밖에서는 오류. v2 graph byte-stream은 **위 graph digest의
+domain/identity_version/value wrapper 전체**를 canonical bytes로 제공한다.
+따라서 소비자는 v2에서도 받은 원본 바이트를 직접 해시하고 wrapper의 `value`를
+graph로 해석한다. v1 graph bytes와 v2 digest preimage를 혼동하지 않는다.
+
+## 보류
+
+AASystem 분석규칙의 의미·선택 경계가 확정될 때까지 외부 model generation
+등록, 적용 API, 캐시 결합 및 관련 fixture를 설계·구현하지 않는다. `analyst_selected`
+라우팅만으로 외부 모델이 적용되었다고 주장하지 않는다.
