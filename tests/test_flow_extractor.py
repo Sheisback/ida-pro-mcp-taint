@@ -26,6 +26,7 @@ from ida_pro_mcp.flow_core.summaries import (
     SummaryCatalog,
     SummaryIdentity,
 )
+from ida_pro_mcp.flow_core.states import StorageLocation
 
 ROOT = Path(__file__).resolve().parents[1]
 PATH = ROOT / "src/ida_pro_mcp/ida_mcp/flow/extractor.py"
@@ -179,10 +180,11 @@ def fake_sdk(monkeypatch, tmp_path):
     binary.write_bytes(b"not executed")
     empty = NS(t=0, size=-1)
     ins = NS(opcode=2, ea=0x100, l=NS(t=999, size=4), r=empty, d=empty, next=None)
-    block = NS(head=ins, npred=lambda: 0, nsucc=lambda: 0)
+    block = NS(head=ins, npred=lambda: 0, nsucc=lambda: 0, type=0)
     mba = NS(qty=1, maturity=6, get_mblock=lambda i: block)
     hx = NS(
         MMAT_CALLS=6,
+        BLT_STOP=1,
         m_mov=1,
         m_ext=2,
         mop_z=0,
@@ -193,6 +195,7 @@ def fake_sdk(monkeypatch, tmp_path):
         mop_b=5,
         mop_S=6,
         mop_d=7,
+        mop_a=8,
         init_hexrays_plugin=lambda: True,
         get_hexrays_version=lambda: "test",
         hexrays_failure_t=lambda: NS(),
@@ -285,6 +288,256 @@ def test_unknown_operands_remain_opaque_and_no_width_is_invented(monkeypatch, tm
             function_key="fixture-0",
             profile={**profile, "maturity": "MMAT_GLBOPT3"},
         )
+
+
+@pytest.mark.parametrize(
+    "referent,expected_kind,expected_address",
+    (
+        ("stack", "stack_address", 8),
+        ("global", "address", 0x1000),
+        ("register", "unknown", None),
+    ),
+)
+def test_address_of_operand_preserves_only_verified_referents(
+    monkeypatch, tmp_path, referent, expected_kind, expected_address
+):
+    profile = fake_sdk(monkeypatch, tmp_path)
+    hx = sys.modules["ida_hexrays"]
+    ins = hx.gen_microcode().get_mblock(0).head
+    ref = (
+        NS(t=hx.mop_S, size=-1, s=NS(off=8))
+        if referent == "stack"
+        else NS(t=hx.mop_v, size=-1, g=0x1000)
+        if referent == "global"
+        else NS(t=hx.mop_r, size=-1, r=8)
+    )
+    ins.l = NS(t=hx.mop_a, size=8, a=ref)
+    snapshot = adapter.extract_snapshot(
+        0x100, namespace="owner", function_key="fixture-0", profile=profile
+    )
+    operand = snapshot.function.blocks[0].instructions[0].operands[0]
+    assert operand.kind == expected_kind
+    assert operand.address == expected_address
+    assert Operand.from_data(operand.to_data()) == operand
+    if expected_kind == "unknown":
+        assert operand.diagnostic.code == "unsupported_operand"
+        assert "mop_r" in operand.diagnostic.detail
+    else:
+        assert not any(
+            d.code == "unsupported_operand" for d in snapshot.function.diagnostics
+        )
+
+
+def test_native_stop_block_becomes_value_less_exit_not_fabricated_return(
+    monkeypatch, tmp_path
+):
+    profile = fake_sdk(monkeypatch, tmp_path)
+    hx = sys.modules["ida_hexrays"]
+    mba = hx.gen_microcode()
+    entry = mba.get_mblock(0)
+    entry.nsucc = lambda: 1
+    entry.succ = lambda index: 1
+    terminal = NS(
+        head=None,
+        type=hx.BLT_STOP,
+        npred=lambda: 1,
+        pred=lambda index: 0,
+        nsucc=lambda: 0,
+    )
+    mba.qty = 2
+    mba.get_mblock = lambda index: (entry, terminal)[index]
+    snapshot = adapter.extract_snapshot(
+        0x100, namespace="owner", function_key="fixture-0", profile=profile
+    )
+    marker = snapshot.function.blocks[1].instructions[0]
+    assert marker.opcode == "m_exit" and marker.synthetic
+    assert marker.operands == () and marker.source_eas == ()
+
+    terminal.type = 2  # BLT_0WAY-like unresolved/non-returning leaf.
+    unresolved = adapter.extract_snapshot(
+        0x100, namespace="owner", function_key="fixture-0", profile=profile
+    )
+    assert unresolved.function.blocks[1].instructions == ()
+
+
+def test_typed_scalar_return_requires_exact_register_roundtrip(monkeypatch, tmp_path):
+    profile = fake_sdk(monkeypatch, tmp_path)
+    hx = sys.modules["ida_hexrays"]
+    mba = hx.gen_microcode()
+    entry = mba.get_mblock(0)
+    entry.nsucc = lambda: 1
+    entry.succ = lambda index: 1
+    terminal = NS(
+        head=None,
+        type=hx.BLT_STOP,
+        npred=lambda: 1,
+        pred=lambda index: 0,
+        nsucc=lambda: 0,
+    )
+    mba.qty = 2
+    mba.get_mblock = lambda index: (entry, terminal)[index]
+
+    class TypeInfo:
+        def get_func_details(self, details):
+            details.is_noret = lambda: False
+            details.rettype = NS(get_size=lambda: 4)
+            details.retloc = NS(is_reg1=lambda: True, regoff=lambda: 0, reg1=lambda: 0)
+            details.append(
+                NS(
+                    type=NS(get_size=lambda: 4),
+                    argloc=NS(is_reg1=lambda: True, regoff=lambda: 0, reg1=lambda: 7),
+                )
+            )
+            return True
+
+    class FuncDetails(list):
+        pass
+
+    monkeypatch.setitem(
+        sys.modules, "ida_typeinf", NS(tinfo_t=TypeInfo, func_type_data_t=FuncDetails)
+    )
+    sys.modules["ida_nalt"].get_tinfo = lambda tif, ea: True
+    hx.reg2mreg = lambda reg: 8 if reg == 0 else 56
+    hx.mreg2reg = lambda reg, size: {8: 0, 56: 7}.get(reg, -1)
+    snapshot = adapter.extract_snapshot(
+        0x100, namespace="owner", function_key="fixture-0", profile=profile
+    )
+    instruction = snapshot.function.blocks[1].instructions[0]
+    assert instruction.opcode == "m_ret" and instruction.synthetic
+    assert instruction.source_eas == ()
+    result = instruction.operands[0]
+    assert result.storage == StorageLocation("microregister", "microregister", 64, 32)
+    assert result.native_kind == "typed_return_argloc"
+    assert {d.code for d in snapshot.function.diagnostics} >= {"typed_return_location"}
+    marker = snapshot.function.blocks[0].instructions[-1]
+    assert marker.opcode == "m_arg" and marker.synthetic
+    assert marker.operands[0].constant == 0
+    assert marker.operands[1].storage == StorageLocation(
+        "microregister", "microregister", 448, 32
+    )
+    assert marker.operands[1].native_kind == "typed_argument_argloc"
+
+    class PointerTypeInfo(TypeInfo):
+        def get_func_details(self, details):
+            assert super().get_func_details(details)
+            details[0].type = NS(get_size=lambda: 8, is_ptr=lambda: True)
+            return True
+
+    sys.modules["ida_typeinf"].tinfo_t = PointerTypeInfo
+    pointer = adapter.extract_snapshot(
+        0x100, namespace="owner", function_key="fixture-0", profile=profile
+    )
+    pointer_arg = pointer.function.blocks[0].instructions[-1].operands[1]
+    assert pointer_arg.storage == StorageLocation(
+        "microregister", "microregister", 448, 64
+    )
+    assert pointer_arg.native_kind == "typed_pointer_argument_argloc"
+
+    class NarrowTypeInfo(TypeInfo):
+        def get_func_details(self, details):
+            assert super().get_func_details(details)
+            details.rettype = NS(get_size=lambda: 1)
+            details[0].type = NS(get_size=lambda: 1)
+            return True
+
+    sys.modules["ida_typeinf"].tinfo_t = NarrowTypeInfo
+    # IDA 9.3 returns AL/DIL rather than RAX/RDI for a one-byte roundtrip.
+    # Both aliases must still map back to the exact same microregister byte.
+    hx.reg2mreg = lambda reg: {0: 8, 7: 56, 16: 8, 27: 56}.get(reg, -1)
+    hx.mreg2reg = lambda reg, size: {8: 16, 56: 27}.get(reg, -1) if size == 1 else -1
+    narrow = adapter.extract_snapshot(
+        0x100, namespace="owner", function_key="fixture-0", profile=profile
+    )
+    assert narrow.function.blocks[1].instructions[0].opcode == "m_ret"
+    assert narrow.function.blocks[1].instructions[0].operands[0].storage == (
+        StorageLocation("microregister", "microregister", 64, 8)
+    )
+    narrow_arg = narrow.function.blocks[0].instructions[-1]
+    assert narrow_arg.opcode == "m_arg"
+    assert narrow_arg.operands[1].storage == StorageLocation(
+        "microregister", "microregister", 448, 8
+    )
+
+    hx.mreg2reg = lambda reg, size: -1
+    unknown = adapter.extract_snapshot(
+        0x100, namespace="owner", function_key="fixture-0", profile=profile
+    )
+    assert unknown.function.blocks[1].instructions[0].opcode == "m_exit"
+
+
+def test_typed_void_and_stack_argument_have_distinct_unmapped_reasons(
+    monkeypatch, tmp_path
+):
+    profile = fake_sdk(monkeypatch, tmp_path)
+    hx = sys.modules["ida_hexrays"]
+    mba = hx.gen_microcode()
+    entry = mba.get_mblock(0)
+    entry.nsucc = lambda: 1
+    entry.succ = lambda index: 1
+    mba.qty = 2
+    mba.get_mblock = lambda index: (
+        entry,
+        NS(
+            head=None,
+            type=hx.BLT_STOP,
+            npred=lambda: 1,
+            pred=lambda index: 0,
+            nsucc=lambda: 0,
+        ),
+    )[index]
+
+    class TypeInfo:
+        def get_func_details(self, details):
+            details.is_noret = lambda: False
+            details.rettype = NS(get_size=lambda: 0, is_void=lambda: True)
+            details.retloc = NS(is_reg1=lambda: False)
+            details.append(
+                NS(
+                    type=NS(get_size=lambda: 4),
+                    argloc=NS(is_reg1=lambda: False),
+                )
+            )
+            return True
+
+    class FuncDetails(list):
+        pass
+
+    monkeypatch.setitem(
+        sys.modules,
+        "ida_typeinf",
+        NS(tinfo_t=TypeInfo, func_type_data_t=FuncDetails),
+    )
+    sys.modules["ida_nalt"].get_tinfo = lambda tif, ea: True
+    snapshot = adapter.extract_snapshot(
+        0x100, namespace="owner", function_key="fixture-0", profile=profile
+    )
+    assert snapshot.function.blocks[1].instructions[0].opcode == "m_exit"
+    assert not any(
+        instruction.opcode == "m_arg"
+        for block in snapshot.function.blocks
+        for instruction in block.instructions
+    )
+    assert {item.code for item in snapshot.function.diagnostics} >= {
+        "typed_void_return",
+        "typed_argument_unmapped",
+    }
+
+    class NoReturnTypeInfo(TypeInfo):
+        def get_func_details(self, details):
+            assert super().get_func_details(details)
+            details.is_noret = lambda: True
+            details.clear()
+            return True
+
+    sys.modules["ida_typeinf"].tinfo_t = NoReturnTypeInfo
+    noreturn = adapter.extract_snapshot(
+        0x100, namespace="owner", function_key="fixture-0", profile=profile
+    )
+    assert noreturn.function.blocks[1].instructions[0].opcode == "m_noreturn"
+    assert any(
+        item.code == "typed_noreturn" and item.severity == "unsupported"
+        for item in noreturn.function.diagnostics
+    )
 
 
 def test_profile_and_no_display_parsing_boundary():
@@ -380,6 +633,97 @@ def test_indirect_call_metadata_preserves_unresolved_target(monkeypatch, tmp_pat
     assert call.return_width_bits == 32 and not call.return_is_void
     assert call.unresolved
     assert Snapshot.from_json(canonical_json(result)) == result
+
+
+def test_direct_mop_v_call_target_recovers_missing_callinfo_callee(
+    monkeypatch, tmp_path
+):
+    profile = direct_call_sdk(monkeypatch, tmp_path)
+    hx = sys.modules["ida_hexrays"]
+    ins = hx.gen_microcode().get_mblock(0).head
+    ins.l = NS(t=hx.mop_v, size=8, g=0x1200)
+    ins.d.f.callee = -1
+    extracted = adapter.extract_snapshot(
+        0x1100,
+        namespace="owner",
+        function_key="caller",
+        profile=profile,
+        include_calls=True,
+    )
+    assert extracted.calls[0].call.callee_ea == 0x1200
+    assert (
+        extracted.snapshot.function.blocks[0].instructions[0].operands[2].call
+        == extracted.calls[0].call
+    )
+    assert "call_target_from_direct_operand" in {
+        item.code for item in extracted.snapshot.function.diagnostics
+    }
+    assert Snapshot.from_data(extracted.snapshot.to_data()) == extracted.snapshot
+
+
+def test_direct_target_conflict_and_indirect_global_stay_unresolved(
+    monkeypatch, tmp_path
+):
+    profile = direct_call_sdk(monkeypatch, tmp_path)
+    hx = sys.modules["ida_hexrays"]
+    ins = hx.gen_microcode().get_mblock(0).head
+    ins.l = NS(t=hx.mop_v, size=8, g=0x1300)
+    conflict = adapter.extract_snapshot(
+        0x1100,
+        namespace="owner",
+        function_key="caller",
+        profile=profile,
+        include_calls=True,
+    )
+    assert conflict.calls[0].call.callee_ea is None
+    assert "call_target_conflict" in conflict.calls[0].call.unresolved
+    assert "call_target_conflict" in {
+        item.code for item in conflict.snapshot.function.diagnostics
+    }
+
+    hx.m_icall = 9
+    ins.opcode = hx.m_icall
+    ins.d.f.callee = -1
+    indirect = adapter.extract_snapshot(
+        0x1100,
+        namespace="owner",
+        function_key="caller",
+        profile=profile,
+        include_calls=True,
+    )
+    assert indirect.calls[0].call.callee_ea is None
+    assert "call_target_from_direct_operand" not in {
+        item.code for item in indirect.snapshot.function.diagnostics
+    }
+
+
+def test_nested_direct_call_target_reaches_observation(monkeypatch, tmp_path):
+    profile = direct_call_sdk(monkeypatch, tmp_path)
+    hx = sys.modules["ida_hexrays"]
+    outer = hx.gen_microcode().get_mblock(0).head
+    nested = NS(
+        opcode=hx.m_call,
+        ea=outer.ea,
+        l=NS(t=hx.mop_v, size=8, g=0x1200),
+        r=NS(t=hx.mop_z, size=-1),
+        d=outer.d,
+    )
+    nested.d.f.callee = -1
+    outer.opcode = hx.m_mov
+    outer.l = NS(t=hx.mop_d, size=4, d=nested)
+    outer.d = NS(t=hx.mop_r, size=4, r=8)
+    result = adapter.extract_snapshot(
+        0x1100,
+        namespace="owner",
+        function_key="caller",
+        profile=profile,
+        include_calls=True,
+    )
+    assert len(result.calls) == 1
+    assert result.calls[0].call.callee_ea == 0x1200
+    expression = result.snapshot.function.blocks[0].instructions[0].operands[0]
+    assert expression.kind == "expression" and expression.operation == "m_call"
+    assert expression.children[2].call == result.calls[0].call
 
 
 def test_catalog_digest_scopes_snapshot_identity_without_changing_legacy_default():

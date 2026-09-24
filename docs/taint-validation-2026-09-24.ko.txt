@@ -1,0 +1,144 @@
+Taint 실제 검증 결과 — 2026-09-24 (KST)
+=====================================
+
+주의: 이 문서와 taint_scenarios_native.json은 수정 작업 전의 기준선이다.
+현재 코드에서는 일부 원인이 수정 중이므로 아래 집계를 현재 버전의 최종
+검증 결과로 해석하지 않는다. 원래 receipt의 hash를 임의 변경하지 않는다.
+
+결론
+----
+기본적인 값 전달, 독립 입력 분리, 덮어쓰기, 구조체 필드, 고정 인덱스,
+부분/전체 바이트 지우기 등에서는 기대한 라벨을 관측했다. 그러나 “taint가
+모든 경우 정확하게 동작한다”고 결론 내릴 수는 없다. 루프 분석 작업이
+실제로 실패하는 버그와 보수적 과탐, 미해결 메모리/호출 경계가 재현됐다.
+분석 엔진은 수정하지 않고, 재현 코드·회귀 테스트·실제 실행 증거를 추가했다.
+
+환경과 검증 방식
+----------------
+- IDA 9.3, Hex-Rays 9.3.0.260213, Python 3.11.16.
+- Apple clang 21.0.0 (clang-2100.0.123.102), SDK 26.4.
+- Mach-O x86_64 / X64-LE / darwin-x86_64-sysv-derived.
+- Mach-O arm64 / A64-LE / darwin-aarch64.
+- 각 아키텍처에서 O0와 O1로 컴파일. profile: profiles/flow-readonly.txt.
+- routing_mode=analyst_selected로 공개 snapshot/SSA/graph/implicit/call API 사용.
+- 자체 작성한 무해한 C 예제만 사용. 분석 프로그램과 테스트를 실행했으며
+  대상 바이너리는 한 번도 실행하지 않았다. 각 입력은 일회용 복사본으로
+  열었고, 모든 소유 세션은 save=False로 닫았다. 입력 해시 보존 확인 완료.
+- native microcode 그래프에는 최종 Return 노드가 노출되지 않아, C 예제의
+  결과를 전용 volatile 전역 변수에 쓰도록 계측했다. 이 Store의 content
+  라벨을 관측했다. 원본 함수의 반환값까지 완전 검증한 것으로 해석하지 않는다.
+- 첫 인자의 ABI 위치는 identity 함수의 내용 의존성으로 보정했다.
+  스택 spill/reload는 memory_data_dependency를 따라가되 주소 라벨은 제외했다.
+  32비트 소스를 64비트 전체 노드로 임의 확대하지 않았다.
+
+결과 집계
+---------
+C 의미 시나리오 27개 × 4개 설정 = 108회. 별도 포인터 보정 4회는 제외.
+
+설정          라벨 일치/partial  라벨 차이/partial  분석 오류  소스 선택 불가
+x86_64 O0              23                  3              1              0
+x86_64 O1              25                  1              0              1
+arm64 O0               23                  3              1              0
+arm64 O1               24                  2              0              1
+합계                   95                  9              2              2
+
+95회는 “완전한 통과”가 아니라 지정 라벨의 일치다. 완료된 implicit 분석은
+모두 partial이었고 unknown도 남았다. snapshot 작업의 complete 상태와
+분석 의미의 complete_in_scope 상태는 다른 개념이다.
+
+추가 SDK-free 의미 테스트: 20개 중 13 통과, 7개 문제 재현.
+테스트 하네스 자체의 회귀 테스트: 12 통과.
+전체 SDK-free 테스트: 1513 passed, 7 xfailed, 117 subtests passed (214.87초).
+strict xfail은 실패를 정상 동작으로 바꾼 것이 아니다. 기대값을 유지하고
+알려진 미해결 문제를 표시했으며, 해결되어 XPASS가 되면 테스트가 실패한다.
+--runxfail로도 7 failed, 13 passed를 다시 확인했다.
+
+발견 사항과 우선순위
+-------------------
+1. [실제 버그 / 우선] 루프의 implicit 분석이 예외로 종료된다.
+   - C taint_loop: x86_64 O0, arm64 O0에서 snapshot은 성공하지만 implicit
+     작업이 handler_failed / ContractError로 실패한다.
+   - 최소 4블록 while-loop로도 재현: "Control predicate cannot depend on itself".
+   - 루프의 제어 영역에 헤더 자체가 포함되고, predicate -> 자기 자신 관계를
+     생성하지만 ControlDependency 계약이 그 관계를 거부한다.
+   - 위치: src/ida_pro_mcp/flow_core/implicit_analysis.py:319-340, :59-62;
+     implicit_cfg.py:550-570.
+   - O1에서 동일 C 예제가 실패하지 않았다는 사실은 최적화되지 않은 루프의
+     지원 증명이 아니다. 재현 테스트의 strict xfail 1건을 남겼다.
+
+2. [정밀도 한계] 입력 의존성이 사라지는 식에도 taint가 남는다.
+   - x & 0, x * 0, x ^ x, x - x: 결과는 입력과 무관하지만 X 라벨 유지.
+   - true ? 7 : x, false ? x : 7: 계산값 7은 맞지만 미선택 arm의 X도 유지.
+   - SDK-free IR에서 총 6개를 재현. 현재 피연산자 라벨 합집합 규칙의
+     보수적 과탐이며, 곧바로 unsoundness나 보안 결함을 의미하지 않는다.
+   - 위치: src/ida_pro_mcp/flow_core/analysis.py:318-333.
+   - native C의 해당 산술식은 기대대로 관측됐다. 컴파일러/Hex-Rays가
+     상수화할 수 있으므로 native 결과만으로 core 정밀도 문제를 가리면 안 된다.
+
+3. [미해결 provenance] 가변 인덱스 배열의 지정 라벨을 놓친다.
+   - a[2]={x,7}; a[n & 1]은 x에 의존할 수 있지만 array_index 4개 설정
+     모두 결과의 argument-0 라벨이 없었다. partial/unknown은 보존됐다.
+   - 고정 인덱스 array_constant는 기대 라벨이 관측됐다.
+   - 따라서 “taint 없음”이 아니라 “현재 모델로 출처를 확정하지 못함”이다.
+
+4. [보수적 별칭/정밀도] O0의 스택 spill이 추가 라벨 또는 출처 손실을 만든다.
+   - x86_64 O0 pointer_only: 주소만 소스인데 내용에도 라벨이 붙음.
+   - x86_64 O0 및 arm64 O0 load_before_store: 저장 전 읽은 old에 이후
+     쓰기의 라벨이 붙음. 모두 may_alias 메모리 관계를 통과한 보수적 과탐.
+   - arm64 O0 store_then_load: *p=x; 결과=*p인데 지정 라벨을 보존하지 못함.
+     *p 쓰기가 p의 스택 spill과도 별칭 가능하다고 판단되어 pointer reload가
+     Top으로 확장되고, Store->Load 관계가 opaque가 된다.
+     diagnostics: partial_pointer_reload, pointer_relation_widened,
+     load_range_widened, possible_null_access, unknown_address.
+   - 위치: memory.py:528-540; memory_graph.py:146-149;
+     memory_analysis.py:509-521, :553-572; analysis.py:282-288.
+   - partial/unknown을 유지하므로 확정적인 미탐/안전 판정으로 세지 않았다.
+
+5. [지원/선택 한계] 임의 호출과 정확한 소스 범위는 별도 검증이 필요하다.
+   - arm64 O1 call_indirect는 argument-0 라벨 없이 unknown으로 남았다.
+     임의 간접 호출의 의미는 미해결 경계이며 실제 callee 전파 성공이 아니다.
+   - x86_64 O1 call_indirect, arm64 O1 call_identity에서는 32비트 인자가
+     64비트 InputValue로 노출되어 exact whole-node seed를 선택하지 못했다.
+     이 두 건은 분석 실패나 taint 누락으로 세지 않고 선택 불가로 분리했다.
+
+6. [결과 해석 한계] 일반 native 반환/완전성 계약이 아직 부족하다.
+   - 112개의 snapshot 모두 native Return 노드가 없었다.
+   - implicit 결과에는 unknown_terminal, partial_control_certificate 등이
+     남았으며, Store/Load 경계도 unknown을 유지한다.
+   - 위치: flow_core/profile_semantics.py:811-817의 기존
+     normal_terminal_return_not_serialized 한계;
+     analysis.py:334-341의 보수적 메모리/호출 경계 처리.
+   - 단순 identity조차 공개 implicit API에서 complete_in_scope 증명으로
+     제공되지는 않는다. 이 테스트는 지원 승격/릴리스 승인 자료가 아니다.
+
+아홉 개 partial 라벨 차이 목록
+----------------------------
+- x86_64 O0: array_index(라벨 없음), pointer_only(추가), load_before_store(추가).
+- x86_64 O1: array_index(라벨 없음).
+- arm64 O0: array_index(라벨 없음), load_before_store(추가), store_then_load(없음).
+- arm64 O1: array_index(라벨 없음), call_indirect(라벨 없음).
+
+재현 파일과 명령
+----------------
+- C 예제: tests/flow_fixtures/taint_scenarios.c
+- IDA 실행기: tests/flow_core/native_taint_scenarios.py
+- SDK-free 의미 회귀: tests/flow_core/test_taint_scenarios.py
+- 하네스 회귀: tests/flow_core/test_native_taint_scenarios.py
+- 요약 receipt: tests/flow_fixtures/manifests/taint_scenarios_native.json
+- 전체 로컬 증거(빌드 산출물, git 제외): build/taint-scenarios-details.json
+- 실제 RED 결과(빌드 산출물): build/taint-scenarios-known-failures.txt
+
+PYTHONPATH=src:. uv run pytest -q tests
+PYTHONPATH=src:. uv run pytest --runxfail -q tests/flow_core/test_taint_scenarios.py
+PYTHONPATH=src:. uv run python tests/flow_core/native_taint_scenarios.py \
+  tests/flow_fixtures/manifests/taint_scenarios_native.json \
+  --details-output build/taint-scenarios-details.json
+
+두 번째 명령은 재현된 7건 때문에 종료 코드 1을 반환한다. 세 번째 명령도
+발견된 오류/미해결/소스 선택 불가 때문에 종료 코드 1을 반환한다.
+원하는 통과 결과를 만들기 위해 오라클이나 native evidence를 바꾸지 않았다.
+
+추가 검증: scoped Ruff, scoped Pyright(.venv Python), Python compileall,
+C -Wall -Wextra -Werror -fsyntax-only, 기존 support receipt audit 통과.
+최종 source/runner/implementation SHA-256와 전체 증거 해시, BUILD_ID,
+112회 집계, 입력 보존, save=False 종료를 다시 검증했다.

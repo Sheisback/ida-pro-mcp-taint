@@ -138,6 +138,15 @@ class FlowImplicitSeedSpec(TypedDict):
     labels: FlowLabelSpec
 
 
+class FlowImplicitBitSeedSpec(TypedDict):
+    kind: Literal["bit_range"]
+    schema_version: Literal[1]
+    node_id: str
+    labels: FlowLabelSpec
+    bit_offset: int
+    width_bits: int
+
+
 @tool
 @idasync
 def flow_get_capabilities() -> FlowCapabilities:
@@ -389,7 +398,7 @@ def flow_cancel_job(job_id: str) -> FlowJob | FlowError:
 @_flow_api
 def flow_create_implicit_analysis(
     ssa_artifact: str,
-    seeds: list[FlowImplicitSeedSpec],
+    seeds: list[FlowImplicitSeedSpec | FlowImplicitBitSeedSpec],
     request_key: str,
     max_evaluations: int = 100000,
 ) -> FlowJobSubmission | FlowError:
@@ -398,6 +407,10 @@ def flow_create_implicit_analysis(
     Control provenance remains distinct from explicit provenance. Partial CFG or
     budget coverage is returned as partial with a concrete frontier; it is never
     interpreted as evidence that no implicit flow exists.
+
+    A `kind=bit_range` seed marks a whole-byte interval of an InputValue rather
+    than its entire register. Scalar bit projections are exact; a later memory
+    store/reload remains conservatively byte-imprecise and partial.
     """
     return _service().create_implicit(ssa_artifact, seeds, request_key, max_evaluations)
 
@@ -491,6 +504,65 @@ def flow_get_implicit_analysis(
 ) -> FlowArtifactPage | FlowError:
     """Page implicit facts, control relations, and any unresolved frontier."""
     return _service().analysis_page(artifact_id, "implicit", cursor, limit)
+
+
+@tool
+@_flow_api
+def flow_explain_implicit_analysis(
+    artifact_id: str,
+    observation_node_id: str,
+    cursor: str | None = None,
+    limit: int = 50,
+    max_nodes: int = 2048,
+    max_causes: int = 256,
+) -> FlowArtifactPage | FlowError:
+    """Page bounded candidate causes for one owned implicit-analysis fact.
+
+    Local structural predecessors and function-wide partial diagnostics are
+    separate items. A candidate is not proof of path feasibility, definite
+    source-to-sink flow, or a vulnerability verdict. For an untyped input
+    pointer versus the current frame, ``alias_boundary`` reports that
+    no-alias is unproven and possible taint remains unknown.
+    """
+    return _service().explain_implicit(
+        artifact_id,
+        observation_node_id,
+        cursor,
+        limit,
+        max_nodes,
+        max_causes,
+    )
+
+
+@tool
+@_flow_api
+def flow_get_memory_analysis(
+    artifact_id: str, cursor: str | None = None, limit: int = 50
+) -> FlowArtifactPage | FlowError:
+    """Page owned byte-memory accesses, candidate ranges, facts and reasons.
+
+    Use the ``memory_result_artifact`` from a completed snapshot job. An access
+    marked may_alias or opaque is not a definite data-flow or safety verdict.
+    ``alias_boundary`` names an untyped-input/current-frame no-alias proof gap;
+    metadata also states the conditional typed-pointer policy. Pages are
+    bounded and scoped to the current database session.
+    """
+    return _service().analysis_page(artifact_id, "memory", cursor, limit)
+
+
+@tool
+@_flow_api
+def flow_get_derived_call_evidence(
+    artifact_id: str, cursor: str | None = None, limit: int = 50
+) -> FlowArtifactPage | FlowError:
+    """Page a bound unreviewed return or single-write certificate.
+
+    Use an artifact ID from ``derived_call_evidence`` or
+    ``derived_call_memory_evidence`` in a completed snapshot job. A write may
+    be a proven typed output-pointer write or one fixed-global write. Each
+    page rechecks the claimed scope; unrelated call effects remain unresolved.
+    """
+    return _service().analysis_page(artifact_id, "derived_call", cursor, limit)
 
 
 @_flow_api

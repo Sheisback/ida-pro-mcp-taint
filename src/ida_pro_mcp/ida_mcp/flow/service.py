@@ -7,11 +7,24 @@ from pathlib import Path
 from typing import Any, cast
 
 from ida_pro_mcp.flow_core import canonical_json, digest
-from ida_pro_mcp.flow_core.analysis import Seed
+from ida_pro_mcp.flow_core.analysis import BitSeed, Seed
 from ida_pro_mcp.flow_core.build_identity import BUILD_ID
 from ida_pro_mcp.flow_core.call_composition import CallCompositionResult
 from ida_pro_mcp.flow_core.constraints import ConstraintBindings, ConstraintQuery
-from ida_pro_mcp.flow_core.contracts import Graph, Snapshot
+from ida_pro_mcp.flow_core.derived_calls import (
+    DerivedGlobalWriteEffect,
+    DerivedIndirectReturnEffect,
+    DerivedMemoryWriteEffect,
+    DerivedReturnEffect,
+    FiniteIndirectTargets,
+    derive_direct_memory_write,
+    derive_direct_global_write,
+    derive_direct_return,
+    derive_finite_indirect_return,
+    proves_no_memory_effects,
+)
+from ida_pro_mcp.flow_core.explain import explain_observation
+from ida_pro_mcp.flow_core.contracts import CallInfo, Graph, Snapshot
 from ida_pro_mcp.flow_core.host_identity import identity
 from ida_pro_mcp.flow_core.implicit_analysis import (
     ImplicitPolicy,
@@ -23,12 +36,20 @@ from ida_pro_mcp.flow_core.path_conditions import (
     path_bindings,
     prove_path,
 )
-from ida_pro_mcp.flow_core.memory_graph import build_memory_graph
+from ida_pro_mcp.flow_core.memory_graph import (
+    bind_memory_graph,
+    build_memory_graph,
+    memory_access_reasons,
+    memory_dependency_cause,
+    replay_memory_graph,
+)
+from ida_pro_mcp.flow_core.memory import MemoryPlan, MemoryResult
 from ida_pro_mcp.flow_core.persistence import require
 from ida_pro_mcp.flow_core.profile_routing import (
     RoutingMode,
     resolve_open_database_profile,
 )
+from ida_pro_mcp.flow_core.serialization import ContractError
 from ida_pro_mcp.flow_core.proof import (
     ProofResult,
     validate_proof_result,
@@ -36,7 +57,7 @@ from ida_pro_mcp.flow_core.proof import (
 from ida_pro_mcp.flow_core.query import Queries, artifact_page, evidence_chunks
 from ida_pro_mcp.flow_core.runtime import Handler
 from ida_pro_mcp.flow_core.runtime_contracts import RuntimeScope
-from ida_pro_mcp.flow_core.ssa import SSAProgram
+from ida_pro_mcp.flow_core.ssa import SSAProgram, argument_bindings
 
 from ..sync import idasync
 from . import extractor, runtime
@@ -44,6 +65,7 @@ from .profile_routing import observe_open_database
 from .summary_catalog import CallBinding
 from .call_state import compose_program_calls
 from .reviewed_runtime import catalog_for_runtime, extract_callee_closure
+from .derived_runtime import extract_local_direct_callees
 
 
 _ROUTING_SELECTION_SCHEMA = "flow-routing-selection/1"
@@ -297,7 +319,13 @@ def _extract(ctx, request):
             registry=before["registry"],
         ),
     )
-    callees, closure = extract_callee_closure(ctx, snapshot, before)
+    if (
+        not reviewed_catalog(before).summaries
+        and before.get("routing", {}).get("routing_mode") == "analyst_selected"
+    ):
+        callees, closure = extract_local_direct_callees(ctx, snapshot, before)
+    else:
+        callees, closure = extract_callee_closure(ctx, snapshot, before)
     require(
         _fingerprint(_context_for_request(request)) == request["fingerprint"],
         "stale_database",
@@ -308,8 +336,6 @@ def _extract(ctx, request):
 def _analyze(ctx, extracted):
     (function, callees, closure), request = extracted
     snapshot = function.snapshot
-    memory = build_memory_graph(snapshot)
-    program = memory.program
     ctx.check()
     info = _context_for_request(request, synchronized=True)
     require(_fingerprint(info) == request["fingerprint"], "stale_database")
@@ -323,6 +349,124 @@ def _analyze(ctx, extracted):
         == catalog.catalog_digest,
         "stale_summary_catalog",
     )
+    derived_returns = []
+    derived_indirect_returns = []
+    derived_memory_writes = []
+    if closure.get("mode") == "derived_static_unreviewed":
+        for observation in function.calls:
+            ctx.check()
+            callee_ea = observation.call.callee_ea
+            rva = None if callee_ea is None else callee_ea - function.image_base
+            callee = callees.get(rva) if rva is not None else None
+            if callee is None:
+                continue
+            try:
+                effect = derive_direct_return(
+                    snapshot,
+                    callee,
+                    observation.call,
+                    observation.block_index,
+                    observation.instruction_index,
+                    checkpoint=ctx.check,
+                )
+            except ContractError:
+                effect = None
+            try:
+                memory_write = derive_direct_memory_write(
+                    snapshot,
+                    callee,
+                    observation.call,
+                    observation.block_index,
+                    observation.instruction_index,
+                    checkpoint=ctx.check,
+                )
+            except ContractError:
+                memory_write = None
+            if memory_write is None:
+                try:
+                    memory_write = derive_direct_global_write(
+                        snapshot,
+                        callee,
+                        observation.call,
+                        observation.block_index,
+                        observation.instruction_index,
+                        checkpoint=ctx.check,
+                    )
+                except ContractError:
+                    memory_write = None
+            if effect is None and memory_write is None:
+                closure["boundaries"].append(
+                    {
+                        "caller_rva": function.function_rva,
+                        "instruction_rva": observation.instruction_ea
+                        - function.image_base,
+                        "callee_rva": rva,
+                        "reason": "derived_call_effect_unavailable",
+                        "callinfo_argument_count": len(observation.call.arguments),
+                    }
+                )
+            if effect is not None:
+                derived_returns.append(effect)
+            if memory_write is not None:
+                derived_memory_writes.append(memory_write)
+        by_site = {
+            (item.block_index, item.instruction_index): item
+            for item in function.calls
+        }
+        for raw_targets in closure.get("finite_target_sets", []):
+            ctx.check()
+            targets = cast(
+                FiniteIndirectTargets, FiniteIndirectTargets.from_data(raw_targets)
+            )
+            observation = by_site.get((targets.block, targets.instruction))
+            selected = {
+                ea: callees[ea - function.image_base]
+                for ea in targets.targets
+                if ea - function.image_base in callees
+            }
+            if observation is None or len(selected) != len(targets.targets):
+                effect = None
+            else:
+                try:
+                    effect = derive_finite_indirect_return(
+                        snapshot,
+                        selected,
+                        observation.call,
+                        targets,
+                        checkpoint=ctx.check,
+                    )
+                except ContractError:
+                    effect = None
+            if effect is None:
+                closure["boundaries"].append(
+                    {
+                        "caller_rva": function.function_rva,
+                        "instruction_rva": (
+                            None
+                            if observation is None
+                            else observation.instruction_ea - function.image_base
+                        ),
+                        "callee_rva": None,
+                        "reason": "finite_indirect_return_unavailable",
+                    }
+                )
+            else:
+                derived_indirect_returns.append(effect)
+    derived_returns = tuple(sorted(derived_returns, key=lambda effect: effect.sort_key))
+    derived_indirect_returns = tuple(
+        sorted(derived_indirect_returns, key=lambda effect: effect.sort_key)
+    )
+    derived_memory_writes = tuple(
+        sorted(derived_memory_writes, key=lambda effect: effect.sort_key)
+    )
+    memory = build_memory_graph(
+        snapshot,
+        derived_returns=derived_returns,
+        derived_indirect_returns=derived_indirect_returns,
+        derived_memory_writes=derived_memory_writes,
+    )
+    program = memory.program
+    ctx.check()
     calls = compose_program_calls(function, program, catalog, callees, ctx.check)
     sid = current.store.put_artifact("snapshot", snapshot)
     gid = current.store.put_artifact("graph", memory.graph)
@@ -337,7 +481,91 @@ def _analyze(ctx, extracted):
             "calls": calls,
         },
     )
-    return {
+    derived_evidence = []
+    for effect in derived_returns:
+        callee = callees[effect.callee_ea - function.image_base]
+        identifier = current.store.put_artifact(
+            "analysis",
+            {
+                "schema_version": "flow-derived-call-evidence/1",
+                "caller_snapshot_id": snapshot.snapshot_id,
+                "callee_snapshot": callee.to_data(),
+                "effect": effect.to_data(),
+                "target_executed": False,
+                "no_auto_vulnerability_verdict": True,
+            },
+        )
+        derived_evidence.append(
+            {
+                "artifact_id": identifier,
+                "callee_snapshot_id": callee.snapshot_id,
+                "proof_digest": effect.proof_digest,
+            }
+        )
+    derived_indirect_evidence = []
+    for effect in derived_indirect_returns:
+        observation = next(
+            item for item in function.calls
+            if (item.block_index, item.instruction_index) == effect.sort_key
+        )
+        target_data = next(
+            item for item in closure["finite_target_sets"]
+            if (item["block"], item["instruction"]) == effect.sort_key
+        )
+        candidate_snapshots = [
+            callees[ea - function.image_base].to_data() for ea in effect.target_eas
+        ]
+        identifier = current.store.put_artifact(
+            "analysis",
+            {
+                "schema_version": "flow-derived-finite-call-evidence/1",
+                "caller_snapshot": snapshot.to_data(),
+                "target_proof": target_data,
+                "callee_snapshots": candidate_snapshots,
+                "call_info": observation.call.to_data(),
+                "effect": effect.to_data(),
+                "target_executed": False,
+                "no_auto_vulnerability_verdict": True,
+            },
+        )
+        derived_indirect_evidence.append(
+            {
+                "artifact_id": identifier,
+                "callee_snapshot_ids": list(effect.callee_snapshot_ids),
+                "proof_digest": effect.proof_digest,
+            }
+        )
+    derived_memory_evidence = []
+    observations = {
+        (item.block_index, item.instruction_index): item for item in function.calls
+    }
+    for effect in derived_memory_writes:
+        callee = callees[effect.callee_ea - function.image_base]
+        observation = observations[effect.sort_key]
+        identifier = current.store.put_artifact(
+            "analysis",
+            {
+                "schema_version": (
+                    "flow-derived-call-global-memory-evidence/1"
+                    if isinstance(effect, DerivedGlobalWriteEffect)
+                    else "flow-derived-call-memory-evidence/1"
+                ),
+                "caller_snapshot": snapshot.to_data(),
+                "callee_snapshot": callee.to_data(),
+                "call_info": observation.call.to_data(),
+                "effect": effect.to_data(),
+                "target_executed": False,
+                "no_auto_vulnerability_verdict": True,
+            },
+        )
+        derived_memory_evidence.append(
+            {
+                "artifact_id": identifier,
+                "callee_snapshot_id": callee.snapshot_id,
+                "proof_digest": effect.proof_digest,
+            }
+        )
+    response = {
         "snapshot_artifact": sid,
         "graph_artifact": gid,
         "ssa_artifact": pid,
@@ -346,6 +574,12 @@ def _analyze(ctx, extracted):
         "call_composition_artifact": cid,
         "call_composition_count": len(calls),
         "callee_closure": closure,
+        "derived_call_returns": [effect.to_data() for effect in derived_returns],
+        "derived_call_evidence": derived_evidence,
+        "derived_call_memory_writes": [
+            effect.to_data() for effect in derived_memory_writes
+        ],
+        "derived_call_memory_evidence": derived_memory_evidence,
         "snapshot_id": snapshot.snapshot_id,
         "graph_digest": program.graph.graph_digest,
         "analysis": program.graph.axes.analysis,
@@ -355,10 +589,16 @@ def _analyze(ctx, extracted):
         "summary_digest": snapshot.identity.summary_digest,
         "summary_limitations": [
             "Reviewed summaries cover only the packaged owned fixtures, with fresh full-identity callee validation; arbitrary libraries remain unresolved.",
-            "Indirect, external, recursive, and context-limited calls retain unresolved effects.",
+            "Incomplete indirect, external, recursive, and context-limited calls retain unresolved effects; complete local finite targets have derived scalar returns only.",
         ],
         "target_executed": False,
     }
+    if derived_indirect_returns:
+        response["derived_indirect_returns"] = [
+            effect.to_data() for effect in derived_indirect_returns
+        ]
+        response["derived_indirect_evidence"] = derived_indirect_evidence
+    return response
 
 
 def _request_runtime(request, info=None):
@@ -379,7 +619,12 @@ def _extract_implicit(ctx, request):
         SSAProgram,
         SSAProgram.from_data(current.store.artifact(request["ssa_artifact"])),
     )
-    seeds = tuple(cast(Seed, Seed.from_data(item)) for item in request["seeds"])
+    seeds = tuple(
+        cast(BitSeed, BitSeed.from_data(item))
+        if type(item) is dict and item.get("kind") == "bit_range"
+        else cast(Seed, Seed.from_data(item))
+        for item in request["seeds"]
+    )
     policy = ImplicitPolicy(request["max_evaluations"])
     ctx.check()
     return program, seeds, policy, request
@@ -388,12 +633,22 @@ def _extract_implicit(ctx, request):
 def _analyze_implicit(ctx, extracted):
     program, seeds, policy, request = extracted
     ctx.check()
-    result = analyze_implicit(program, seeds, policy, checkpoint=ctx.check)
+    memory_model = replay_memory_graph(program)
+    ctx.check()
+    result = analyze_implicit(
+        program, seeds, policy, memory_model=memory_model, checkpoint=ctx.check
+    )
     ctx.check()
     current = _request_runtime(request)
+    plan_artifact = current.store.put_artifact("analysis", memory_model.plan.to_data())
+    result_artifact = current.store.put_artifact(
+        "analysis", memory_model.result.to_data()
+    )
     artifact = {
-        "schema_version": "flow-implicit-artifact/1",
+        "schema_version": "flow-implicit-artifact/2",
         "source_artifact": request["ssa_artifact"],
+        "memory_plan_artifact": plan_artifact,
+        "memory_result_artifact": result_artifact,
         "result": result.to_data(),
         "target_executed": False,
         "no_auto_vulnerability_verdict": True,
@@ -593,12 +848,18 @@ def job(identifier, cancel=False):
     }
 
 
+def _argument_bindings(program: SSAProgram):
+    return argument_bindings(program)
+
+
 def page(artifact_id, section, cursor=None, limit=50, evidence_ids=None):
     engine = get_runtime()
     raw = engine.store.artifact(artifact_id)
+    argument_bindings = []
     if section in {"ssa", "cfg"}:
         program = cast(SSAProgram, SSAProgram.from_data(raw))
         graph = program.graph
+        argument_bindings = _argument_bindings(program)
         items = (
             [{"node_id": node.node_id, **node.to_data()} for node in graph.nodes]
             if section == "ssa"
@@ -664,6 +925,7 @@ def page(artifact_id, section, cursor=None, limit=50, evidence_ids=None):
         "summary_digest": graph.snapshot.identity.summary_digest,
         "environment": graph.snapshot.identity.environment.to_data(),
         "diagnostics": [d.to_data() for d in graph.snapshot.function.diagnostics],
+        "argument_bindings": argument_bindings,
         "memory_dependency_count": sum(
             edge.kind == "memory_data_dependency" for edge in graph.edges
         ),
@@ -703,17 +965,28 @@ def _chunk_large_items(section, items):
 
 
 def _implicit_page(raw):
+    version = raw.get("schema_version") if type(raw) is dict else None
+    common = {
+        "schema_version",
+        "source_artifact",
+        "result",
+        "target_executed",
+        "no_auto_vulnerability_verdict",
+    }
+    expected = (
+        common | {"memory_plan_artifact", "memory_result_artifact"}
+        if version == "flow-implicit-artifact/2"
+        else common
+    )
     require(
         type(raw) is dict
-        and set(raw)
-        == {
-            "schema_version",
-            "source_artifact",
-            "result",
-            "target_executed",
-            "no_auto_vulnerability_verdict",
-        }
-        and raw["schema_version"] == "flow-implicit-artifact/1"
+        and version in {"flow-implicit-artifact/1", "flow-implicit-artifact/2"}
+        and set(raw) == expected
+        and (
+            version != "flow-implicit-artifact/2"
+            or type(raw["memory_plan_artifact"]) is str
+            and type(raw["memory_result_artifact"]) is str
+        )
         and raw["target_executed"] is False
         and raw["no_auto_vulnerability_verdict"] is True,
         "invalid_implicit_artifact",
@@ -726,6 +999,8 @@ def _implicit_page(raw):
     )
     return items, {
         "source_artifact": raw["source_artifact"],
+        "memory_plan_artifact": raw.get("memory_plan_artifact"),
+        "memory_result_artifact": raw.get("memory_result_artifact"),
         "status": value.status,
         "graph_digest": value.graph_digest,
         "source_digest": value.source_digest,
@@ -737,6 +1012,342 @@ def _implicit_page(raw):
         "frontier_count": len(value.frontier),
         "target_executed": False,
         "no_auto_vulnerability_verdict": True,
+    }
+
+
+_ALIAS_POLICY = {
+    "untyped_input_current_frame": "may_alias_unknown",
+    "typed_input_current_frame": "conditional_no_alias",
+    "typed_no_alias_preconditions": [
+        "exact full-width IDB pointer type and register argloc",
+        "valid source-object pointer provenance; no forged address into the callee frame",
+    ],
+    "interpretation": "A possible dependency is not a definite flow or safety verdict.",
+}
+
+
+def _untyped_frame_alias_boundary(target_id, source_ids, objects):
+    """Name only observed stack/argument candidate pairs, never infer no-alias."""
+    pairs = [
+        {"source_object_id": source_id, "target_object_id": target_id}
+        for source_id in source_ids
+        if source_id in objects
+        and target_id in objects
+        and {objects[source_id].kind, objects[target_id].kind}
+        == {"stack", "argument"}
+    ]
+    if not pairs:
+        return None
+    return {
+        "reason_code": "untyped_input_current_frame_noalias_unproven",
+        "status": "unknown",
+        "alias_relation": "may_alias",
+        "source_target_pairs": pairs,
+        "message": (
+            "An untyped input pointer may numerically address the current stack "
+            "frame; no no-alias proof is available. Preserve possible taint "
+            "without treating it as a definite flow."
+        ),
+    }
+
+
+def _memory_page(raw):
+    result = cast(MemoryResult, MemoryResult.from_data(raw))
+    facts = {fact.node_id: fact for fact in result.facts}
+    accesses = {access.node_id: access for access in result.accesses}
+    objects = {obj.object_id: obj for obj in result.objects}
+    boundary_count = 0
+    items = [
+        {"type": "object", "object_id": obj.object_id, **obj.to_data()}
+        for obj in result.objects
+    ]
+    for access in result.accesses:
+        items.append(
+            {
+                "type": "access",
+                **access.to_data(),
+                "reasons": list(memory_access_reasons(access, facts)),
+            }
+        )
+    for dependency in result.dependencies:
+        reason, source_objects = memory_dependency_cause(dependency, accesses)
+        boundary = (
+            _untyped_frame_alias_boundary(dependency.object_id, source_objects, objects)
+            if reason == "cross_object_may_alias"
+            else None
+        )
+        boundary_count += boundary is not None
+        items.append(
+            {
+                "type": "dependency",
+                **dependency.to_data(),
+                "reason": reason,
+                "source_candidate_object_ids": list(source_objects),
+                "alias_boundary": boundary,
+                "impact": {
+                    "node_id": dependency.target,
+                    "scope": "direct_target_load",
+                    "downstream": "trace_from_target_node",
+                },
+            }
+        )
+    items.extend({"type": "fact", **item.to_data()} for item in result.facts)
+    items.extend({"type": "frontier", "node_id": item} for item in result.frontier)
+    return items, {
+        "status": result.status,
+        "plan_digest": result.plan_digest,
+        "source_digest": result.source_digest,
+        "policy_digest": result.policy_digest,
+        "diagnostics": list(result.diagnostics),
+        "iterations": result.iterations,
+        "frontier_count": len(result.frontier),
+        "target_executed": False,
+        "no_auto_vulnerability_verdict": True,
+        "alias_policy": _ALIAS_POLICY,
+        "untyped_current_frame_alias_dependency_count": boundary_count,
+        "limitation": "Completion is not exact alias precision or proof of no taint; inspect each access and fact.",
+    }
+
+
+def _derived_call_page(raw):
+    if (
+        type(raw) is dict
+        and raw.get("schema_version") == "flow-derived-call-global-memory-evidence/1"
+    ):
+        return _derived_call_global_memory_page(raw)
+    if (
+        type(raw) is dict
+        and raw.get("schema_version") == "flow-derived-finite-call-evidence/1"
+    ):
+        return _derived_indirect_call_page(raw)
+    if (
+        type(raw) is dict
+        and raw.get("schema_version") == "flow-derived-call-memory-evidence/1"
+    ):
+        return _derived_call_memory_page(raw)
+    require(
+        type(raw) is dict
+        and set(raw)
+        == {
+            "schema_version",
+            "caller_snapshot_id",
+            "callee_snapshot",
+            "effect",
+            "target_executed",
+            "no_auto_vulnerability_verdict",
+        }
+        and raw["schema_version"] == "flow-derived-call-evidence/1"
+        and raw["target_executed"] is False
+        and raw["no_auto_vulnerability_verdict"] is True,
+        "invalid_derived_call_evidence",
+    )
+    callee = cast(Snapshot, Snapshot.from_data(raw["callee_snapshot"]))
+    effect = cast(DerivedReturnEffect, DerivedReturnEffect.from_data(raw["effect"]))
+    require(
+        raw["caller_snapshot_id"] == effect.caller_snapshot_id
+        and callee.snapshot_id == effect.callee_snapshot_id,
+        "derived_call_evidence_binding_mismatch",
+    )
+    if effect.memory_effects == "none":
+        rebuilt = build_memory_graph(callee)
+        require(
+            rebuilt.result.status == "complete_in_scope"
+            and proves_no_memory_effects(rebuilt.program),
+            "derived_call_memory_effect_proof_mismatch",
+        )
+    return [
+        {"type": "derived_return_effect", **effect.to_data()},
+        {"type": "callee_snapshot", **callee.to_data()},
+    ], {
+        "caller_snapshot_id": effect.caller_snapshot_id,
+        "callee_snapshot_id": callee.snapshot_id,
+        "proof_digest": effect.proof_digest,
+        "provenance": "derived_static_unreviewed",
+        "memory_effects": effect.memory_effects,
+        "target_executed": False,
+        "no_auto_vulnerability_verdict": True,
+        "limitation": (
+            "This static callee has no modeled memory effects; scalar call/spoiler effects and the reviewed-summary boundary remain separate."
+            if effect.memory_effects == "none"
+            else "A scalar return proof does not resolve call memory effects or promote a reviewed summary."
+        ),
+    }
+
+
+def _derived_indirect_call_page(raw):
+    require(
+        type(raw) is dict
+        and set(raw)
+        == {
+            "schema_version",
+            "caller_snapshot",
+            "target_proof",
+            "callee_snapshots",
+            "call_info",
+            "effect",
+            "target_executed",
+            "no_auto_vulnerability_verdict",
+        }
+        and raw["schema_version"] == "flow-derived-finite-call-evidence/1"
+        and raw["target_executed"] is False
+        and raw["no_auto_vulnerability_verdict"] is True,
+        "invalid_finite_indirect_evidence",
+    )
+    caller = cast(Snapshot, Snapshot.from_data(raw["caller_snapshot"]))
+    targets = cast(
+        FiniteIndirectTargets, FiniteIndirectTargets.from_data(raw["target_proof"])
+    )
+    effect = cast(
+        DerivedIndirectReturnEffect,
+        DerivedIndirectReturnEffect.from_data(raw["effect"]),
+    )
+    call = cast(CallInfo, CallInfo.from_data(raw["call_info"]))
+    candidate_data = raw["callee_snapshots"]
+    require(
+        type(candidate_data) is list
+        and len(candidate_data) == len(targets.targets),
+        "finite_indirect_candidate_count_mismatch",
+    )
+    callees = {
+        ea: cast(Snapshot, Snapshot.from_data(data))
+        for ea, data in zip(targets.targets, candidate_data, strict=True)
+    }
+    try:
+        verified = derive_finite_indirect_return(caller, callees, call, targets)
+    except ContractError:
+        verified = None
+    require(verified == effect, "finite_indirect_effect_proof_mismatch")
+    return [
+        {"type": "derived_indirect_return_effect", **effect.to_data()},
+        {"type": "finite_target_set", **targets.to_data()},
+        {"type": "caller_snapshot", **caller.to_data()},
+        {"type": "call_info", **call.to_data()},
+        *(
+            {"type": "callee_snapshot", "target_ea": ea, **callee.to_data()}
+            for ea, callee in sorted(callees.items())
+        ),
+    ], {
+        "caller_snapshot_id": caller.snapshot_id,
+        "target_proof_digest": targets.proof_digest,
+        "candidate_count": len(targets.targets),
+        "candidate_snapshot_ids": list(effect.callee_snapshot_ids),
+        "proof_digest": effect.proof_digest,
+        "provenance": "derived_static_finite_indirect",
+        "memory_effects": effect.memory_effects,
+        "target_executed": False,
+        "no_auto_vulnerability_verdict": True,
+        "limitation": "Only the complete proven finite target set has joined scalar returns; no arbitrary indirect target or reviewed library claim.",
+    }
+
+
+def _derived_call_memory_page(raw):
+    require(
+        type(raw) is dict
+        and set(raw)
+        == {
+            "schema_version",
+            "caller_snapshot",
+            "callee_snapshot",
+            "call_info",
+            "effect",
+            "target_executed",
+            "no_auto_vulnerability_verdict",
+        }
+        and raw["schema_version"] == "flow-derived-call-memory-evidence/1"
+        and raw["target_executed"] is False
+        and raw["no_auto_vulnerability_verdict"] is True,
+        "invalid_derived_call_memory_evidence",
+    )
+    caller = cast(Snapshot, Snapshot.from_data(raw["caller_snapshot"]))
+    callee = cast(Snapshot, Snapshot.from_data(raw["callee_snapshot"]))
+    call = cast(CallInfo, CallInfo.from_data(raw["call_info"]))
+    effect = cast(
+        DerivedMemoryWriteEffect, DerivedMemoryWriteEffect.from_data(raw["effect"])
+    )
+    require(
+        caller.snapshot_id == effect.caller_snapshot_id
+        and callee.snapshot_id == effect.callee_snapshot_id,
+        "derived_call_memory_evidence_binding_mismatch",
+    )
+    try:
+        verified = derive_direct_memory_write(
+            caller, callee, call, effect.block, effect.instruction
+        )
+    except ContractError:
+        verified = None
+    require(verified == effect, "derived_call_memory_effect_proof_mismatch")
+    return [
+        {"type": "derived_memory_write_effect", **effect.to_data()},
+        {"type": "caller_snapshot", **caller.to_data()},
+        {"type": "callee_snapshot", **callee.to_data()},
+        {"type": "call_info", **call.to_data()},
+    ], {
+        "caller_snapshot_id": caller.snapshot_id,
+        "callee_snapshot_id": callee.snapshot_id,
+        "proof_digest": effect.proof_digest,
+        "provenance": "derived_static_unreviewed",
+        "memory_effects": "single_typed_output_write",
+        "target_executed": False,
+        "no_auto_vulnerability_verdict": True,
+        "limitation": "One exact typed output-pointer identity write only; scalar call effects and all other calls remain conservative.",
+    }
+
+
+def _derived_call_global_memory_page(raw):
+    require(
+        type(raw) is dict
+        and set(raw)
+        == {
+            "schema_version",
+            "caller_snapshot",
+            "callee_snapshot",
+            "call_info",
+            "effect",
+            "target_executed",
+            "no_auto_vulnerability_verdict",
+        }
+        and raw["schema_version"] == "flow-derived-call-global-memory-evidence/1"
+        and raw["target_executed"] is False
+        and raw["no_auto_vulnerability_verdict"] is True,
+        "invalid_derived_call_global_memory_evidence",
+    )
+    caller = cast(Snapshot, Snapshot.from_data(raw["caller_snapshot"]))
+    callee = cast(Snapshot, Snapshot.from_data(raw["callee_snapshot"]))
+    call = cast(CallInfo, CallInfo.from_data(raw["call_info"]))
+    effect = cast(
+        DerivedGlobalWriteEffect, DerivedGlobalWriteEffect.from_data(raw["effect"])
+    )
+    require(
+        caller.snapshot_id == effect.caller_snapshot_id
+        and callee.snapshot_id == effect.callee_snapshot_id,
+        "derived_call_global_memory_evidence_binding_mismatch",
+    )
+    try:
+        verified = derive_direct_global_write(
+            caller, callee, call, effect.block, effect.instruction
+        )
+    except ContractError:
+        verified = None
+    require(verified == effect, "derived_call_global_memory_effect_proof_mismatch")
+    return [
+        {"type": "derived_global_write_effect", **effect.to_data()},
+        {"type": "caller_snapshot", **caller.to_data()},
+        {"type": "callee_snapshot", **callee.to_data()},
+        {"type": "call_info", **call.to_data()},
+    ], {
+        "caller_snapshot_id": caller.snapshot_id,
+        "callee_snapshot_id": callee.snapshot_id,
+        "proof_digest": effect.proof_digest,
+        "provenance": "derived_static_unreviewed",
+        "memory_effects": "single_fixed_global_write",
+        "global_address": effect.global_address,
+        "width_bits": effect.width_bits,
+        "target_executed": False,
+        "no_auto_vulnerability_verdict": True,
+        "limitation": (
+            "One exact fixed-global write only; scalar call effects, other memory "
+            "operations, and unrelated calls remain conservative."
+        ),
     }
 
 
@@ -844,6 +1455,10 @@ def analysis_page(artifact_id, section, cursor=None, limit=50):
     raw = get_runtime().store.artifact(artifact_id)
     if section == "implicit":
         items, metadata = _implicit_page(raw)
+    elif section == "memory":
+        items, metadata = _memory_page(raw)
+    elif section == "derived_call":
+        items, metadata = _derived_call_page(raw)
     elif section == "path_proof":
         items, metadata = _proof_page(raw)
     elif section == "interprocedural":
@@ -854,6 +1469,92 @@ def analysis_page(artifact_id, section, cursor=None, limit=50):
         artifact_id,
         section,
         _chunk_large_items(section, items),
+        metadata,
+        cursor,
+        limit,
+    )
+
+
+def explain_implicit(
+    artifact_id,
+    observation_node_id,
+    cursor=None,
+    limit=50,
+    max_nodes=2048,
+    max_causes=256,
+):
+    """Page local structural candidates separately from global partial codes."""
+    require(type(observation_node_id) is str, "invalid_observation_node_id")
+    current = get_runtime()
+    raw = current.store.artifact(artifact_id)
+    _implicit_page(raw)  # Strict legacy/current artifact validation.
+    result = cast(ImplicitResult, ImplicitResult.from_data(raw["result"]))
+    program = cast(
+        SSAProgram,
+        SSAProgram.from_data(current.store.artifact(raw["source_artifact"])),
+    )
+    if raw["schema_version"] == "flow-implicit-artifact/2":
+        plan = cast(
+            MemoryPlan,
+            MemoryPlan.from_data(current.store.artifact(raw["memory_plan_artifact"])),
+        )
+        memory_result = cast(
+            MemoryResult,
+            MemoryResult.from_data(
+                current.store.artifact(raw["memory_result_artifact"])
+            ),
+        )
+        memory = bind_memory_graph(program, plan, memory_result)
+    else:
+        memory = replay_memory_graph(program)
+    explanation = explain_observation(
+        program,
+        memory,
+        result,
+        observation_node_id,
+        max_nodes=max_nodes,
+        max_causes=max_causes,
+    )
+    objects = {obj.object_id: obj for obj in memory.result.objects}
+    cause_items = []
+    boundary_count = 0
+    for cause in explanation.causes:
+        boundary = (
+            _untyped_frame_alias_boundary(
+                cause.memory_object_id, cause.source_candidate_object_ids, objects
+            )
+            if cause.reason_code == "cross_object_may_alias"
+            else None
+        )
+        boundary_count += boundary is not None
+        cause_items.append({"type": "cause", **cause.to_data(), "alias_boundary": boundary})
+    items = cause_items + [
+        {"type": "global_diagnostic", "code": item}
+        for item in explanation.global_diagnostics
+    ]
+    metadata = {
+        "source_artifact": raw["source_artifact"],
+        "memory_plan_artifact": raw.get("memory_plan_artifact"),
+        "memory_result_artifact": raw.get("memory_result_artifact"),
+        "graph_digest": explanation.graph_digest,
+        "analysis_digest": explanation.analysis_digest,
+        "observation_node_id": observation_node_id,
+        "observation_labels": explanation.labels.to_data(),
+        "analysis_status": explanation.analysis_status,
+        "local_cause_count": len(explanation.causes),
+        "global_diagnostic_count": len(explanation.global_diagnostics),
+        "visited_nodes": explanation.visited_nodes,
+        "truncated": explanation.truncated,
+        "relation_scope": "candidate_structural_backward_slice_not_path_proof",
+        "target_executed": False,
+        "no_auto_vulnerability_verdict": True,
+        "alias_policy": _ALIAS_POLICY,
+        "untyped_current_frame_alias_cause_count": boundary_count,
+    }
+    return artifact_page(
+        artifact_id,
+        f"implicit_explanation:{observation_node_id}:{max_nodes}:{max_causes}",
+        _chunk_large_items("implicit_explanation", items),
         metadata,
         cursor,
         limit,

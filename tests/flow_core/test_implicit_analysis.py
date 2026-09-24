@@ -7,10 +7,11 @@ from typing import Literal
 
 import pytest
 
-from ida_pro_mcp.flow_core import ContractError, canonical_json, digest
+from ida_pro_mcp.flow_core import ContractError, canonical_json, digest, stable_id
 from ida_pro_mcp.flow_core.analysis import Seed, analyze
 from ida_pro_mcp.flow_core.contracts import Block, FunctionInput, Instruction, Operand
 from ida_pro_mcp.flow_core.implicit_analysis import (
+    ControlDependency,
     ImplicitPolicy,
     ImplicitResult,
     analyze_implicit,
@@ -32,6 +33,25 @@ from test_memory import ret as memory_ret
 from test_memory import store as memory_store
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def test_loop_feedback_relation_is_the_only_valid_self_control_dependency():
+    predicate = stable_id("node", "predicate")
+    branch_node = stable_id("node", "branch")
+    evidence = stable_id("evidence", "branch-evidence")
+    relation = ControlDependency(
+        predicate,
+        predicate,
+        "loop_feedback",
+        branch_node,
+        2,
+        (evidence,),
+    )
+    assert ControlDependency.from_data(relation.to_data()) == relation
+    with pytest.raises(ContractError, match="Only a loop-feedback relation"):
+        replace(relation, origin="cfg_branch")
+    with pytest.raises(ContractError, match="Only a loop-feedback relation"):
+        replace(relation, target_node_id=branch_node)
 
 
 def reg(offset: int = 0, bits: int = 8, role: str = "left") -> Operand:
@@ -516,6 +536,61 @@ def test_verified_memory_data_carries_explicit_labels_without_pointer_bleed():
         directly_seeded_store = evaluate((store_seed,))
         assert directly_seeded_store[load_id].explicit == ("STORED_BYTES",)
         assert directly_seeded_store[return_id].explicit == ("STORED_BYTES",)
+
+
+def test_seeded_memory_evidence_avoids_spurious_boundary_unknown():
+    base = memory_plan(
+        (memory_store(0, memory_reg(192, 8)), memory_load(1), memory_ret(2))
+    )
+    bundle = build_memory_graph(base.program.graph.snapshot)
+    program = bundle.program
+    data_seed = entry_seed(program, 192, "DATA")
+    address_seed = entry_seed(program, 0, "ADDRESS")
+    assert bundle.result.status == "complete_in_scope"
+
+    legacy = analyze_implicit(program, (data_seed,))
+    assert legacy.status == "partial" and returned(program, legacy).unknown_provenance
+
+    seeded = analyze_implicit(program, (data_seed,), memory_model=bundle)
+    assert seeded.status == "complete_in_scope"
+    assert returned(program, seeded).explicit == ("DATA",)
+    assert not returned(program, seeded).unknown_provenance
+    assert seeded.explicit_result_digest != legacy.explicit_result_digest
+
+    address = analyze_implicit(program, (address_seed,), memory_model=bundle)
+    assert returned(program, address).explicit == ()
+    assert returned(program, address).control == ()
+    assert address.status == "complete_in_scope"
+
+    store_id = next(n.node_id for n in bundle.graph.nodes if n.kind == "Store")
+    fallback = analyze_implicit(
+        program,
+        (Seed(store_id, Labels(("EFFECT",))),),
+        memory_model=bundle,
+    )
+    assert fallback.status == "partial"
+    assert "seeded_memory_source_unavailable" in fallback.diagnostics
+    assert returned(program, fallback).explicit == ("EFFECT",)
+
+
+def test_seeded_memory_route_preserves_scalar_annihilator_precision():
+    bundle = build_memory_graph(
+        snapshot(
+            (
+                Block(0, (), (
+                    ins(0, "m_and", reg(0), const(0, role="right"),
+                        reg(8, role="destination")),
+                    ins(1, "m_ret", reg(8)),
+                )),
+            )
+        )
+    )
+    program = bundle.program
+    value = analyze_implicit(
+        program, (entry_seed(program, 0, "X"),), memory_model=bundle
+    )
+    assert returned(program, value).explicit == ()
+    assert value.status == "complete_in_scope"
 
 
 def test_memory_labels_require_bound_derivation_and_stop_at_overwrite():

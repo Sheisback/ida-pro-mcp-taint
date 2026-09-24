@@ -4,7 +4,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal
 
-from .contracts import Graph, ValueSource
+from .contracts import Graph, Node, ValueSource
 from .serialization import Model, digest
 from .states import BitValue, Labels, canonical_set, check_digest, check_id, require
 
@@ -20,11 +20,42 @@ class Seed(Model):
 
 
 @dataclass(frozen=True)
+class BitSeed(Model):
+    """Explicit label on a whole-byte window of one scalar input value."""
+
+    node_id: str
+    labels: Labels
+    bit_offset: int
+    width_bits: int
+    kind: Literal["bit_range"] = "bit_range"
+    schema_version: Literal[1] = 1
+
+    def __post_init__(self):
+        super().__post_init__()
+        check_id(self.node_id, "node")
+        require(
+            self.bit_offset >= 0
+            and self.bit_offset % 8 == 0
+            and 0 < self.width_bits <= 64
+            and self.width_bits % 8 == 0,
+            "Invalid whole-byte bit source window",
+        )
+        require(
+            bool(self.labels.explicit)
+            and not self.labels.control
+            and not self.labels.unknown_provenance
+            and not self.labels.any_explicit_source
+            and not self.labels.any_control_source,
+            "Bit-range seed requires only named explicit labels",
+        )
+
+
+@dataclass(frozen=True)
 class ScalarPolicy(Model):
     max_evaluations: int = 100000
     schema_version: Literal[1] = 1
     mode: Literal["explicit"] = "explicit"
-    ruleset: Literal["scalar-transfer-v2"] = "scalar-transfer-v2"
+    ruleset: Literal["scalar-transfer-v4"] = "scalar-transfer-v4"
 
     def __post_init__(self):
         super().__post_init__()
@@ -99,6 +130,7 @@ def _value(node, values):
         "UnknownValue",
         "Load",
         "Call",
+        "CallResult",
         "OpaqueEffect",
         "InputMemory",
         "Allocation",
@@ -203,6 +235,11 @@ def _value(node, values):
         # Top counts cannot establish that precondition in the Const/Top domain.
         if op in {"shl", "lshr", "ashr"} and (b is None or b >= widths[0]):
             return top, True
+        if node.kind == "Binary" and (
+            (op in {"and", "mul"} and (a == 0 or b == 0))
+            or (op in {"xor", "sub"} and node.inputs[0] == node.inputs[1])
+        ):
+            return BitValue(bits, 0), False
         if a is None or b is None:
             return top, False
         if op == "add":
@@ -244,6 +281,199 @@ def _value(node, values):
     else:
         return top, True
     return BitValue(bits, out & ((1 << bits) - 1)), False
+
+
+def _stable_constant(nodes: dict[str, Node], node_id: str) -> int | None:
+    """A literal or width-preserving copy is constant before fixed-point joins."""
+    seen: set[str] = set()
+    while node_id not in seen:
+        seen.add(node_id)
+        node = nodes[node_id]
+        if node.kind == "Constant":
+            return node.constant
+        if node.kind != "Copy" or len(node.inputs) != 1:
+            return None
+        source = nodes[node.inputs[0]]
+        if node.width_bits != source.width_bits:
+            return None
+        node_id = source.node_id
+    return None
+
+
+def _slice_inputs(
+    nodes: dict[str, Node],
+    node_id: str,
+    start: int,
+    width: int,
+    active: frozenset[str] = frozenset(),
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """Project a bit window; report bypassed nodes for direct-seed retention."""
+    if node_id in active or len(active) >= 64:
+        return (node_id,), ()
+    node = nodes[node_id]
+    if (
+        node.width_bits is None
+        or start < 0
+        or width <= 0
+        or start + width > node.width_bits
+    ):
+        return (node_id,), ()
+    active = active | {node_id}
+    selected: tuple[str, ...] | None = None
+    bypassed: tuple[str, ...] = ()
+    if node.kind == "Copy" and len(node.inputs) == 1:
+        child = nodes[node.inputs[0]]
+        if child.width_bits == node.width_bits:
+            selected, bypassed = _slice_inputs(
+                nodes, child.node_id, start, width, active
+            )
+    elif (
+        node.kind == "Binary"
+        and node.operation == "concat_low"
+        and len(node.inputs) == 2
+    ):
+        low, high = (nodes[item] for item in node.inputs)
+        if (
+            low.width_bits is not None
+            and high.width_bits is not None
+            and low.width_bits + high.width_bits == node.width_bits
+        ):
+            parts, skipped = [], []
+            if start < low.width_bits:
+                a, b = _slice_inputs(
+                    nodes,
+                    low.node_id,
+                    start,
+                    min(width, low.width_bits - start),
+                    active,
+                )
+                parts.extend(a)
+                skipped.extend(b)
+            if start + width > low.width_bits:
+                high_start = max(start, low.width_bits)
+                a, b = _slice_inputs(
+                    nodes,
+                    high.node_id,
+                    high_start - low.width_bits,
+                    start + width - high_start,
+                    active,
+                )
+                parts.extend(a)
+                skipped.extend(b)
+            selected, bypassed = tuple(parts), tuple(skipped)
+    elif node.kind == "Unary" and len(node.inputs) == 1:
+        child = nodes[node.inputs[0]]
+        if child.width_bits is not None:
+            mapped = None
+            if (
+                node.operation in {"trunc", "extract:0"}
+                and node.width_bits <= child.width_bits
+            ):
+                mapped = start
+            elif node.operation == "high" and node.width_bits <= child.width_bits:
+                mapped = child.width_bits - node.width_bits + start
+            elif node.operation and node.operation.startswith("extract:"):
+                try:
+                    offset = int(node.operation.split(":", 1)[1])
+                except ValueError:
+                    offset = -1
+                if offset >= 0 and offset + node.width_bits <= child.width_bits:
+                    mapped = offset + start
+            elif node.operation == "zext" and node.width_bits >= child.width_bits:
+                if start >= child.width_bits:
+                    selected = ()
+                else:
+                    selected, bypassed = _slice_inputs(
+                        nodes,
+                        child.node_id,
+                        start,
+                        min(width, child.width_bits - start),
+                        active,
+                    )
+            elif node.operation == "sext" and node.width_bits >= child.width_bits:
+                parts, skipped = [], []
+                if start < child.width_bits:
+                    a, b = _slice_inputs(
+                        nodes,
+                        child.node_id,
+                        start,
+                        min(width, child.width_bits - start),
+                        active,
+                    )
+                    parts.extend(a)
+                    skipped.extend(b)
+                if start + width > child.width_bits:
+                    a, b = _slice_inputs(
+                        nodes, child.node_id, child.width_bits - 1, 1, active
+                    )
+                    parts.extend(a)
+                    skipped.extend(b)
+                selected, bypassed = tuple(parts), tuple(skipped)
+            if mapped is not None:
+                selected, bypassed = _slice_inputs(
+                    nodes, child.node_id, mapped, width, active
+                )
+    if selected is None:
+        return (node_id,), ()
+    return tuple(sorted(set(selected))), tuple(sorted(set((*bypassed, node_id))))
+
+
+def _label_inputs(
+    node: Node, nodes: dict[str, Node], deps: tuple[str, ...]
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """Return proven value dependencies and bypassed direct-seed locations."""
+    if (
+        node.kind == "CallResult"
+        and node.operation == "derived_static_finite_indirect_return"
+        and deps
+    ):
+        # The first input is the finite dispatch target. It selects a callee,
+        # but is not a scalar argument copied into the returned value.
+        return deps[1:], ()
+    if node.kind == "Select":
+        condition = _stable_constant(nodes, deps[0])
+        if condition is not None and all(
+            nodes[dep].width_bits == node.width_bits for dep in deps[1:]
+        ):
+            return (deps[1] if condition else deps[2],), ()
+        return deps[1:], ()
+    if node.kind == "Unary" and len(deps) == 1 and node.width_bits is not None:
+        source = nodes[deps[0]]
+        if source.width_bits is not None:
+            offset = None
+            if (
+                node.operation in {"trunc", "extract:0"}
+                and node.width_bits <= source.width_bits
+            ):
+                offset = 0
+            elif node.operation == "high" and node.width_bits <= source.width_bits:
+                offset = source.width_bits - node.width_bits
+            elif node.operation and node.operation.startswith("extract:"):
+                try:
+                    candidate = int(node.operation.split(":", 1)[1])
+                except ValueError:
+                    candidate = -1
+                if candidate >= 0 and candidate + node.width_bits <= source.width_bits:
+                    offset = candidate
+            if offset is not None:
+                return _slice_inputs(nodes, deps[0], offset, node.width_bits)
+    if (
+        node.kind == "Binary"
+        and len(deps) == 2
+        and all(nodes[dep].width_bits == node.width_bits for dep in deps)
+    ):
+        if node.operation in {"and", "mul"} and any(
+            _stable_constant(nodes, dep) == 0 for dep in deps
+        ):
+            return (), ()
+        if node.operation in {"xor", "sub"} and deps[0] == deps[1]:
+            return (), ()
+    if node.kind == "Load":
+        return (), ()
+    if node.kind == "Store":
+        data = node.memory_operands.data if node.memory_operands else None
+        return ((data,), ()) if data is not None else ((), ())
+    return deps, ()
 
 
 def analyze(
@@ -316,21 +546,14 @@ def analyze(
         ):
             continue
         labels = seed_map.get(nid, Labels())
-        if node.kind == "Select":
-            label_deps = deps[1:]
-        elif node.kind == "Load":
-            # Address and segment select a location; they are not its content.
-            label_deps = ()
-        elif node.kind == "Store":
-            data = node.memory_operands.data if node.memory_operands else None
-            label_deps = (data,) if data is not None else ()
-        else:
-            label_deps = deps
+        label_deps, direct_only = _label_inputs(node, nodes, deps)
         for dep in (*label_deps, *sorted(memory_label_sources[nid])):
             if checkpoint is not None:
                 checkpoint()
             if dep in facts:
                 labels = labels.join(facts[dep].labels)
+        for bypassed in direct_only:
+            labels = labels.join(seed_map.get(bypassed, Labels()))
         boundary = (
             node.kind
             in {"UnknownValue", "Load", "Store", "Call", "OpaqueEffect", "InputMemory"}

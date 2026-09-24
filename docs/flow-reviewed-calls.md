@@ -80,3 +80,12 @@ The packaged review data comes from
 `tests/flow_fixtures/manifests/calls/extraction_{x86_64,arm64}.json`. Updating it
 requires a new reviewed full-identity catalog and static extraction evidence,
 not runtime learning or a name-based compatibility fallback.
+
+2026-09-24 taint-remediation refresh: the two call/heap binaries were rebuilt
+byte-for-byte against their pinned manifest. IDA 9.3 re-extracted both on
+disposable copies without executing them; repeat extraction and snapshot
+round-trip succeeded. The two replay receipts and packaged review identities
+were regenerated from those actual snapshots, then the public owned-worker
+smoke was rerun with `save=False`. Before regeneration, changed snapshot
+semantics correctly yielded `stale_callee_snapshot` rather than silently using
+the old catalog. No additional library, ISA, or release support is implied.

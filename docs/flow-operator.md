@@ -65,6 +65,210 @@ it is not a support promotion or a P6 release-readiness verdict.
 
 ## Interpret results conservatively
 
+At IDA 9.3 `MMAT_CALLS`, a final native `BLT_STOP` block records regular
+termination but has no native return instruction. It becomes a synthetic
+value-less `Exit` unless the current IDB function type supplies a scalar
+register return location that round-trips through the SDK's register mapping.
+Only then is a synthetic `Return` bound to that register's reaching value.
+Neither synthetic node invents a source EA, and the **correctness of the IDB
+type is an analyst assumption**, not an inferred ABI proof. `BLT_0WAY` and
+unresolved exits remain separate. Do not treat `Exit` as a clean return value.
+
+Likewise, SDK-mapped register arguments in the IDB function type produce
+read-only `argument_bindings` on `flow_get_function_ssa` pages. Each binding
+names exact entry atom IDs and its type-assumption provenance. Missing or
+unsupported arglocs are not fabricated. Seeded taint can remain `partial`
+because memory or call effects are unresolved even when exit and entry
+locations are known.
+
+When an analyst has an independently calibrated, whole-byte subrange of an
+`InputValue` but no exact entry atom, `flow_create_implicit_analysis` also
+accepts a seed with `kind: "bit_range"`, `schema_version: 1`, `node_id`,
+`labels`, `bit_offset`, and `width_bits`. The offset is relative to that input
+node, not a native register number. Only named explicit labels on a bounded
+input window are accepted. Direct `trunc`/`high`/`extract`/`concat`/extension
+projections preserve the selected bits; unsupported scalar operations widen
+conservatively. Queries are bounded to 16 bit-range seeds and 16 distinct
+named bit-range labels. A bounded whole-value seed on an exact entry atom also
+projects its full bit window through precise concat/constant-shift operations.
+A single-candidate strong whole-byte Store records selected source bits per
+byte; an exact Load reconstructs them under the snapshot's endianness.
+Weak/may-alias Stores with only *part* of the data bits selected, width
+mismatches, or unresolved ranges retain possible labels and
+`bit_seed_byte_store_widened`/`partial`. A weak Store whose entire data value is
+selected does not need that bit-precision diagnostic. This is not general
+ABI-argument inference or a fault/path proof.
+
+The current implicit-flow job replays its bound memory plan with the supplied
+value seeds and checks that the memory dependency graph is unchanged. This can
+remove the older blanket Load/Store `unresolved_boundary` on a modeled access;
+it does not infer a return value from `Exit`. Seeds on effect nodes that the
+byte-memory model cannot represent fall back to the conservative scalar path
+with `seeded_memory_source_unavailable` and remain partial. Check each observed
+fact's `unknown_provenance` even when the analysis computation is
+`complete_in_scope`; completion is not an exact-alias or no-taint verdict.
+
+To inspect *why* a memory result is bounded or partial, page the completed
+snapshot's `memory_result_artifact` with `flow_get_memory_analysis`. Access
+items expose candidate objects/byte intervals, `precision`, `unresolved`, and
+reasons derived from that access's pointer and candidate evidence;
+dependencies and facts remain separate items. Two finite candidates with
+`may_alias` mean possible access to either, not definite access to both.
+The page is scoped to the current database and returns no automatic verdict.
+
+For one **seeded observation**, call `flow_explain_implicit_analysis` with the
+completed `implicit_artifact` and that fact's `node_id`. It pages bounded
+`cause` items (node/edge/evidence, alias precision and direct affected node)
+separately from function-wide `global_diagnostic` items. A cause is a
+candidate on the structural backward slice—not a feasible path, definite
+source-to-sink relation, or vulnerability verdict. `truncated=true` means the
+explanation budget ended before all candidates were visited. A locally known
+fact may have zero local causes even while the overall analysis is `partial`.
+New implicit jobs bind their verified memory plan/result as owned artifacts so
+paging checks those relations without rerunning the fixed point; older v1
+implicit artifacts remain read-only and use a conservative replay.
+
+If a job itself fails, `flow_get_job.error` keeps `code=handler_failed` plus a
+bounded `phase` and allowlisted `reason` (for example a microcode-generation
+failure, stale context, or SSA budget). Unclassified failures say
+`internal_error`; cancellation and deadlines retain their separate codes.
+Exception messages, native EAs, and host paths are never copied into the
+durable error envelope. A failed extraction may have no node/evidence ID to
+cite—do not invent one or reinterpret the job failure as a clean taint fact.
+
+For typed functions, a normal scalar `Return` is synthesized only from an
+exact IDB return argloc. IDA 9.3 may name an x86_64 one-byte location AL/DIL
+on the reverse mapping even when the IDB type names RAX/RDI; the alias is
+accepted only if mapping it back proves the same microregister byte.
+`typed_void_return` yields a value-less normal `Exit`; `typed_noreturn` is an
+unsupported non-return terminal, **not** a normal Exit. A stack or otherwise
+unmapped formal has `typed_argument_unmapped` and no fabricated SSA entry
+binding; an unmapped scalar return has `typed_return_unmapped` instead of a
+fabricated value. These are type/SDK observations, not proof that an IDB type
+is right.
+
+The memory model distinguishes an incoming pointer whose register location
+**and pointer type** are bound by the current IDB function type (`typed_entry`)
+from an untyped or integer-typed entry value (`argument`). The pointer flag
+uses IDAPython's documented [`tinfo_t.is_ptr()`](https://python.docs.hex-rays.com/classida__typeinf_1_1tinfo__t.html)
+and requires a full-width exact argloc; casting an integer formal to an
+address does not grant this no-alias assumption. The `typed_entry` versus
+current-frame `no_alias` result is **conditional** on more than that type:
+the analyst must also assume that incoming pointer values obey valid
+source-object provenance and are not forged numeric addresses into the
+callee's future frame. IDB type metadata alone cannot prove this property of
+arbitrary machine code. Two typed incoming pointers can still alias each
+other; untyped/unknown pointers remain conservative. A fixed program global
+is likewise distinct from the current frame under the documented
+flat-user-space assumption. These distinctions do not validate the analyst's
+IDB type or establish fault/path feasibility.
+
+The MCP default for an **untyped** input pointer versus the current frame is
+unchanged: `may_alias_unknown`, never an inferred clean result. In
+`flow_get_memory_analysis`, inspect each dependency's `alias_boundary` and
+the page metadata's `alias_policy` and
+`untyped_current_frame_alias_dependency_count`. The boundary code
+`untyped_input_current_frame_noalias_unproven` identifies the source/target
+object pair, reports `status: unknown` and `alias_relation: may_alias`, and
+explains why possible taint is retained. For an observation, call
+`flow_explain_implicit_analysis` with its node ID; matching local causes carry
+the same boundary, and metadata includes
+`untyped_current_frame_alias_cause_count`. These are structural candidate
+reasons, not proof that a particular execution aliases, and no MCP output
+offers an automatic opt-in that silently converts them to no-alias.
+
+An untyped entry value spilled to the stack can regain a **possible pointee
+object** when one full-width Store dominates the reload and exactly that
+Store reaches every byte. Partial overwrites, may-alias writers, and bypass
+paths leave the pointer unresolved; a second analysis discards the recovery
+if the new alias graph invalidates that proof. This repairs pointer value provenance,
+**not** a no-alias proof: an untyped incoming pointer may still numerically
+overlap the current frame under the flat binary model. Inspect
+`flow_get_memory_analysis` dependencies for `cross_object_may_alias`, source
+candidate object IDs, and the directly affected Load; trace forward from
+that Load for downstream impact.
+
+If that spill's entry pointer was split into smaller SSA atoms, recovery
+requires contiguous low-to-high bits from **one** exact IDB `m_arg` register
+location, not merely adjacent bits or two different formals. Only then does
+the recovered pointee keep the `typed_entry` assumption and its current-frame
+no-alias relation. Untyped fragments still stay unknown.
+
+For `analyst_selected` binaries, a **separate unreviewed derived-static path**
+may inspect a bounded set of exact same-binary direct callees. A scalar
+return dependency is attached to the caller only when the callee's typed,
+branch-free return analysis completes with no unknown provenance and every
+call argument has an exact type-backed entry binding. Inspect
+`flow_get_job.result.derived_call_returns`, page each
+`derived_call_evidence` artifact with `flow_get_derived_call_evidence`, and
+check `callee_closure.boundaries`. A proven zero-argument constant helper can
+have an empty `argument_indices` set: this means no input taint reaches its
+scalar return, **not** by itself that its memory effects are known. Inspect
+`derived_call_evidence.memory_effects`: `none` requires a complete whole-callee
+scan without any modeled load, store, call, or unknown effect. Only in that
+case is caller memory havoc omitted; scalar call/spoiler uncertainty may still
+make the overall job `partial`. `unknown` retains memory havoc. If optimization
+removes the call, a clean return is only evidence about the optimized graph;
+it is not evidence that the derived-call path handled a call.
+
+A separate `derived_call_memory_writes` result can certify **one** branch-free,
+typed output-pointer write at byte offset zero when the callee's exact Store
+copies one typed scalar argument, all other Stores are local stack accesses,
+and there are no Loads, unknown effects, or nested calls. The caller then gets
+an evidence-bound synthetic Store after the Call instead of blanket memory
+havoc. Page its `derived_call_memory_evidence` ID with
+`flow_get_derived_call_evidence`; the page rederives the proof from both owned
+snapshots and the bound call metadata. Other call effects, multiple writes,
+arithmetic outputs, indirect output-pointer writes, and scalar spoilers remain
+unresolved.
+
+The same result can separately certify **one fixed-global scalar write** by
+an exact same-binary direct callee. Its data must be a proven typed argument
+slice (including a checked zero-extension) or constant; other external
+Stores, external Loads, branches, nested calls, and unknown effects are
+rejected. Exact current-frame stack accesses may be tolerated only when
+independently modeled. The caller gets one synthetic Store at the proven
+global address; `memory_effects=none` is **not** claimed. Page the
+`derived_call_memory_evidence` artifact to rederive the fixed-global proof.
+Scalar return/spoiler uncertainty may still make the whole job `partial`.
+
+A native direct `m_call` with a `mop_v` target can bind the target address even
+when `mcallinfo_t.callee` is unavailable. The snapshot records this as
+`call_target_from_direct_operand` information. A conflicting target is left
+unresolved with `call_target_conflict`; `m_icall` and non-global targets are
+never promoted by this rule. A resolved target alone does not prove argument
+bindings or a derived return. This operand distinction follows the
+[Hex-Rays microcode call example](https://hex-rays.com/blog/whats-new-in-the-ida-domain-api).
+
+Separately, an `analyst_selected` `m_icall` may have a **bounded derived scalar
+return** when its SSA target is a complete set of at most eight address-of
+function values through exact Copy/Phi/Select or byte-concatenation structure.
+Every candidate must be an exact same-binary local function entry with a
+same-scope typed scalar return certificate. The caller joins the candidates'
+argument bit windows into its actual CallResult; high-only source bits are not
+silently promoted to a narrow formal argument. The proven dispatch target is a
+control dependency of that result, so choosing between constant-return
+callees is not reported as clean when the selector is tainted. Inspect
+`callee_closure.finite_target_sets`, `derived_indirect_returns`, and page each
+`derived_indirect_evidence` ID via `flow_get_derived_call_evidence`. The page
+replays the target-set and every callee-return proof. Unknown target inputs,
+cycles, budget limits, a missing/stale candidate, recursion, or an unproved
+callee retain an unknown call boundary. This rule does not derive indirect
+output-pointer writes or make an unreviewed callee a reviewed summary.
+
+Loop predicates may have an evidence-bound `loop_feedback` control relation to
+their own static SSA node. Its finite label fixed point represents dependence
+of later loop iterations on an earlier predicate evaluation; the old blanket
+`self_control_dependency_unresolved` status is not needed when this relation
+converges. This does **not** prove termination or path feasibility. Closed
+loops, incomplete exits, and exhausted budgets remain `partial`.
+
+This is **not** a packaged reviewed summary or blanket proof of call effects.
+Unless the explicit `none` certificate is present, the caller's Call still
+havocs memory. Incomplete indirect, external, recursive, or otherwise unresolved
+calls retain
+unknown effects. An empty derived-effect list is not evidence of safety.
+
 - `normal` identifies the native Hex-Rays observation path for the exact
   recorded configuration.
 - `fallback` is a separate evidence path. RV32 remains partial and unverified;

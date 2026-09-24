@@ -10,6 +10,7 @@ from types import MappingProxyType
 
 from .persistence import PersistenceError, Store, require
 from .runtime_contracts import TERMINAL
+from .serialization import ContractError
 
 
 class JobCancelled(Exception):
@@ -18,6 +19,81 @@ class JobCancelled(Exception):
 
 class JobDeadline(Exception):
     pass
+
+
+_CONTRACT_REASONS = {
+    "SSA node budget exceeded": "ssa_node_budget_exceeded",
+    "SSA block budget exceeded": "ssa_block_budget_exceeded",
+    "SDK register set exceeds extraction budget": "extractor_register_budget_exceeded",
+    "Bit-range source budget exceeded": "source_budget_exceeded",
+    "Bit-range label budget exceeded": "source_label_budget_exceeded",
+    "Seeded memory plan drift": "memory_plan_drift",
+    "Seeded memory object drift": "memory_object_drift",
+    "Seeded memory dependency drift": "memory_dependency_drift",
+    "Stored memory dependency replay mismatch": "memory_dependency_drift",
+    "Stored memory plan replay mismatch": "memory_plan_drift",
+    "Explanation graph mismatch": "artifact_graph_mismatch",
+    "stale_database": "stale_database",
+    "stale_profile_evidence": "stale_profile_evidence",
+    "stale_summary_catalog": "stale_summary_catalog",
+    "stale_context": "stale_context",
+    "stale_profile_selection": "stale_profile_selection",
+    "function_entry_required": "function_entry_required",
+    "Select a function entry": "function_entry_required",
+    "hexrays_unavailable": "hexrays_unavailable",
+}
+
+_PERSISTENCE_REASONS = {
+    "stale_database": "stale_database",
+    "stale_context": "stale_context",
+    "wrong_database": "wrong_database",
+    "not_found": "owned_artifact_unavailable",
+    "store_busy": "storage_busy",
+}
+
+_RUNTIME_REASONS = {
+    "Microcode extraction requires the IDA main thread": "ida_main_thread_required",
+    "Hex-Rays initialization unavailable": "hexrays_unavailable",
+    "IDA image-base API unavailable": "image_base_unavailable",
+}
+
+
+def _failure_error(exc: BaseException, phase: str) -> dict[str, str]:
+    """Only static allowlisted fields cross the durable job boundary.
+
+    Neither arbitrary exception messages, class names, native EAs, nor host
+    paths are serialized. An unclassified failure stays explicitly internal.
+    """
+    phase = phase if phase in {"setup", "extract", "analyze", "commit"} else "unknown"
+    message = exc.args[0] if len(exc.args) == 1 and type(exc.args[0]) is str else None
+    if type(exc) is ContractError:
+        kind = "ContractError"
+        reason = _CONTRACT_REASONS.get(message or "", "contract_rejected")
+    elif type(exc) is PersistenceError:
+        kind = "PersistenceError"
+        reason = _PERSISTENCE_REASONS.get(message or "", "storage_boundary")
+    elif type(exc) is RuntimeError:
+        kind = "RuntimeError"
+        reason = (
+            "microcode_generation_failed"
+            if message is not None and message.startswith("gen_microcode failed:")
+            else _RUNTIME_REASONS.get(message or "", "runtime_boundary")
+        )
+    elif type(exc) is ValueError:
+        kind = "ValueError"
+        reason = "invalid_handler_value"
+    elif type(exc) is TimeoutError:
+        kind = "TimeoutError"
+        reason = "handler_timeout"
+    else:
+        kind = "InternalError"
+        reason = "internal_error"
+    return {
+        "code": "handler_failed",
+        "phase": phase,
+        "reason": reason,
+        "type": kind,
+    }
 
 
 @dataclass(frozen=True)
@@ -235,6 +311,7 @@ class Runtime:
         return self.store.job(identifier)
 
     def _run(self, identifier, handler, cancel, done, deadline):
+        phase = "setup"
         context = JobContext(
             cancel,
             deadline,
@@ -254,13 +331,16 @@ class Runtime:
                 owner=self.owner,
                 deadline=time.time() + max(0, deadline - self.clock()),
             )
+            phase = "extract"
             extracted = handler.extract(context, row["input"])
             context.check()
             self.store.transition_job(
                 identifier, "extracting", "analyzing", owner=self.owner
             )
+            phase = "analyze"
             result = handler.analyze(context, extracted)
             context.check()
+            phase = "commit"
             self.store.transition_job(
                 identifier, "analyzing", "committing", owner=self.owner
             )
@@ -269,16 +349,27 @@ class Runtime:
                 identifier, "committing", "complete", owner=self.owner, result=result
             )
         except JobCancelled:
-            self._finish(identifier, "cancelled", {"code": "cancelled"})
+            self._finish(
+                identifier,
+                "cancelled",
+                {"code": "cancelled", "phase": phase, "reason": "cancelled"},
+            )
         except JobDeadline:
             self._finish(
-                identifier, "interrupted", {"code": "lease_expired"}, nonblocking=True
+                identifier,
+                "interrupted",
+                {
+                    "code": "lease_expired",
+                    "phase": phase,
+                    "reason": "deadline_exceeded",
+                },
+                nonblocking=True,
             )
         except BaseException as exc:
             self._finish(
                 identifier,
                 "failed",
-                {"code": "handler_failed", "type": type(exc).__name__},
+                _failure_error(exc, phase),
             )
         finally:
             done.set()

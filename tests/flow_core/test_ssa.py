@@ -858,8 +858,8 @@ def test_one_bit_concrete_shift_profile(opcode, count):
 
 def test_shift_support_revision_invalidates_old_policy_cache_identity():
     policy = ScalarPolicy()
-    previous = policy.to_data() | {"ruleset": "scalar-transfer-v1"}
-    assert policy.ruleset == "scalar-transfer-v2"
+    previous = policy.to_data() | {"ruleset": "scalar-transfer-v3"}
+    assert policy.ruleset == "scalar-transfer-v4"
     assert digest(policy) != digest(previous)
     with pytest.raises(ContractError):
         ScalarPolicy.from_data(previous)

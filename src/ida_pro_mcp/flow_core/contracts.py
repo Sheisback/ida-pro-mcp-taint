@@ -38,7 +38,9 @@ NodeKind = Literal[
     "Store",
     "MemoryPhi",
     "Call",
+    "CallResult",
     "Return",
+    "Exit",
     "Branch",
     "Allocation",
     "Free",
@@ -147,6 +149,7 @@ class Operand(Model):
         "unknown",
         "void",
         "address",
+        "stack_address",
         "global",
         "callinfo",
     ]
@@ -173,7 +176,15 @@ class Operand(Model):
         require(
             self.width_bits is not None
             or self.kind
-            in ("void", "unknown", "block", "address", "global", "callinfo"),
+            in (
+                "void",
+                "unknown",
+                "block",
+                "address",
+                "stack_address",
+                "global",
+                "callinfo",
+            ),
             "Value operand requires width",
         )
         require(
@@ -182,7 +193,8 @@ class Operand(Model):
         canonical_set(self.source_eas)
         require(all(ea >= 0 for ea in self.source_eas), "Invalid operand EA")
         require(
-            (self.address is not None) == (self.kind in ("address", "global")),
+            (self.address is not None)
+            == (self.kind in ("address", "stack_address", "global")),
             "Address payload mismatch",
         )
         require(self.address is None or self.address >= 0, "Negative address")
@@ -604,6 +616,7 @@ class Node(Model):
             "Select",
             "Phi",
             "Load",
+            "CallResult",
         }:
             require(self.width_bits is not None, "Value node requires a width")
         arities = {
@@ -617,6 +630,7 @@ class Node(Model):
             "Select": (3,),
             "Free": (1,),
             "Return": (0, 1),
+            "Exit": (0,),
             "Branch": (0, 1),
         }
         if self.kind in arities:
@@ -810,7 +824,9 @@ class MemoryObject(Model):
     key: str
     address_space: str
     size_bytes: int | None = None
-    kind: Literal["stack", "global", "argument", "heap", "unknown"] = "unknown"
+    kind: Literal["stack", "global", "argument", "typed_entry", "heap", "unknown"] = (
+        "unknown"
+    )
     singleton: bool = False
     singleton_evidence: str | None = None
     disjoint: bool = False

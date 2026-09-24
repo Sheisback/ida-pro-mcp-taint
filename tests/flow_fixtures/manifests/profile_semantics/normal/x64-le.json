@@ -193,8 +193,8 @@
   "evidence_path": "normal_microcode",
   "fresh_process_equal": true,
   "fresh_process_receipt_digests": [
-    "sha256-v1:cb20b9826b2cc63125436679f8046a91f8ca048a3c3c4dfc440a0e8b1564996f",
-    "sha256-v1:cb20b9826b2cc63125436679f8046a91f8ca048a3c3c4dfc440a0e8b1564996f"
+    "sha256-v1:3d8b32c30f6cc2857ee15689d907b7094435e436738e2fda066267ea925574c6",
+    "sha256-v1:3d8b32c30f6cc2857ee15689d907b7094435e436738e2fda066267ea925574c6"
   ],
   "functions": [
     {
@@ -241,7 +241,98 @@
           "blocks": [
             {
               "index": 0,
-              "instructions": [],
+              "instructions": [
+                {
+                  "index": 0,
+                  "opcode": "m_arg",
+                  "operands": [
+                    {
+                      "address": null,
+                      "block_index": null,
+                      "call": null,
+                      "children": [],
+                      "constant": 0,
+                      "diagnostic": null,
+                      "kind": "constant",
+                      "native_kind": null,
+                      "operation": null,
+                      "role": "left",
+                      "source_eas": [],
+                      "storage": null,
+                      "synthetic": false,
+                      "width_bits": 32
+                    },
+                    {
+                      "address": null,
+                      "block_index": null,
+                      "call": null,
+                      "children": [],
+                      "constant": null,
+                      "diagnostic": null,
+                      "kind": "storage",
+                      "native_kind": "typed_argument_argloc",
+                      "operation": null,
+                      "role": "argument",
+                      "source_eas": [],
+                      "storage": {
+                        "address_space": "microregister",
+                        "bit_offset": 448,
+                        "name": "microregister",
+                        "width_bits": 32
+                      },
+                      "synthetic": true,
+                      "width_bits": 32
+                    }
+                  ],
+                  "source_eas": [],
+                  "synthetic": true
+                },
+                {
+                  "index": 1,
+                  "opcode": "m_arg",
+                  "operands": [
+                    {
+                      "address": null,
+                      "block_index": null,
+                      "call": null,
+                      "children": [],
+                      "constant": 1,
+                      "diagnostic": null,
+                      "kind": "constant",
+                      "native_kind": null,
+                      "operation": null,
+                      "role": "left",
+                      "source_eas": [],
+                      "storage": null,
+                      "synthetic": false,
+                      "width_bits": 32
+                    },
+                    {
+                      "address": null,
+                      "block_index": null,
+                      "call": null,
+                      "children": [],
+                      "constant": null,
+                      "diagnostic": null,
+                      "kind": "storage",
+                      "native_kind": "typed_argument_argloc",
+                      "operation": null,
+                      "role": "argument",
+                      "source_eas": [],
+                      "storage": {
+                        "address_space": "microregister",
+                        "bit_offset": 512,
+                        "name": "microregister",
+                        "width_bits": 32
+                      },
+                      "synthetic": true,
+                      "width_bits": 32
+                    }
+                  ],
+                  "source_eas": [],
+                  "synthetic": true
+                }
+              ],
               "predecessors": [],
               "successors": [
                 1
@@ -521,7 +612,37 @@
             },
             {
               "index": 2,
-              "instructions": [],
+              "instructions": [
+                {
+                  "index": 0,
+                  "opcode": "m_ret",
+                  "operands": [
+                    {
+                      "address": null,
+                      "block_index": null,
+                      "call": null,
+                      "children": [],
+                      "constant": null,
+                      "diagnostic": null,
+                      "kind": "storage",
+                      "native_kind": "typed_return_argloc",
+                      "operation": null,
+                      "role": "left",
+                      "source_eas": [],
+                      "storage": {
+                        "address_space": "microregister",
+                        "bit_offset": 64,
+                        "name": "microregister",
+                        "width_bits": 32
+                      },
+                      "synthetic": true,
+                      "width_bits": 32
+                    }
+                  ],
+                  "source_eas": [],
+                  "synthetic": true
+                }
+              ],
               "predecessors": [
                 1
               ],
@@ -537,6 +658,16 @@
             {
               "code": "native_origins_incomplete",
               "detail": "Observed nested microcode EA union only; optimized-away native origins cannot be reconstructed",
+              "severity": "information"
+            },
+            {
+              "code": "typed_argument_location",
+              "detail": "Synthetic argument partitions from current IDB type and SDK argloc; type correctness is an analyst assumption",
+              "severity": "information"
+            },
+            {
+              "code": "typed_return_location",
+              "detail": "Synthetic return location from current IDB type and SDK argloc; type correctness is an analyst assumption",
               "severity": "information"
             }
           ],
@@ -559,20 +690,20 @@
             "processor": "metapc"
           },
           "function_id": "g012-function-v1:47412a00d0eaf832915f3a9c614f3a33d0695992c532d64c61e13255d6e3eb61",
-          "input_digest": "sha256-v1:51aa47177632f79cf49552c8c2e923828f035febf1fc8eec8d9366a0f0163e9e",
+          "input_digest": "sha256-v1:e730389298b580b354f2555c22133e09ff9da713a997d818688eb286c6773d9f",
           "maturity": "MMAT_CALLS",
           "namespace": "g012-phase2-semantic-matrix",
           "policy_digest": "sha256-v1:fbca9931f8e9c10a3c37eaa84b58f2a405f3e7f8ff41a2986f65fa263dab1e93",
           "profile_digest": "sha256-v1:38c29a208ce6f7a315955cb2351af85171017efe123efca0501fa16b119c417e",
           "rule_digest": "sha256-v1:d8ab490fec53f884af8f3a670b9fe752ce44017f30c58e63a2bfac2dc3b7f863",
           "schema_version": 1,
-          "semantic_digest": "sha256-v1:519df15d3f0bcd3d120a5dd48757aa7e919a18b8bd9dc8653d95106065d4e816",
+          "semantic_digest": "sha256-v1:0ce6c036dd26fe6a95336a74e259759ca4ad82102f39de7d6ddbb8b5900e390f",
           "summary_digest": "sha256-v1:92286845e5554de11b090c992a0aa60af599ff674f2ecdf9b8558f7e58176360"
         },
         "schema_version": 1,
-        "snapshot_id": "snapshot-v1:f5e5a84f10026c0888a7390a0a850e5cbe53915789d00f43275b896196737f4f"
+        "snapshot_id": "snapshot-v1:f603a2b1084e20218483cee737ba1d9cdf69cf9c6e972e65f9d3e349dab8e7af"
       },
-      "snapshot_digest": "sha256-v1:4fb6863113f1d079d6c6e5f1aba121305705c55388defc3b79dc6dcfc72e109f",
+      "snapshot_digest": "sha256-v1:8125053f44ef987750fc043eff7107509d391065937fd10c7ab4d886f5ce5830",
       "structural_identity": {
         "binary_sha256": "3f03305a9f75c223a27a657339bb3942bc72eb9d015c4d3a1760dfc3a2a1a217",
         "function_rva": 4784,
@@ -625,7 +756,98 @@
           "blocks": [
             {
               "index": 0,
-              "instructions": [],
+              "instructions": [
+                {
+                  "index": 0,
+                  "opcode": "m_arg",
+                  "operands": [
+                    {
+                      "address": null,
+                      "block_index": null,
+                      "call": null,
+                      "children": [],
+                      "constant": 0,
+                      "diagnostic": null,
+                      "kind": "constant",
+                      "native_kind": null,
+                      "operation": null,
+                      "role": "left",
+                      "source_eas": [],
+                      "storage": null,
+                      "synthetic": false,
+                      "width_bits": 32
+                    },
+                    {
+                      "address": null,
+                      "block_index": null,
+                      "call": null,
+                      "children": [],
+                      "constant": null,
+                      "diagnostic": null,
+                      "kind": "storage",
+                      "native_kind": "typed_argument_argloc",
+                      "operation": null,
+                      "role": "argument",
+                      "source_eas": [],
+                      "storage": {
+                        "address_space": "microregister",
+                        "bit_offset": 448,
+                        "name": "microregister",
+                        "width_bits": 32
+                      },
+                      "synthetic": true,
+                      "width_bits": 32
+                    }
+                  ],
+                  "source_eas": [],
+                  "synthetic": true
+                },
+                {
+                  "index": 1,
+                  "opcode": "m_arg",
+                  "operands": [
+                    {
+                      "address": null,
+                      "block_index": null,
+                      "call": null,
+                      "children": [],
+                      "constant": 1,
+                      "diagnostic": null,
+                      "kind": "constant",
+                      "native_kind": null,
+                      "operation": null,
+                      "role": "left",
+                      "source_eas": [],
+                      "storage": null,
+                      "synthetic": false,
+                      "width_bits": 32
+                    },
+                    {
+                      "address": null,
+                      "block_index": null,
+                      "call": null,
+                      "children": [],
+                      "constant": null,
+                      "diagnostic": null,
+                      "kind": "storage",
+                      "native_kind": "typed_argument_argloc",
+                      "operation": null,
+                      "role": "argument",
+                      "source_eas": [],
+                      "storage": {
+                        "address_space": "microregister",
+                        "bit_offset": 512,
+                        "name": "microregister",
+                        "width_bits": 32
+                      },
+                      "synthetic": true,
+                      "width_bits": 32
+                    }
+                  ],
+                  "source_eas": [],
+                  "synthetic": true
+                }
+              ],
               "predecessors": [],
               "successors": [
                 1
@@ -1266,7 +1488,37 @@
             },
             {
               "index": 5,
-              "instructions": [],
+              "instructions": [
+                {
+                  "index": 0,
+                  "opcode": "m_ret",
+                  "operands": [
+                    {
+                      "address": null,
+                      "block_index": null,
+                      "call": null,
+                      "children": [],
+                      "constant": null,
+                      "diagnostic": null,
+                      "kind": "storage",
+                      "native_kind": "typed_return_argloc",
+                      "operation": null,
+                      "role": "left",
+                      "source_eas": [],
+                      "storage": {
+                        "address_space": "microregister",
+                        "bit_offset": 64,
+                        "name": "microregister",
+                        "width_bits": 32
+                      },
+                      "synthetic": true,
+                      "width_bits": 32
+                    }
+                  ],
+                  "source_eas": [],
+                  "synthetic": true
+                }
+              ],
               "predecessors": [
                 4
               ],
@@ -1282,6 +1534,16 @@
             {
               "code": "native_origins_incomplete",
               "detail": "Observed nested microcode EA union only; optimized-away native origins cannot be reconstructed",
+              "severity": "information"
+            },
+            {
+              "code": "typed_argument_location",
+              "detail": "Synthetic argument partitions from current IDB type and SDK argloc; type correctness is an analyst assumption",
+              "severity": "information"
+            },
+            {
+              "code": "typed_return_location",
+              "detail": "Synthetic return location from current IDB type and SDK argloc; type correctness is an analyst assumption",
               "severity": "information"
             }
           ],
@@ -1304,20 +1566,20 @@
             "processor": "metapc"
           },
           "function_id": "g012-function-v1:c292a92d6da20dc795360a2ceb83049e234a3b09bb2a9750a3ce6146a14d6314",
-          "input_digest": "sha256-v1:3a476a9f0a95f50e8d8c2cef148ea773bf6abc3b072edc4a1eb86672bb25ebd7",
+          "input_digest": "sha256-v1:405a4467e80c1f24aa70f930ce4bd30e96df154bf7d0bf89f1500fc0ca70a0d5",
           "maturity": "MMAT_CALLS",
           "namespace": "g012-phase2-semantic-matrix",
           "policy_digest": "sha256-v1:fbca9931f8e9c10a3c37eaa84b58f2a405f3e7f8ff41a2986f65fa263dab1e93",
           "profile_digest": "sha256-v1:38c29a208ce6f7a315955cb2351af85171017efe123efca0501fa16b119c417e",
           "rule_digest": "sha256-v1:d8ab490fec53f884af8f3a670b9fe752ce44017f30c58e63a2bfac2dc3b7f863",
           "schema_version": 1,
-          "semantic_digest": "sha256-v1:ba26737e531d08be4abd5e62a46a9817bdb08224a2ecee72f0208312d3d7145f",
+          "semantic_digest": "sha256-v1:b0c5957cc220551b71eca5ebe5af312b2db9461c1bbc8d509c4b0b3e636eacf4",
           "summary_digest": "sha256-v1:92286845e5554de11b090c992a0aa60af599ff674f2ecdf9b8558f7e58176360"
         },
         "schema_version": 1,
-        "snapshot_id": "snapshot-v1:3e43f0fe5d1e6496d0412f521428844280ecdf55ec55fffc9ade069f5d45d960"
+        "snapshot_id": "snapshot-v1:517837abf926aa02424466c5c44b23461f0de54364ecde772f4095cbc3b27fb4"
       },
-      "snapshot_digest": "sha256-v1:d9ccf31e73afaabfc31a73d34e3f462dec45826c220aece562320564fb58448b",
+      "snapshot_digest": "sha256-v1:00bc4778215db27b5b44270ba3c7f388c33e922a322dde1cde08ca768f9ad6de",
       "structural_identity": {
         "binary_sha256": "3f03305a9f75c223a27a657339bb3942bc72eb9d015c4d3a1760dfc3a2a1a217",
         "function_rva": 4816,
@@ -1370,7 +1632,53 @@
           "blocks": [
             {
               "index": 0,
-              "instructions": [],
+              "instructions": [
+                {
+                  "index": 0,
+                  "opcode": "m_arg",
+                  "operands": [
+                    {
+                      "address": null,
+                      "block_index": null,
+                      "call": null,
+                      "children": [],
+                      "constant": 0,
+                      "diagnostic": null,
+                      "kind": "constant",
+                      "native_kind": null,
+                      "operation": null,
+                      "role": "left",
+                      "source_eas": [],
+                      "storage": null,
+                      "synthetic": false,
+                      "width_bits": 32
+                    },
+                    {
+                      "address": null,
+                      "block_index": null,
+                      "call": null,
+                      "children": [],
+                      "constant": null,
+                      "diagnostic": null,
+                      "kind": "storage",
+                      "native_kind": "typed_pointer_argument_argloc",
+                      "operation": null,
+                      "role": "argument",
+                      "source_eas": [],
+                      "storage": {
+                        "address_space": "microregister",
+                        "bit_offset": 448,
+                        "name": "microregister",
+                        "width_bits": 64
+                      },
+                      "synthetic": true,
+                      "width_bits": 64
+                    }
+                  ],
+                  "source_eas": [],
+                  "synthetic": true
+                }
+              ],
               "predecessors": [],
               "successors": [
                 1
@@ -1530,7 +1838,37 @@
             },
             {
               "index": 2,
-              "instructions": [],
+              "instructions": [
+                {
+                  "index": 0,
+                  "opcode": "m_ret",
+                  "operands": [
+                    {
+                      "address": null,
+                      "block_index": null,
+                      "call": null,
+                      "children": [],
+                      "constant": null,
+                      "diagnostic": null,
+                      "kind": "storage",
+                      "native_kind": "typed_return_argloc",
+                      "operation": null,
+                      "role": "left",
+                      "source_eas": [],
+                      "storage": {
+                        "address_space": "microregister",
+                        "bit_offset": 64,
+                        "name": "microregister",
+                        "width_bits": 32
+                      },
+                      "synthetic": true,
+                      "width_bits": 32
+                    }
+                  ],
+                  "source_eas": [],
+                  "synthetic": true
+                }
+              ],
               "predecessors": [
                 1
               ],
@@ -1546,6 +1884,16 @@
             {
               "code": "native_origins_incomplete",
               "detail": "Observed nested microcode EA union only; optimized-away native origins cannot be reconstructed",
+              "severity": "information"
+            },
+            {
+              "code": "typed_argument_location",
+              "detail": "Synthetic argument partitions from current IDB type and SDK argloc; type correctness is an analyst assumption",
+              "severity": "information"
+            },
+            {
+              "code": "typed_return_location",
+              "detail": "Synthetic return location from current IDB type and SDK argloc; type correctness is an analyst assumption",
               "severity": "information"
             }
           ],
@@ -1568,20 +1916,20 @@
             "processor": "metapc"
           },
           "function_id": "g012-function-v1:a01f4e757235f4deb534fd977de9b2c41ac24a727084eb75d034124c0a2ce763",
-          "input_digest": "sha256-v1:5190ab499d633d3c29642fb5fddb5a1f5143b394daa0b284bbb1e2e3e58ce065",
+          "input_digest": "sha256-v1:6129e8bd44fc3115d0ad75138f02546fb3493454c5f285b38545f370937059d7",
           "maturity": "MMAT_CALLS",
           "namespace": "g012-phase2-semantic-matrix",
           "policy_digest": "sha256-v1:fbca9931f8e9c10a3c37eaa84b58f2a405f3e7f8ff41a2986f65fa263dab1e93",
           "profile_digest": "sha256-v1:38c29a208ce6f7a315955cb2351af85171017efe123efca0501fa16b119c417e",
           "rule_digest": "sha256-v1:d8ab490fec53f884af8f3a670b9fe752ce44017f30c58e63a2bfac2dc3b7f863",
           "schema_version": 1,
-          "semantic_digest": "sha256-v1:dc06496cadb68de4b77179802cb8be90f77345d4c24875a4cd8503305af5cf3a",
+          "semantic_digest": "sha256-v1:565c1c1afe39d6d520927b098cb647cba809daf454e163603fd141c4dde040f3",
           "summary_digest": "sha256-v1:92286845e5554de11b090c992a0aa60af599ff674f2ecdf9b8558f7e58176360"
         },
         "schema_version": 1,
-        "snapshot_id": "snapshot-v1:e99ac44f5458c01fa3d0d7f6ea91e6e8879b6b755533a50dbf18a92f4a1ceac6"
+        "snapshot_id": "snapshot-v1:9262675bdce3e294a47e69ca4cf2fef49e7a1c17a57af4cb5fa82aafaf3ea495"
       },
-      "snapshot_digest": "sha256-v1:7ae24b52aab05b74ccdd679b47d6c14c717a984d253e3110d83b0447710d9443",
+      "snapshot_digest": "sha256-v1:74abc48e034882ad9268e01d09ada84c0ca7ff3b888891787d6d6eb03dd9604a",
       "structural_identity": {
         "binary_sha256": "3f03305a9f75c223a27a657339bb3942bc72eb9d015c4d3a1760dfc3a2a1a217",
         "function_rva": 4864,
@@ -1634,7 +1982,98 @@
           "blocks": [
             {
               "index": 0,
-              "instructions": [],
+              "instructions": [
+                {
+                  "index": 0,
+                  "opcode": "m_arg",
+                  "operands": [
+                    {
+                      "address": null,
+                      "block_index": null,
+                      "call": null,
+                      "children": [],
+                      "constant": 0,
+                      "diagnostic": null,
+                      "kind": "constant",
+                      "native_kind": null,
+                      "operation": null,
+                      "role": "left",
+                      "source_eas": [],
+                      "storage": null,
+                      "synthetic": false,
+                      "width_bits": 32
+                    },
+                    {
+                      "address": null,
+                      "block_index": null,
+                      "call": null,
+                      "children": [],
+                      "constant": null,
+                      "diagnostic": null,
+                      "kind": "storage",
+                      "native_kind": "typed_pointer_argument_argloc",
+                      "operation": null,
+                      "role": "argument",
+                      "source_eas": [],
+                      "storage": {
+                        "address_space": "microregister",
+                        "bit_offset": 448,
+                        "name": "microregister",
+                        "width_bits": 64
+                      },
+                      "synthetic": true,
+                      "width_bits": 64
+                    }
+                  ],
+                  "source_eas": [],
+                  "synthetic": true
+                },
+                {
+                  "index": 1,
+                  "opcode": "m_arg",
+                  "operands": [
+                    {
+                      "address": null,
+                      "block_index": null,
+                      "call": null,
+                      "children": [],
+                      "constant": 1,
+                      "diagnostic": null,
+                      "kind": "constant",
+                      "native_kind": null,
+                      "operation": null,
+                      "role": "left",
+                      "source_eas": [],
+                      "storage": null,
+                      "synthetic": false,
+                      "width_bits": 32
+                    },
+                    {
+                      "address": null,
+                      "block_index": null,
+                      "call": null,
+                      "children": [],
+                      "constant": null,
+                      "diagnostic": null,
+                      "kind": "storage",
+                      "native_kind": "typed_argument_argloc",
+                      "operation": null,
+                      "role": "argument",
+                      "source_eas": [],
+                      "storage": {
+                        "address_space": "microregister",
+                        "bit_offset": 512,
+                        "name": "microregister",
+                        "width_bits": 32
+                      },
+                      "synthetic": true,
+                      "width_bits": 32
+                    }
+                  ],
+                  "source_eas": [],
+                  "synthetic": true
+                }
+              ],
               "predecessors": [],
               "successors": [
                 1
@@ -1862,7 +2301,15 @@
             },
             {
               "index": 2,
-              "instructions": [],
+              "instructions": [
+                {
+                  "index": 0,
+                  "opcode": "m_exit",
+                  "operands": [],
+                  "source_eas": [],
+                  "synthetic": true
+                }
+              ],
               "predecessors": [
                 1
               ],
@@ -1878,6 +2325,16 @@
             {
               "code": "native_origins_incomplete",
               "detail": "Observed nested microcode EA union only; optimized-away native origins cannot be reconstructed",
+              "severity": "information"
+            },
+            {
+              "code": "typed_argument_location",
+              "detail": "Synthetic argument partitions from current IDB type and SDK argloc; type correctness is an analyst assumption",
+              "severity": "information"
+            },
+            {
+              "code": "typed_void_return",
+              "detail": "Current IDB type has void return; normal termination carries no value",
               "severity": "information"
             }
           ],
@@ -1900,20 +2357,20 @@
             "processor": "metapc"
           },
           "function_id": "g012-function-v1:93975c0e999113a0bf23d275f985e3af591543f88773bd9bcfa74e0e9548540e",
-          "input_digest": "sha256-v1:18e9c5dc4b99b02634edf10109c479c4c96da494b6143926fbe55f96183cff01",
+          "input_digest": "sha256-v1:096a196d9e189461a9a8331e71da992a719cebb2f42bbebc5e4a9d807c0384ba",
           "maturity": "MMAT_CALLS",
           "namespace": "g012-phase2-semantic-matrix",
           "policy_digest": "sha256-v1:fbca9931f8e9c10a3c37eaa84b58f2a405f3e7f8ff41a2986f65fa263dab1e93",
           "profile_digest": "sha256-v1:38c29a208ce6f7a315955cb2351af85171017efe123efca0501fa16b119c417e",
           "rule_digest": "sha256-v1:d8ab490fec53f884af8f3a670b9fe752ce44017f30c58e63a2bfac2dc3b7f863",
           "schema_version": 1,
-          "semantic_digest": "sha256-v1:46b796ac191bbb18043fee8b2580af3f286e5ba00bdab18939b16f9ad90eac3d",
+          "semantic_digest": "sha256-v1:d2ad7c7a32e777418f30ebc09aaaa9fd41ef5c910cf91ffd405ed270109cabbc",
           "summary_digest": "sha256-v1:92286845e5554de11b090c992a0aa60af599ff674f2ecdf9b8558f7e58176360"
         },
         "schema_version": 1,
-        "snapshot_id": "snapshot-v1:c8b5d5039c990b5a87ade56b2aecc63502247ac8cc7b7c802f2809c9d187b880"
+        "snapshot_id": "snapshot-v1:0796b8f98fa7a0767e33a3c5ac81cb88a33fee227618a198c37daebde534727e"
       },
-      "snapshot_digest": "sha256-v1:71b53f259742e88d45ec1df3ae7a0a5ac9220a404fed4bb4326cb10af325235a",
+      "snapshot_digest": "sha256-v1:4f92fbe324041ace17d641f9c8ece16de067432cf0dee6fe6db779b5941614ac",
       "structural_identity": {
         "binary_sha256": "3f03305a9f75c223a27a657339bb3942bc72eb9d015c4d3a1760dfc3a2a1a217",
         "function_rva": 4880,
@@ -1987,7 +2444,53 @@
           "blocks": [
             {
               "index": 0,
-              "instructions": [],
+              "instructions": [
+                {
+                  "index": 0,
+                  "opcode": "m_arg",
+                  "operands": [
+                    {
+                      "address": null,
+                      "block_index": null,
+                      "call": null,
+                      "children": [],
+                      "constant": 0,
+                      "diagnostic": null,
+                      "kind": "constant",
+                      "native_kind": null,
+                      "operation": null,
+                      "role": "left",
+                      "source_eas": [],
+                      "storage": null,
+                      "synthetic": false,
+                      "width_bits": 32
+                    },
+                    {
+                      "address": null,
+                      "block_index": null,
+                      "call": null,
+                      "children": [],
+                      "constant": null,
+                      "diagnostic": null,
+                      "kind": "storage",
+                      "native_kind": "typed_argument_argloc",
+                      "operation": null,
+                      "role": "argument",
+                      "source_eas": [],
+                      "storage": {
+                        "address_space": "microregister",
+                        "bit_offset": 448,
+                        "name": "microregister",
+                        "width_bits": 32
+                      },
+                      "synthetic": true,
+                      "width_bits": 32
+                    }
+                  ],
+                  "source_eas": [],
+                  "synthetic": true
+                }
+              ],
               "predecessors": [],
               "successors": [
                 1
@@ -2366,7 +2869,37 @@
             },
             {
               "index": 2,
-              "instructions": [],
+              "instructions": [
+                {
+                  "index": 0,
+                  "opcode": "m_ret",
+                  "operands": [
+                    {
+                      "address": null,
+                      "block_index": null,
+                      "call": null,
+                      "children": [],
+                      "constant": null,
+                      "diagnostic": null,
+                      "kind": "storage",
+                      "native_kind": "typed_return_argloc",
+                      "operation": null,
+                      "role": "left",
+                      "source_eas": [],
+                      "storage": {
+                        "address_space": "microregister",
+                        "bit_offset": 64,
+                        "name": "microregister",
+                        "width_bits": 32
+                      },
+                      "synthetic": true,
+                      "width_bits": 32
+                    }
+                  ],
+                  "source_eas": [],
+                  "synthetic": true
+                }
+              ],
               "predecessors": [
                 1
               ],
@@ -2387,6 +2920,16 @@
             {
               "code": "native_origins_incomplete",
               "detail": "Observed nested microcode EA union only; optimized-away native origins cannot be reconstructed",
+              "severity": "information"
+            },
+            {
+              "code": "typed_argument_location",
+              "detail": "Synthetic argument partitions from current IDB type and SDK argloc; type correctness is an analyst assumption",
+              "severity": "information"
+            },
+            {
+              "code": "typed_return_location",
+              "detail": "Synthetic return location from current IDB type and SDK argloc; type correctness is an analyst assumption",
               "severity": "information"
             }
           ],
@@ -2409,20 +2952,20 @@
             "processor": "metapc"
           },
           "function_id": "g012-function-v1:ea7b0025759662d4120b22059b9ebbd4cf0c1be0372846fd4387db69d9200ca6",
-          "input_digest": "sha256-v1:59a580e6f0f2264f57f1d896f7138c3c2f77e25dd623db0dd4a2891c122e40bc",
+          "input_digest": "sha256-v1:8eac48e1e607b6d066653d45f0ae4d68d1c0ff92bfc82c02b7c442911f2bfea8",
           "maturity": "MMAT_CALLS",
           "namespace": "g012-phase2-semantic-matrix",
           "policy_digest": "sha256-v1:fbca9931f8e9c10a3c37eaa84b58f2a405f3e7f8ff41a2986f65fa263dab1e93",
           "profile_digest": "sha256-v1:38c29a208ce6f7a315955cb2351af85171017efe123efca0501fa16b119c417e",
           "rule_digest": "sha256-v1:d8ab490fec53f884af8f3a670b9fe752ce44017f30c58e63a2bfac2dc3b7f863",
           "schema_version": 1,
-          "semantic_digest": "sha256-v1:a26df93609819277a01f918b00aa9b2282a1709f01296f5b2c427e76df59f7d4",
+          "semantic_digest": "sha256-v1:eb4ca839115af61a6ee027654f1a38c512484cbc7a1021cefc4f3a8c87cbf2d5",
           "summary_digest": "sha256-v1:92286845e5554de11b090c992a0aa60af599ff674f2ecdf9b8558f7e58176360"
         },
         "schema_version": 1,
-        "snapshot_id": "snapshot-v1:270002d4da4f02277478b8dd109a3fdcdfefb6858b2e10ceacb105be85d6272d"
+        "snapshot_id": "snapshot-v1:e51d559cd60adf0e1dfbd55595b90ef79bee2ea8fa5c51d1fa80df9e3edf329a"
       },
-      "snapshot_digest": "sha256-v1:8e9ea2e19bd08324d46c7d90ecd5125737f573ae9d327633d70536572e89dd97",
+      "snapshot_digest": "sha256-v1:00114e922a9bfae96f565f571f8354105887645d58b768c7bacd8ad395520c0e",
       "structural_identity": {
         "binary_sha256": "3f03305a9f75c223a27a657339bb3942bc72eb9d015c4d3a1760dfc3a2a1a217",
         "function_rva": 4912,
@@ -2556,7 +3099,98 @@
           "blocks": [
             {
               "index": 0,
-              "instructions": [],
+              "instructions": [
+                {
+                  "index": 0,
+                  "opcode": "m_arg",
+                  "operands": [
+                    {
+                      "address": null,
+                      "block_index": null,
+                      "call": null,
+                      "children": [],
+                      "constant": 0,
+                      "diagnostic": null,
+                      "kind": "constant",
+                      "native_kind": null,
+                      "operation": null,
+                      "role": "left",
+                      "source_eas": [],
+                      "storage": null,
+                      "synthetic": false,
+                      "width_bits": 32
+                    },
+                    {
+                      "address": null,
+                      "block_index": null,
+                      "call": null,
+                      "children": [],
+                      "constant": null,
+                      "diagnostic": null,
+                      "kind": "storage",
+                      "native_kind": "typed_pointer_argument_argloc",
+                      "operation": null,
+                      "role": "argument",
+                      "source_eas": [],
+                      "storage": {
+                        "address_space": "microregister",
+                        "bit_offset": 448,
+                        "name": "microregister",
+                        "width_bits": 64
+                      },
+                      "synthetic": true,
+                      "width_bits": 64
+                    }
+                  ],
+                  "source_eas": [],
+                  "synthetic": true
+                },
+                {
+                  "index": 1,
+                  "opcode": "m_arg",
+                  "operands": [
+                    {
+                      "address": null,
+                      "block_index": null,
+                      "call": null,
+                      "children": [],
+                      "constant": 1,
+                      "diagnostic": null,
+                      "kind": "constant",
+                      "native_kind": null,
+                      "operation": null,
+                      "role": "left",
+                      "source_eas": [],
+                      "storage": null,
+                      "synthetic": false,
+                      "width_bits": 32
+                    },
+                    {
+                      "address": null,
+                      "block_index": null,
+                      "call": null,
+                      "children": [],
+                      "constant": null,
+                      "diagnostic": null,
+                      "kind": "storage",
+                      "native_kind": "typed_argument_argloc",
+                      "operation": null,
+                      "role": "argument",
+                      "source_eas": [],
+                      "storage": {
+                        "address_space": "microregister",
+                        "bit_offset": 512,
+                        "name": "microregister",
+                        "width_bits": 32
+                      },
+                      "synthetic": true,
+                      "width_bits": 32
+                    }
+                  ],
+                  "source_eas": [],
+                  "synthetic": true
+                }
+              ],
               "predecessors": [],
               "successors": [
                 1
@@ -4108,7 +4742,37 @@
             },
             {
               "index": 6,
-              "instructions": [],
+              "instructions": [
+                {
+                  "index": 0,
+                  "opcode": "m_ret",
+                  "operands": [
+                    {
+                      "address": null,
+                      "block_index": null,
+                      "call": null,
+                      "children": [],
+                      "constant": null,
+                      "diagnostic": null,
+                      "kind": "storage",
+                      "native_kind": "typed_return_argloc",
+                      "operation": null,
+                      "role": "left",
+                      "source_eas": [],
+                      "storage": {
+                        "address_space": "microregister",
+                        "bit_offset": 64,
+                        "name": "microregister",
+                        "width_bits": 32
+                      },
+                      "synthetic": true,
+                      "width_bits": 32
+                    }
+                  ],
+                  "source_eas": [],
+                  "synthetic": true
+                }
+              ],
               "predecessors": [
                 5
               ],
@@ -4129,6 +4793,16 @@
             {
               "code": "native_origins_incomplete",
               "detail": "Observed nested microcode EA union only; optimized-away native origins cannot be reconstructed",
+              "severity": "information"
+            },
+            {
+              "code": "typed_argument_location",
+              "detail": "Synthetic argument partitions from current IDB type and SDK argloc; type correctness is an analyst assumption",
+              "severity": "information"
+            },
+            {
+              "code": "typed_return_location",
+              "detail": "Synthetic return location from current IDB type and SDK argloc; type correctness is an analyst assumption",
               "severity": "information"
             }
           ],
@@ -4151,20 +4825,20 @@
             "processor": "metapc"
           },
           "function_id": "g012-function-v1:e5d91536d04f71ca0a9c4071662a89a7ea6824e6e26be13c81837013caf76a91",
-          "input_digest": "sha256-v1:ebe32efbd53dc46222585bddbc43d9daf86b0a85b3d63406a6f75d01e941ba6b",
+          "input_digest": "sha256-v1:4b1407ce6cfd0619cc9161fb77a9ad49c54adf525fc28c32cdaca93f23a1a6b9",
           "maturity": "MMAT_CALLS",
           "namespace": "g012-phase2-semantic-matrix",
           "policy_digest": "sha256-v1:fbca9931f8e9c10a3c37eaa84b58f2a405f3e7f8ff41a2986f65fa263dab1e93",
           "profile_digest": "sha256-v1:38c29a208ce6f7a315955cb2351af85171017efe123efca0501fa16b119c417e",
           "rule_digest": "sha256-v1:d8ab490fec53f884af8f3a670b9fe752ce44017f30c58e63a2bfac2dc3b7f863",
           "schema_version": 1,
-          "semantic_digest": "sha256-v1:04c0018b0f6f30ce4313c5bf075326ad27ee173bb442b53d43042976ca07b124",
+          "semantic_digest": "sha256-v1:b8912f00b2c853c5b9fd401dba648f7bcd77a19f667fd4f483e226e264f8e3dc",
           "summary_digest": "sha256-v1:92286845e5554de11b090c992a0aa60af599ff674f2ecdf9b8558f7e58176360"
         },
         "schema_version": 1,
-        "snapshot_id": "snapshot-v1:5216a3ae919649e22601ff676a241ad0547cc91aed6d0f25682f0baf1ca37c1c"
+        "snapshot_id": "snapshot-v1:c173b9793fe6529df27a3c5061208ab4adb8bf8ad27e33ce2aec4c98e9af1579"
       },
-      "snapshot_digest": "sha256-v1:5fed46e3cad073b9176638a80cbf43430ac88757c8c232cda5bb9fefae744f25",
+      "snapshot_digest": "sha256-v1:509f28246751e116ce1cd0b324047bc2e7a310bf39247a05e2f4151c353367d5",
       "structural_identity": {
         "binary_sha256": "3f03305a9f75c223a27a657339bb3942bc72eb9d015c4d3a1760dfc3a2a1a217",
         "function_rva": 4944,
@@ -4179,7 +4853,7 @@
     "scripts/flow_profile_semantics.py": "72f673747ad0c0ef1b1d052bcf2bde6b5251e41d4d1af0802737c8f42b8a046c",
     "scripts/record_flow_profile_semantics.py": "f8d5d09c9158faa8f499e1968cf14236887686ae25b9ba8bfeefa3627fdf8e77",
     "src/ida_pro_mcp/flow_core/profile_semantics.py": "d32c1bb1ba3432094ce9f59bde26c3b0d9fce70fa6dfb5f7da7950a763087a7d",
-    "src/ida_pro_mcp/ida_mcp/flow/extractor.py": "9d21f5ba7163d47442e1581905dbd775511bfbbb96263627c0f1186920d301ef"
+    "src/ida_pro_mcp/ida_mcp/flow/extractor.py": "8aeab629dc5842e67e516c0eb6c70ec203b4250efa84abddfaacc8be56aabfc9"
   },
   "input_preserved": true,
   "instruction_endian": "LE",
@@ -4279,7 +4953,7 @@
   },
   "profile_digest": "sha256-v1:38c29a208ce6f7a315955cb2351af85171017efe123efca0501fa16b119c417e",
   "profile_id": "X64-LE",
-  "receipt_digest": "sha256-v1:993d8341c31f04fb7c2baf41eea2236b6c5a0f63a26fccc290c520f2c49c21b2",
+  "receipt_digest": "sha256-v1:897c4caa3671f51ddbaf1547331989180ed39adeb310593168b572e7781652e7",
   "registry": {
     "profiles": [
       {

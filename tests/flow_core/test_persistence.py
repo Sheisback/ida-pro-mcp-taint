@@ -17,7 +17,8 @@ from ida_pro_mcp.flow_core.persistence import (
     PersistenceError,
     Store,
 )
-from ida_pro_mcp.flow_core.runtime import Handler, Runtime
+from ida_pro_mcp.flow_core.runtime import Handler, JobCancelled, JobDeadline, Runtime
+from ida_pro_mcp.flow_core.ssa import build_ssa
 from ida_pro_mcp.flow_core.runtime_contracts import RuntimeScope, TraceSpec, TraceState
 from ida_pro_mcp.worker_lifecycle import WorkerLifecycle
 from test_contracts import sample_graph
@@ -695,6 +696,8 @@ def test_runtime_failure_null_result_budget_and_owner_lease(tmp_path):
     assert runtime.wait(failed) and store.job(failed)["state"] == "failed"
     assert store.job(failed)["error"] == {
         "code": "handler_failed",
+        "phase": "extract",
+        "reason": "invalid_handler_value",
         "type": "ValueError",
     }
     job = runtime.submit("null", {}, "null", budget={"nodes": 10})
@@ -704,6 +707,90 @@ def test_runtime_failure_null_result_budget_and_owner_lease(tmp_path):
     with pytest.raises(PersistenceError, match="owner_lease"):
         Runtime(view, {})
     view.close()
+    runtime.shutdown()
+    store.close()
+
+
+def test_runtime_failure_reasons_are_phase_bound_allowlisted_and_path_free(tmp_path):
+    store, graph_value, _ = setup(tmp_path)
+
+    def microcode_fail(ctx, value):
+        raise RuntimeError(
+            "gen_microcode failed: code=123, ea=0x401000 /Users/private/secret.i64"
+        )
+
+    def stale_fail(ctx, value):
+        raise PersistenceError("stale_database")
+
+    class PrivateInternalName(Exception):
+        pass
+
+    def private_fail(ctx, value):
+        raise PrivateInternalName("/Users/private/secret.i64")
+
+    handlers = {
+        "budget": Handler(
+            lambda ctx, value: value,
+            lambda ctx, value: build_ssa(graph_value.snapshot, max_nodes=1),
+        ),
+        "native": Handler(microcode_fail, lambda ctx, value: value),
+        "stale": Handler(lambda ctx, value: value, stale_fail),
+        "internal": Handler(private_fail, lambda ctx, value: value),
+    }
+    runtime = Runtime(store, handlers)
+    expected = {
+        "budget": ("analyze", "ssa_node_budget_exceeded", "ContractError"),
+        "native": ("extract", "microcode_generation_failed", "RuntimeError"),
+        "stale": ("analyze", "stale_database", "PersistenceError"),
+        "internal": ("extract", "internal_error", "InternalError"),
+    }
+    for name, (phase, reason, kind) in expected.items():
+        identifier = runtime.submit(name, {}, name)
+        assert runtime.wait(identifier)
+        row = store.job(identifier)
+        assert row["state"] == "failed"
+        assert row["error"] == {
+            "code": "handler_failed",
+            "phase": phase,
+            "reason": reason,
+            "type": kind,
+        }
+        assert "secret" not in json.dumps(row["error"])
+        assert "/Users" not in json.dumps(row["error"])
+        assert "401000" not in json.dumps(row["error"])
+    runtime.shutdown()
+    store.close()
+
+
+def test_runtime_cancel_and_deadline_errors_keep_safe_phase_codes(tmp_path):
+    store, _, _ = setup(tmp_path)
+
+    def cancel(ctx, value):
+        raise JobCancelled()
+
+    def deadline(ctx, value):
+        raise JobDeadline()
+
+    runtime = Runtime(
+        store,
+        {
+            "cancel": Handler(cancel, lambda ctx, value: value),
+            "deadline": Handler(deadline, lambda ctx, value: value),
+        },
+    )
+    cancelled = runtime.submit("cancel", {}, "cancel")
+    interrupted = runtime.submit("deadline", {}, "deadline")
+    assert runtime.wait(cancelled) and runtime.wait(interrupted)
+    assert store.job(cancelled)["error"] == {
+        "code": "cancelled",
+        "phase": "extract",
+        "reason": "cancelled",
+    }
+    assert store.job(interrupted)["error"] == {
+        "code": "lease_expired",
+        "phase": "extract",
+        "reason": "deadline_exceeded",
+    }
     runtime.shutdown()
     store.close()
 

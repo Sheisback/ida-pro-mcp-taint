@@ -79,6 +79,27 @@ def by_block(result):
     return {block.block: block for block in result.post_dominators}
 
 
+def test_structural_exit_is_regular_termination_without_invented_return_value():
+    program = build_ssa(snapshot((Block(0, (), (ins(0, "m_exit"),)),)))
+    nodes = program.graph.nodes
+    assert len([node for node in nodes if node.kind == "Exit"]) == 1
+    assert not any(node.kind == "Return" for node in nodes)
+    result = analyze_implicit_cfg(program)
+    assert result.status == "complete"
+    assert result.return_exits == (0,)
+    assert result.unknown_exits == ()
+
+
+def test_typed_noreturn_marker_is_not_a_normal_exit_certificate():
+    program = build_ssa(snapshot((Block(0, (), (ins(0, "m_noreturn"),)),)))
+    assert not any(node.kind in {"Exit", "Return"} for node in program.graph.nodes)
+    result = analyze_implicit_cfg(program)
+    assert result.status == "partial"
+    assert result.return_exits == ()
+    assert result.unknown_exits == (0,)
+    assert "unknown_terminal:0" in result.diagnostics
+
+
 def test_diamond_post_dominators_and_exact_successor_regions():
     program = build_ssa(diamond())
     result = analyze_implicit_cfg(program)

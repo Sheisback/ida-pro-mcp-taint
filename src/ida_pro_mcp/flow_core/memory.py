@@ -166,6 +166,11 @@ def _effect(node):
         return "load"
     if node.kind == "Store":
         return "store"
+    if node.kind == "Call" and node.operation in {
+        "derived_static_memory_preserved",
+        "derived_static_memory_write",
+    }:
+        return None
     if (
         node.kind in {"Call", "Allocation", "Free"}
         or (node.kind == "OpaqueEffect" and node.operation != "nop")
@@ -325,7 +330,7 @@ class MemoryPolicy(Model):
     max_candidates: int = 32
     max_labels: int = 128
     flat_segment_assumption: str | None = None
-    ruleset: Literal["range-memory-v2"] = "range-memory-v2"
+    ruleset: Literal["range-memory-v7"] = "range-memory-v7"
 
     def __post_init__(self):
         super().__post_init__()
@@ -531,6 +536,10 @@ def alias_relation(
     if a.address_space != b.address_space:
         return "no_alias"
     if a.object_id != b.object_id:
+        if (
+            a.kind == "stack" and a.disjoint and b.kind in {"global", "typed_entry"}
+        ) or (b.kind == "stack" and b.disjoint and a.kind in {"global", "typed_entry"}):
+            return "no_alias"
         return "no_alias" if a.disjoint and b.disjoint else "may_alias"
     if arange is None or brange is None:
         return "unknown"

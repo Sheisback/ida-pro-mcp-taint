@@ -803,6 +803,14 @@ def test_runtime_extraction_rehydrates_explicit_selection(flow, monkeypatch):
     monkeypatch.setattr(
         service.extractor, "extract_snapshot", lambda *_args, **_kwargs: object()
     )
+    derived = []
+    monkeypatch.setattr(
+        service,
+        "extract_local_direct_callees",
+        lambda context, extracted, observed: (
+            derived.append((context, extracted, observed)) or ({}, {"boundaries": []})
+        ),
+    )
     request = {
         "ea": 0x1000,
         "profile": resolved.profile,
@@ -816,6 +824,8 @@ def test_runtime_extraction_rehydrates_explicit_selection(flow, monkeypatch):
         deadline=None, cancel=types.SimpleNamespace(is_set=lambda: False)
     )
     service._extract(context, request)
+    assert len(derived) == 1 and derived[0][0] is context
+    assert derived[0][2] is info
     assert calls == [
         {
             "requested_profile": route.profile_id,
@@ -996,6 +1006,9 @@ def test_exact_tool_schema_and_no_supervisor_database_on_workers(flow):
         "flow_get_function_ssa",
         "flow_get_cfg",
         "flow_get_implicit_analysis",
+        "flow_explain_implicit_analysis",
+        "flow_get_memory_analysis",
+        "flow_get_derived_call_evidence",
         "flow_get_call_compositions",
         "flow_trace_forward",
         "flow_trace_backward",
@@ -1024,9 +1037,25 @@ def test_exact_tool_schema_and_no_supervisor_database_on_workers(flow):
         assert all(variant["additionalProperties"] is False for variant in variants)
     implicit = by_name["flow_create_implicit_analysis"]["inputSchema"]
     seed = implicit["properties"]["seeds"]["items"]
-    assert seed["additionalProperties"] is False
-    assert set(seed["required"]) == {"node_id", "labels"}
-    assert seed["properties"]["labels"]["additionalProperties"] is False
+    assert len(seed["anyOf"]) == 2
+    whole, bit_range = seed["anyOf"]
+    assert whole["additionalProperties"] is False
+    assert set(whole["required"]) == {"node_id", "labels"}
+    assert bit_range["additionalProperties"] is False
+    assert set(bit_range["required"]) == {
+        "kind",
+        "schema_version",
+        "node_id",
+        "labels",
+        "bit_offset",
+        "width_bits",
+    }
+    assert bit_range["properties"]["kind"]["enum"] == ["bit_range"]
+    assert bit_range["properties"]["schema_version"]["enum"] == [1]
+    assert all(
+        variant["properties"]["labels"]["additionalProperties"] is False
+        for variant in (whole, bit_range)
+    )
 
 
 def test_public_analysis_tools_forward_exact_owned_artifact_contracts(
@@ -1049,6 +1078,17 @@ def test_public_analysis_tools_forward_exact_owned_artifact_contracts(
                 "schema_version": "flow-page/1",
                 "artifact_id": args[0],
                 "section": args[1],
+                "metadata": {},
+                "items": [],
+                "next_cursor": None,
+            }
+        ),
+        explain_implicit=lambda *args: (
+            calls.append(("explain", args))
+            or {
+                "schema_version": "flow-page/1",
+                "artifact_id": args[0],
+                "section": "implicit_explanation",
                 "metadata": {},
                 "items": [],
                 "next_cursor": None,
@@ -1077,6 +1117,16 @@ def test_public_analysis_tools_forward_exact_owned_artifact_contracts(
         module.flow_get_implicit_analysis("i-result", "cursor", 7)["section"]
         == "implicit"
     )
+    assert (
+        module.flow_explain_implicit_analysis(
+            "i-result", "node-v1:" + "2" * 64, "cursor", 7, 99, 11
+        )["section"]
+        == "implicit_explanation"
+    )
+    assert module.flow_get_memory_analysis("m-result")["section"] == "memory"
+    assert module.flow_get_derived_call_evidence("d-result")["section"] == (
+        "derived_call"
+    )
     assert module._flow_get_path_proof("p-result")["section"] == "path_proof"
     assert module.flow_get_call_compositions("c-result")["section"] == (
         "interprocedural"
@@ -1093,6 +1143,12 @@ def test_public_analysis_tools_forward_exact_owned_artifact_contracts(
         ),
         ("proof", ("graph", {"query": "exact"}, "key")),
         ("page", ("i-result", "implicit", "cursor", 7)),
+        (
+            "explain",
+            ("i-result", "node-v1:" + "2" * 64, "cursor", 7, 99, 11),
+        ),
+        ("page", ("m-result", "memory", None, 50)),
+        ("page", ("d-result", "derived_call", None, 50)),
         ("page", ("p-result", "path_proof", None, 50)),
         ("page", ("c-result", "interprocedural", None, 50)),
     ]
@@ -1128,6 +1184,371 @@ def test_public_snapshot_forwards_explicit_profile_abi_mode(flow, monkeypatch):
         "type": "string",
     }
     assert "abi" not in schema["required"]
+
+
+def test_memory_page_exposes_bounded_access_precision_without_verdict(flow):
+    from ida_pro_mcp.flow_core.contracts import Snapshot
+    from ida_pro_mcp.flow_core.memory_graph import build_memory_graph
+    from ida_pro_mcp.flow_core.query import artifact_page
+
+    module, _ = flow
+    service = module._service()
+    raw = json.loads(
+        (
+            ROOT / "tests/flow_fixtures/manifests/memory/x86_64_memory_alias.json"
+        ).read_text()
+    )
+    bundle = build_memory_graph(Snapshot.from_data(raw["snapshot"]))
+    items, metadata = service._memory_page(bundle.result.to_data())
+    accesses = [item for item in items if item["type"] == "access"]
+    assert accesses and all(
+        "precision" in item and "candidates" in item and "reasons" in item
+        for item in accesses
+    )
+    assert all(
+        (not item["reasons"]) if not item["unresolved"] else bool(item["reasons"])
+        for item in accesses
+    )
+    assert metadata["status"] == bundle.result.status
+    assert metadata["diagnostics"] == list(bundle.result.diagnostics)
+    assert metadata["target_executed"] is False
+    assert metadata["no_auto_vulnerability_verdict"] is True
+    assert metadata["alias_policy"]["untyped_input_current_frame"] == (
+        "may_alias_unknown"
+    )
+    assert metadata["untyped_current_frame_alias_dependency_count"] == sum(
+        item.get("alias_boundary") is not None for item in items
+    )
+    assert "vulnerability_verdict" not in metadata
+    assert all("vulnerability_verdict" not in item for item in items)
+    page = artifact_page("owned", "memory", items, metadata, limit=1)
+    assert page["items"] and page["next_cursor"]
+    with pytest.raises(ContractError):
+        service._memory_page({"schema_version": 1, "facts": []})
+
+
+def test_memory_page_identifies_cross_object_may_alias_without_promoting_status(flow):
+    from ida_pro_mcp.flow_core.contracts import Snapshot
+    from ida_pro_mcp.flow_core.memory_graph import build_memory_graph
+
+    module, _ = flow
+    service = module._service()
+    raw = json.loads(
+        (
+            ROOT
+            / "tests/flow_fixtures/manifests/memory/x86_64_memory_global_roundtrip.json"
+        ).read_text()
+    )
+    bundle = build_memory_graph(Snapshot.from_data(raw["snapshot"]))
+    items, metadata = service._memory_page(bundle.result.to_data())
+    uncertain = [
+        item
+        for item in items
+        if item["type"] == "dependency" and item["reason"] == "cross_object_may_alias"
+    ]
+    assert uncertain
+    assert all(
+        item["object_id"] not in item["source_candidate_object_ids"]
+        and item["impact"]
+        == {
+            "node_id": item["target"],
+            "scope": "direct_target_load",
+            "downstream": "trace_from_target_node",
+        }
+        for item in uncertain
+    )
+    assert metadata["status"] == bundle.result.status == "complete_in_scope"
+    assert not any(item.get("reason") == "no_alias" for item in items)
+    assert metadata["untyped_current_frame_alias_dependency_count"] == sum(
+        item.get("alias_boundary") is not None for item in items
+    )
+
+
+def test_type_backed_argument_binding_exposes_exact_entry_atoms(flow):
+    from ida_pro_mcp.flow_core import digest
+    from ida_pro_mcp.flow_core.contracts import (
+        Block,
+        FunctionInput,
+        Instruction,
+        Operand,
+        Snapshot,
+    )
+    from ida_pro_mcp.flow_core.ssa import build_ssa
+    from ida_pro_mcp.flow_core.states import StorageLocation
+
+    module, _ = flow
+    base = Snapshot.from_data(
+        json.loads(
+            (ROOT / "tests/flow_fixtures/manifests/extraction_x64.json").read_text()
+        )["snapshot"]
+    )
+    storage = StorageLocation("microregister", "microregister", 448, 32)
+    annotation = Instruction(
+        0,
+        "m_arg",
+        (
+            Operand("constant", 32, constant=0, role="left"),
+            Operand("storage", 32, storage=storage, role="argument", synthetic=True),
+        ),
+        synthetic=True,
+    )
+    returned = Instruction(1, "m_ret", (Operand("storage", 32, storage=storage),))
+    function = FunctionInput(
+        "typed-argument-test", 0, (Block(0, (), (annotation, returned)),)
+    )
+    identity = replace(
+        base.identity, function_id=function.function_id, input_digest=digest(function)
+    )
+    program = build_ssa(Snapshot(identity, function, identity.snapshot_id))
+    binding = module._service()._argument_bindings(program)
+    assert len(binding) == 1 and binding[0]["argument_index"] == 0
+    assert binding[0]["storage"] == storage.to_data()
+    assert binding[0]["entry_node_ids"] == [
+        item.node_id for item in program.entry_storage
+    ]
+    assert binding[0]["type_correctness"] == "analyst_assumption"
+    assert binding[0]["idb_pointer_type_assumption"] is False
+
+
+def test_derived_call_evidence_page_checks_caller_callee_binding(flow):
+    from ida_pro_mcp.flow_core import digest, stable_id
+    from ida_pro_mcp.flow_core.contracts import Snapshot
+    from ida_pro_mcp.flow_core.derived_calls import DerivedReturnEffect
+    from ida_pro_mcp.flow_core.persistence import PersistenceError
+    from ida_pro_mcp.flow_core.states import StorageLocation
+
+    module, _ = flow
+    service = module._service()
+    callee = Snapshot.from_data(
+        json.loads(
+            (ROOT / "tests/flow_fixtures/manifests/extraction_x64.json").read_text()
+        )["snapshot"]
+    )
+    effect = DerivedReturnEffect(
+        stable_id("snapshot", "caller"),
+        callee.snapshot_id,
+        0x1000,
+        0,
+        0,
+        StorageLocation("microregister", "microregister", 64, 32),
+        (),
+        digest("bounded-return-proof"),
+    )
+    raw = {
+        "schema_version": "flow-derived-call-evidence/1",
+        "caller_snapshot_id": effect.caller_snapshot_id,
+        "callee_snapshot": callee.to_data(),
+        "effect": effect.to_data(),
+        "target_executed": False,
+        "no_auto_vulnerability_verdict": True,
+    }
+    items, metadata = service._derived_call_page(raw)
+    assert [item["type"] for item in items] == [
+        "derived_return_effect",
+        "callee_snapshot",
+    ]
+    assert metadata["provenance"] == "derived_static_unreviewed"
+    assert metadata["proof_digest"] == effect.proof_digest
+    assert metadata["memory_effects"] == "unknown"
+    assert metadata["target_executed"] is False
+    with pytest.raises(
+        PersistenceError, match="derived_call_evidence_binding_mismatch"
+    ):
+        service._derived_call_page(
+            {**raw, "caller_snapshot_id": stable_id("snapshot", "foreign")}
+        )
+
+
+def test_derived_memory_free_evidence_is_rechecked_against_callee(flow):
+    from ida_pro_mcp.flow_core import digest, stable_id
+    from ida_pro_mcp.flow_core.contracts import (
+        Block,
+        FunctionInput,
+        Instruction,
+        Operand,
+        Snapshot,
+    )
+    from ida_pro_mcp.flow_core.derived_calls import DerivedReturnEffect
+    from ida_pro_mcp.flow_core.persistence import PersistenceError
+    from ida_pro_mcp.flow_core.states import StorageLocation
+
+    module, _ = flow
+    service = module._service()
+    base = Snapshot.from_data(
+        json.loads(
+            (ROOT / "tests/flow_fixtures/manifests/extraction_x64.json").read_text()
+        )["snapshot"]
+    )
+
+    def callee(*instructions):
+        function = FunctionInput("static-callee", 0, (Block(0, (), instructions),))
+        identity = replace(
+            base.identity,
+            function_id=function.function_id,
+            input_digest=digest(function),
+        )
+
+        return Snapshot(identity, function, identity.snapshot_id)
+
+    returned = Instruction(
+        1, "m_ret", (Operand("constant", 32, constant=7, role="left"),)
+    )
+    pure = callee(replace(returned, index=0))
+    effect = DerivedReturnEffect(
+        stable_id("snapshot", "caller"),
+        pure.snapshot_id,
+        0x1000,
+        0,
+        0,
+        StorageLocation("microregister", "microregister", 64, 32),
+        (),
+        digest("bounded-pure-proof"),
+        "none",
+    )
+    raw = {
+        "schema_version": "flow-derived-call-evidence/1",
+        "caller_snapshot_id": effect.caller_snapshot_id,
+        "callee_snapshot": pure.to_data(),
+        "effect": effect.to_data(),
+        "target_executed": False,
+        "no_auto_vulnerability_verdict": True,
+    }
+    _, metadata = service._derived_call_page(raw)
+    assert metadata["memory_effects"] == "none"
+    assert "no modeled memory effects" in metadata["limitation"]
+
+    writer = callee(
+        Instruction(
+            0,
+            "m_mov",
+            (
+                Operand("constant", 32, constant=9, role="left"),
+                Operand("global", 32, address=0x2000, role="destination"),
+            ),
+        ),
+        returned,
+    )
+    with pytest.raises(
+        PersistenceError, match="derived_call_memory_effect_proof_mismatch"
+    ):
+        service._derived_call_page(
+            {
+                **raw,
+                "callee_snapshot": writer.to_data(),
+                "effect": replace(
+                    effect, callee_snapshot_id=writer.snapshot_id
+                ).to_data(),
+            }
+        )
+
+
+def test_derived_output_write_evidence_rejects_tampered_effect(flow, monkeypatch):
+    from ida_pro_mcp.flow_core import digest
+    from ida_pro_mcp.flow_core.derived_calls import derive_direct_memory_write
+    from ida_pro_mcp.flow_core.persistence import PersistenceError
+
+    monkeypatch.syspath_prepend(str(ROOT / "tests/flow_core"))
+    from test_derived_calls import callee_write_output, caller_write_output
+
+    module, _ = flow
+    service = module._service()
+    caller, call = caller_write_output()
+    callee = callee_write_output()
+    effect = derive_direct_memory_write(caller, callee, call, 0, 2)
+    assert effect is not None
+    raw = {
+        "schema_version": "flow-derived-call-memory-evidence/1",
+        "caller_snapshot": caller.to_data(),
+        "callee_snapshot": callee.to_data(),
+        "call_info": call.to_data(),
+        "effect": effect.to_data(),
+        "target_executed": False,
+        "no_auto_vulnerability_verdict": True,
+    }
+    items, metadata = service._derived_call_page(raw)
+    assert {item["type"] for item in items} == {
+        "derived_memory_write_effect",
+        "caller_snapshot",
+        "callee_snapshot",
+        "call_info",
+    }
+    assert metadata["memory_effects"] == "single_typed_output_write"
+    assert metadata["proof_digest"] == effect.proof_digest
+    assert metadata["target_executed"] is False
+    with pytest.raises(
+        PersistenceError, match="derived_call_memory_effect_proof_mismatch"
+    ):
+        service._derived_call_page(
+            {
+                **raw,
+                "effect": replace(effect, proof_digest=digest("forged")).to_data(),
+            }
+        )
+    with pytest.raises(
+        PersistenceError, match="derived_call_memory_evidence_binding_mismatch"
+    ):
+        service._derived_call_page(
+            {**raw, "callee_snapshot": callee_write_output(global_write=True).to_data()}
+        )
+    with pytest.raises(
+        PersistenceError, match="derived_call_memory_effect_proof_mismatch"
+    ):
+        service._derived_call_page(
+            {**raw, "call_info": replace(call, arguments=()).to_data()}
+        )
+
+
+def test_derived_fixed_global_write_evidence_replays_and_rejects_tamper(
+    flow, monkeypatch
+):
+    from ida_pro_mcp.flow_core import digest
+    from ida_pro_mcp.flow_core.derived_calls import derive_direct_global_write
+    from ida_pro_mcp.flow_core.persistence import PersistenceError
+
+    monkeypatch.syspath_prepend(str(ROOT / "tests/flow_core"))
+    from test_derived_calls import caller, fixed_global_callee
+
+    module, _ = flow
+    service = module._service()
+    source = caller()
+    call = source.function.blocks[0].instructions[1].operands[-1].call
+    target = fixed_global_callee()
+    effect = derive_direct_global_write(source, target, call, 0, 1)
+    assert effect is not None
+    raw = {
+        "schema_version": "flow-derived-call-global-memory-evidence/1",
+        "caller_snapshot": source.to_data(),
+        "callee_snapshot": target.to_data(),
+        "call_info": call.to_data(),
+        "effect": effect.to_data(),
+        "target_executed": False,
+        "no_auto_vulnerability_verdict": True,
+    }
+    items, metadata = service._derived_call_page(raw)
+    assert {item["type"] for item in items} == {
+        "derived_global_write_effect",
+        "caller_snapshot",
+        "callee_snapshot",
+        "call_info",
+    }
+    assert metadata["memory_effects"] == "single_fixed_global_write"
+    assert metadata["global_address"] == effect.global_address
+    assert metadata["proof_digest"] == effect.proof_digest
+    with pytest.raises(
+        PersistenceError, match="derived_call_global_memory_effect_proof_mismatch"
+    ):
+        service._derived_call_page(
+            {
+                **raw,
+                "effect": replace(effect, proof_digest=digest("forged")).to_data(),
+            }
+        )
+    with pytest.raises(
+        PersistenceError, match="derived_call_global_memory_evidence_binding_mismatch"
+    ):
+        service._derived_call_page(
+            {**raw, "callee_snapshot": fixed_global_callee(constant=True).to_data()}
+        )
 
 
 def test_analysis_adapter_preserves_partiality_proof_bounds_and_artifact_binding(flow):
@@ -1229,6 +1650,235 @@ def test_analysis_adapter_preserves_partiality_proof_bounds_and_artifact_binding
     )
     with pytest.raises(ContractError, match="path_query_foreign_evidence"):
         service._validate_path_query(graph, foreign)
+
+
+def test_implicit_explanation_page_binds_owned_graph_and_global_reasons(
+    flow, monkeypatch
+):
+    from ida_pro_mcp.flow_core import ContractError, digest
+    from ida_pro_mcp.flow_core.contracts import Snapshot
+    from ida_pro_mcp.flow_core.implicit_analysis import analyze_implicit
+    from ida_pro_mcp.flow_core.memory_graph import build_memory_graph
+    from ida_pro_mcp.flow_core.persistence import PersistenceError
+
+    module, _ = flow
+    service = module._service()
+    source = Snapshot.from_data(
+        json.loads(
+            (
+                ROOT / "tests/flow_fixtures/manifests/memory/x86_64_memory_alias.json"
+            ).read_text()
+        )["snapshot"]
+    )
+    bundle = build_memory_graph(source)
+    result = analyze_implicit(bundle.program, memory_model=bundle)
+    raw = {
+        "schema_version": "flow-implicit-artifact/1",
+        "source_artifact": "ssa",
+        "result": result.to_data(),
+        "target_executed": False,
+        "no_auto_vulnerability_verdict": True,
+    }
+    records = {"implicit": raw, "ssa": bundle.program.to_data()}
+    monkeypatch.setattr(
+        service,
+        "get_runtime",
+        lambda: types.SimpleNamespace(
+            store=types.SimpleNamespace(artifact=lambda identifier: records[identifier])
+        ),
+    )
+    target = result.facts[0].node_id
+    page = service.explain_implicit("implicit", target, limit=1, max_nodes=8)
+    assert page["schema_version"] == "flow-page/1"
+    assert page["metadata"]["source_artifact"] == "ssa"
+    assert page["metadata"]["observation_node_id"] == target
+    assert page["metadata"]["no_auto_vulnerability_verdict"] is True
+    assert page["metadata"]["analysis_status"] == result.status
+    if page["next_cursor"] is not None:
+        continued = service.explain_implicit(
+            "implicit", target, page["next_cursor"], limit=1, max_nodes=8
+        )
+        assert continued["items"]
+        with pytest.raises(PersistenceError, match="invalid_cursor"):
+            service.explain_implicit(
+                "implicit", target, page["next_cursor"], limit=1, max_nodes=9
+            )
+    with pytest.raises(ContractError, match="Unknown observation node"):
+        service.explain_implicit("implicit", "node-v1:" + "0" * 64)
+    records["implicit"] = {
+        **raw,
+        "result": replace(result, graph_digest=digest("foreign")).to_data(),
+    }
+    with pytest.raises(ContractError, match="Explanation graph mismatch"):
+        service.explain_implicit("implicit", target)
+    from ida_pro_mcp.flow_core.memory_graph import replay_memory_graph
+
+    replay = replay_memory_graph(bundle.program)
+    records.update(
+        {
+            "implicit": {
+                **raw,
+                "schema_version": "flow-implicit-artifact/2",
+                "memory_plan_artifact": "plan",
+                "memory_result_artifact": "memory",
+            },
+            "plan": replay.plan.to_data(),
+            "memory": replay.result.to_data(),
+        }
+    )
+    monkeypatch.setattr(
+        service,
+        "replay_memory_graph",
+        lambda *_args: pytest.fail(
+            "v2 page must reuse its verified memory certificate"
+        ),
+    )
+    page = service.explain_implicit("implicit", target)
+    assert page["metadata"]["memory_plan_artifact"] == "plan"
+    assert page["metadata"]["memory_result_artifact"] == "memory"
+    records["memory"] = replace(replay.result, dependencies=()).to_data()
+    with pytest.raises(ContractError, match="Stored memory dependency replay mismatch"):
+        service.explain_implicit("implicit", target)
+
+
+def test_mcp_pages_name_untyped_input_current_frame_unknown(flow, monkeypatch):
+    from ida_pro_mcp.flow_core import digest
+    from ida_pro_mcp.flow_core.analysis import seeds_for_entry
+    from ida_pro_mcp.flow_core.contracts import (
+        Block,
+        FunctionInput,
+        Instruction,
+        Operand,
+        Snapshot,
+    )
+    from ida_pro_mcp.flow_core.implicit_analysis import analyze_implicit
+    from ida_pro_mcp.flow_core.memory_graph import (
+        build_memory_graph,
+        replay_memory_graph,
+    )
+    from ida_pro_mcp.flow_core.states import Labels, StorageLocation
+
+    module, _ = flow
+    service = module._service()
+    original = Snapshot.from_data(
+        json.loads(
+            (ROOT / "tests/flow_fixtures/manifests/extraction_x64.json").read_text()
+        )["snapshot"]
+    )
+    value = StorageLocation("microregister", "microregister", 0, 32)
+    pointer = StorageLocation("microregister", "microregister", 64, 64)
+    spill = StorageLocation("stack", "stack", 0, 32)
+    output = StorageLocation("microregister", "microregister", 128, 32)
+    function = FunctionInput(
+        "mcp-untyped-frame-alias",
+        0,
+        (
+            Block(
+                0,
+                (),
+                (
+                    Instruction(
+                        0,
+                        "m_mov",
+                        (
+                            Operand("storage", 32, storage=value, role="left"),
+                            Operand("storage", 32, storage=spill, role="destination"),
+                        ),
+                    ),
+                    Instruction(
+                        1,
+                        "m_ldx",
+                        (
+                            Operand("constant", 16, constant=0, role="left"),
+                            Operand("storage", 64, storage=pointer, role="right"),
+                            Operand("storage", 32, storage=output, role="destination"),
+                        ),
+                    ),
+                    Instruction(2, "m_ret", (Operand("storage", 32, storage=output),)),
+                ),
+            ),
+        ),
+    )
+    identity = replace(
+        original.identity,
+        function_id=function.function_id,
+        input_digest=digest(function),
+    )
+    snapshot = Snapshot(identity, function, identity.snapshot_id)
+    bundle = build_memory_graph(snapshot)
+    replay = replay_memory_graph(bundle.program)
+    seeds = seeds_for_entry(bundle.program, value, Labels(("X",)))
+    analysis = analyze_implicit(bundle.program, seeds, memory_model=bundle)
+    returned = next(node for node in bundle.graph.nodes if node.kind == "Return")
+    records = {
+        "ssa": bundle.program.to_data(),
+        "plan": replay.plan.to_data(),
+        "memory": replay.result.to_data(),
+        "implicit": {
+            "schema_version": "flow-implicit-artifact/2",
+            "source_artifact": "ssa",
+            "memory_plan_artifact": "plan",
+            "memory_result_artifact": "memory",
+            "result": analysis.to_data(),
+            "target_executed": False,
+            "no_auto_vulnerability_verdict": True,
+        },
+    }
+    monkeypatch.setattr(
+        service,
+        "get_runtime",
+        lambda: types.SimpleNamespace(
+            store=types.SimpleNamespace(artifact=lambda key: records[key])
+        ),
+    )
+
+    first_memory_page = module.flow_get_memory_analysis("memory", limit=1)
+    assert first_memory_page["next_cursor"] is not None
+    assert first_memory_page["metadata"]["untyped_current_frame_alias_dependency_count"]
+    memory_page = module.flow_get_memory_analysis("memory", limit=100)
+    boundary = next(
+        item["alias_boundary"]
+        for item in memory_page["items"]
+        if item.get("alias_boundary") is not None
+    )
+    assert boundary["reason_code"] == "untyped_input_current_frame_noalias_unproven"
+    assert boundary["status"] == "unknown"
+    assert boundary["alias_relation"] == "may_alias"
+    assert boundary["source_target_pairs"]
+    object_by_id = {obj.object_id: obj for obj in replay.result.objects}
+    pair = boundary["source_target_pairs"][0]
+    typed_objects = {
+        object_id: replace(obj, kind="typed_entry")
+        if obj.kind == "argument"
+        else obj
+        for object_id, obj in object_by_id.items()
+    }
+    assert service._untyped_frame_alias_boundary(
+        pair["target_object_id"], (pair["source_object_id"],), typed_objects
+    ) is None
+    assert memory_page["metadata"]["alias_policy"]["untyped_input_current_frame"] == (
+        "may_alias_unknown"
+    )
+    assert memory_page["metadata"]["untyped_current_frame_alias_dependency_count"]
+    assert memory_page["metadata"]["target_executed"] is False
+
+    first_explanation_page = module.flow_explain_implicit_analysis(
+        "implicit", returned.node_id, limit=1
+    )
+    assert first_explanation_page["next_cursor"] is not None
+    assert first_explanation_page["metadata"]["untyped_current_frame_alias_cause_count"]
+    explanation = module.flow_explain_implicit_analysis(
+        "implicit", returned.node_id, limit=100
+    )
+    assert explanation["metadata"]["untyped_current_frame_alias_cause_count"]
+    assert explanation["metadata"]["observation_labels"]["unknown_provenance"]
+    assert any(
+        item.get("alias_boundary", {}).get("reason_code")
+        == "untyped_input_current_frame_noalias_unproven"
+        for item in explanation["items"]
+        if item.get("alias_boundary") is not None
+    )
+    assert explanation["metadata"]["no_auto_vulnerability_verdict"] is True
 
 
 def test_public_pagers_reject_tamper_and_malformed_evidence_filter(flow, monkeypatch):
@@ -1335,6 +1985,42 @@ def test_public_errors_are_structured_without_tracebacks(flow, monkeypatch):
     }
 
 
+def test_public_failed_job_exposes_allowlisted_phase_not_native_path(
+    flow, monkeypatch, tmp_path
+):
+    from ida_pro_mcp.flow_core.persistence import Store
+    from ida_pro_mcp.flow_core.runtime import Handler, Runtime
+    from ida_pro_mcp.flow_core.runtime_contracts import RuntimeScope
+    from ida_pro_mcp.flow_core.serialization import digest
+
+    module, _ = flow
+    binding = digest("public-error-cause")
+    scope = RuntimeScope("public-job-error-test", *(binding for _ in range(6)))
+    store = Store(tmp_path / "store", scope, "public-job-owner-secret-0001-long")
+
+    def fail(ctx, value):
+        raise RuntimeError(
+            "gen_microcode failed: code=9, ea=0x401000 /Users/private/secret.i64"
+        )
+
+    engine = Runtime(store, {"native": Handler(fail, lambda ctx, value: value)})
+    monkeypatch.setattr(module._service(), "get_runtime", lambda: engine)
+    identifier = engine.submit("native", {}, "native")
+    assert engine.wait(identifier)
+    response = module.flow_get_job(identifier)
+    assert response["state"] == "failed"
+    assert response["error"] == {
+        "code": "handler_failed",
+        "phase": "extract",
+        "reason": "microcode_generation_failed",
+        "type": "RuntimeError",
+    }
+    assert "secret" not in json.dumps(response)
+    assert "401000" not in json.dumps(response)
+    engine.shutdown()
+    store.close()
+
+
 @pytest.mark.parametrize("cancel", (False, True))
 def test_public_job_poll_reconciles_finished_worker_after_sqlite_lock(
     flow, monkeypatch, tmp_path, cancel
@@ -1373,7 +2059,7 @@ def test_implicit_analysis_stops_during_computation_without_publication(
     from ida_pro_mcp.flow_core.contracts import Snapshot
     from ida_pro_mcp.flow_core.implicit_analysis import ImplicitPolicy
     from ida_pro_mcp.flow_core.runtime import JobCancelled, JobContext, JobDeadline
-    from ida_pro_mcp.flow_core.ssa import build_ssa
+    from ida_pro_mcp.flow_core.memory_graph import build_memory_graph
 
     module, _ = flow
     service = module._service()
@@ -1382,7 +2068,7 @@ def test_implicit_analysis_stops_during_computation_without_publication(
             (ROOT / "tests/flow_fixtures/manifests/extraction_x64.json").read_text()
         )["snapshot"]
     )
-    program = build_ssa(snapshot)
+    program = build_memory_graph(snapshot).program
     published = []
     monkeypatch.setattr(
         service,
@@ -1407,8 +2093,8 @@ def test_implicit_analysis_stops_during_computation_without_publication(
                 (phase == "cfg" and name == "tick" and local["self"].used > 0)
                 or (
                     phase == "explicit"
-                    and name == "analyze"
-                    and local.get("evaluations", 0) > 0
+                    and name == "run"
+                    and local.get("processed", 0) > 0
                 )
                 or (
                     phase == "implicit"

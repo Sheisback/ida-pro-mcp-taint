@@ -1,7 +1,7 @@
 """Range-partitioned scalar SSA over structured microcode. Memory is a boundary."""
 
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, cast
 
 from .cfg import Dominance, dominance
 from .contracts import (
@@ -19,7 +19,15 @@ from .contracts import (
     Snapshot,
     StructuredSnapshot,
 )
-from .serialization import ContractError, Model
+from .serialization import ContractError, Model, digest
+from .derived_calls import (
+    DerivedIndirectReturnEffect,
+    DerivedMemoryWriteEffect,
+    DerivedGlobalWriteEffect,
+    DerivedReturnEffect,
+    _direct_site_matches,
+    resolve_finite_indirect_targets,
+)
 from .states import (
     ByteRange,
     MemoryReference,
@@ -174,6 +182,12 @@ def build_ssa(
     max_nodes: int = 20000,
     max_blocks: int = 1000,
     storage_model: Literal["scalar", "memory"] = "scalar",
+    split_microregisters: bool = False,
+    derived_returns: tuple[DerivedReturnEffect, ...] = (),
+    derived_indirect_returns: tuple[DerivedIndirectReturnEffect, ...] = (),
+    derived_memory_writes: tuple[
+        DerivedMemoryWriteEffect | DerivedGlobalWriteEffect, ...
+    ] = (),
 ) -> SSAProgram:
     """Build a seed-independent graph. Resource refusal is explicit, never no-flow."""
     require(
@@ -185,13 +199,303 @@ def build_ssa(
     )
     require(len(snapshot.function.blocks) <= max_blocks, "SSA block budget exceeded")
     require(storage_model in {"scalar", "memory"}, "Unknown storage model")
-    return _Builder(snapshot, max_nodes, storage_model).build()
+    require(type(split_microregisters) is bool, "Invalid microregister split mode")
+    require(
+        not split_microregisters or storage_model == "scalar",
+        "Microregister splitting is not a byte-memory source contract",
+    )
+    require(
+        tuple(effect.sort_key for effect in derived_returns)
+        == tuple(sorted(set(effect.sort_key for effect in derived_returns))),
+        "Derived call sites must be sorted and unique",
+    )
+
+    def nested_operands(operand):
+        yield operand
+        for child in operand.children:
+            yield from nested_operands(child)
+
+    for effect in derived_returns:
+        require(
+            effect.caller_snapshot_id == snapshot.snapshot_id,
+            "Derived call belongs to another snapshot",
+        )
+        require(
+            effect.block < len(snapshot.function.blocks), "Missing derived call block"
+        )
+        block = snapshot.function.blocks[effect.block]
+        require(
+            effect.instruction < len(block.instructions),
+            "Missing derived call instruction",
+        )
+        instruction = block.instructions[effect.instruction]
+
+        nested = [
+            part
+            for operand in instruction.operands
+            for part in nested_operands(operand)
+        ]
+        infos = [part.call for part in nested if part.call is not None]
+        require(
+            (
+                instruction.opcode == "m_call"
+                or instruction.opcode == "m_mov"
+                and any(
+                    part.kind == "expression" and part.operation == "m_call"
+                    for part in nested
+                )
+            )
+            and len(infos) == 1
+            and _direct_site_matches(
+                snapshot, infos[0], effect.block, effect.instruction
+            ),
+            "Derived return requires one direct call",
+        )
+        info = infos[0]
+        assert info is not None
+        storage = effect.return_storage
+        expected_bytes = tuple(
+            range(
+                storage.bit_offset // 8,
+                (storage.bit_offset + storage.width_bits) // 8,
+            )
+        )
+        require(
+            info.callee_ea == effect.callee_ea
+            and not info.return_is_void
+            and info.return_width_bits == storage.width_bits
+            and info.return_locations.register_bytes == expected_bytes
+            and all(index < len(info.arguments) for index in effect.argument_indices),
+            "Derived return does not match call metadata",
+        )
+    require(
+        tuple(effect.sort_key for effect in derived_indirect_returns)
+        == tuple(sorted(set(effect.sort_key for effect in derived_indirect_returns)))
+        and not {effect.sort_key for effect in derived_indirect_returns}.intersection(
+            effect.sort_key for effect in derived_returns
+        ),
+        "Finite indirect return sites must be distinct",
+    )
+    if derived_indirect_returns:
+        base_program = build_ssa(snapshot, storage_model="memory")
+        for effect in derived_indirect_returns:
+            require(
+                effect.caller_snapshot_id == snapshot.snapshot_id,
+                "Finite indirect effect belongs to another snapshot",
+            )
+            targets = resolve_finite_indirect_targets(
+                base_program, effect.block, effect.instruction
+            )
+            require(
+                targets is not None
+                and targets.complete
+                and targets.proof_digest == effect.target_proof_digest
+                and targets.targets == effect.target_eas,
+                "Finite indirect target proof is stale or incomplete",
+            )
+            site = snapshot.function.blocks[effect.block].instructions[
+                effect.instruction
+            ]
+            infos = [
+                part.call
+                for operand in site.operands
+                for part in nested_operands(operand)
+                if part.call is not None
+            ]
+            require(len(infos) == 1, "Finite indirect callinfo missing")
+            info = infos[0]
+            assert info is not None
+            storage = effect.return_storage
+
+            def argument_slice_fits(item):
+                if item.argument_index >= len(info.arguments):
+                    return False
+                width = info.arguments[item.argument_index].width_bits
+                return width is not None and item.bit_offset + item.width_bits <= width
+
+            require(
+                info.callee_ea is None
+                and not info.return_is_void
+                and info.return_width_bits == storage.width_bits
+                and info.return_locations.register_bytes
+                == tuple(
+                    range(
+                        storage.bit_offset // 8,
+                        (storage.bit_offset + storage.width_bits) // 8,
+                    )
+                )
+                and all(
+                    index < len(info.arguments) for index in effect.argument_indices
+                )
+                and all(argument_slice_fits(item) for item in effect.argument_slices),
+                "Finite indirect return/call metadata mismatch",
+            )
+    require(
+        tuple(effect.sort_key for effect in derived_memory_writes)
+        == tuple(sorted(set(effect.sort_key for effect in derived_memory_writes))),
+        "Derived memory write sites must be sorted and unique",
+    )
+    require(
+        not {effect.sort_key for effect in derived_indirect_returns}.intersection(
+            effect.sort_key for effect in derived_memory_writes
+        ),
+        "Finite indirect memory effects are not derived",
+    )
+    returns_by_site = {effect.sort_key: effect for effect in derived_returns}
+    for effect in derived_memory_writes:
+        return_effect = returns_by_site.get(effect.sort_key)
+        require(
+            return_effect is None
+            or return_effect.callee_snapshot_id == effect.callee_snapshot_id,
+            "Derived return and memory write must use the same callee snapshot",
+        )
+        require(
+            effect.caller_snapshot_id == snapshot.snapshot_id
+            and effect.block < len(snapshot.function.blocks)
+            and effect.instruction
+            < len(snapshot.function.blocks[effect.block].instructions),
+            "Derived memory write belongs to another/missing call site",
+        )
+        instruction = snapshot.function.blocks[effect.block].instructions[
+            effect.instruction
+        ]
+
+        def nested_write_operands(operand):
+            yield operand
+            for child in operand.children:
+                yield from nested_write_operands(child)
+
+        nested = [
+            part
+            for operand in instruction.operands
+            for part in nested_write_operands(operand)
+        ]
+        infos = [part.call for part in nested if part.call is not None]
+        require(
+            (
+                instruction.opcode == "m_call"
+                or instruction.opcode == "m_mov"
+                and any(
+                    part.kind == "expression" and part.operation == "m_call"
+                    for part in nested
+                )
+            )
+            and len(infos) == 1
+            and _direct_site_matches(
+                snapshot, infos[0], effect.block, effect.instruction
+            ),
+            "Derived memory write requires one direct call",
+        )
+        info = infos[0]
+        assert info is not None
+        require(
+            info.callee_ea == effect.callee_ea
+            and (
+                (
+                    effect.global_address + effect.width_bits // 8
+                    <= 1 << snapshot.identity.environment.bitness
+                    and (
+                        effect.value_argument_index is None
+                        or effect.value_argument_index < len(info.arguments)
+                        and info.arguments[effect.value_argument_index].width_bits
+                        == (effect.value_argument_width_bits or effect.value_width_bits)
+                    )
+                )
+                if isinstance(effect, DerivedGlobalWriteEffect)
+                else (
+                    effect.pointer_argument_index < len(info.arguments)
+                    and effect.value_argument_index < len(info.arguments)
+                    and info.arguments[effect.pointer_argument_index].width_bits
+                    == snapshot.identity.environment.bitness
+                    and info.arguments[effect.value_argument_index].width_bits
+                    == effect.width_bits
+                )
+            )
+            and (
+                effect.sort_key not in returns_by_site
+                or returns_by_site[effect.sort_key].memory_effects != "none"
+            ),
+            "Derived memory write does not match call metadata/effects",
+        )
+    return _Builder(
+        snapshot,
+        max_nodes,
+        storage_model,
+        split_microregisters,
+        derived_returns,
+        derived_indirect_returns,
+        derived_memory_writes,
+    ).build()
+
+
+def argument_bindings(program: SSAProgram) -> list[dict]:
+    """Exact entry atom selectors from SDK-mapped, analyst-assumed IDB types."""
+    entry = program.graph.snapshot.function.entry_block
+    bindings = []
+    for instruction in program.graph.snapshot.function.blocks[entry].instructions:
+        if instruction.opcode != "m_arg":
+            continue
+        require(
+            instruction.synthetic
+            and len(instruction.operands) == 2
+            and instruction.operands[0].kind == "constant"
+            and instruction.operands[1].kind == "storage",
+            "invalid_argument_binding",
+        )
+        ordinal = instruction.operands[0].constant
+        storage = instruction.operands[1].storage
+        assert ordinal is not None and storage is not None
+        atoms = [
+            item
+            for item in program.entry_storage
+            if (item.storage.address_space, item.storage.name)
+            == (storage.address_space, storage.name)
+            and storage.bit_offset <= item.storage.bit_offset
+            and item.storage.bit_offset + item.storage.width_bits
+            <= storage.bit_offset + storage.width_bits
+        ]
+        require(
+            bool(atoms)
+            and sum(atom.storage.width_bits for atom in atoms) == storage.width_bits,
+            "argument_binding_not_exact_atoms",
+        )
+        bindings.append(
+            {
+                "argument_index": ordinal,
+                "storage": storage.to_data(),
+                "entry_node_ids": sorted(atom.node_id for atom in atoms),
+                "provenance": "current_idb_type_and_sdk_reg_argloc",
+                "type_correctness": "analyst_assumption",
+                "idb_pointer_type_assumption": (
+                    instruction.operands[1].native_kind
+                    == "typed_pointer_argument_argloc"
+                ),
+            }
+        )
+    return bindings
 
 
 class _Builder:
-    def __init__(self, snapshot, budget, storage_model):
+    def __init__(
+        self,
+        snapshot,
+        budget,
+        storage_model,
+        split_microregisters,
+        derived_returns,
+        derived_indirect_returns,
+        derived_memory_writes,
+    ):
         self.snapshot, self.budget = snapshot, budget
         self.storage_model = storage_model
+        self.split_microregisters = split_microregisters
+        self.derived_returns = {effect.sort_key: effect for effect in derived_returns}
+        self.derived_indirect_returns = {
+            effect.sort_key: effect for effect in derived_indirect_returns
+        }
+        self.derived_memory_writes = {
+            effect.sort_key: effect for effect in derived_memory_writes
+        }
         self.prefix = "memory:" if storage_model == "memory" else ""
         self.dom = dominance(snapshot.function)
         self.nodes, self.evidence, self.definitions = {}, {}, {}
@@ -232,9 +536,18 @@ class _Builder:
                                 and loc.address_space == "stack"
                             ):
                                 continue
-                            groups.setdefault(
+                            boundaries = groups.setdefault(
                                 (loc.address_space, loc.name), set()
-                            ).update((loc.bit_offset, loc.bit_offset + loc.width_bits))
+                            )
+                            end = loc.bit_offset + loc.width_bits
+                            boundaries.update((loc.bit_offset, end))
+                            if (
+                                self.split_microregisters
+                                and loc.address_space == "microregister"
+                            ):
+                                # Whole-register inputs must permit an exact
+                                # low/high 32-bit source without ABI guessing.
+                                boundaries.update(range(loc.bit_offset + 32, end, 32))
         atoms = []
         for (space, name), boundaries in sorted(groups.items()):
             bounds = sorted(boundaries)
@@ -264,6 +577,7 @@ class _Builder:
         memory_operands=None,
         tag=None,
         order=None,
+        assumptions=(),
     ):
         require(len(self.nodes) < self.budget, "SSA node budget exceeded")
         self.serial += 1
@@ -287,6 +601,7 @@ class _Builder:
             sites=(self.site,) if self.site else (),
             source_eas=source_eas,
             synthetic=True,
+            assumptions=tuple(sorted(set(assumptions))),
         )
         self.evidence[ev.evidence_id] = ev
         node = Node(
@@ -393,6 +708,15 @@ class _Builder:
             return self.emit("Constant", op.width_bits, constant=op.constant)
         if op.kind == "storage":
             return self.read(op.storage)
+        if op.kind in {"address", "stack_address"}:
+            return self.emit(
+                "Constant",
+                self.snapshot.identity.environment.bitness,
+                constant=op.address,
+                operation=(
+                    "stack_address" if op.kind == "stack_address" else "global_address"
+                ),
+            )
         if op.kind == "global" and self.storage_model == "memory":
             address = self.emit(
                 "Constant",
@@ -419,7 +743,7 @@ class _Builder:
             return self.unknown(op.width_bits, args, "unmodeled_callinfo")
         return self.unknown(op.width_bits, (), f"unmodeled_operand:{op.kind}")
 
-    def boundary(self, kind, bits, values, reason, roles=None):
+    def boundary(self, kind, bits, values, reason, roles=None, assumptions=()):
         self.diagnostics.add(reason)
         if kind in {"Load", "Store"}:
             if bits is None or bits <= 0 or bits % 8:
@@ -440,10 +764,20 @@ class _Builder:
             )
             if kind == "Store" and not values:
                 values = (self.unknown(bits, (), "missing_store_value"),)
-            return self.emit(kind, bits, values, memory=ref, memory_operands=roles)
-        return self.emit(kind, bits, values)
+            return self.emit(
+                kind,
+                bits,
+                values,
+                memory=ref,
+                memory_operands=roles,
+                assumptions=assumptions,
+            )
+        return self.emit(kind, bits, values, assumptions=assumptions)
 
     def operation(self, opcode, operands, bits):
+        if opcode == "m_arg":
+            # Synthetic type annotation partitions entry storage only.
+            return None
         # m_stx destination is an address input, not a scalar definition.
         source_ops = [
             o
@@ -516,8 +850,225 @@ class _Builder:
             self.havoc(values, stack_only=True)
             return out
         if opcode in {"m_call", "m_icall"}:
-            out = self.boundary("Call", bits, values, "call_boundary")
-            self.havoc(values)
+            require(self.site is not None, "Call effect lacks instruction site")
+            assert self.site is not None
+            effect = self.derived_returns.get(
+                (self.current_block, self.site.instruction_index)
+            )
+            indirect_effect = self.derived_indirect_returns.get(
+                (self.current_block, self.site.instruction_index)
+            )
+            write_effect = self.derived_memory_writes.get(
+                (self.current_block, self.site.instruction_index)
+            )
+            if write_effect is not None:
+                out = self.emit(
+                    "Call",
+                    bits,
+                    values,
+                    operation="derived_static_memory_write",
+                    assumptions=(
+                        "callee_snapshot:" + write_effect.callee_snapshot_id,
+                        "memory_effect_proof:" + write_effect.proof_digest,
+                        (
+                            "unreviewed_static_single_global_write"
+                            if isinstance(write_effect, DerivedGlobalWriteEffect)
+                            else "unreviewed_static_single_output_write"
+                        ),
+                    ),
+                )
+            elif effect is not None and effect.memory_effects == "none":
+                out = self.emit(
+                    "Call",
+                    bits,
+                    values,
+                    operation="derived_static_memory_preserved",
+                    assumptions=(
+                        "callee_snapshot:" + effect.callee_snapshot_id,
+                        "memory_effect_proof:" + effect.proof_digest,
+                        "unreviewed_static_callee_has_no_memory_effects",
+                    ),
+                )
+            elif (
+                indirect_effect is not None and indirect_effect.memory_effects == "none"
+            ):
+                out = self.emit(
+                    "Call",
+                    bits,
+                    values,
+                    operation="derived_static_memory_preserved",
+                    assumptions=(
+                        "finite_target_proof:" + indirect_effect.target_proof_digest,
+                        "memory_effect_proof:" + indirect_effect.proof_digest,
+                        "all_finite_callees_have_no_memory_effects",
+                    ),
+                )
+            else:
+                out = self.boundary("Call", bits, values, "call_boundary")
+            callinfos = [op.call for op in operands if op.call is not None]
+            spoiled = (
+                callinfos[0].spoiled_locations
+                if len(callinfos) == 1 and callinfos[0].spoiled_locations.register_bytes
+                else None
+            )
+            self.havoc(values, call_spoils=spoiled)
+            argument_ids: tuple[str, ...] | None = None
+            if (
+                effect is not None
+                or indirect_effect is not None
+                or write_effect is not None
+            ):
+                callinfo_id = next(
+                    (
+                        value
+                        for operand, (_, value) in zip(
+                            source_ops, evaluated, strict=True
+                        )
+                        if operand.kind == "callinfo"
+                    ),
+                    None,
+                )
+                require(
+                    callinfo_id is not None, "Derived call lacks argument definitions"
+                )
+                argument_ids = self.nodes[callinfo_id].inputs
+            if write_effect is not None:
+                require(
+                    argument_ids is not None,
+                    "Derived memory write lacks call arguments",
+                )
+                assert argument_ids is not None
+                if isinstance(write_effect, DerivedGlobalWriteEffect):
+                    address = self.emit(
+                        "Constant",
+                        self.snapshot.identity.environment.bitness,
+                        constant=write_effect.global_address,
+                        operation="global_address",
+                    )
+                    data = (
+                        self.emit(
+                            "Constant",
+                            write_effect.width_bits,
+                            constant=write_effect.constant_value,
+                        )
+                        if write_effect.value_argument_index is None
+                        else argument_ids[write_effect.value_argument_index]
+                    )
+                    if write_effect.value_argument_width_bits is not None:
+                        data = self.emit(
+                            "Unary",
+                            write_effect.value_width_bits,
+                            (data,),
+                            operation="trunc",
+                        )
+                    if self.nodes[data].width_bits != write_effect.width_bits:
+                        data = self.emit(
+                            "Unary", write_effect.width_bits, (data,), operation="zext"
+                        )
+                else:
+                    require(
+                        write_effect.pointer_argument_index < len(argument_ids)
+                        and write_effect.value_argument_index < len(argument_ids),
+                        "Derived memory write argument drift",
+                    )
+                    address = argument_ids[write_effect.pointer_argument_index]
+                    data = argument_ids[write_effect.value_argument_index]
+                require(
+                    self.nodes[address].width_bits
+                    == self.snapshot.identity.environment.bitness
+                    and self.nodes[data].width_bits == write_effect.width_bits,
+                    "Derived memory write width drift",
+                )
+                roles = MemoryOperands(address, data=data)
+                self.boundary(
+                    "Store",
+                    write_effect.width_bits,
+                    roles.ordered_inputs,
+                    "memory_store_boundary",
+                    roles,
+                    assumptions=(
+                        "callee_snapshot:" + write_effect.callee_snapshot_id,
+                        "memory_write_proof:" + write_effect.proof_digest,
+                        (
+                            "unreviewed_static_single_global_write"
+                            if isinstance(write_effect, DerivedGlobalWriteEffect)
+                            else "unreviewed_static_single_output_write"
+                        ),
+                    ),
+                )
+            return_effect = effect if effect is not None else indirect_effect
+            if return_effect is not None:
+                require(argument_ids is not None, "Derived return lacks call arguments")
+                assert argument_ids is not None
+                require(
+                    all(
+                        index < len(argument_ids)
+                        for index in return_effect.argument_indices
+                    ),
+                    "Derived call argument drift",
+                )
+                if indirect_effect is None:
+                    selected = tuple(
+                        argument_ids[index] for index in return_effect.argument_indices
+                    )
+                else:
+                    selected_parts = []
+                    for part in indirect_effect.argument_slices:
+                        source = argument_ids[part.argument_index]
+                        if (
+                            part.bit_offset == 0
+                            and part.width_bits == self.nodes[source].width_bits
+                        ):
+                            selected_parts.append(source)
+                        else:
+                            selected_parts.append(
+                                self.emit(
+                                    "Unary",
+                                    part.width_bits,
+                                    (source,),
+                                    operation=f"extract:{part.bit_offset}",
+                                )
+                            )
+                    selected = tuple(selected_parts)
+                    require(
+                        len(values) == 3,
+                        "Finite indirect call target position changed",
+                    )
+                    # The target chooses which callee returns. Keep it a
+                    # control input, not an explicit data argument.
+                    selected = (cast(tuple[str, str, str], values)[1], *selected)
+                is_indirect = indirect_effect is not None
+                if indirect_effect is not None:
+                    source_assumption = (
+                        "finite_target_proof:" + indirect_effect.target_proof_digest
+                    )
+                else:
+                    assert effect is not None
+                    source_assumption = "callee_snapshot:" + effect.callee_snapshot_id
+                returned = self.emit(
+                    "CallResult",
+                    return_effect.return_storage.width_bits,
+                    selected,
+                    operation=(
+                        "derived_static_finite_indirect_return"
+                        if is_indirect
+                        else "derived_static_return"
+                    ),
+                    tag="derived-return:" + digest(return_effect),
+                    assumptions=(
+                        source_assumption,
+                        "return_proof:" + return_effect.proof_digest,
+                        "unreviewed_derived_static_return; "
+                        + (
+                            "no callee memory effects proven"
+                            if return_effect.memory_effects == "none"
+                            else "memory effects remain opaque"
+                        ),
+                    ),
+                )
+                self.write(return_effect.return_storage, returned)
+                if bits == return_effect.return_storage.width_bits:
+                    return returned
             return out
         if opcode in BRANCH:
             compare = {
@@ -550,13 +1101,31 @@ class _Builder:
                     self.nodes[values[0]].width_bits if values else None,
                     values,
                 )
+        if opcode == "m_exit" and not values:
+            # Normal termination evidence has no inferred return value.
+            return self.emit("Exit", None)
         if opcode == "m_nop" and not values:
             return self.emit("OpaqueEffect", None, operation="nop")
         self.havoc(values)
         return self.unknown(bits, values, f"unsupported_opcode:{opcode}")
 
-    def havoc(self, inputs, stack_only=False):
+    def havoc(self, inputs, stack_only=False, call_spoils=None):
         for atom in self.atoms:
+            if (
+                call_spoils is not None
+                and atom.address_space == "microregister"
+                and atom.bit_offset % 8 == 0
+                and atom.width_bits % 8 == 0
+                and not set(
+                    range(
+                        atom.bit_offset // 8,
+                        (atom.bit_offset + atom.width_bits) // 8,
+                    )
+                ).intersection(call_spoils.register_bytes)
+            ):
+                # A serialized native spoiler list proves this atom survives.
+                # Missing/empty spoiler metadata keeps the old full havoc.
+                continue
             if not stack_only or atom.address_space not in {
                 "microregister",
                 "register",
@@ -612,7 +1181,16 @@ class _Builder:
                     | set(BINARY)
                     | set(COMPARE)
                     | BRANCH
-                    | {"m_mov", "m_select", "m_ldx", "m_goto", "m_ret", "m_nop"}
+                    | {
+                        "m_mov",
+                        "m_select",
+                        "m_ldx",
+                        "m_goto",
+                        "m_ret",
+                        "m_exit",
+                        "m_arg",
+                        "m_nop",
+                    }
                 )
                 if ins.opcode not in known or any(o not in known for o in nested):
                     for atom in self.atoms:
@@ -740,7 +1318,13 @@ class _Builder:
                 else:
                     kind = (
                         "control_dependency"
-                        if node.kind == "Select" and index == 0
+                        if (
+                            node.kind == "Select"
+                            or node.kind == "CallResult"
+                            and node.operation
+                            == "derived_static_finite_indirect_return"
+                        )
+                        and index == 0
                         else "value_dependency"
                     )
                 if (source, kind) in emitted:

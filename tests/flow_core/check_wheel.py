@@ -24,6 +24,8 @@ def check(directory: Path):
                 "ida_pro_mcp/flow_core/cfg.py",
                 "ida_pro_mcp/flow_core/ssa.py",
                 "ida_pro_mcp/flow_core/analysis.py",
+                "ida_pro_mcp/flow_core/derived_calls.py",
+                "ida_pro_mcp/flow_core/explain.py",
                 "ida_pro_mcp/flow_core/implicit_cfg.py",
                 "ida_pro_mcp/flow_core/implicit_analysis.py",
                 "ida_pro_mcp/flow_core/memory.py",
@@ -47,6 +49,7 @@ def check(directory: Path):
                 "ida_pro_mcp/flow_core/_reviewed_fixture_data.py",
                 "ida_pro_mcp/ida_mcp/flow/reviewed_runtime.py",
                 "ida_pro_mcp/ida_mcp/flow/call_state.py",
+                "ida_pro_mcp/ida_mcp/flow/derived_runtime.py",
             }
             if not expected <= set(wheel.namelist()):
                 raise RuntimeError("Core files missing from wheel")
@@ -61,6 +64,7 @@ class RejectIDA(importlib.abc.MetaPathFinder):
 sys.meta_path.insert(0, RejectIDA())
 from ida_pro_mcp.flow_core.ssa import build_ssa
 from ida_pro_mcp.flow_core.analysis import analyze
+from ida_pro_mcp.flow_core.derived_calls import FiniteIndirectTargets, DerivedIndirectReturnEffect, DerivedGlobalWriteEffect, derive_direct_global_write
 from ida_pro_mcp.flow_core.implicit_cfg import ImplicitCFGPolicy
 from ida_pro_mcp.flow_core.implicit_analysis import ImplicitPolicy
 from ida_pro_mcp.flow_core.memory_analysis import analyze_memory

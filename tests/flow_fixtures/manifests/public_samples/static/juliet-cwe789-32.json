@@ -66,14 +66,14 @@
         "identity": {
           "namespace": "g015-public-sample-corpus",
           "binary_digest": "sha256-v1:f024afea37b5bc27bcea50d53044c8d51a1dbf83904f1967f2930b04ffb8221d",
-          "semantic_digest": "sha256-v1:de90dee23dd65403f47766e4226871cfe0c5a76bcc4181f2941a85a358e6495a",
+          "semantic_digest": "sha256-v1:a853706c1084abb400eaaca3f7addd31a6c99c8e00d76c2dcda5dede6ae5f9ed",
           "function_id": "juliet-32-bad",
           "maturity": "MMAT_CALLS",
           "profile_digest": "sha256-v1:2a8879afa873607593a622e0fa6eff058a1dc45e67ba33e3c796248c6d135831",
           "rule_digest": "sha256-v1:d8ab490fec53f884af8f3a670b9fe752ce44017f30c58e63a2bfac2dc3b7f863",
           "summary_digest": "sha256-v1:92286845e5554de11b090c992a0aa60af599ff674f2ecdf9b8558f7e58176360",
           "policy_digest": "sha256-v1:fbca9931f8e9c10a3c37eaa84b58f2a405f3e7f8ff41a2986f65fa263dab1e93",
-          "input_digest": "sha256-v1:dd3cc41dcc27fe51778edf1724ed1594427f8f9d3c25bb1744232f01cf8f3aca",
+          "input_digest": "sha256-v1:2258df009f591462b3661bc8746ced2f42b22e906e9f391b8f17a29983168797",
           "environment": {
             "ida_build": "9.3",
             "hexrays_build": "9.3.0.260213",
@@ -112,7 +112,7 @@
                   "opcode": "m_mov",
                   "operands": [
                     {
-                      "kind": "unknown",
+                      "kind": "stack_address",
                       "width_bits": 64,
                       "constant": null,
                       "storage": null,
@@ -121,13 +121,9 @@
                       "children": [],
                       "role": "left",
                       "source_eas": [],
-                      "address": null,
+                      "address": 88,
                       "call": null,
-                      "diagnostic": {
-                        "code": "unsupported_operand",
-                        "detail": "No structural normalization rule for mop_a",
-                        "severity": "unsupported"
-                      },
+                      "diagnostic": null,
                       "native_kind": "mop_a",
                       "synthetic": false
                     },
@@ -179,7 +175,7 @@
                   "opcode": "m_mov",
                   "operands": [
                     {
-                      "kind": "unknown",
+                      "kind": "stack_address",
                       "width_bits": 64,
                       "constant": null,
                       "storage": null,
@@ -188,13 +184,9 @@
                       "children": [],
                       "role": "left",
                       "source_eas": [],
-                      "address": null,
+                      "address": 88,
                       "call": null,
-                      "diagnostic": {
-                        "code": "unsupported_operand",
-                        "detail": "No structural normalization rule for mop_a",
-                        "severity": "unsupported"
-                      },
+                      "diagnostic": null,
                       "native_kind": "mop_a",
                       "synthetic": false
                     },
@@ -419,7 +411,7 @@
                         "convention": 48,
                         "arguments": [
                           {
-                            "kind": "unknown",
+                            "kind": "stack_address",
                             "width_bits": 64,
                             "constant": null,
                             "storage": null,
@@ -428,13 +420,9 @@
                             "children": [],
                             "role": "argument",
                             "source_eas": [],
-                            "address": null,
+                            "address": 32,
                             "call": null,
-                            "diagnostic": {
-                              "code": "unsupported_operand",
-                              "detail": "No structural normalization rule for mop_a",
-                              "severity": "unsupported"
-                            },
+                            "diagnostic": null,
                             "native_kind": "mop_a",
                             "synthetic": false
                           },
@@ -684,7 +672,7 @@
                             "convention": 48,
                             "arguments": [
                               {
-                                "kind": "unknown",
+                                "kind": "stack_address",
                                 "width_bits": 64,
                                 "constant": null,
                                 "storage": null,
@@ -693,13 +681,9 @@
                                 "children": [],
                                 "role": "argument",
                                 "source_eas": [],
-                                "address": null,
+                                "address": 32,
                                 "call": null,
-                                "diagnostic": {
-                                  "code": "unsupported_operand",
-                                  "detail": "No structural normalization rule for mop_a",
-                                  "severity": "unsupported"
-                                },
+                                "diagnostic": null,
                                 "native_kind": "mop_a",
                                 "synthetic": false
                               },
@@ -1085,7 +1069,7 @@
                             "convention": 48,
                             "arguments": [
                               {
-                                "kind": "unknown",
+                                "kind": "stack_address",
                                 "width_bits": 64,
                                 "constant": null,
                                 "storage": null,
@@ -1094,13 +1078,9 @@
                                 "children": [],
                                 "role": "argument",
                                 "source_eas": [],
-                                "address": null,
+                                "address": 32,
                                 "call": null,
-                                "diagnostic": {
-                                  "code": "unsupported_operand",
-                                  "detail": "No structural normalization rule for mop_a",
-                                  "severity": "unsupported"
-                                },
+                                "diagnostic": null,
                                 "native_kind": "mop_a",
                                 "synthetic": false
                               },
@@ -1540,7 +1520,7 @@
                         "convention": 112,
                         "arguments": [
                           {
-                            "kind": "unknown",
+                            "kind": "address",
                             "width_bits": 64,
                             "constant": null,
                             "storage": null,
@@ -1549,13 +1529,9 @@
                             "children": [],
                             "role": "argument",
                             "source_eas": [],
-                            "address": null,
+                            "address": 4294971218,
                             "call": null,
-                            "diagnostic": {
-                              "code": "unsupported_operand",
-                              "detail": "No structural normalization rule for mop_a",
-                              "severity": "unsupported"
-                            },
+                            "diagnostic": null,
                             "native_kind": "mop_a",
                             "synthetic": false
                           }
@@ -2006,7 +1982,7 @@
                             "convention": 48,
                             "arguments": [
                               {
-                                "kind": "unknown",
+                                "kind": "address",
                                 "width_bits": 64,
                                 "constant": null,
                                 "storage": null,
@@ -2015,13 +1991,9 @@
                                 "children": [],
                                 "role": "argument",
                                 "source_eas": [],
-                                "address": null,
+                                "address": 4294971234,
                                 "call": null,
-                                "diagnostic": {
-                                  "code": "unsupported_operand",
-                                  "detail": "No structural normalization rule for mop_a",
-                                  "severity": "unsupported"
-                                },
+                                "diagnostic": null,
                                 "native_kind": "mop_a",
                                 "synthetic": false
                               }
@@ -3241,7 +3213,7 @@
                             "synthetic": false
                           },
                           {
-                            "kind": "unknown",
+                            "kind": "address",
                             "width_bits": 64,
                             "constant": null,
                             "storage": null,
@@ -3250,13 +3222,9 @@
                             "children": [],
                             "role": "argument",
                             "source_eas": [],
-                            "address": null,
+                            "address": 4294971234,
                             "call": null,
-                            "diagnostic": {
-                              "code": "unsupported_operand",
-                              "detail": "No structural normalization rule for mop_a",
-                              "severity": "unsupported"
-                            },
+                            "diagnostic": null,
                             "native_kind": "mop_a",
                             "synthetic": false
                           },
@@ -4042,7 +4010,7 @@
                             "convention": 112,
                             "arguments": [
                               {
-                                "kind": "unknown",
+                                "kind": "address",
                                 "width_bits": 64,
                                 "constant": null,
                                 "storage": null,
@@ -4051,13 +4019,9 @@
                                 "children": [],
                                 "role": "argument",
                                 "source_eas": [],
-                                "address": null,
+                                "address": 4294971240,
                                 "call": null,
-                                "diagnostic": {
-                                  "code": "unsupported_operand",
-                                  "detail": "No structural normalization rule for mop_a",
-                                  "severity": "unsupported"
-                                },
+                                "diagnostic": null,
                                 "native_kind": "mop_a",
                                 "synthetic": false
                               }
@@ -4276,7 +4240,15 @@
                 15,
                 16
               ],
-              "instructions": [],
+              "instructions": [
+                {
+                  "index": 0,
+                  "opcode": "m_exit",
+                  "operands": [],
+                  "source_eas": [],
+                  "synthetic": true
+                }
+              ],
               "successors": []
             }
           ],
@@ -4295,15 +4267,10 @@
               "code": "native_origins_incomplete",
               "detail": "Observed nested microcode EA union only; optimized-away native origins cannot be reconstructed",
               "severity": "information"
-            },
-            {
-              "code": "unsupported_operand",
-              "detail": "No structural normalization rule for mop_a",
-              "severity": "unsupported"
             }
           ]
         },
-        "snapshot_id": "snapshot-v1:47ecb1a245546c7dbec45f8abcf0f8d7e7cd5fab8567afcd09c2302e76a35a80",
+        "snapshot_id": "snapshot-v1:f2be3ee5a29196e5812d0f7cc142f5b1a7070163c27ad7c3427c39f0637d9d93",
         "schema_version": 1
       },
       "calls": [
@@ -4316,7 +4283,7 @@
             "convention": 48,
             "arguments": [
               {
-                "kind": "unknown",
+                "kind": "stack_address",
                 "width_bits": 64,
                 "constant": null,
                 "storage": null,
@@ -4325,13 +4292,9 @@
                 "children": [],
                 "role": "argument",
                 "source_eas": [],
-                "address": null,
+                "address": 32,
                 "call": null,
-                "diagnostic": {
-                  "code": "unsupported_operand",
-                  "detail": "No structural normalization rule for mop_a",
-                  "severity": "unsupported"
-                },
+                "diagnostic": null,
                 "native_kind": "mop_a",
                 "synthetic": false
               },
@@ -4512,7 +4475,7 @@
             "convention": 48,
             "arguments": [
               {
-                "kind": "unknown",
+                "kind": "stack_address",
                 "width_bits": 64,
                 "constant": null,
                 "storage": null,
@@ -4521,13 +4484,9 @@
                 "children": [],
                 "role": "argument",
                 "source_eas": [],
-                "address": null,
+                "address": 32,
                 "call": null,
-                "diagnostic": {
-                  "code": "unsupported_operand",
-                  "detail": "No structural normalization rule for mop_a",
-                  "severity": "unsupported"
-                },
+                "diagnostic": null,
                 "native_kind": "mop_a",
                 "synthetic": false
               },
@@ -4721,7 +4680,7 @@
             "convention": 48,
             "arguments": [
               {
-                "kind": "unknown",
+                "kind": "stack_address",
                 "width_bits": 64,
                 "constant": null,
                 "storage": null,
@@ -4730,13 +4689,9 @@
                 "children": [],
                 "role": "argument",
                 "source_eas": [],
-                "address": null,
+                "address": 32,
                 "call": null,
-                "diagnostic": {
-                  "code": "unsupported_operand",
-                  "detail": "No structural normalization rule for mop_a",
-                  "severity": "unsupported"
-                },
+                "diagnostic": null,
                 "native_kind": "mop_a",
                 "synthetic": false
               },
@@ -4930,7 +4885,7 @@
             "convention": 112,
             "arguments": [
               {
-                "kind": "unknown",
+                "kind": "address",
                 "width_bits": 64,
                 "constant": null,
                 "storage": null,
@@ -4939,13 +4894,9 @@
                 "children": [],
                 "role": "argument",
                 "source_eas": [],
-                "address": null,
+                "address": 4294971218,
                 "call": null,
-                "diagnostic": {
-                  "code": "unsupported_operand",
-                  "detail": "No structural normalization rule for mop_a",
-                  "severity": "unsupported"
-                },
+                "diagnostic": null,
                 "native_kind": "mop_a",
                 "synthetic": false
               }
@@ -5107,7 +5058,7 @@
             "convention": 48,
             "arguments": [
               {
-                "kind": "unknown",
+                "kind": "address",
                 "width_bits": 64,
                 "constant": null,
                 "storage": null,
@@ -5116,13 +5067,9 @@
                 "children": [],
                 "role": "argument",
                 "source_eas": [],
-                "address": null,
+                "address": 4294971234,
                 "call": null,
-                "diagnostic": {
-                  "code": "unsupported_operand",
-                  "detail": "No structural normalization rule for mop_a",
-                  "severity": "unsupported"
-                },
+                "diagnostic": null,
                 "native_kind": "mop_a",
                 "synthetic": false
               }
@@ -5635,7 +5582,7 @@
                 "synthetic": false
               },
               {
-                "kind": "unknown",
+                "kind": "address",
                 "width_bits": 64,
                 "constant": null,
                 "storage": null,
@@ -5644,13 +5591,9 @@
                 "children": [],
                 "role": "argument",
                 "source_eas": [],
-                "address": null,
+                "address": 4294971234,
                 "call": null,
-                "diagnostic": {
-                  "code": "unsupported_operand",
-                  "detail": "No structural normalization rule for mop_a",
-                  "severity": "unsupported"
-                },
+                "diagnostic": null,
                 "native_kind": "mop_a",
                 "synthetic": false
               },
@@ -6176,7 +6119,7 @@
             "convention": 112,
             "arguments": [
               {
-                "kind": "unknown",
+                "kind": "address",
                 "width_bits": 64,
                 "constant": null,
                 "storage": null,
@@ -6185,13 +6128,9 @@
                 "children": [],
                 "role": "argument",
                 "source_eas": [],
-                "address": null,
+                "address": 4294971240,
                 "call": null,
-                "diagnostic": {
-                  "code": "unsupported_operand",
-                  "detail": "No structural normalization rule for mop_a",
-                  "severity": "unsupported"
-                },
+                "diagnostic": null,
                 "native_kind": "mop_a",
                 "synthetic": false
               }
@@ -6345,7 +6284,7 @@
           "callee_name": "_printLine"
         }
       ],
-      "canonical_digest": "sha256-v1:114ec2cb621290301bd3f81735bcf17c2f0f9da0094581a950d26897b05cff91",
+      "canonical_digest": "sha256-v1:1fab6db1bd113cecc988a6d725b652d8a04983e1bc47d60c6d629e872175d0ec",
       "repeat_equal": true,
       "roundtrip_equal": true
     },
@@ -6358,14 +6297,14 @@
         "identity": {
           "namespace": "g015-public-sample-corpus",
           "binary_digest": "sha256-v1:f024afea37b5bc27bcea50d53044c8d51a1dbf83904f1967f2930b04ffb8221d",
-          "semantic_digest": "sha256-v1:8697f18a9968b82f60722b89201bed14e1284fa0df9c5493687c96fb50f85654",
+          "semantic_digest": "sha256-v1:7eedee69017e1756891be877703b664863e339f911247d5b4e170bbf5c063db9",
           "function_id": "juliet-32-good-bad-source-good-sink",
           "maturity": "MMAT_CALLS",
           "profile_digest": "sha256-v1:2a8879afa873607593a622e0fa6eff058a1dc45e67ba33e3c796248c6d135831",
           "rule_digest": "sha256-v1:d8ab490fec53f884af8f3a670b9fe752ce44017f30c58e63a2bfac2dc3b7f863",
           "summary_digest": "sha256-v1:92286845e5554de11b090c992a0aa60af599ff674f2ecdf9b8558f7e58176360",
           "policy_digest": "sha256-v1:fbca9931f8e9c10a3c37eaa84b58f2a405f3e7f8ff41a2986f65fa263dab1e93",
-          "input_digest": "sha256-v1:b4d789dc7a76789c5e0727ca1e57ef36c8c8f14b882cd1f5ad36860aca9933d7",
+          "input_digest": "sha256-v1:74b8f1fa5906d04bacf5da58a3f1599c08c148551ec57ab14cf5fda39f2654f2",
           "environment": {
             "ida_build": "9.3",
             "hexrays_build": "9.3.0.260213",
@@ -6404,7 +6343,7 @@
                   "opcode": "m_mov",
                   "operands": [
                     {
-                      "kind": "unknown",
+                      "kind": "stack_address",
                       "width_bits": 64,
                       "constant": null,
                       "storage": null,
@@ -6413,13 +6352,9 @@
                       "children": [],
                       "role": "left",
                       "source_eas": [],
-                      "address": null,
+                      "address": 88,
                       "call": null,
-                      "diagnostic": {
-                        "code": "unsupported_operand",
-                        "detail": "No structural normalization rule for mop_a",
-                        "severity": "unsupported"
-                      },
+                      "diagnostic": null,
                       "native_kind": "mop_a",
                       "synthetic": false
                     },
@@ -6471,7 +6406,7 @@
                   "opcode": "m_mov",
                   "operands": [
                     {
-                      "kind": "unknown",
+                      "kind": "stack_address",
                       "width_bits": 64,
                       "constant": null,
                       "storage": null,
@@ -6480,13 +6415,9 @@
                       "children": [],
                       "role": "left",
                       "source_eas": [],
-                      "address": null,
+                      "address": 88,
                       "call": null,
-                      "diagnostic": {
-                        "code": "unsupported_operand",
-                        "detail": "No structural normalization rule for mop_a",
-                        "severity": "unsupported"
-                      },
+                      "diagnostic": null,
                       "native_kind": "mop_a",
                       "synthetic": false
                     },
@@ -6711,7 +6642,7 @@
                         "convention": 48,
                         "arguments": [
                           {
-                            "kind": "unknown",
+                            "kind": "stack_address",
                             "width_bits": 64,
                             "constant": null,
                             "storage": null,
@@ -6720,13 +6651,9 @@
                             "children": [],
                             "role": "argument",
                             "source_eas": [],
-                            "address": null,
+                            "address": 32,
                             "call": null,
-                            "diagnostic": {
-                              "code": "unsupported_operand",
-                              "detail": "No structural normalization rule for mop_a",
-                              "severity": "unsupported"
-                            },
+                            "diagnostic": null,
                             "native_kind": "mop_a",
                             "synthetic": false
                           },
@@ -6976,7 +6903,7 @@
                             "convention": 48,
                             "arguments": [
                               {
-                                "kind": "unknown",
+                                "kind": "stack_address",
                                 "width_bits": 64,
                                 "constant": null,
                                 "storage": null,
@@ -6985,13 +6912,9 @@
                                 "children": [],
                                 "role": "argument",
                                 "source_eas": [],
-                                "address": null,
+                                "address": 32,
                                 "call": null,
-                                "diagnostic": {
-                                  "code": "unsupported_operand",
-                                  "detail": "No structural normalization rule for mop_a",
-                                  "severity": "unsupported"
-                                },
+                                "diagnostic": null,
                                 "native_kind": "mop_a",
                                 "synthetic": false
                               },
@@ -7377,7 +7300,7 @@
                             "convention": 48,
                             "arguments": [
                               {
-                                "kind": "unknown",
+                                "kind": "stack_address",
                                 "width_bits": 64,
                                 "constant": null,
                                 "storage": null,
@@ -7386,13 +7309,9 @@
                                 "children": [],
                                 "role": "argument",
                                 "source_eas": [],
-                                "address": null,
+                                "address": 32,
                                 "call": null,
-                                "diagnostic": {
-                                  "code": "unsupported_operand",
-                                  "detail": "No structural normalization rule for mop_a",
-                                  "severity": "unsupported"
-                                },
+                                "diagnostic": null,
                                 "native_kind": "mop_a",
                                 "synthetic": false
                               },
@@ -7832,7 +7751,7 @@
                         "convention": 112,
                         "arguments": [
                           {
-                            "kind": "unknown",
+                            "kind": "address",
                             "width_bits": 64,
                             "constant": null,
                             "storage": null,
@@ -7841,13 +7760,9 @@
                             "children": [],
                             "role": "argument",
                             "source_eas": [],
-                            "address": null,
+                            "address": 4294971218,
                             "call": null,
-                            "diagnostic": {
-                              "code": "unsupported_operand",
-                              "detail": "No structural normalization rule for mop_a",
-                              "severity": "unsupported"
-                            },
+                            "diagnostic": null,
                             "native_kind": "mop_a",
                             "synthetic": false
                           }
@@ -8298,7 +8213,7 @@
                             "convention": 48,
                             "arguments": [
                               {
-                                "kind": "unknown",
+                                "kind": "address",
                                 "width_bits": 64,
                                 "constant": null,
                                 "storage": null,
@@ -8307,13 +8222,9 @@
                                 "children": [],
                                 "role": "argument",
                                 "source_eas": [],
-                                "address": null,
+                                "address": 4294971234,
                                 "call": null,
-                                "diagnostic": {
-                                  "code": "unsupported_operand",
-                                  "detail": "No structural normalization rule for mop_a",
-                                  "severity": "unsupported"
-                                },
+                                "diagnostic": null,
                                 "native_kind": "mop_a",
                                 "synthetic": false
                               }
@@ -9608,7 +9519,7 @@
                             "synthetic": false
                           },
                           {
-                            "kind": "unknown",
+                            "kind": "address",
                             "width_bits": 64,
                             "constant": null,
                             "storage": null,
@@ -9617,13 +9528,9 @@
                             "children": [],
                             "role": "argument",
                             "source_eas": [],
-                            "address": null,
+                            "address": 4294971234,
                             "call": null,
-                            "diagnostic": {
-                              "code": "unsupported_operand",
-                              "detail": "No structural normalization rule for mop_a",
-                              "severity": "unsupported"
-                            },
+                            "diagnostic": null,
                             "native_kind": "mop_a",
                             "synthetic": false
                           },
@@ -10410,7 +10317,7 @@
                             "convention": 112,
                             "arguments": [
                               {
-                                "kind": "unknown",
+                                "kind": "address",
                                 "width_bits": 64,
                                 "constant": null,
                                 "storage": null,
@@ -10419,13 +10326,9 @@
                                 "children": [],
                                 "role": "argument",
                                 "source_eas": [],
-                                "address": null,
+                                "address": 4294971357,
                                 "call": null,
-                                "diagnostic": {
-                                  "code": "unsupported_operand",
-                                  "detail": "No structural normalization rule for mop_a",
-                                  "severity": "unsupported"
-                                },
+                                "diagnostic": null,
                                 "native_kind": "mop_a",
                                 "synthetic": false
                               }
@@ -10644,7 +10547,15 @@
                 16,
                 17
               ],
-              "instructions": [],
+              "instructions": [
+                {
+                  "index": 0,
+                  "opcode": "m_exit",
+                  "operands": [],
+                  "source_eas": [],
+                  "synthetic": true
+                }
+              ],
               "successors": []
             }
           ],
@@ -10663,15 +10574,10 @@
               "code": "native_origins_incomplete",
               "detail": "Observed nested microcode EA union only; optimized-away native origins cannot be reconstructed",
               "severity": "information"
-            },
-            {
-              "code": "unsupported_operand",
-              "detail": "No structural normalization rule for mop_a",
-              "severity": "unsupported"
             }
           ]
         },
-        "snapshot_id": "snapshot-v1:cab53eee787597ee33708868f8179f3f825fe6975e1623e11d8b092d19bb0097",
+        "snapshot_id": "snapshot-v1:c3a9dc42954f782e61963544e369bcc9f24d075e00e1e57c92d28b47566f9429",
         "schema_version": 1
       },
       "calls": [
@@ -10684,7 +10590,7 @@
             "convention": 48,
             "arguments": [
               {
-                "kind": "unknown",
+                "kind": "stack_address",
                 "width_bits": 64,
                 "constant": null,
                 "storage": null,
@@ -10693,13 +10599,9 @@
                 "children": [],
                 "role": "argument",
                 "source_eas": [],
-                "address": null,
+                "address": 32,
                 "call": null,
-                "diagnostic": {
-                  "code": "unsupported_operand",
-                  "detail": "No structural normalization rule for mop_a",
-                  "severity": "unsupported"
-                },
+                "diagnostic": null,
                 "native_kind": "mop_a",
                 "synthetic": false
               },
@@ -10880,7 +10782,7 @@
             "convention": 48,
             "arguments": [
               {
-                "kind": "unknown",
+                "kind": "stack_address",
                 "width_bits": 64,
                 "constant": null,
                 "storage": null,
@@ -10889,13 +10791,9 @@
                 "children": [],
                 "role": "argument",
                 "source_eas": [],
-                "address": null,
+                "address": 32,
                 "call": null,
-                "diagnostic": {
-                  "code": "unsupported_operand",
-                  "detail": "No structural normalization rule for mop_a",
-                  "severity": "unsupported"
-                },
+                "diagnostic": null,
                 "native_kind": "mop_a",
                 "synthetic": false
               },
@@ -11089,7 +10987,7 @@
             "convention": 48,
             "arguments": [
               {
-                "kind": "unknown",
+                "kind": "stack_address",
                 "width_bits": 64,
                 "constant": null,
                 "storage": null,
@@ -11098,13 +10996,9 @@
                 "children": [],
                 "role": "argument",
                 "source_eas": [],
-                "address": null,
+                "address": 32,
                 "call": null,
-                "diagnostic": {
-                  "code": "unsupported_operand",
-                  "detail": "No structural normalization rule for mop_a",
-                  "severity": "unsupported"
-                },
+                "diagnostic": null,
                 "native_kind": "mop_a",
                 "synthetic": false
               },
@@ -11298,7 +11192,7 @@
             "convention": 112,
             "arguments": [
               {
-                "kind": "unknown",
+                "kind": "address",
                 "width_bits": 64,
                 "constant": null,
                 "storage": null,
@@ -11307,13 +11201,9 @@
                 "children": [],
                 "role": "argument",
                 "source_eas": [],
-                "address": null,
+                "address": 4294971218,
                 "call": null,
-                "diagnostic": {
-                  "code": "unsupported_operand",
-                  "detail": "No structural normalization rule for mop_a",
-                  "severity": "unsupported"
-                },
+                "diagnostic": null,
                 "native_kind": "mop_a",
                 "synthetic": false
               }
@@ -11475,7 +11365,7 @@
             "convention": 48,
             "arguments": [
               {
-                "kind": "unknown",
+                "kind": "address",
                 "width_bits": 64,
                 "constant": null,
                 "storage": null,
@@ -11484,13 +11374,9 @@
                 "children": [],
                 "role": "argument",
                 "source_eas": [],
-                "address": null,
+                "address": 4294971234,
                 "call": null,
-                "diagnostic": {
-                  "code": "unsupported_operand",
-                  "detail": "No structural normalization rule for mop_a",
-                  "severity": "unsupported"
-                },
+                "diagnostic": null,
                 "native_kind": "mop_a",
                 "synthetic": false
               }
@@ -12003,7 +11889,7 @@
                 "synthetic": false
               },
               {
-                "kind": "unknown",
+                "kind": "address",
                 "width_bits": 64,
                 "constant": null,
                 "storage": null,
@@ -12012,13 +11898,9 @@
                 "children": [],
                 "role": "argument",
                 "source_eas": [],
-                "address": null,
+                "address": 4294971234,
                 "call": null,
-                "diagnostic": {
-                  "code": "unsupported_operand",
-                  "detail": "No structural normalization rule for mop_a",
-                  "severity": "unsupported"
-                },
+                "diagnostic": null,
                 "native_kind": "mop_a",
                 "synthetic": false
               },
@@ -12544,7 +12426,7 @@
             "convention": 112,
             "arguments": [
               {
-                "kind": "unknown",
+                "kind": "address",
                 "width_bits": 64,
                 "constant": null,
                 "storage": null,
@@ -12553,13 +12435,9 @@
                 "children": [],
                 "role": "argument",
                 "source_eas": [],
-                "address": null,
+                "address": 4294971357,
                 "call": null,
-                "diagnostic": {
-                  "code": "unsupported_operand",
-                  "detail": "No structural normalization rule for mop_a",
-                  "severity": "unsupported"
-                },
+                "diagnostic": null,
                 "native_kind": "mop_a",
                 "synthetic": false
               }
@@ -12713,12 +12591,12 @@
           "callee_name": "_printLine"
         }
       ],
-      "canonical_digest": "sha256-v1:fa447d6a597c4d9dd47cc6e005dbe8b32dc1f32ca0ad67f04ab1d3ab0e71d0e5",
+      "canonical_digest": "sha256-v1:411234b7f49c41a36529ec6d4a241774957740ee17b749cfbbe3b0fe637f4505",
       "repeat_equal": true,
       "roundtrip_equal": true
     }
   ],
-  "extractor_sha256": "9d21f5ba7163d47442e1581905dbd775511bfbbb96263627c0f1186920d301ef",
+  "extractor_sha256": "8aeab629dc5842e67e516c0eb6c70ec203b4250efa84abddfaacc8be56aabfc9",
   "generator_sha256": "51a18a5b43a2958f16f3f3ca0b19e9cfc77f347ca36cbc2f18a8bc9ce1b77acd",
   "target_executed": false,
   "input_preserved": true,
@@ -12730,6 +12608,6 @@
     "-Sscripts/flow_public_sample_extract.py $ROOT $OUTPUT $REQUEST",
     "$BINARY"
   ],
-  "ida_log_sha256": "b2cb9354a8675ffcb54a03e5bf8c12725bab295f7ac83a9454f33704ee27902b",
+  "ida_log_sha256": "777c78a4ec6bb989fb79a349a0150cec469a15b76cbd8458ec31bd7bc8ab2777",
   "recorder_sha256": "7cf4e813321299eee9e5b6b891bbd39680b7fa50c9eceacfe97200dda0ecb9b2"
 }

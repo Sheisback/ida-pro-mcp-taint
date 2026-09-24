@@ -7,6 +7,7 @@ import re
 from pathlib import Path
 
 from ida_pro_mcp.flow_core import digest
+from ida_pro_mcp.flow_core._reviewed_fixture_data import REVIEWED_FIXTURE_JSON
 from ida_pro_mcp.flow_core.call_composition import CallCompositionResult
 from ida_pro_mcp.flow_core.contracts import Snapshot
 from ida_pro_mcp.flow_core.interproc import CallPlan
@@ -315,6 +316,27 @@ def test_public_reviewed_runtime_receipt_is_current():
     )
     for fixture in receipt["fixtures"]:
         assert fixture["worker_build_id"] == BUILD_ID
+
+
+def test_packaged_reviewed_fixtures_match_actual_static_extractions():
+    packaged = json.loads(REVIEWED_FIXTURE_JSON)
+    assert len(packaged) == 2
+    for arch, row in zip(("x86_64", "arm64"), packaged, strict=True):
+        extraction = read(MANIFESTS / f"extraction_{arch}.json")
+        assert extraction["target_executed"] is False
+        assert extraction["fresh_static_ida_extraction"] is True
+        assert extraction["repeat_equal"] and extraction["roundtrip_equal"]
+        assert row == {
+            "profile": extraction["profile"],
+            "catalog": extraction["catalog"],
+            "baselines": [
+                {
+                    "rva": function["rva"],
+                    "identity": function["baseline"]["snapshot"]["identity"],
+                }
+                for function in extraction["functions"]
+            ],
+        }
 
 
 def test_static_ida_call_receipts_pin_catalog_runtime_and_replay():

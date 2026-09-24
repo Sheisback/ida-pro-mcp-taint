@@ -499,6 +499,151 @@ def test_pointer_constant_offset_and_symbolic_offset_widening():
     assert fact(r, nodes(p, "Return")[0].node_id).labels.unknown_provenance
 
 
+@pytest.mark.parametrize("mask", (1, 63))
+def test_masked_bounded_array_index_keeps_possible_source_or_unknown(mask):
+    """a[n & 1] may read either byte; a wide mask exceeds candidate budget."""
+    instructions = (
+        Instruction(
+            0,
+            "m_and",
+            (reg(256, 32), const(mask, 32, "right"), reg(320, 32, "destination")),
+        ),
+        Instruction(1, "m_xdu", (reg(320, 32), reg(384, 64, "destination"))),
+        Instruction(
+            2,
+            "m_mul",
+            (reg(384, 64), const(4, 64, "right"), reg(448, 64, "destination")),
+        ),
+        Instruction(
+            3, "m_add", (reg(0, 64), reg(448, 64, "right"), reg(64, 64, "destination"))
+        ),
+        load(4, address=reg(64, 64, "right")),
+        ret(5),
+    )
+    p = plan(instructions)
+    a = obj(p, size=8)
+    b = obj(p, key="unrelated", size=8)
+    r = run(
+        p,
+        (a, b),
+        (ptrseed(p, a),),
+        (
+            memseed(a, 0, 1, value=7),
+            memseed(a, 4, 5, label="", value=9),
+            memseed(b, 0, 1, label="Y", value=3),
+        ),
+    )
+    access = next(
+        item for item in r.accesses if item.node_id == nodes(p, "Load")[0].node_id
+    )
+    out = fact(r, nodes(p, "Return")[0].node_id)
+    if mask == 1:
+        assert {(c.interval.start, c.interval.end) for c in access.candidates} == {
+            (0, 1),
+            (4, 5),
+        }
+        assert access.precision == "may_alias" and not access.unresolved
+        assert {c.object_id for c in access.candidates} == {a.object_id}
+        assert out.labels.explicit == ("X",)
+        assert "Y" not in out.labels.explicit
+        assert not out.labels.unknown_provenance
+        assert r.status == "complete_in_scope"
+    else:
+        assert access.unresolved and r.status == "partial"
+        assert out.labels.unknown_provenance
+
+
+def test_private_stack_is_not_aliased_by_fixed_global_or_typed_entry():
+    p = plan((load(0),))
+    stack = obj(p, "current_frame", kind="stack", disjoint=True)
+    typed = obj(p, "typed_input", kind="typed_entry", disjoint=False)
+    other_typed = obj(p, "other_typed", kind="typed_entry", disjoint=False)
+    global_object = obj(p, "fixed_global", kind="global", disjoint=False)
+    uncertain = obj(p, "uncertain_input", kind="argument", disjoint=False)
+    interval = ByteRange(0, 1)
+    assert alias_relation(stack, interval, typed, interval) == "no_alias"
+    assert alias_relation(typed, interval, stack, interval) == "no_alias"
+    assert alias_relation(stack, interval, global_object, interval) == "no_alias"
+    assert alias_relation(typed, interval, other_typed, interval) == "may_alias"
+    assert alias_relation(stack, interval, uncertain, interval) == "may_alias"
+
+
+def test_untyped_input_may_read_a_current_frame_spill_in_flat_binary_model():
+    """A numeric input address can name a future stack slot without provenance proof."""
+    p = plan(
+        (
+            store(0, data=reg(128, 8), address=reg(64, 64, "destination")),
+            load(1, out=256, address=reg(0, 64, "right")),
+            ret(2, offset=256),
+        )
+    )
+    stack = obj(p, "current_frame", kind="stack", disjoint=True)
+    incoming = obj(p, "untyped_incoming", kind="argument", disjoint=False)
+    data = next(e for e in p.program.entry_storage if e.storage.bit_offset == 128)
+    result = run(
+        p,
+        (stack, incoming),
+        (ptrseed(p, incoming), ptrseed(p, stack, 64)),
+        values=(Seed(data.node_id, Labels(("X",))),),
+    )
+
+    assert alias_relation(stack, ByteRange(0, 1), incoming, ByteRange(0, 1)) == "may_alias"
+    assert any(
+        dep.source == nodes(p, "Store")[0].node_id
+        and dep.target == nodes(p, "Load")[0].node_id
+        and dep.object_id == incoming.object_id
+        and dep.precision == "may_alias"
+        for dep in result.dependencies
+    )
+    observed = fact(result, nodes(p, "Return")[0].node_id).labels
+    assert "X" in observed.explicit
+    assert observed.unknown_provenance
+
+
+def test_bounded_symbolic_store_weakly_updates_both_candidates():
+    p = plan(
+        (
+            Instruction(
+                0,
+                "m_and",
+                (reg(256, 32), const(1, 32, "right"), reg(320, 32, "destination")),
+            ),
+            Instruction(1, "m_xdu", (reg(320, 32), reg(384, 64, "destination"))),
+            Instruction(
+                2,
+                "m_mul",
+                (reg(384, 64), const(4, 64, "right"), reg(448, 64, "destination")),
+            ),
+            Instruction(
+                3,
+                "m_add",
+                (reg(0, 64), reg(448, 64, "right"), reg(64, 64, "destination")),
+            ),
+            store(4, data=reg(640, 8), address=reg(64, 64, "destination")),
+            load(5, out=128, address=reg(0, 64, "right")),
+            load(6, out=136, address=reg(512, 64, "right")),
+            ret(7),
+        )
+    )
+    a = obj(p, size=8)
+    data = next(e for e in p.program.entry_storage if e.storage.bit_offset == 640)
+    result = run(
+        p,
+        (a,),
+        (ptrseed(p, a), ptrseed(p, a, 512, 4)),
+        (memseed(a, 0, 1, label="", value=7), memseed(a, 4, 5, label="", value=9)),
+        values=(Seed(data.node_id, Labels(("WRITE",))),),
+    )
+    symbolic = next(
+        a for a in result.accesses if a.node_id == nodes(p, "Store")[0].node_id
+    )
+    assert {c.interval.start for c in symbolic.candidates} == {0, 4}
+    assert symbolic.precision == "may_alias" and not symbolic.strong_update
+    loaded = nodes(p, "Load")
+    assert all("WRITE" in fact(result, item.node_id).labels.explicit for item in loaded)
+    assert result.status == "complete_in_scope"
+
+
 def test_null_pointer_is_unresolved_not_clean_no_flow():
     p = plan((load(0), ret(1)))
     a = obj(p)
@@ -996,8 +1141,8 @@ def test_load_value_seed_retained_and_source_digest_changes():
         and original.source_digest != seeded.source_digest
     )
     assert original.cache_key != seeded.cache_key
-    assert FLAT.ruleset == "range-memory-v2"
-    old = FLAT.to_data() | {"ruleset": "range-memory-v1"}
+    assert FLAT.ruleset == "range-memory-v7"
+    old = FLAT.to_data() | {"ruleset": "range-memory-v5"}
     assert digest(FLAT) != digest(old)
     with pytest.raises(ContractError):
         MemoryPolicy.from_data(old)

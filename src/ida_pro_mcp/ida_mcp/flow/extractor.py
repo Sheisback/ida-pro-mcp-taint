@@ -6,7 +6,7 @@ Only extract_snapshot calls IDA. The remaining contracts/helpers are pure Python
 import hashlib
 import json
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from collections.abc import Callable
 from typing import Literal, cast
@@ -326,6 +326,140 @@ def extract_snapshot(
         raise RuntimeError("IDA image-base API unavailable")
     image_base = int(cast(Callable[[], int], get_imagebase)())
 
+    def typed_function_details():
+        get_tinfo = getattr(ida_nalt, "get_tinfo", None)
+        if not callable(get_tinfo):
+            return None
+        import ida_typeinf
+
+        tif = ida_typeinf.tinfo_t()
+        if not get_tinfo(tif, function_ea):
+            return None
+        details = ida_typeinf.func_type_data_t()
+        return details if tif.get_func_details(details) else None
+
+    type_details = typed_function_details()
+
+    def mapped_register(location, size):
+        if not (0 < size <= 8 and location.is_reg1()):
+            return None
+        offset = int(location.regoff())
+        if not 0 <= offset <= 8 - size:
+            return None
+        processor_reg = int(location.reg1())
+        base_microreg = int(hx.reg2mreg(processor_reg))
+        microreg = base_microreg + offset
+        if base_microreg < 0 or microreg < 0 or microreg > 65535:
+            return None
+        exact_alias = int(hx.mreg2reg(microreg, size))
+        if exact_alias < 0 or int(hx.reg2mreg(exact_alias)) != microreg:
+            return None
+        return StorageLocation("microregister", "microregister", microreg * 8, size * 8)
+
+    def typed_return_operand():
+        """Use an IDB function type only when its scalar register map is exact."""
+        if type_details is None:
+            return None
+        if type_details.is_noret():
+            diagnostics.append(
+                Diagnostic(
+                    "typed_noreturn",
+                    "Current IDB type marks this function non-returning; no return value is inferred",
+                    "unsupported",
+                )
+            )
+            return None
+        is_void = getattr(type_details.rettype, "is_void", None)
+        if callable(is_void) and is_void():
+            diagnostics.append(
+                Diagnostic(
+                    "typed_void_return",
+                    "Current IDB type has void return; normal termination carries no value",
+                    "information",
+                )
+            )
+            return None
+        size = int(type_details.rettype.get_size())
+        storage = mapped_register(type_details.retloc, size)
+        if storage is None:
+            diagnostics.append(
+                Diagnostic(
+                    "typed_return_unmapped",
+                    "IDB return argloc/width has no exact supported microregister mapping; return value remains unavailable",
+                    "information",
+                )
+            )
+            return None
+        diagnostics.append(
+            Diagnostic(
+                "typed_return_location",
+                "Synthetic return location from current IDB type and SDK argloc; type correctness is an analyst assumption",
+                "information",
+            )
+        )
+        return Operand(
+            "storage",
+            size * 8,
+            storage=storage,
+            role="left",
+            native_kind="typed_return_argloc",
+            synthetic=True,
+        )
+
+    def typed_argument_markers(start_index):
+        if type_details is None:
+            return ()
+        markers = []
+        for ordinal, argument in enumerate(type_details):
+            check()
+            size = int(argument.type.get_size())
+            storage = mapped_register(argument.argloc, size)
+            if storage is None:
+                diagnostics.append(
+                    Diagnostic(
+                        "typed_argument_unmapped",
+                        f"Argument {ordinal} IDB argloc/width has no exact supported register binding",
+                        "information",
+                    )
+                )
+                continue
+            is_pointer = getattr(argument.type, "is_ptr", None)
+            pointer_type = (
+                callable(is_pointer) and bool(is_pointer()) and size * 8 == bits
+            )
+            markers.append(
+                Instruction(
+                    start_index + len(markers),
+                    "m_arg",
+                    (
+                        Operand("constant", 32, constant=ordinal, role="left"),
+                        Operand(
+                            "storage",
+                            size * 8,
+                            storage=storage,
+                            role="argument",
+                            native_kind=(
+                                "typed_pointer_argument_argloc"
+                                if pointer_type
+                                else "typed_argument_argloc"
+                            ),
+                            synthetic=True,
+                        ),
+                    ),
+                    (),
+                    True,
+                )
+            )
+        if markers:
+            diagnostics.append(
+                Diagnostic(
+                    "typed_argument_location",
+                    "Synthetic argument partitions from current IDB type and SDK argloc; type correctness is an analyst assumption",
+                    "information",
+                )
+            )
+        return tuple(markers)
+
     def locations(value):
         last = int(value.reg.last()) if not value.reg.empty() else -1
         if last > 65535:
@@ -363,6 +497,23 @@ def extract_snapshot(
         if op.t == hx.mop_v:
             # Preserve a native global location; the opcode determines read vs target.
             return Operand("global", bits, address=int(op.g), **common)
+        if op.t == hx.mop_a:
+            referent = op.a
+            if bits is not None and referent.t == hx.mop_S:
+                offset = int(referent.s.off)
+                if offset >= 0:
+                    return Operand("stack_address", bits, address=offset, **common)
+            if bits is not None and referent.t == hx.mop_v:
+                address = int(referent.g)
+                if address >= 0:
+                    return Operand("address", bits, address=address, **common)
+            return opaque(
+                kind,
+                bits,
+                role,
+                "Unsupported address-of referent: "
+                + kinds.get(referent.t, f"mop_code_{int(referent.t)}"),
+            )
         if op.t == hx.mop_f:
             ci = op.f
             size = int(ci.return_type.get_size())
@@ -446,6 +597,49 @@ def extract_snapshot(
             operand(o, role, depth)
             for o, role in zip((ins.l, ins.r, ins.d), ("left", "right", "destination"))
         )
+        if (
+            opcode == "m_call"
+            and operands[0].kind == "global"
+            and operands[0].address is not None
+            and operands[2].call is not None
+        ):
+            # For a direct m_call, the native mop_v left operand is the
+            # target even when mcallinfo_t.callee is BADADDR. Never apply
+            # this rule to m_icall or a non-global target expression.
+            target = operands[0].address
+            call = operands[2].call
+            if call.callee_ea is None:
+                operands = (
+                    *operands[:2],
+                    replace(operands[2], call=replace(call, callee_ea=target)),
+                )
+                diagnostics.append(
+                    Diagnostic(
+                        "call_target_from_direct_operand",
+                        "Direct m_call mop_v target used when callinfo callee is unavailable",
+                        "information",
+                    )
+                )
+            elif call.callee_ea != target:
+                operands = (
+                    *operands[:2],
+                    replace(
+                        operands[2],
+                        call=replace(
+                            call,
+                            callee_ea=None,
+                            unresolved=tuple(
+                                sorted(set(call.unresolved) | {"call_target_conflict"})
+                            ),
+                        ),
+                    ),
+                )
+                diagnostics.append(
+                    Diagnostic(
+                        "call_target_conflict",
+                        "Direct m_call target and callinfo callee disagree",
+                    )
+                )
         eas = set() if ins.ea == ida_idaapi.BADADDR else {int(ins.ea)}
         for op in operands:
             eas.update(source_eas(op))
@@ -474,6 +668,34 @@ def extract_snapshot(
         while ins is not None:
             rows.append(instruction(ins, len(rows), index))
             ins = ins.next
+        if index == 0:
+            rows.extend(typed_argument_markers(len(rows)))
+        if (
+            index == mba.qty - 1
+            and block.type == hx.BLT_STOP
+            and not rows
+            and not block.nsucc()
+        ):
+            # MMAT_CALLS has no native m_ret here. A verified IDB type can
+            # identify a scalar return location; a typed non-return stays an
+            # unresolved terminal rather than masquerading as normal Exit.
+            returned = typed_return_operand()
+            noreturn = type_details is not None and type_details.is_noret()
+            if noreturn:
+                opcode = "m_noreturn"
+            elif returned is not None:
+                opcode = "m_ret"
+            else:
+                opcode = "m_exit"
+            rows.append(
+                Instruction(
+                    0,
+                    opcode,
+                    (returned,) if returned is not None else (),
+                    (),
+                    True,
+                )
+            )
         blocks.append(
             Block(
                 index,

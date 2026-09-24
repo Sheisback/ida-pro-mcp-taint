@@ -5,46 +5,46 @@
     "Valid fixture objects; sequential recovered CFG; ordinary flat user-space C data accesses, no TLS/MMIO",
     "Caller p == &memory_global, source-level fixture precondition; not inferred ABI numbering"
   ],
-  "cache_key": "sha256-v1:f4bc67b30a678282c12970b136d694c62e883a148ca0a3248998e69e566b3497",
+  "cache_key": "sha256-v1:615a624b9d52448bc621695d1bc857d48391ba86ba67daad173a3922b9c56fc4",
   "dependencies": [
     {
       "evidence_ids": [
-        "evidence-v1:1851e4af65c63f15270212eab78bdd8764b8dcce0882147c667a2ae7872fc48b",
-        "evidence-v1:4079997e8f3d6113b39776872e58ff095f76cb7db0d68421152a22926d6c4f00"
+        "evidence-v1:d794e38e3e9885b8a1b1f77ba5b7a804469cb0548ca4d82d2a48ae3818ec5bd8",
+        "evidence-v1:df21d1755858d4e5217ae440a599e6a1199884ae7c384027ab9d4eba75b17b28"
       ],
       "interval": {
         "end": 1,
         "start": 0
       },
       "kind": "memory_data_dependency",
-      "object_id": "object-v1:ed4339fa56262590032b51af73dbc0811fbd217fcb31b27f631344a6285207a6",
+      "object_id": "object-v1:117f2ab409e89985b4efffe9665b455fa47c024ed1d3574809f902c6013a6761",
       "precision": "exact",
       "rule_id": "byte-reaching-store-v1",
-      "source": "node-v1:06696bfd0ee4a33aeb27fe4e5ab8f9e58240b11c553917c9f4e6c29b31c4685d",
-      "target": "node-v1:fa23949e3c85ec3ef8db0b4c140015f5be883cce014412011bdd75b3b06f2c9f"
+      "source": "node-v1:744c6c40eeadc3a4bde9014ded7f146f1f2d9303a48581755c727ae966caf7fc",
+      "target": "node-v1:7a5c7d9f50e18037d7d985067145808ebff4b23e4f4b417f50170e56a299d11f"
     }
   ],
   "diagnostics": [],
   "extraction_file": "tests/flow_fixtures/manifests/memory/arm64_memory_global_roundtrip.json",
-  "extraction_file_sha256": "2822ad74013eb39f73bf047e498fc6adeb562a23def147c12865784d5064ace9",
+  "extraction_file_sha256": "ffee70ce70e5f2c1acc0c1fda7eed5c93535b9c68079d3c7f0c777c6ddcaa2c3",
   "fresh_static_ida_extraction": true,
   "function": "memory_global_roundtrip",
   "generator_sha256": "f3bca447461394912ee7f249f3076be261e358fab03c88b8b7fe01e2a0c9c153",
-  "graph_digest": "sha256-v1:ff1eb1e1d33cb47dfaa9431bae9496f8ccf0259a364f2645f1a9a65a5e6a9894",
+  "graph_digest": "sha256-v1:b759c5f106c198ead5ff7cc695b50754305c581d9cefab3145471118cefb8dcc",
   "implementation_sha256": {
-    "analysis.py": "bb43952c8cf126ed2730b1d463d3fa6810ef114da46305f779de88970c1828ee",
+    "analysis.py": "d73da12f36278ea3a775790e4f884acdeff6a620d3bedf479e9274c3c68f5ead",
     "cfg.py": "167a4491b93278888cda50641c8c1c4d5cc444ab5b57b8f078e76931c7f7749f",
-    "contracts.py": "91f642220e440506458266dce6b8779f08afbb81d3ebae3378c9bc9fe630048a",
-    "memory.py": "d789b77e165d5023e502154edafb0b568656f37663fb816d82d65ce92039c6b1",
-    "memory_analysis.py": "7071ff4027e24249aca7cc653e220f0d2bbe8b3cbe9dddb61279bfaa0c7f80d5",
-    "ssa.py": "3d9c74f47df626b3eb9b2104223e772aacc47755f59aafc95eff67699403a401",
+    "contracts.py": "5662132e4ce285e0f67ba379f2c3203b4810b647f85770907549138aa53cfb34",
+    "memory.py": "c889aeb8fb074a1e55aec37ac8b72ff0bb6f8069e7ad5de0890c1f093abb45c1",
+    "memory_analysis.py": "6cc649d59fca0f9c2588abe39b5352f58b4574a37c1f29b1e7b27dc476d93da0",
+    "ssa.py": "34bdc2fb151cb7b6c5dbb3a9a5ff20cb04a93eca4e552b15725947dcd9e743cd",
     "states.py": "4a03c1eec0e86893a58faf81b06853ffd75de7daf40d3eec3b7ace2b5187ee78"
   },
   "iterations": 2,
   "load_observations": [
     {
       "access": {
-        "address_node": "node-v1:d3ffaead4a4fda7b2ebbdbd51f98a58039f2134132b65192dac9e9b9cf9a045e",
+        "address_node": "node-v1:a79de076fc5edb4a6e0ed10372982151eedc8332cba9b926db704598bae3561a",
         "alias": "must_alias",
         "candidates": [
           {
@@ -52,17 +52,17 @@
               "end": 1,
               "start": 0
             },
-            "object_id": "object-v1:ed4339fa56262590032b51af73dbc0811fbd217fcb31b27f631344a6285207a6"
+            "object_id": "object-v1:117f2ab409e89985b4efffe9665b455fa47c024ed1d3574809f902c6013a6761"
           }
         ],
         "evidence_ids": [
-          "evidence-v1:4079997e8f3d6113b39776872e58ff095f76cb7db0d68421152a22926d6c4f00"
+          "evidence-v1:df21d1755858d4e5217ae440a599e6a1199884ae7c384027ab9d4eba75b17b28"
         ],
-        "node_id": "node-v1:fa23949e3c85ec3ef8db0b4c140015f5be883cce014412011bdd75b3b06f2c9f",
+        "node_id": "node-v1:7a5c7d9f50e18037d7d985067145808ebff4b23e4f4b417f50170e56a299d11f",
         "precision": "exact",
         "strong_update": false,
         "unresolved": false,
-        "version_id": "memory-v1:9defc66605f19f1ae8515d877039814a310bb061eb5cb646e034d493386e228e",
+        "version_id": "memory-v1:8670ee9c884a8f39ffe0fc604ae99a5213197e8adc47996d66627d2f0eb0662e",
         "width_bits": 8
       },
       "fact": {
@@ -80,14 +80,14 @@
           "explicit": [],
           "unknown_provenance": false
         },
-        "node_id": "node-v1:fa23949e3c85ec3ef8db0b4c140015f5be883cce014412011bdd75b3b06f2c9f",
+        "node_id": "node-v1:7a5c7d9f50e18037d7d985067145808ebff4b23e4f4b417f50170e56a299d11f",
         "pointer": null,
         "value": {
           "value": 41,
           "width_bits": 8
         }
       },
-      "node_id": "node-v1:fa23949e3c85ec3ef8db0b4c140015f5be883cce014412011bdd75b3b06f2c9f"
+      "node_id": "node-v1:7a5c7d9f50e18037d7d985067145808ebff4b23e4f4b417f50170e56a299d11f"
     }
   ],
   "memory_order_step_count": 3,
@@ -107,7 +107,7 @@
         ],
         "unknown_provenance": false
       },
-      "object_id": "object-v1:ed4339fa56262590032b51af73dbc0811fbd217fcb31b27f631344a6285207a6",
+      "object_id": "object-v1:117f2ab409e89985b4efffe9665b455fa47c024ed1d3574809f902c6013a6761",
       "point": "entry",
       "value": {
         "value": null,
@@ -116,19 +116,8 @@
     }
   ],
   "memory_version_count": 5,
-  "node_count": 14,
+  "node_count": 15,
   "objects": [
-    {
-      "address_space": "ram",
-      "disjoint": true,
-      "disjoint_evidence": "fixture current frame, designated buffer and global identities are disjoint",
-      "key": "fixture-frame",
-      "kind": "stack",
-      "singleton": true,
-      "singleton_evidence": "fixture single object / invocation",
-      "size_bytes": 16,
-      "snapshot_id": "snapshot-v1:21e962a03ac31e8455f04327209c097b7a83343ac87a8e6fb9f32dc8790248b2"
-    },
     {
       "address_space": "ram",
       "disjoint": true,
@@ -138,19 +127,30 @@
       "singleton": true,
       "singleton_evidence": "fixture single object / invocation",
       "size_bytes": 1,
-      "snapshot_id": "snapshot-v1:21e962a03ac31e8455f04327209c097b7a83343ac87a8e6fb9f32dc8790248b2"
+      "snapshot_id": "snapshot-v1:67a29b70f210144c96c77cdf83593b27d922d6edcf3c3a31e121d0739bd14041"
+    },
+    {
+      "address_space": "ram",
+      "disjoint": true,
+      "disjoint_evidence": "fixture current frame, designated buffer and global identities are disjoint",
+      "key": "fixture-frame",
+      "kind": "stack",
+      "singleton": true,
+      "singleton_evidence": "fixture single object / invocation",
+      "size_bytes": 16,
+      "snapshot_id": "snapshot-v1:67a29b70f210144c96c77cdf83593b27d922d6edcf3c3a31e121d0739bd14041"
     }
   ],
-  "plan_digest": "sha256-v1:b6b39df9314b51b8d62f6206bdab3f9d5babcb69fe87b238a1eb566029a1f29b",
+  "plan_digest": "sha256-v1:b776d62cd7e56861255bd3d00b01f794eaaa17bde0393d8362d833c08b160fda",
   "pointer_seeds": [
     {
-      "node_id": "node-v1:47fc443729d102170f773060277ad1d5b2d926373c7e151cc356ea4a1ddd2e3a",
+      "node_id": "node-v1:89239216246da5f06547d8731c92a316b3a75c3224676a9236d76360ce0bedbb",
       "pointer": {
         "address_space": "ram",
         "any_compatible_location": false,
         "candidates": [
           {
-            "object_id": "object-v1:ed4339fa56262590032b51af73dbc0811fbd217fcb31b27f631344a6285207a6",
+            "object_id": "object-v1:117f2ab409e89985b4efffe9665b455fa47c024ed1d3574809f902c6013a6761",
             "offset": 0
           }
         ],
@@ -159,48 +159,48 @@
       }
     },
     {
-      "node_id": "node-v1:7a35a5f107ff38b432bbcafc7111fe70b7444bf1a0abbe538f89ffcfb8c99dfe",
+      "node_id": "node-v1:a79de076fc5edb4a6e0ed10372982151eedc8332cba9b926db704598bae3561a",
       "pointer": {
         "address_space": "ram",
         "any_compatible_location": false,
         "candidates": [
           {
-            "object_id": "object-v1:e0235d407754e2d32f4375f64429dcbe58cafc5cf03d493687a99dd6252d945d",
+            "object_id": "object-v1:117f2ab409e89985b4efffe9665b455fa47c024ed1d3574809f902c6013a6761",
+            "offset": 0
+          }
+        ],
+        "may_be_null": false,
+        "width_bits": 64
+      }
+    },
+    {
+      "node_id": "node-v1:ef22e42d7a7a925be456f675dc8cba28ceaa30f0698f2be7ba49508e278a30ef",
+      "pointer": {
+        "address_space": "ram",
+        "any_compatible_location": false,
+        "candidates": [
+          {
+            "object_id": "object-v1:e63d0d813e8d5808b89d051980fa5dbc949c591360737241f985e02b88654d11",
             "offset": 8
           }
         ],
         "may_be_null": false,
         "width_bits": 64
       }
-    },
-    {
-      "node_id": "node-v1:d3ffaead4a4fda7b2ebbdbd51f98a58039f2134132b65192dac9e9b9cf9a045e",
-      "pointer": {
-        "address_space": "ram",
-        "any_compatible_location": false,
-        "candidates": [
-          {
-            "object_id": "object-v1:ed4339fa56262590032b51af73dbc0811fbd217fcb31b27f631344a6285207a6",
-            "offset": 0
-          }
-        ],
-        "may_be_null": false,
-        "width_bits": 64
-      }
     }
   ],
-  "policy_digest": "sha256-v1:13d8fc7cc519f68fb783023249a2d5acd5a64a0580907db277aee6541d07bf34",
+  "policy_digest": "sha256-v1:32975476b4b5b0248a73839260483c1b32f024480f445fde8ec1ead530b51aea",
   "release_support_claim": false,
   "repeat_equal": true,
   "roundtrip_equal": true,
   "schema_version": "flow-memory-receipt/1",
-  "selected_source_id": "node-v1:d3ffaead4a4fda7b2ebbdbd51f98a58039f2134132b65192dac9e9b9cf9a045e",
-  "snapshot_digest": "sha256-v1:0d99b0c7f4985c9347158639a4aa0b2efc023891be280296d19c3ae41936296c",
-  "source_digest": "sha256-v1:a094e0c83fc2e404e8e153a826d3828b8cb1bdc7ffc312cd6c1f1fb6c974c02d",
+  "selected_source_id": "node-v1:a79de076fc5edb4a6e0ed10372982151eedc8332cba9b926db704598bae3561a",
+  "snapshot_digest": "sha256-v1:b43842242fcbc1e4129ef2452765380b450d3c4c3988695a4501f93b5e6c1bde",
+  "source_digest": "sha256-v1:ea427f937bc15ca5a12568ec9a2f86e2138245950c8d7b87ea69fcc194fa943e",
   "target_executed": false,
   "target_stores": [
     {
-      "address_node": "node-v1:47fc443729d102170f773060277ad1d5b2d926373c7e151cc356ea4a1ddd2e3a",
+      "address_node": "node-v1:89239216246da5f06547d8731c92a316b3a75c3224676a9236d76360ce0bedbb",
       "alias": "must_alias",
       "candidates": [
         {
@@ -208,17 +208,17 @@
             "end": 1,
             "start": 0
           },
-          "object_id": "object-v1:ed4339fa56262590032b51af73dbc0811fbd217fcb31b27f631344a6285207a6"
+          "object_id": "object-v1:117f2ab409e89985b4efffe9665b455fa47c024ed1d3574809f902c6013a6761"
         }
       ],
       "evidence_ids": [
-        "evidence-v1:1851e4af65c63f15270212eab78bdd8764b8dcce0882147c667a2ae7872fc48b"
+        "evidence-v1:d794e38e3e9885b8a1b1f77ba5b7a804469cb0548ca4d82d2a48ae3818ec5bd8"
       ],
-      "node_id": "node-v1:06696bfd0ee4a33aeb27fe4e5ab8f9e58240b11c553917c9f4e6c29b31c4685d",
+      "node_id": "node-v1:744c6c40eeadc3a4bde9014ded7f146f1f2d9303a48581755c727ae966caf7fc",
       "precision": "exact",
       "strong_update": true,
       "unresolved": false,
-      "version_id": "memory-v1:071a7083d2faff72a0c4b0bbd3a1f3a26e796ca715fc907f30691454b9d78615",
+      "version_id": "memory-v1:06ead2d53c88d16801be56513ae89858696ea5bcd604ba8ab88466ac71c8c359",
       "width_bits": 8
     }
   ]

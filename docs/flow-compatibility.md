@@ -59,11 +59,11 @@ receipts, not general claims about every PE, Mach-O, or raw input.
 - Unknown call effects, unresolved memory boundaries, and unsupported
   operations remain explicit partial/unknown results rather than false-clean
   results.
-- The eight G007 memory-analysis receipts now have six
-  `complete_in_scope` modeled computations and two indexed-stack `partial`
-  results with actual opaque effects. Information-only extraction notes no
-  longer force partiality; `may_alias` edge precision remains separate from
-  analysis completion. This is not a support or vulnerability verdict.
+- All eight current G007 memory-analysis receipts report
+  `complete_in_scope` for their modeled computations, with no diagnostics.
+  This is a per-fixture observation, not proof that every pointer relation is
+  `no_alias`: `may_alias` edge precision remains separate from analysis
+  completion. It is not a support or vulnerability verdict.
 
 ## What the evidence does not prove
 

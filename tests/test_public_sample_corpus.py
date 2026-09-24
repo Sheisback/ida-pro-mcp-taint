@@ -325,11 +325,14 @@ def test_svf_pointer_copy_has_verified_memory_signature_without_pointee_claim():
     _, program, _, memory = _svf_main("svf-pointer-copy")
     nodes, edges = _relation_signature(program)
     assert (nodes["Load"], nodes["Store"]) == (7, 4)
+    # Fresh IDA extraction includes the typed entry and normal Return; the
+    # address/data roles and exact memory ranges remain independently checked.
+    assert nodes["Return"] == 1
     assert (
         edges["value_dependency"],
         edges["address_dependency"],
         edges["memory_data_dependency"],
-    ) == (45, 12, 4)
+    ) == (46, 12, 4)
     _assert_memory_operand_edges(program)
     assert memory.result.status == "partial"
     assert "load_range_widened" in memory.result.diagnostics
@@ -348,11 +351,12 @@ def test_svf_pointer_store_load_keeps_address_and_memory_data_roles_distinct():
     _, program, _, memory = _svf_main("svf-pointer-store-load")
     nodes, edges = _relation_signature(program)
     assert (nodes["Load"], nodes["Store"]) == (2, 6)
+    assert nodes["Return"] == 1
     assert (
         edges["value_dependency"],
         edges["address_dependency"],
         edges["memory_data_dependency"],
-    ) == (35, 8, 6)
+    ) == (42, 8, 6)
     _assert_memory_operand_edges(program)
     assert memory.result.status == "partial"
     assert not any(access.unresolved for access in memory.result.accesses)
@@ -362,11 +366,12 @@ def test_svf_field_sensitivity_keeps_nine_exact_disjoint_stack_accesses():
     _, program, _, memory = _svf_main("svf-field-sensitivity")
     nodes, edges = _relation_signature(program)
     assert (nodes["Load"], nodes["Store"]) == (3, 6)
+    assert nodes["Return"] == 1
     assert (
         edges["value_dependency"],
         edges["address_dependency"],
         edges["memory_data_dependency"],
-    ) == (48, 9, 6)
+    ) == (58, 9, 6)
     _assert_memory_operand_edges(program)
     intervals = Counter(
         (candidate.interval.start, candidate.interval.end)

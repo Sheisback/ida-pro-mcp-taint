@@ -10,6 +10,17 @@ from .serialization import Model, digest
 from .ssa import SSAProgram
 from .states import canonical_set, check_digest, check_id, require, unique
 
+DATA_ONLY_DIAGNOSTICS = frozenset(
+    {
+        "call_boundary",
+        "call_effects_unresolved",
+        "memory_load_boundary",
+        "memory_store_boundary",
+        "unmodeled_callinfo",
+        "unmodeled_memory_or_call_effect",
+    }
+)
+
 
 @dataclass(frozen=True)
 class ImplicitCFGPolicy(Model):
@@ -338,7 +349,11 @@ def analyze_implicit_cfg(
     for block in sorted(terminals):
         if checkpoint is not None:
             checkpoint()
-        returns = [node for node in nodes_by_block[block] if node.kind == "Return"]
+        # Exit proves regular termination, not a return value. The historical
+        # return_exits field denotes structural normal exits in this certificate.
+        returns = [
+            node for node in nodes_by_block[block] if node.kind in {"Return", "Exit"}
+        ]
         branches = [node for node in nodes_by_block[block] if node.kind == "Branch"]
         if len(returns) == 1 and not branches:
             return_exits.add(block)
@@ -482,7 +497,10 @@ def analyze_implicit_cfg(
     partial_frontier.update(unknown_affected)
     if len(terminals) > 1:
         partial_frontier.update(reachable)
-    if program.graph.axes.analysis != "complete_in_scope":
+    structural_incomplete = program.graph.axes.analysis != "complete_in_scope" and bool(
+        set(program.diagnostics) - DATA_ONLY_DIAGNOSTICS
+    )
+    if structural_incomplete:
         diagnostics.add("input_graph_partial")
         partial_frontier.update(reachable)
 
@@ -580,7 +598,7 @@ def analyze_implicit_cfg(
                     region_diagnostics.add("unknown_exit_coverage")
                 if nonreturning:
                     region_diagnostics.add("nonreturning_cfg_region")
-                if program.graph.axes.analysis != "complete_in_scope":
+                if structural_incomplete:
                     region_diagnostics.add("input_graph_partial")
             raw_regions.append(
                 (
