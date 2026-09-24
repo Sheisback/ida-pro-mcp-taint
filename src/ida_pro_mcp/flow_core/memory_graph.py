@@ -375,7 +375,8 @@ def _recover_spilled_entry_pointers(plan, result, objects, pointers, checkpoint=
     dependencies = {}
     for dependency in result.dependencies:
         dependencies.setdefault(dependency.target, []).append(dependency)
-    by_object = {obj.object_id: obj for obj in objects}
+    evidence_objects = {obj.object_id: obj for obj in objects}
+    by_object = evidence_objects.copy()
     by_seed = {seed.node_id: seed for seed in pointers}
     bitness = plan.program.graph.snapshot.identity.environment.bitness
     recovered = 0
@@ -397,7 +398,10 @@ def _recover_spilled_entry_pointers(plan, result, objects, pointers, checkpoint=
         ):
             continue
         candidate = spill_load.candidates[0]
-        if by_object[candidate.object_id].kind != "stack":
+        # The confirmation pass analyzes recovered objects but must prove a
+        # spill against only the original objects, not one it just inferred.
+        evidence_object = evidence_objects.get(candidate.object_id)
+        if evidence_object is None or evidence_object.kind != "stack":
             continue
         interval = candidate.interval
         reaching = dependencies.get(carrier.node_id, [])

@@ -183,9 +183,9 @@ def test_integer_typed_argloc_cast_to_address_does_not_gain_pointer_noalias():
     )
 
 
-def test_exact_full_width_entry_pointer_spill_recovers_pointee_abstract_object():
+def _full_width_entry_pointer_spill_snapshot():
     spill = StorageLocation("stack", "stack", 0, 64)
-    snapshot = plan(
+    return plan(
         (
             Instruction(
                 0,
@@ -204,7 +204,10 @@ def test_exact_full_width_entry_pointer_spill_recovers_pointee_abstract_object()
             ret(3, offset=128, bits=32),
         )
     ).program.graph.snapshot
-    bundle = build_memory_graph(snapshot)
+
+
+def test_exact_full_width_entry_pointer_spill_recovers_pointee_abstract_object():
+    bundle = build_memory_graph(_full_width_entry_pointer_spill_snapshot())
     dereference = operations(bundle, "Load")[-1]
     access = next(a for a in bundle.result.accesses if a.node_id == dereference.node_id)
     objects = {obj.object_id: obj for obj in bundle.result.objects}
@@ -445,6 +448,60 @@ def test_recovered_pointer_is_discarded_if_final_alias_graph_breaks_proof(monkey
     assert len(calls) == 2
     assert result == calls[0]
     assert not any(obj.kind == "argument" for obj in objects)
+    root = next(
+        entry.node_id
+        for entry in memory_plan.program.entry_storage
+        if entry.storage.bit_offset == 0
+    )
+    assert root not in {seed.node_id for seed in pointers}
+
+
+def test_recovered_object_cannot_confirm_its_own_spill_proof(monkeypatch):
+    memory_plan = build_memory_plan(
+        build_ssa(_full_width_entry_pointer_spill_snapshot(), storage_model="memory")
+    )
+    genuine = memory_graph.analyze_memory
+    calls = []
+
+    def candidate_from_recovered_object(*args, **kwargs):
+        result = genuine(*args, **kwargs)
+        calls.append(result)
+        if len(calls) != 2:
+            return result
+        original_ids = {obj.object_id for obj in calls[0].objects}
+        recovered_id = next(
+            obj.object_id for obj in result.objects if obj.object_id not in original_ids
+        )
+        nodes = {node.node_id: node for node in memory_plan.program.graph.nodes}
+        dereference = next(
+            node
+            for node in nodes.values()
+            if node.memory_operands is not None
+            and memory_graph._whole_width_origin(
+                nodes, node.memory_operands.address
+            ).kind == "Load"
+        )
+        spill_id = memory_graph._whole_width_origin(
+            nodes, dereference.memory_operands.address
+        ).node_id
+        accesses = tuple(
+            replace(
+                access,
+                candidates=(replace(access.candidates[0], object_id=recovered_id),),
+            )
+            if access.node_id == spill_id
+            else access
+            for access in result.accesses
+        )
+        return replace(result, accesses=accesses)
+
+    monkeypatch.setattr(memory_graph, "analyze_memory", candidate_from_recovered_object)
+    objects, pointers, result = memory_graph._analyze_plan(
+        memory_plan, MemoryPolicy(flat_segment_assumption="test flat memory")
+    )
+    assert len(calls) == 2
+    assert result == calls[0]
+    assert objects == calls[0].objects
     root = next(
         entry.node_id
         for entry in memory_plan.program.entry_storage
