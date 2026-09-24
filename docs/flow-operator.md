@@ -81,6 +81,19 @@ unsupported arglocs are not fabricated. Seeded taint can remain `partial`
 because memory or call effects are unresolved even when exit and entry
 locations are known.
 
+For an analyst-designated external input such as a driver request buffer,
+first verify the transfer method, buffer pointer, length check, and the
+microcode `Load` that reads the specific byte or field. Page
+`flow_get_function_ssa`/`flow_get_evidence`; then submit a whole-value
+`{node_id, labels}` seed for that **Load value** to
+`flow_create_implicit_analysis`. This follows the value *after* the read.
+Seeding the pointer's `InputValue` instead tracks its address/provenance, not
+every byte of the pointee. This API does not automatically classify OS
+buffers as user-controlled or prove that the read is reachable. Inspect
+`flow_get_memory_analysis` for access candidates and
+`flow_explain_implicit_analysis` for local uncertainty before interpreting
+downstream Store/Return labels.
+
 When an analyst has an independently calibrated, whole-byte subrange of an
 `InputValue` but no exact entry atom, `flow_create_implicit_analysis` also
 accepts a seed with `kind: "bit_range"`, `schema_version: 1`, `node_id`,

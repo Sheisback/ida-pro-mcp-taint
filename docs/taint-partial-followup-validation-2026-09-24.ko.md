@@ -24,7 +24,7 @@ CallInfo에서 다시 계산해 위조된 proof digest·snapshot을 거부한다
 ## 검증
 
 - 현재 `BUILD_ID`:
-  `flow-build-sha256-v1:a9564c08f4b7304776037d97de2ba92b7ee459cf3ed2cb0126ade687ea5b34bf`.
+  `flow-build-sha256-v1:1de6278df2f8281a7c2b85d6ea33a7a49b62ed0586f087ae6671b22f0db03e42`.
 - 원본 28 C 함수 × x86_64/arm64 × O0/O1 = 112 정적 관측:
   90 match, 12 match_partial, 6 inconclusive_partial, 4 calibration.
   `--mode acceptance` issues 0, 판정은 `bounded_partial`이며 지원 승격·
@@ -45,6 +45,13 @@ CallInfo에서 다시 계산해 위조된 proof digest·snapshot을 거부한다
   cancellation/deadline checkpoint를 전달하고, 전달 여부를 회귀로 검증했다.
   동기 evidence 페이지의 재검증은 여전히 bounded artifact에 의존하므로
   과도한 반복 paging 비용은 별도 운영상 관찰 대상이다.
+- README에는 analyst가 실제 input `Load` node를 골라 whole-value seed를
+  주는 MCP 호출 순서와 `explicit`/`control`/`unknown_provenance` 해석을
+  추가했다. 실제 IDA worker `tools/list`에서 `flow_create_implicit_analysis`
+  설명에 Load/pointee/partial 경계가 나오며, supervisor의 `database`
+  필수 입력과 read-only profile 등록을 확인했다. 문서·tool 설명 변경 후
+  전체 1,688 pass, native 112행 acceptance issues 0, 공개 API/path/runtime
+  영수증 실제 IDA 재수집, 지원 감사·wheel·Ruff·Pyright·compileall을 재확인했다.
 
 ## 남는 경계
 

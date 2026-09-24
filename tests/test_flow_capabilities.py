@@ -1027,6 +1027,12 @@ def test_exact_tool_schema_and_no_supervisor_database_on_workers(flow):
             "anyOf" in tool["outputSchema"] or tool["name"] == "flow_get_capabilities"
         )
     by_name = {tool["name"]: tool for tool in tools}
+    assert "Load" in by_name["flow_create_implicit_analysis"]["description"]
+    assert "pointee" in by_name["flow_create_implicit_analysis"]["description"]
+    assert "pointer value" in by_name["flow_get_function_ssa"]["description"]
+    assert "unknown_provenance" in by_name["flow_get_implicit_analysis"][
+        "description"
+    ]
     for name in ("flow_trace_forward", "flow_trace_backward"):
         source = by_name[name]["inputSchema"]["properties"]["source"]
         variants = source["anyOf"]

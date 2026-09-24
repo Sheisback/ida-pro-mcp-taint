@@ -316,12 +316,45 @@ flow_get_job(job_id="<job_id>", database="typed")
 # Poll until state is complete; take IDs from result, not from this example.
 flow_get_function_ssa(artifact_id="<result.ssa_artifact>", database="typed")
 flow_get_graph(artifact_id="<result.graph_artifact>", database="typed")
+flow_get_memory_analysis(artifact_id="<result.memory_result_artifact>",
+                         database="typed")
+flow_get_evidence(artifact_id="<result.graph_artifact>",
+                  evidence_ids=["<Load evidence_id>"], database="typed")
 flow_trace_backward(snapshot_artifact="<result.snapshot_artifact>",
                     graph_artifact="<result.graph_artifact>",
                     source={"kind":"value","node_id":"<node_id from graph>"},
                     request_key="sum-point-trace-1", database="typed")
 idb_close(database="typed", save=False)
 ```
+
+To start **analyst-selected taint**, page `flow_get_function_ssa` and identify
+the SSA value actually read from the input. For example, after independently
+confirming that a `Load` reads byte 5 of an input buffer, seed that **Load's**
+`node_id`—not the pointer's `InputValue`:
+
+```text
+flow_create_implicit_analysis(
+    ssa_artifact="<snapshot result.ssa_artifact>",
+    seeds=[{"node_id":"<input-byte Load node_id>",
+            "labels":{"explicit":["USER_INPUT_BYTE_5"],"control":[],
+                      "unknown_provenance":false,
+                      "any_explicit_source":false,"any_control_source":false}}],
+    request_key="input-byte-5", database="<session ID>")
+flow_get_job(job_id="<implicit job_id>", database="<session ID>")
+flow_get_implicit_analysis(artifact_id="<implicit result.implicit_artifact>",
+                           database="<session ID>")
+flow_explain_implicit_analysis(
+    artifact_id="<implicit result.implicit_artifact>",
+    observation_node_id="<observed Store/Return node_id>",
+    database="<session ID>")
+```
+
+Page until `next_cursor` is null. Check the observed fact's `explicit`,
+`control`, and `unknown_provenance` separately; a function-wide `partial` is
+not a vulnerability or safety verdict. The tool does not automatically label
+an OS input buffer as user-controlled. See the [operator guide](docs/flow-operator.md)
+for alias/call boundaries and the difference between a pointer seed and its
+pointee contents.
 
 `flow_get_capabilities.routing` reports a configured route; an
 `analyst_selected` route deliberately leaves `supported_profiles` empty and
@@ -342,7 +375,9 @@ To trace a memory byte range, use a `source` of kind `memory` with the complete
 enough. Related tools include `flow_cancel_job`, `flow_trace_forward`,
 `flow_continue_trace`, `flow_cancel_trace`, `flow_get_cfg`, `flow_get_evidence`,
 `flow_create_implicit_analysis`, `flow_get_implicit_analysis`,
-`flow_get_call_compositions`, and `flow_check_path`. The last tool accepts only
+`flow_explain_implicit_analysis`, `flow_get_memory_analysis`,
+`flow_get_derived_call_evidence`, `flow_get_call_compositions`, and
+`flow_check_path`. The last tool accepts only
 program-derived, bounded CFG-prefix selectors; unsupported paths and unknown
 effects remain `partial`/`unknown`. See the [operator guide](docs/flow-operator.md)
 for its exact request shape, large-trace `edges_externalized` handling, and

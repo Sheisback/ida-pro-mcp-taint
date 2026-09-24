@@ -402,15 +402,18 @@ def flow_create_implicit_analysis(
     request_key: str,
     max_evaluations: int = 100000,
 ) -> FlowJobSubmission | FlowError:
-    """Queue seeded explicit-plus-control propagation over an owned SSA artifact.
+    """Queue explicit-plus-control taint from analyst-chosen SSA nodes.
 
-    Control provenance remains distinct from explicit provenance. Partial CFG or
-    budget coverage is returned as partial with a concrete frontier; it is never
-    interpreted as evidence that no implicit flow exists.
+    A whole-value seed is ``{node_id, labels}``; ``node_id`` may identify a
+    verified input-buffer ``Load`` value from ``flow_get_function_ssa``. This
+    marks the value read at that node, not all bytes of the pointer's
+    pointee. The caller must establish why the selected value is user input.
+    Control labels remain separate from explicit labels. Unresolved alias,
+    call, CFG, or budget effects stay partial/unknown, not safe or vulnerable.
 
-    A `kind=bit_range` seed marks a whole-byte interval of an InputValue rather
-    than its entire register. Scalar bit projections are exact; a later memory
-    store/reload remains conservatively byte-imprecise and partial.
+    A ``kind=bit_range`` seed selects whole bytes of an ``InputValue``. Exact
+    single-candidate byte Store/Load replay can preserve source bits; weak or
+    unresolved memory effects widen conservatively.
     """
     return _service().create_implicit(ssa_artifact, seeds, request_key, max_evaluations)
 
@@ -463,7 +466,11 @@ def _flow_create_path_proof(
 def flow_get_function_ssa(
     artifact_id: str, cursor: str | None = None, limit: int = 50
 ) -> FlowArtifactPage | FlowError:
-    """Page SSA nodes and exposed logical memory references from a completed job."""
+    """Page SSA nodes and exposed logical memory references from a completed job.
+
+    Select a ``Load`` value only after identifying the actual input read.
+    Seeding a pointer value is not the same as seeding its pointee contents.
+    """
     return _service().page(artifact_id, "ssa", cursor, limit)
 
 
@@ -502,7 +509,11 @@ def flow_get_evidence(
 def flow_get_implicit_analysis(
     artifact_id: str, cursor: str | None = None, limit: int = 50
 ) -> FlowArtifactPage | FlowError:
-    """Page implicit facts, control relations, and any unresolved frontier."""
+    """Page per-node labels, control relations, and unresolved frontier.
+
+    Inspect ``explicit``, ``control``, and ``unknown_provenance`` separately.
+    Function-wide ``partial`` does not decide a particular observation.
+    """
     return _service().analysis_page(artifact_id, "implicit", cursor, limit)
 
 
