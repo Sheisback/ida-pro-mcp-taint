@@ -31,13 +31,13 @@ revision below is the latest reviewed developer-install pin, not a moving
 included in the Python wheel.
 
 ```sh
-FLOW_REF=4eb6ff41b77f2fd3dbeb5393c4ed9a0d709c6074
+FLOW_REF=7b9c5d383fff79d60e473dec82aaafd73eacac35
 PROFILE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/ida-pro-mcp-taint"
 mkdir -p "$PROFILE_DIR"
 curl -fsSL \
   "https://raw.githubusercontent.com/Sheisback/ida-pro-mcp-taint/$FLOW_REF/profiles/flow-readonly.txt" \
   -o "$PROFILE_DIR/flow-readonly.txt"
-printf 'c7c2f8ef8e5760dc997849f76378c8a2a8983e547c0f98fd0c98a90047d8e389  %s\n' \
+printf '02187a3b23e3d0297278f56cab07633b6006474c551a4630c7eaa10793f4873a  %s\n' \
   "$PROFILE_DIR/flow-readonly.txt" | shasum -a 256 -c -
 
 codex mcp add ida-pro-mcp-taint -- \
