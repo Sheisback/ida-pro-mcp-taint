@@ -168,6 +168,16 @@ class FlowImplicitBitSeedSpec(TypedDict):
     width_bits: FlowWireInt
 
 
+class FlowPointeeSeedSpec(TypedDict):
+    kind: Literal["pointee_range"]
+    schema_version: Literal[1] | FlowTaggedInt
+    pointer_node_id: str
+    interval: FlowByteRangeSpec
+    labels: FlowLabelSpec
+    binding_mode: Literal["analyst_assumed_exact", "require_program_derived_exact"]
+    point: Literal["after_pointer_definition"]
+
+
 @tool
 @idasync
 def flow_get_capabilities() -> FlowCapabilities:
@@ -444,7 +454,7 @@ def flow_cancel_job(job_id: str) -> FlowJob | FlowError:
 @_flow_api
 def flow_create_implicit_analysis(
     ssa_artifact: str,
-    seeds: list[FlowImplicitSeedSpec | FlowImplicitBitSeedSpec],
+    seeds: list[FlowImplicitSeedSpec | FlowImplicitBitSeedSpec | FlowPointeeSeedSpec],
     request_key: str,
     max_evaluations: int = 100000,
 ) -> FlowJobSubmission | FlowError:
@@ -460,8 +470,89 @@ def flow_create_implicit_analysis(
     A ``kind=bit_range`` seed selects whole bytes of an ``InputValue``. Exact
     single-candidate byte Store/Load replay can preserve source bits; weak or
     unresolved memory effects widen conservatively.
+
+    A ``kind=pointee_range`` seed labels [start,end) bytes immediately after an
+    entry InputValue or acyclic full-width pointer Load. Its binding_mode must
+    explicitly choose a derived exact pointer or an analyst-assumed valid nonnull
+    singleton view. Neither mode proves OS input status or disjointness. Results
+    return a separate bound SSA/graph and a pointee certificate; bit ranges in
+    facts report which source bits survive exact partial overwrites.
     """
     return _service().create_implicit(ssa_artifact, seeds, request_key, max_evaluations)
+
+
+@tool
+@_flow_api
+def flow_get_pointee_evidence(
+    artifact_id: str, cursor: str | None = None, limit: int = 50
+) -> FlowArtifactPage | FlowError:
+    """Replay and page a pointee source certificate, including analyst assumptions."""
+    return _service().analysis_page(artifact_id, "pointee", cursor, limit)
+
+
+@tool
+@_flow_api
+def flow_check_store(
+    ssa_artifact: str | None = None,
+    store_node_id: str | None = None,
+    base_node_id: str | None = None,
+    byte_offset: FlowWireInt | None = None,
+    target_function: str | None = None,
+    request_key: str | None = None,
+    member_path: list[str | int] | None = None,
+    artifact_id: str | None = None,
+    cursor: str | None = None,
+    limit: int = 50,
+) -> FlowJobSubmission | FlowArtifactPage | FlowError:
+    """Prove a pointer-width Store(base+offset, function-entry), or page its evidence.
+
+    This is a bounded Store-site relation, conditional on reaching that Store,
+    not path feasibility or final callback registration. An optional member_path
+    (field names / array indices) checks the exact entry argument's current IDB
+    type layout without OS hardcoding; type correctness remains an assumption.
+    Submit with request_key, poll flow_get_job, then page store_evidence_artifact.
+    Truncation, unresolved loads/aliases and differing joins remain unknown.
+    """
+    if artifact_id is not None:
+        if any(
+            value is not None
+            for value in (
+                ssa_artifact,
+                store_node_id,
+                base_node_id,
+                byte_offset,
+                target_function,
+                request_key,
+                member_path,
+            )
+        ):
+            raise ValueError("mixed_store_request")
+        return _service().analysis_page(artifact_id, "store_proof", cursor, limit)
+    if (
+        any(
+            value is None
+            for value in (
+                ssa_artifact,
+                store_node_id,
+                base_node_id,
+                byte_offset,
+                target_function,
+                request_key,
+            )
+        )
+        or cursor is not None
+        or limit != 50
+    ):
+        raise ValueError("invalid_store_submission")
+    return _service().create_store_proof(
+        ssa_artifact,
+        store_node_id,
+        base_node_id,
+        byte_offset,
+        target_function,
+        request_key,
+        member_path or [],
+    )
 
 
 @tool

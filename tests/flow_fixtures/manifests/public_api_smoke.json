@@ -2,13 +2,13 @@
   "schema_version": "flow-public-smoke/1",
   "target_executed": false,
   "implementation_sha256": {
-    "src/ida_pro_mcp/ida_mcp/api_flow.py": "42577afed8a950d114a1795de89f636eeda665957870b9475a40fc29765bdc18",
+    "src/ida_pro_mcp/ida_mcp/api_flow.py": "976b3a344fe2df4ea7dd7122c0574afbbfce103f3a1718b7398214864e8ddeaf",
     "src/ida_pro_mcp/ida_mcp/zeromcp/mcp.py": "05a4f9d1422d5d9c91969838cb56815acb0323097038aa981628ab3e540882db",
     "src/ida_pro_mcp/ida_mcp.py": "5a1c25460646a2577af58f3ee3e4c3069b2182ff0217883416f1d0d138c54e67",
     "src/ida_pro_mcp/idalib_server.py": "ef8376541d608fbee81c027cec9ae9676024d9777e29fc072ea7b3dc4b99e35d",
     "src/ida_pro_mcp/idalib_supervisor.py": "43ad1428f2e8ceec19b63fe0f0f9727d05c1192f2c3baf9093a414ccf7260539",
     "src/ida_pro_mcp/installer.py": "18ef1b3aad1cea8dbd038c909c19220b02f2299372253fdd4e5288d2efcdab7d",
-    "profiles/flow-readonly.txt": "6cf90d94b1c372d6cbd7ec1962d1d84ae43c35a08c61abac1bcee9557fb2fc03",
+    "profiles/flow-readonly.txt": "cfa61ebd1e99f67abd0844502bdf755a3121b7ff7e05dff924d589f72fa9a891",
     "tests/flow_core/native_api_smoke.py": "c752c6df9ba71faa66521fb943b699db5f7bdb152d86313c1918b19b6b0228ae",
     "src/ida_pro_mcp/flow_core/__init__.py": "1e03446910ecbbe1cd389ca6eeebec64f35d9d520a3006bc748f53bccff87e73",
     "src/ida_pro_mcp/flow_core/_reviewed_fixture_data.py": "a853c6265f104eb9b8a88a16593ef2ff37340bae7089a3102ff7f4a46918df57",
@@ -23,14 +23,15 @@
     "src/ida_pro_mcp/flow_core/heap.py": "f2b46370a327e8b32ec3fc13328aabe1e1035a7d0660b90e68a5caa809565d7e",
     "src/ida_pro_mcp/flow_core/heap_analysis.py": "fdd5730d22e4d9438b7f0a789a3104bf2b3d7e3958d6b25a12050bea2bf819b0",
     "src/ida_pro_mcp/flow_core/host_identity.py": "1fb3c741900852e9d1e56e081b49993feb8304409d354f07a47edb051ce80964",
-    "src/ida_pro_mcp/flow_core/implicit_analysis.py": "e7fca26548c9ca81969b25ccd131607fe4e73bbe9f6c9fd6d36baac572c63f93",
+    "src/ida_pro_mcp/flow_core/implicit_analysis.py": "520e2f9781c4004683eed13443c27eb00056f62afb113e87b4d23da26224e8ed",
     "src/ida_pro_mcp/flow_core/implicit_cfg.py": "499bdef3e7443411f246c15beb85c875b3d6126f174208fb79d9100b873b4ac9",
     "src/ida_pro_mcp/flow_core/interproc.py": "f14587342ed8ac2e21ec2c03013b1899f45f7d21cc90c19bf0c6929af11e3a14",
-    "src/ida_pro_mcp/flow_core/memory.py": "c889aeb8fb074a1e55aec37ac8b72ff0bb6f8069e7ad5de0890c1f093abb45c1",
-    "src/ida_pro_mcp/flow_core/memory_analysis.py": "6cc649d59fca0f9c2588abe39b5352f58b4574a37c1f29b1e7b27dc476d93da0",
-    "src/ida_pro_mcp/flow_core/memory_graph.py": "ad0baca14c7e15c4135f0c07a274c101cc57856ec7fe11a10098be5520fe47fd",
+    "src/ida_pro_mcp/flow_core/memory.py": "a2534573a9c9abeff59fb30c8ca00a0139f8c2c434b07fe85d1d6b4aae8b5593",
+    "src/ida_pro_mcp/flow_core/memory_analysis.py": "9ad1f7dcb4cb474546ff75b8338f31beb177e56e67757f189aff48bde662eb40",
+    "src/ida_pro_mcp/flow_core/memory_graph.py": "d0a3f290e01d83e7f436dcafc168e4ec530489d44db799ed929e6ab343b6803f",
     "src/ida_pro_mcp/flow_core/path_conditions.py": "1a47eff9aa375e9cee7829573d051d4338a170e4a634f1011d614beb9a1ece9a",
     "src/ida_pro_mcp/flow_core/persistence.py": "e00928a040350e779965e232d00be9c6294e9826fec33d72623529e996693eb0",
+    "src/ida_pro_mcp/flow_core/pointee.py": "27e8d4e641c5bdfe1bb19842196b26c52e23aaabada644b56a7ffca8cae716d8",
     "src/ida_pro_mcp/flow_core/profile_registry.py": "7f358be2a4dfcf4122f6b9b309409d593e3b58a48daedb9587e5d29870c40e28",
     "src/ida_pro_mcp/flow_core/profile_routing.py": "a4efbe3360b2f94c9f039761b0f360f43c7aba7bafdee60cc73a32d47d7df633",
     "src/ida_pro_mcp/flow_core/profile_semantic_receipts.py": "d7c9899c3947a19bbae5fd3c99b261765e7b8a472e9729871360e723bd5c13ae",
@@ -44,11 +45,12 @@
     "src/ida_pro_mcp/flow_core/rv32_lowering.py": "a7f4a8e225cf38b41d7df736ae86a9d93050e2ad8c161be02886f691a5659c3f",
     "src/ida_pro_mcp/flow_core/semantic_equivalence.py": "4bb4e25dbeeba9b8471137114931e269365ec719c56c53e306881cddbb19507d",
     "src/ida_pro_mcp/flow_core/serialization.py": "0d8e06ecee9c69046d08e47ffe7317ea19ebcf8fa6cdb146cf73c8d2dd0a9457",
-    "src/ida_pro_mcp/flow_core/ssa.py": "34bdc2fb151cb7b6c5dbb3a9a5ff20cb04a93eca4e552b15725947dcd9e743cd",
+    "src/ida_pro_mcp/flow_core/ssa.py": "d8350712a5882480b4248225ded94f740475ee101c8f950893623f906cb9f730",
     "src/ida_pro_mcp/flow_core/states.py": "ebadc9d678292fd2731ed7de6b1f8b0464b128b509a6b6780723d6bc5972cae7",
+    "src/ida_pro_mcp/flow_core/store_proof.py": "00c04c2f0094c5b9490be24f32e2a11aab27c0cec6e51ff86fba89f5c170b8c5",
     "src/ida_pro_mcp/flow_core/summaries.py": "acf58464917a9c31440c523654d10a3eb1d9584277596197393af6df9b72452d",
     "src/ida_pro_mcp/flow_core/support_receipts.py": "1f2ad71420f4ceb0b8c192d8ac0afdc81b5e5c91df7a5738caee63a2316696e6",
-    "src/ida_pro_mcp/flow_core/wire_contracts.py": "bad4ed0816dbd3e94bb99e3c66fa64f9e9426c9e0d8a1b8602709e0a62ef7089",
+    "src/ida_pro_mcp/flow_core/wire_contracts.py": "bf465b5063ef1568a0fe0ca6fbafba24317a30bb822f822453c0a07df4f7e274",
     "src/ida_pro_mcp/ida_mcp/flow/__init__.py": "e2ad972c65cc8799c94393f9784d2dfbed1afed393d43d7e999cf18562241f46",
     "src/ida_pro_mcp/ida_mcp/flow/call_state.py": "a0f70c1283c0aae1d88292225fd2a0a058e0781d741d39f156d1229a214f3c22",
     "src/ida_pro_mcp/ida_mcp/flow/derived_runtime.py": "63a6ca967b0000c797db62756f6db9303d8cfd34240f9ce6d5d7ffb6d06c38d6",
@@ -58,7 +60,8 @@
     "src/ida_pro_mcp/ida_mcp/flow/reviewed_runtime.py": "8fee3fdb3df58a8fcef8c5218c7f52124019c935f21b34dcbe9102996205676d",
     "src/ida_pro_mcp/ida_mcp/flow/runtime.py": "159cf86fb84eb9b3e05d0db920fd912caa9cb630f8de4b0825e28e6e3ae814de",
     "src/ida_pro_mcp/ida_mcp/flow/rv32_extractor.py": "fa6a235b3e607dd0f0da48310808de25cc16bf4160a5487aff51ccb1d0979aaa",
-    "src/ida_pro_mcp/ida_mcp/flow/service.py": "7de3419bd059fb8b124b3548e29b3fcfa2efddd86da504f1e605dadd3f506c83",
+    "src/ida_pro_mcp/ida_mcp/flow/service.py": "cf6c590560bfd8930128036e9fd124f8bebff48c09fbcdbf5e4d7acf621d2431",
+    "src/ida_pro_mcp/ida_mcp/flow/store_observation.py": "a4e79a56d3be9ed1e35bc914d53116987fddfb27fd2f86182c46ac2b172c82a3",
     "src/ida_pro_mcp/ida_mcp/flow/summary_catalog.py": "47ac4aa7cd2545a4e2ecf95d65182b551f29c78e59d20b6a40c0738b11ababbd"
   },
   "anchors": [
@@ -69,7 +72,7 @@
       "binary_sha256": "e98ee1f96dead5f8988573b9e8ce2e1466f30f8d5881af4b71a66b7b6e73436a",
       "job": {
         "schema_version": "flow-job/1",
-        "id": "job_b8ad5eda504241de9fd8f669c7ba692f",
+        "id": "job_c55afade00cb4a36bfdc979411671252",
         "state": "complete",
         "revision": 4,
         "progress": {},
@@ -77,7 +80,7 @@
         "error": null,
         "result": {
           "analysis": "complete_in_scope",
-          "call_composition_artifact": "artifact_f5e1a43df6ab4d019d423339d8b4cf27",
+          "call_composition_artifact": "artifact_e913442668f44bab92206ba05fb81d6b",
           "call_composition_count": 0,
           "callee_closure": {
             "boundaries": [],
@@ -92,16 +95,16 @@
           "derived_call_memory_evidence": [],
           "derived_call_memory_writes": [],
           "derived_call_returns": [],
-          "graph_artifact": "artifact_d45df2b430704b748087d40bbaa6dfe0",
-          "graph_digest": "sha256-v1:253aafc09916404597e78c73a8d04fc2734a68cae99bbcd9825d464e5a760a99",
+          "graph_artifact": "artifact_b8b05dd26905404789bfa531f588860b",
+          "graph_digest": "sha256-v1:7d49f61f8377e676364488c3c3f75d95805d4fcc5e15417b898161cbb60bb585",
           "maturity": "MMAT_CALLS",
           "memory_diagnostics": [],
-          "memory_plan_artifact": "artifact_9d8a843d44644de89e93c99e046dad7b",
-          "memory_result_artifact": "artifact_10d13bec47a4404fb7f1c6614acdd10a",
+          "memory_plan_artifact": "artifact_7afe4f108b6d42d6885488145e9fcf06",
+          "memory_result_artifact": "artifact_594f61cbcbad41cd80794ecbc2fcb98b",
           "profile": "X64-LE",
-          "snapshot_artifact": "artifact_832d852a9a1f4c7982d3aeff8890b824",
-          "snapshot_id": "snapshot-v1:7fb5d47bf635fc5b5875beee38d1ffa4f223084528f33b0d6e8318e6f30f6493",
-          "ssa_artifact": "artifact_f1c324d38713462f9b8d6919d9e99978",
+          "snapshot_artifact": "artifact_6119a94c911b43259c95456eb62a17f3",
+          "snapshot_id": "snapshot-v1:b69854856583b067c9bd1377089a8c12abfe714e5a2e042da80c7a7da212b3b9",
+          "ssa_artifact": "artifact_e168be8eeb9343d5b9e1c7fd8209fc1f",
           "summary_digest": "sha256-v1:79f01e4de0cc97f8807a0447d2a2b0c8e72e4c93a5062efbc31db393b08abcfc",
           "summary_limitations": [
             "Reviewed summaries cover only the packaged owned fixtures, with fresh full-identity callee validation; arbitrary libraries remain unresolved.",
@@ -128,7 +131,7 @@
         },
         {
           "tool": "flow_get_job",
-          "response_chars": 176,
+          "response_chars": 177,
           "error": null
         },
         {
@@ -158,22 +161,22 @@
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 6064,
+          "response_chars": 6056,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 5516,
+          "response_chars": 5510,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 6621,
+          "response_chars": 6041,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 3071,
+          "response_chars": 3665,
           "error": null
         },
         {
@@ -183,52 +186,52 @@
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 6146,
+          "response_chars": 6138,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5598,
+          "response_chars": 5592,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 6703,
+          "response_chars": 6123,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5208,
+          "response_chars": 6086,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5659,
+          "response_chars": 5375,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5938,
+          "response_chars": 5649,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 4902,
+          "response_chars": 5191,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 4267,
+          "response_chars": 4287,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 4353,
+          "response_chars": 4361,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 4679,
+          "response_chars": 4651,
           "error": null
         },
         {
@@ -238,7 +241,7 @@
         },
         {
           "tool": "flow_trace_backward",
-          "response_chars": 2667,
+          "response_chars": 7822,
           "error": null
         },
         {
@@ -258,12 +261,12 @@
         },
         {
           "tool": "flow_get_implicit_analysis",
-          "response_chars": 5057,
+          "response_chars": 5125,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 3155,
+          "response_chars": 2604,
           "error": null
         },
         {
@@ -365,6 +368,8 @@
         "flow_get_job",
         "flow_cancel_job",
         "flow_create_implicit_analysis",
+        "flow_get_pointee_evidence",
+        "flow_check_store",
         "flow_check_path",
         "flow_get_function_ssa",
         "flow_get_cfg",
@@ -384,39 +389,39 @@
         "idb_list"
       ],
       "adoption_detach_preserved_job": true,
-      "flow_build_id": "flow-build-sha256-v1:29c9e5783c86d1fb6302fee6cb0abbd7380a078a7550317129da3a1ad78de1fb",
+      "flow_build_id": "flow-build-sha256-v1:a861c491c151640c3a48fc58f5c11e94114d596b6c817f027e000e966f534f56",
       "readonly_direct_call_denied": true,
       "memory_source_selected_exact_access": true,
       "analyst_route_not_runtime_support": true,
       "memory_dependency": {
         "interval": {
-          "start": 0,
-          "end": 1
+          "start": 7,
+          "end": 8
         },
         "precision": "exact",
-        "object_id": "object-v1:6c0fea5f4d50608ca5d1a4f1d40955651c00e9da865c2823faa2eee16d04b158",
+        "object_id": "object-v1:5e7cd433e7d887d35aaa5fe667662469e77b1a673ec852405843e27abd3fc689",
         "rule_id": "byte-reaching-store-v1",
         "evidence_ids": [
-          "evidence-v1:71eecadd9893fcc53fb6e4723754c1541ca469ce2c3e7c49ab2b5801844a8c82",
-          "evidence-v1:d9d3827d1637f943bf006aaffe91448876a94ec616f52c323fd0023958914112",
-          "evidence-v1:eee5a4cb9cd23a9907575b8b3b9152d7619f2f933ff9738973959a5f928b40e0"
+          "evidence-v1:39b44ee864b52dbff4c93451bd92129f38f27c796f1bdc4eb8e2861ebb20bea0",
+          "evidence-v1:8d06a9df81edbeaa986ab6fbd7acaa0803e5edbfeceab60e956d1968859b9797",
+          "evidence-v1:af913c277626fadd08969ba6d84dba514ce16f26c397438782c5f02d9cb79449"
         ],
         "derivation_evidence": {
-          "evidence_id": "evidence-v1:d9d3827d1637f943bf006aaffe91448876a94ec616f52c323fd0023958914112",
-          "snapshot_id": "snapshot-v1:7fb5d47bf635fc5b5875beee38d1ffa4f223084528f33b0d6e8318e6f30f6493",
+          "evidence_id": "evidence-v1:8d06a9df81edbeaa986ab6fbd7acaa0803e5edbfeceab60e956d1968859b9797",
+          "snapshot_id": "snapshot-v1:b69854856583b067c9bd1377089a8c12abfe714e5a2e042da80c7a7da212b3b9",
           "rule_id": "byte-reaching-store-v1",
           "sites": [],
           "source_eas": [],
           "synthetic": true,
           "origins": [
-            "node-v1:890ba259c005a08f3f1db4e103c29dc4bb1d319847fce42aa9055505e46386c9",
-            "node-v1:c4fabb049336e0639df697c3b2a07a61bfaa6783c895b0433ed974e00da1d6da"
+            "node-v1:6288411dc37ec218a7e524384e9f4cb8cf1e0915e1a51373bc5c6bc1767ce3e5",
+            "node-v1:c3f975b890677a4183d2d69dba8842c3dd7394a470139a73117c28b10e3c9604"
           ],
           "assumptions": [
             "automatic object identity is structural and conservative; no ABI argument numbering",
             "experimental Mach-O flat user-space address model; no TLS or MMIO semantics"
           ],
-          "memory_object_id": "object-v1:6c0fea5f4d50608ca5d1a4f1d40955651c00e9da865c2823faa2eee16d04b158"
+          "memory_object_id": "object-v1:5e7cd433e7d887d35aaa5fe667662469e77b1a673ec852405843e27abd3fc689"
         }
       },
       "input_preserved": true,
@@ -429,7 +434,7 @@
       "binary_sha256": "fe9acefb7f883e942ebf836ae36b411b3ae110d20ff5dc442d9539334ef0c1cf",
       "job": {
         "schema_version": "flow-job/1",
-        "id": "job_46e74ae60e7c47b29467f4dced8a404e",
+        "id": "job_a6d06b6d86844927b3714e305a97c18b",
         "state": "complete",
         "revision": 4,
         "progress": {},
@@ -437,7 +442,7 @@
         "error": null,
         "result": {
           "analysis": "complete_in_scope",
-          "call_composition_artifact": "artifact_c440195f71744da0b525675f5b0331b9",
+          "call_composition_artifact": "artifact_a319432a58a14b96b1b9f40d961a0d71",
           "call_composition_count": 0,
           "callee_closure": {
             "boundaries": [],
@@ -452,16 +457,16 @@
           "derived_call_memory_evidence": [],
           "derived_call_memory_writes": [],
           "derived_call_returns": [],
-          "graph_artifact": "artifact_b642b8b67c3e4b9aa5ddb5ac5790e73a",
-          "graph_digest": "sha256-v1:ff00a57db988f70ebc08e605b615f92b2aa4ea3e8d392e5940e1bd1e28dd6b1c",
+          "graph_artifact": "artifact_b24e0063756c4dfb80168c109b2fe9c0",
+          "graph_digest": "sha256-v1:7d91ffa5b6f30763dd974dba7cb303b427ad6c6552692ffeb1820e65dad2b99d",
           "maturity": "MMAT_CALLS",
           "memory_diagnostics": [],
-          "memory_plan_artifact": "artifact_9c290fc80b9e48fc8dcdfa1025339b7a",
-          "memory_result_artifact": "artifact_01da1167ce7b438683888539fb332002",
+          "memory_plan_artifact": "artifact_4a4649c989174881ac91cc0ece716c2b",
+          "memory_result_artifact": "artifact_4707062745c343e584c56045e5dcad3f",
           "profile": "A64-LE",
-          "snapshot_artifact": "artifact_3922eeb2f2624c1c9a52ceefdb5b3d39",
-          "snapshot_id": "snapshot-v1:323b94accac20b238a0b05c27041f9c7b8c9bb6cb6c087cb7e8b3f3259412374",
-          "ssa_artifact": "artifact_902f34629b254341bea7ae0df3edb195",
+          "snapshot_artifact": "artifact_992860a9158a4cf5b86616b00d8f7a3b",
+          "snapshot_id": "snapshot-v1:d1cd968980eccba6f768cb48bee1a7c8c3453089a5cf4fe3875f0cfa833cd3f2",
+          "ssa_artifact": "artifact_d484f6d4402947399ea6e1729d7e990f",
           "summary_digest": "sha256-v1:79f01e4de0cc97f8807a0447d2a2b0c8e72e4c93a5062efbc31db393b08abcfc",
           "summary_limitations": [
             "Reviewed summaries cover only the packaged owned fixtures, with fresh full-identity callee validation; arbitrary libraries remain unresolved.",
@@ -525,22 +530,22 @@
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 5651,
+          "response_chars": 5942,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 6342,
+          "response_chars": 6309,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 4910,
+          "response_chars": 5641,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 4653,
+          "response_chars": 3664,
           "error": null
         },
         {
@@ -550,22 +555,27 @@
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5733,
+          "response_chars": 6024,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 6424,
+          "response_chars": 6391,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 4992,
+          "response_chars": 5723,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 6414,
+          "response_chars": 5145,
+          "error": null
+        },
+        {
+          "tool": "flow_get_graph",
+          "response_chars": 5354,
           "error": null
         },
         {
@@ -575,42 +585,37 @@
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5348,
+          "response_chars": 5630,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5925,
-          "error": null
-        },
-        {
-          "tool": "flow_get_graph",
-          "response_chars": 3927,
+          "response_chars": 4496,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 4377,
+          "response_chars": 4072,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 4107,
+          "response_chars": 4656,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 4660,
+          "response_chars": 4384,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 2311,
+          "response_chars": 2343,
           "error": null
         },
         {
           "tool": "flow_trace_backward",
-          "response_chars": 2667,
+          "response_chars": 4775,
           "error": null
         },
         {
@@ -625,22 +630,17 @@
         },
         {
           "tool": "flow_get_job",
-          "response_chars": 176,
-          "error": null
-        },
-        {
-          "tool": "flow_get_job",
           "response_chars": 373,
           "error": null
         },
         {
           "tool": "flow_get_implicit_analysis",
-          "response_chars": 5356,
+          "response_chars": 5424,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 2586,
+          "response_chars": 2560,
           "error": null
         },
         {
@@ -895,6 +895,8 @@
         "flow_get_job",
         "flow_cancel_job",
         "flow_create_implicit_analysis",
+        "flow_get_pointee_evidence",
+        "flow_check_store",
         "flow_check_path",
         "flow_get_function_ssa",
         "flow_get_cfg",
@@ -914,39 +916,39 @@
         "idb_list"
       ],
       "adoption_detach_preserved_job": true,
-      "flow_build_id": "flow-build-sha256-v1:29c9e5783c86d1fb6302fee6cb0abbd7380a078a7550317129da3a1ad78de1fb",
+      "flow_build_id": "flow-build-sha256-v1:a861c491c151640c3a48fc58f5c11e94114d596b6c817f027e000e966f534f56",
       "readonly_direct_call_denied": true,
       "memory_source_selected_exact_access": true,
       "analyst_route_not_runtime_support": true,
       "memory_dependency": {
         "interval": {
-          "start": 0,
-          "end": 1
+          "start": 7,
+          "end": 8
         },
         "precision": "exact",
-        "object_id": "object-v1:95fb86b09e8dd38ccaeff10c868c9b3c223464490a5c75b20d12ecfd7a3dafa8",
+        "object_id": "object-v1:f3fd9bbd7d98804cf83b6b56a103127ac109854f619f4c317f18762c638d1df2",
         "rule_id": "byte-reaching-store-v1",
         "evidence_ids": [
-          "evidence-v1:4b32f6302df762eca93b9857099b9233b532b744d19edb6a22e2859579bdb1c0",
-          "evidence-v1:74957498e7afad95c58cd38c4806f23e25a133fb9154ce0ce99e683a3efbb91e",
-          "evidence-v1:a2a259f33fddbd384df1dc07bec85bd7033f90f4a1d2963d948724e04bd1e28e"
+          "evidence-v1:9c0ad5f30c6674a3001b07e155247c871c38ee1c23071879431dd59777464c1d",
+          "evidence-v1:cdfb14f24565cb4616ef500a111ca4161270016879db406a8320f78849fad067",
+          "evidence-v1:ecfb3c59877b0f96543c0f89fd9e1f24cc475fda5c2e6f892262c1ee7a543efb"
         ],
         "derivation_evidence": {
-          "evidence_id": "evidence-v1:a2a259f33fddbd384df1dc07bec85bd7033f90f4a1d2963d948724e04bd1e28e",
-          "snapshot_id": "snapshot-v1:323b94accac20b238a0b05c27041f9c7b8c9bb6cb6c087cb7e8b3f3259412374",
+          "evidence_id": "evidence-v1:9c0ad5f30c6674a3001b07e155247c871c38ee1c23071879431dd59777464c1d",
+          "snapshot_id": "snapshot-v1:d1cd968980eccba6f768cb48bee1a7c8c3453089a5cf4fe3875f0cfa833cd3f2",
           "rule_id": "byte-reaching-store-v1",
           "sites": [],
           "source_eas": [],
           "synthetic": true,
           "origins": [
-            "node-v1:76f94a293316894b0a97cf5536f3ff1f4c06d9c37e336fbefc0c7687b06d2d25",
-            "node-v1:dfc1175650ac12cf952baecbbd2c8f10559372723ec83ad77da8d7732c54d04c"
+            "node-v1:3b73f6701badf901a27079996a667976b9f3e347ce02340f716347b690d77611",
+            "node-v1:717b9ac3e1337fa097c92db3ad5b1863332155001bc1df790dc753519cb369e6"
           ],
           "assumptions": [
             "automatic object identity is structural and conservative; no ABI argument numbering",
             "experimental Mach-O flat user-space address model; no TLS or MMIO semantics"
           ],
-          "memory_object_id": "object-v1:95fb86b09e8dd38ccaeff10c868c9b3c223464490a5c75b20d12ecfd7a3dafa8"
+          "memory_object_id": "object-v1:f3fd9bbd7d98804cf83b6b56a103127ac109854f619f4c317f18762c638d1df2"
         }
       },
       "input_preserved": true,

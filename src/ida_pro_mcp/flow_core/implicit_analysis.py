@@ -7,11 +7,12 @@ labels continue through value, phi, select-payload, and memory-data relations.
 """
 
 from collections.abc import Callable, Iterable, Mapping
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, replace, field
 from typing import TYPE_CHECKING, Literal
 
 from .analysis import AnalysisResult, BitSeed, Fact, Seed, analyze
 from .contracts import ValueSource
+from .memory import LabelBitRange
 from .serialization import Model, digest
 from .ssa import SSAProgram
 from .states import Labels, canonical_set, check_digest, check_id, require, unique
@@ -37,10 +38,22 @@ class ImplicitPolicy(Model):
 class ImplicitFact(Model):
     node_id: str
     labels: Labels
+    explicit_bit_ranges: tuple[LabelBitRange, ...] = field(
+        default=(), metadata={"omit_if_default": True}
+    )
 
     def __post_init__(self):
         super().__post_init__()
         check_id(self.node_id, "node")
+        canonical_set(
+            tuple((span.label, span.bit_offset) for span in self.explicit_bit_ranges)
+        )
+        require(
+            all(
+                span.label in self.labels.explicit for span in self.explicit_bit_ranges
+            ),
+            "Bit-label range without explicit label",
+        )
 
 
 @dataclass(frozen=True)
@@ -74,7 +87,7 @@ class ControlDependency(Model):
         else:
             require(
                 self.branch_node_id is None and self.successor_block is None,
-            "Value-selection control dependency has no CFG branch attribution",
+                "Value-selection control dependency has no CFG branch attribution",
             )
         if self.branch_node_id is not None:
             check_id(self.branch_node_id, "node")
@@ -343,6 +356,7 @@ def _analyze_regions(
         "UnknownValue",
         "Call",
         "Return",
+        "InputMemory",
     }
     use_memory = memory_model is not None and all(
         next(n for n in graph.nodes if n.node_id == seed.node_id).kind
@@ -381,6 +395,11 @@ def _analyze_regions(
     else:
         explicit = analyze(graph, value_seeds, checkpoint=checkpoint)
     explicit_facts = {fact.node_id: fact for fact in explicit.facts}
+    explicit_ranges = (
+        {fact.node_id: fact.explicit_bit_ranges for fact in memory_result.facts}
+        if use_memory
+        else {}
+    )
     seed_controls: dict[str, Labels] = {}
     for seed in seeds:
         seed_controls[seed.node_id] = seed_controls.get(seed.node_id, Labels()).join(
@@ -535,7 +554,14 @@ def _analyze_regions(
         digest(policy),
         control_digest,
         digest(explicit),
-        tuple(ImplicitFact(node_id, labels[node_id]) for node_id in sorted(node_ids)),
+        tuple(
+            ImplicitFact(
+                node_id,
+                labels[node_id],
+                explicit_ranges.get(node_id, ()),
+            )
+            for node_id in sorted(node_ids)
+        ),
         ordered_relations,
         "partial" if diagnostics or frontier else "complete_in_scope",
         tuple(sorted(frontier)),

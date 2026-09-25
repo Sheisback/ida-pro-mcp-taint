@@ -1,0 +1,62 @@
+Pointee / Store 기능 검증 — 2026-09-25
+====================================
+
+범위
+----
+- 선택한 entry/Load 포인터 정의 직후의 명시적 byte-range source.
+- 바이트별 overwrite, scalar/memory phi, endian, alias/unknown 보존.
+- 범용 Store의 base+offset, 포인터 폭, 함수 entry, 선택적 IDB 필드/배열 레이아웃 증거.
+- 외부 함수 규칙, WDM 하드코딩, 자동 취약점 판정, 대상 실행 없음.
+
+확인한 증거
+-----------
+- 새 core/API/native-receipt 의미·부정 회귀: 91 passed.
+- 최종 전체 tests 실행: 1820 passed, 117 subtests passed, 기존 receipt 실패 3개.
+  실행 수집 뒤 추가한 endian/memory-phi/unknown 효과 4개도 위 91개 집중 검사에
+  포함하여 별도로 통과했다. 기존 실패는 아래처럼 변경 전 HEAD에서도 재현했다.
+- 실제 IDA 9.3 / Hex-Rays 9.3.0.260213, x86_64·arm64 Mach-O O1: 8/8 passed.
+  - [0,8) 입력에서 [0,4) clear 후 Load/Return의 지정 라벨은 bits [32,64)만 유지.
+  - 정상 함수 주소 Store + slots[14] 레이아웃: proven_in_scope.
+  - 잘린 주소: unknown; 다른 주소: mismatch.
+  - unknown_provenance는 숨기지 않음, 원본 입력 hash 불변, save=False 종료.
+- 현재 빌드와 native receipt의 BUILD_ID 일치.
+- 기존 public API / path native smoke 실제 재실행 및 receipt 갱신.
+- G007: pinned 바이너리·dSYM 2회 재현 빌드, 실제 IDA 8개 함수 재추출 후
+  memory analysis receipt 재생성. 입력 hash 불변.
+- G005: 실제 최신 캡처는 manifests/pointee_refresh/에 별도 보존.
+  기존 G005는 역사적·benchmark 고정 입력이므로 변경하지 않음.
+  Scalar receipt는 기존 실제 snapshot을 현재 엔진으로 재생성(new_ida_extraction=false).
+- Ruff, compileall, support audit, wheel build 및 SDK 없는 wheel import 통과.
+- 설치된 pyright/mypy가 없어 별도 정적 타입 검사는 수행하지 않음.
+
+기존 검증 부채 — 테스트를 약화시키거나 해시만 고치지 않음
+------------------------------------------------------
+변경 전 HEAD를 별도 임시 worktree에서 검사해 아래 3개 실패가 이미 존재함을 확인했다.
+
+1. test_public_reviewed_runtime_receipt_is_current:
+   기존 G011 public runtime receipt의 BUILD_ID가 변경 전 코드와도 불일치.
+2. test_static_ida_call_receipts_pin_catalog_runtime_and_replay:
+   기존 call extraction receipt의 extractor hash가 변경 전 extractor와도 불일치.
+3. test_actual_ida_receipts_are_fresh_repeatable_and_input_preserving:
+   기존 public sample receipt의 extractor hash가 변경 전 extractor와도 불일치.
+
+G011 public runtime의 실제 재실행도 시도했으나 기존 flow-wire/1 출력에서
+unsafe_integer_for_wire_v1로 멈췄다. 숫자 반올림, 안전 검사 제거, 구 receipt 해시
+교체, reviewed summary 임의 승격으로 통과시키지 않았다. 이 기존 corpus/summary
+갱신은 이번 범용 source/Store 기능과 별도 작업이다.
+
+남은 한계
+---------
+- 실제 Windows 드라이버/커널·TLS·MMIO 검증 아님. flat-address 모델 가정을 기록함.
+- IDB 타입 정확성과 analyst_assumed_exact 포인터 유효성은 분석자 가정.
+- callback 증거는 Store 실행 지점의 조건부 관계이며 경로 도달성, 모든 경로 등록,
+  후속 덮어쓰기 없음, 실제 callback 실행을 증명하지 않음.
+- 미해결 Load/spill, 다른 phi 값, 잘림, 불확실한 효과는 unknown/partial 유지.
+
+주요 자료
+---------
+- 계약: docs/aasystem-pointee-store-contract.ko.txt
+- 재현: tests/flow_core/native_pointee_store_probe.py
+- 실제 새 기능 receipt: tests/flow_fixtures/manifests/pointee_store_native.json
+- 상세 로컬 로그: build/pointee-{final-pytest,baseline-tests,public-api-refresh,
+  path-refresh,reviewed-runtime-refresh,memory-refresh,wheel}.log

@@ -94,6 +94,85 @@ buffers as user-controlled or prove that the read is reachable. Inspect
 `flow_explain_implicit_analysis` for local uncertainty before interpreting
 downstream Store/Return labels.
 
+### Explicit pointee byte sources (experimental)
+
+`flow_create_implicit_analysis` additionally accepts `kind: "pointee_range"`:
+
+```json
+{
+  "kind": "pointee_range",
+  "schema_version": 1,
+  "pointer_node_id": "node-v1:<owned pointer node>",
+  "interval": {"start": 0, "end": 8},
+  "labels": {
+    "explicit": ["REQUEST"], "control": [], "unknown_provenance": false,
+    "any_explicit_source": false, "any_control_source": false
+  },
+  "binding_mode": "analyst_assumed_exact",
+  "point": "after_pointer_definition"
+}
+```
+
+This is an assertion about the bytes **after this pointer definition**, not a
+read of runtime memory, an OS buffer classifier, or a claim about earlier reads.
+Select a full-address-width entry `InputValue` or a pointer-valued `Load` outside
+CFG cycles. A field-loaded pointer is allowed. A source cannot be placed inside
+a loop and repeatedly re-taint cleared bytes. There are at most 16 ranges / 16
+named source labels, with at most 512 bytes per range; overlapping ranges for one
+pointer and mixed binding modes are rejected.
+
+`require_program_derived_exact` requires the existing memory analysis to identify
+one non-null singleton candidate. `analyst_assumed_exact` explicitly permits a
+new valid, non-null singleton symbolic view when that relation is unavailable.
+It does **not** prove disjointness from other pointers or the current frame.
+Both modes require the analyst to justify the **content taint** assertion.
+Unresolved calls, weak aliases and unsupported effects retain uncertainty.
+
+The completed job returns a separate `ssa_artifact`, `graph_artifact`, and
+`pointee_certificate_artifact`. The original SSA/graph is unchanged. Page the
+certificate with `flow_get_pointee_evidence`; it replays the base-to-bound graph
+and binds effective source labels to the implicit result's source digest. Use
+the **returned bound graph** for subsequent traces/evidence and the implicit
+artifact for seeded facts/explanations. Its memory result describes the bound
+structural analysis; seeded labels live in `flow_get_implicit_analysis` facts.
+
+Facts may additionally expose `explicit_bit_ranges`, each containing `label`,
+`bit_offset`, and `width_bits`. These are **value-relative bit positions**, not
+absolute memory addresses. For a little-endian 64-bit Load after a precise
+4-byte clear of a seeded `[0,8)` range, only `{bit_offset:32,width_bits:32}`
+survives. Big-endian mapping follows the snapshot endianness. Unsupported scalar
+operations can widen these ranges. Missing ranges alone are not a clean result:
+inspect whole-value labels, `unknown_provenance`, access precision and diagnostics.
+
+### Generic function-address Store evidence (experimental)
+
+Submit `flow_check_store` with `ssa_artifact`, `store_node_id`, `base_node_id`,
+`byte_offset`, `target_function` (name/address), and `request_key`. Optionally
+provide `member_path`, for example `["callbacks", 14]`, to compare the numeric
+offset and width with the current IDB layout of an exactly bound entry argument.
+Field names are data, never WDM-specific engine rules. Poll `flow_get_job`, then
+page the same tool using only its returned `store_evidence_artifact` as
+`artifact_id` (plus cursor/limit).
+
+The certificate combines a bounded graph-derived numeric Store relation with
+a fresh exact-function-entry observation and optional structure/array layout.
+It cites immutable nodes/evidence, snapshot/graph/memory digests and assumptions;
+paging replays the numeric proof. Current IDB types/names remain analyst
+assumptions. Truncation/reextension, different phi arms, unresolved memory loads,
+ambiguous layouts, non-function targets and insufficient budgets cannot produce
+`proven_in_scope`. `mismatch` is a mismatch with the supplied relation, not a
+claim that no alternative registration exists.
+
+Even `proven_in_scope` means **this Store writes this function address to this
+slot if reached, under the recorded assumptions**. It does not prove reachable
+execution, all-path registration, final slot contents after later overwrites,
+OS callback semantics, or a vulnerability. No Windows-driver support is promoted.
+For high addresses use a `flow-wire/2` snapshot; source payload integers and
+the Store `byte_offset` use tagged integers. Bounded member indices and paging
+controls remain ordinary safe JSON integers.
+
+### Scalar sources and shared uncertainty
+
 When an analyst has an independently calibrated, whole-byte subrange of an
 `InputValue` but no exact entry atom, `flow_create_implicit_analysis` also
 accepts a seed with `kind: "bit_range"`, `schema_version: 1`, `node_id`,

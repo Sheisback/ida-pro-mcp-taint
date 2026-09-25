@@ -43,7 +43,7 @@ def _integer(value: int, field_name: str, parent: Any, bitness: int) -> None:
         _range(value, 0, (1 << bitness) - 2)
     elif field_name == "rva" or field_name.endswith(("_rva", "_rvas")):
         _range(value, 0, MAX_U64)
-    elif field_name == "displacement" or (
+    elif field_name in {"displacement", "byte_offset", "observed_byte_offset"} or (
         field_name == "offset"
         and (
             type(parent).__name__ == "PointerCandidate"

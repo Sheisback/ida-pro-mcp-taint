@@ -54,6 +54,12 @@ from ida_pro_mcp.flow_core.memory_graph import (
     replay_memory_graph,
 )
 from ida_pro_mcp.flow_core.memory import MemoryPlan, MemoryResult
+from ida_pro_mcp.flow_core.pointee import PointeeSeed, bind_pointee_sources
+from ida_pro_mcp.flow_core.store_proof import (
+    StoreProof,
+    prove_store,
+    validate_store_proof,
+)
 from ida_pro_mcp.flow_core.persistence import require
 from ida_pro_mcp.flow_core.profile_routing import (
     RoutingMode,
@@ -634,7 +640,9 @@ def _extract_implicit(ctx, request):
         SSAProgram.from_data(current.store.artifact(request["ssa_artifact"])),
     )
     seeds = tuple(
-        cast(BitSeed, BitSeed.from_data(item))
+        cast(PointeeSeed, PointeeSeed.from_data(item))
+        if type(item) is dict and item.get("kind") == "pointee_range"
+        else cast(BitSeed, BitSeed.from_data(item))
         if type(item) is dict and item.get("kind") == "bit_range"
         else cast(Seed, Seed.from_data(item))
         for item in request["seeds"]
@@ -649,6 +657,26 @@ def _analyze_implicit(ctx, extracted):
     ctx.check()
     memory_model = replay_memory_graph(program)
     ctx.check()
+    pointee_sources = tuple(seed for seed in seeds if isinstance(seed, PointeeSeed))
+    source_program = program
+    ordinary_seeds = tuple(seed for seed in seeds if not isinstance(seed, PointeeSeed))
+    if pointee_sources:
+        bound, content_seeds = bind_pointee_sources(
+            memory_model, pointee_sources, checkpoint=ctx.check
+        )
+        program = bound.program
+        memory_model = replay_memory_graph(program)
+        seeds = tuple(
+            sorted(
+                (*ordinary_seeds, *content_seeds),
+                key=lambda seed: (
+                    seed.node_id,
+                    1 if isinstance(seed, BitSeed) else 0,
+                    seed.bit_offset if isinstance(seed, BitSeed) else 0,
+                    seed.width_bits if isinstance(seed, BitSeed) else 0,
+                ),
+            )
+        )
     result = analyze_implicit(
         program, seeds, policy, memory_model=memory_model, checkpoint=ctx.check
     )
@@ -667,6 +695,49 @@ def _analyze_implicit(ctx, extracted):
         "target_executed": False,
         "no_auto_vulnerability_verdict": True,
     }
+    extra = {}
+    if pointee_sources:
+        source_id = current.store.put_artifact("analysis", program.to_data())
+        graph_id = current.store.put_artifact("graph", program.graph)
+        certificate = {
+            "schema_version": "flow-pointee-certificate/1",
+            "base_ssa_artifact": request["ssa_artifact"],
+            "bound_ssa_artifact": source_id,
+            "graph_artifact": graph_id,
+            "base_graph_digest": source_program.graph.graph_digest,
+            "graph_digest": program.graph.graph_digest,
+            "sources": [
+                seed.to_data()
+                for seed in sorted(
+                    pointee_sources,
+                    key=lambda s: (
+                        s.pointer_node_id,
+                        s.interval.start,
+                    ),
+                )
+            ],
+            "bindings": [binding.to_data() for binding in program.pointee_bindings],
+            "effective_seeds": [seed.to_data() for seed in seeds],
+            "implicit_source_digest": result.source_digest,
+            "target_executed": False,
+            "no_auto_vulnerability_verdict": True,
+        }
+        certificate_id = current.store.put_artifact("analysis", certificate)
+        artifact.update(
+            {
+                "schema_version": "flow-implicit-artifact/3",
+                "source_artifact": source_id,
+                "base_source_artifact": request["ssa_artifact"],
+                "pointee_certificate_artifact": certificate_id,
+            }
+        )
+        extra = {
+            "ssa_artifact": source_id,
+            "graph_artifact": graph_id,
+            "pointee_certificate_artifact": certificate_id,
+            "memory_plan_artifact": plan_artifact,
+            "memory_result_artifact": result_artifact,
+        }
     ctx.check()
     identifier = current.store.put_artifact("analysis", artifact)
     return {
@@ -674,6 +745,78 @@ def _analyze_implicit(ctx, extracted):
         "status": result.status,
         "frontier_count": len(result.frontier),
         "diagnostics": list(result.diagnostics),
+        "target_executed": False,
+        "no_auto_vulnerability_verdict": True,
+        **extra,
+    }
+
+
+@idasync
+def _extract_store_proof(ctx, request):
+    from .store_observation import capture_store_observation
+
+    current = _request_runtime(request, _context_for_request(request))
+    program = cast(
+        SSAProgram,
+        SSAProgram.from_data(current.store.artifact(request["ssa_artifact"])),
+    )
+    ctx.check()
+    observation = capture_store_observation(
+        program,
+        request["target_function"],
+        request["base_node_id"],
+        tuple(request["member_path"]),
+    )
+    _request_runtime(request, _context_for_request(request))
+    return program, observation, request
+
+
+def _store_verdict(proof, observation):
+    if observation["function_observation"]["status"] != "observed" or proof is None:
+        return "unknown"
+    layout = observation["layout_observation"]
+    if layout["status"] == "unknown":
+        return "unknown"
+    if layout["status"] == "observed" and (
+        layout["byte_offset"] != proof.byte_offset
+        or layout["width_bits"] != proof.width_bits
+    ):
+        return "mismatch"
+    return proof.status
+
+
+def _analyze_store_proof(ctx, extracted):
+    program, observation, request = extracted
+    ctx.check()
+    memory = replay_memory_graph(program)
+    target = observation["function_observation"]
+    proof = None
+    if target["status"] == "observed":
+        proof = prove_store(
+            memory,
+            request["store_node_id"],
+            request["base_node_id"],
+            request["byte_offset"],
+            target["target_ea"],
+        )
+    ctx.check()
+    current = _request_runtime(request)
+    artifact = {
+        "schema_version": "flow-store-evidence/1",
+        "source_artifact": request["ssa_artifact"],
+        "snapshot_id": program.graph.snapshot.snapshot_id,
+        "graph_digest": program.graph.graph_digest,
+        "observation": observation,
+        "proof": None if proof is None else proof.to_data(),
+        "status": _store_verdict(proof, observation),
+        "target_executed": False,
+        "no_auto_vulnerability_verdict": True,
+    }
+    identifier = current.store.put_artifact("analysis", artifact)
+    return {
+        "store_evidence_artifact": identifier,
+        "status": artifact["status"],
+        "evidence_digest": digest(artifact),
         "target_executed": False,
         "no_auto_vulnerability_verdict": True,
     }
@@ -748,6 +891,7 @@ HANDLERS = {
     "snapshot_ssa_v1": Handler(_extract, _analyze),
     "implicit_analysis_v1": Handler(_extract_implicit, _analyze_implicit),
     "path_proof_v1": Handler(_extract_path_proof, _analyze_path_proof),
+    "store_proof_v1": Handler(_extract_store_proof, _analyze_store_proof),
 }
 
 
@@ -879,6 +1023,65 @@ def create_path_proof(graph_artifact, query, request_key):
         "schema_version": "flow-job/1",
         "job_id": engine.submit("path_proof_v1", request, request_key, timeout=120),
         "experimental": True,
+    }
+
+
+def create_store_proof(
+    ssa_artifact,
+    store_node_id,
+    base_node_id,
+    byte_offset,
+    target_function,
+    request_key,
+    member_path,
+):
+    info = context()
+    engine = get_runtime(info)
+    program = cast(
+        SSAProgram, SSAProgram.from_data(engine.store.artifact(ssa_artifact))
+    )
+    v2 = program.graph.snapshot.snapshot_id.startswith("snapshot-v2:")
+    if v2:
+        byte_offset = from_wire_v2(byte_offset)
+    require(type(byte_offset) is int, "invalid_store_offset")
+    require(
+        type(target_function) is str and 0 < len(target_function) <= 1024,
+        "invalid_store_target",
+    )
+    nodes = {node.node_id: node for node in program.graph.nodes}
+    require(
+        store_node_id in nodes and nodes[store_node_id].kind == "Store",
+        "invalid_store_node",
+    )
+    require(base_node_id in nodes, "invalid_store_base")
+    require(
+        type(member_path) is list
+        and len(member_path) <= 16
+        and all(
+            (type(part) is str and 0 < len(part) <= 256)
+            or (type(part) is int and 0 <= part <= 2**31 - 1)
+            for part in member_path
+        ),
+        "invalid_store_member_path",
+    )
+    require(-(1 << 63) <= byte_offset < (1 << 63), "invalid_store_offset")
+    request = {
+        "ssa_artifact": ssa_artifact,
+        "store_node_id": store_node_id,
+        "base_node_id": base_node_id,
+        "byte_offset": byte_offset,
+        "target_function": target_function,
+        "member_path": member_path,
+        "fingerprint": engine.store.scope.fingerprint,
+        "scope_digest": engine.store.scope.scope_digest,
+        "routing": info["routing"],
+    }
+    if v2:
+        request["wire_version"] = "flow-wire/2"
+    return {
+        "schema_version": "flow-job/1",
+        "experimental": True,
+        "job_id": engine.submit("store_proof_v1", request, request_key, timeout=120),
     }
 
 
@@ -1122,15 +1325,22 @@ def _implicit_page(raw):
     }
     expected = (
         common | {"memory_plan_artifact", "memory_result_artifact"}
-        if version == "flow-implicit-artifact/2"
+        if version in {"flow-implicit-artifact/2", "flow-implicit-artifact/3"}
         else common
     )
+    if version == "flow-implicit-artifact/3":
+        expected |= {"base_source_artifact", "pointee_certificate_artifact"}
     require(
         type(raw) is dict
-        and version in {"flow-implicit-artifact/1", "flow-implicit-artifact/2"}
+        and version
+        in {
+            "flow-implicit-artifact/1",
+            "flow-implicit-artifact/2",
+            "flow-implicit-artifact/3",
+        }
         and set(raw) == expected
         and (
-            version != "flow-implicit-artifact/2"
+            version == "flow-implicit-artifact/1"
             or type(raw["memory_plan_artifact"]) is str
             and type(raw["memory_result_artifact"]) is str
         )
@@ -1146,6 +1356,8 @@ def _implicit_page(raw):
     )
     return items, {
         "source_artifact": raw["source_artifact"],
+        "base_source_artifact": raw.get("base_source_artifact"),
+        "pointee_certificate_artifact": raw.get("pointee_certificate_artifact"),
         "memory_plan_artifact": raw.get("memory_plan_artifact"),
         "memory_result_artifact": raw.get("memory_result_artifact"),
         "status": value.status,
@@ -1596,10 +1808,182 @@ def _interprocedural_page(raw):
     }
 
 
+def _pointee_page(raw):
+    require(
+        type(raw) is dict
+        and set(raw)
+        == {
+            "schema_version",
+            "base_ssa_artifact",
+            "bound_ssa_artifact",
+            "graph_artifact",
+            "base_graph_digest",
+            "graph_digest",
+            "sources",
+        "bindings",
+        "effective_seeds",
+        "implicit_source_digest",
+            "target_executed",
+            "no_auto_vulnerability_verdict",
+        }
+        and raw["schema_version"] == "flow-pointee-certificate/1"
+        and raw["target_executed"] is False
+        and raw["no_auto_vulnerability_verdict"] is True,
+        "invalid_pointee_certificate",
+    )
+    current = get_runtime()
+    base = cast(
+        SSAProgram,
+        SSAProgram.from_data(current.store.artifact(raw["base_ssa_artifact"])),
+    )
+    bound = cast(
+        SSAProgram,
+        SSAProgram.from_data(current.store.artifact(raw["bound_ssa_artifact"])),
+    )
+    sources = tuple(
+        cast(PointeeSeed, PointeeSeed.from_data(item)) for item in raw["sources"]
+    )
+    rebuilt, seeds = bind_pointee_sources(replay_memory_graph(base), sources)
+    effective = tuple(
+        cast(BitSeed, BitSeed.from_data(item))
+        if type(item) is dict and item.get("kind") == "bit_range"
+        else cast(Seed, Seed.from_data(item))
+        for item in raw["effective_seeds"]
+    )
+    source_ids = {binding.source_node_id for binding in bound.pointee_bindings}
+    require(
+        tuple(seed for seed in effective if seed.node_id in source_ids) == seeds
+        and digest([seed.to_data() for seed in effective]) == raw["implicit_source_digest"],
+        "pointee_source_digest_mismatch",
+    )
+    require(
+        base.graph.graph_digest == raw["base_graph_digest"]
+        and bound == rebuilt.program
+        and bound.graph.graph_digest == raw["graph_digest"]
+        and [b.to_data() for b in bound.pointee_bindings] == raw["bindings"]
+        and current.store.artifact(raw["graph_artifact"]) == bound.graph.to_data(),
+        "pointee_certificate_replay_mismatch",
+    )
+    items = [{"type": "source", **source.to_data()} for source in sources]
+    items += [
+        {"type": "binding", **binding.to_data()} for binding in bound.pointee_bindings
+    ]
+    items += [{"type": "content_seed", **seed.to_data()} for seed in seeds]
+    evidence_ids = {
+        eid
+        for node in bound.graph.nodes
+        if node.operation == "pointee_source"
+        for eid in node.evidence_ids
+    }
+    items += [
+        {"type": "evidence", "evidence_id": e.evidence_id, **e.to_data()}
+        for e in bound.graph.evidence
+        if e.evidence_id in evidence_ids
+    ]
+    return items, {
+        "certificate_digest": digest(raw),
+        "implicit_source_digest": raw["implicit_source_digest"],
+        "graph_digest": raw["graph_digest"],
+        "snapshot_id": bound.graph.snapshot.snapshot_id,
+        "base_graph_digest": raw["base_graph_digest"],
+        "base_ssa_artifact": raw["base_ssa_artifact"],
+        "bound_ssa_artifact": raw["bound_ssa_artifact"],
+        "graph_artifact": raw["graph_artifact"],
+        "scope": "source_contents_after_pointer_definition_not_os_input_proof",
+        "target_executed": False,
+        "no_auto_vulnerability_verdict": True,
+    }
+
+
+def _store_page(raw):
+    require(
+        type(raw) is dict
+        and set(raw)
+        == {
+            "schema_version",
+            "source_artifact",
+            "snapshot_id",
+            "graph_digest",
+            "observation",
+            "proof",
+            "status",
+            "target_executed",
+            "no_auto_vulnerability_verdict",
+        }
+        and raw["schema_version"] == "flow-store-evidence/1"
+        and raw["target_executed"] is False
+        and raw["no_auto_vulnerability_verdict"] is True,
+        "invalid_store_evidence",
+    )
+    program = cast(
+        SSAProgram,
+        SSAProgram.from_data(get_runtime().store.artifact(raw["source_artifact"])),
+    )
+    require(
+        program.graph.snapshot.snapshot_id == raw["snapshot_id"]
+        and program.graph.graph_digest == raw["graph_digest"],
+        "store_evidence_binding_mismatch",
+    )
+    proof = (
+        None
+        if raw["proof"] is None
+        else cast(StoreProof, StoreProof.from_data(raw["proof"]))
+    )
+    if proof is not None:
+        require(
+            validate_store_proof(replay_memory_graph(program), proof),
+            "store_proof_replay_mismatch",
+        )
+        require(
+            raw["observation"]["function_observation"].get("target_ea")
+            == proof.target_ea,
+            "store_function_observation_mismatch",
+        )
+    require(
+        raw["status"] == _store_verdict(proof, raw["observation"]),
+        "store_verdict_mismatch",
+    )
+    items = [{"type": "observation", **raw["observation"]}]
+    if proof is not None:
+        summary = proof.to_data()
+        steps = summary.pop("steps")
+        items += [{"type": "proof", **summary}]
+        items += [{"type": "proof_step", **step} for step in steps]
+        items += [
+            {"type": "evidence", "evidence_id": e.evidence_id, **e.to_data()}
+            for e in program.graph.evidence
+            if e.evidence_id in proof.evidence_ids
+        ]
+    return items, {
+        "evidence_digest": digest(raw),
+        "proof_digest": None if proof is None else proof.proof_digest,
+        "status": raw["status"],
+        "snapshot_id": raw["snapshot_id"],
+        "graph_digest": raw["graph_digest"],
+        "source_artifact": raw["source_artifact"],
+        "scope": "store_site_if_reached_not_final_registration_or_path_proof",
+        "target_executed": False,
+        "no_auto_vulnerability_verdict": True,
+    }
+
+
 def analysis_page(artifact_id, section, cursor=None, limit=50):
     raw = get_runtime().store.artifact(artifact_id)
     if section == "implicit":
         items, metadata = _implicit_page(raw)
+        if raw["schema_version"] == "flow-implicit-artifact/3":
+            certificate = get_runtime().store.artifact(
+                raw["pointee_certificate_artifact"]
+            )
+            _pointee_page(certificate)
+            require(
+                certificate["bound_ssa_artifact"] == raw["source_artifact"]
+                and certificate["base_ssa_artifact"] == raw["base_source_artifact"]
+                and certificate["graph_digest"] == metadata["graph_digest"],
+                "implicit_pointee_certificate_mismatch",
+            )
+            require(certificate["implicit_source_digest"] == metadata["source_digest"],
+                    "implicit_pointee_source_mismatch")
     elif section == "memory":
         items, metadata = _memory_page(raw)
     elif section == "derived_call":
@@ -1608,6 +1992,10 @@ def analysis_page(artifact_id, section, cursor=None, limit=50):
         items, metadata = _proof_page(raw)
     elif section == "interprocedural":
         items, metadata = _interprocedural_page(raw)
+    elif section == "pointee":
+        items, metadata = _pointee_page(raw)
+    elif section == "store_proof":
+        items, metadata = _store_page(raw)
     else:
         raise ValueError("invalid_analysis_section")
     v2, snapshot_id = wire_v2_scope(raw)
@@ -1645,7 +2033,20 @@ def explain_implicit(
         SSAProgram,
         SSAProgram.from_data(current.store.artifact(raw["source_artifact"])),
     )
-    if raw["schema_version"] == "flow-implicit-artifact/2":
+    if raw["schema_version"] == "flow-implicit-artifact/3":
+        certificate = current.store.artifact(raw["pointee_certificate_artifact"])
+        _pointee_page(certificate)
+        require(
+            certificate["bound_ssa_artifact"] == raw["source_artifact"]
+            and certificate["base_ssa_artifact"] == raw["base_source_artifact"],
+            "implicit_pointee_certificate_mismatch",
+        )
+        require(certificate["implicit_source_digest"] == result.source_digest,
+                "implicit_pointee_source_mismatch")
+    if raw["schema_version"] in {
+        "flow-implicit-artifact/2",
+        "flow-implicit-artifact/3",
+    }:
         plan = cast(
             MemoryPlan,
             MemoryPlan.from_data(current.store.artifact(raw["memory_plan_artifact"])),

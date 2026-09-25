@@ -1,6 +1,6 @@
 """Seed-independent logical memory plan and finite byte-range analysis contracts."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal
 
 from .contracts import Alias, MemoryObject, MemoryVersion
@@ -49,7 +49,7 @@ class MemoryStep(Model):
     node_id: str
     before: str
     after: str
-    effect: Literal["load", "store", "havoc"]
+    effect: Literal["load", "store", "havoc", "source"]
     rule_id: Literal["logical-memory-step-v1"] = "logical-memory-step-v1"
 
     def __post_init__(self):
@@ -162,6 +162,8 @@ class MemoryPlan(Model):
 
 
 def _effect(node):
+    if node.kind == "InputMemory" and node.operation == "pointee_source":
+        return "source"
     if node.kind == "Load":
         return "load"
     if node.kind == "Store":
@@ -355,6 +357,9 @@ class MemoryFact(Model):
     pointer: PointerValue | None
     labels: Labels
     address_labels: Labels = Labels()
+    explicit_bit_ranges: tuple["LabelBitRange", ...] = field(
+        default=(), metadata={"omit_if_default": True}
+    )
 
     def __post_init__(self):
         super().__post_init__()
@@ -367,6 +372,31 @@ class MemoryFact(Model):
             ),
             "Pointer fact width mismatch",
         )
+        canonical_set(tuple((r.label, r.bit_offset) for r in self.explicit_bit_ranges))
+        ends: dict[str, int] = {}
+        for span in self.explicit_bit_ranges:
+            require(
+                self.value is not None
+                and span.bit_offset + span.width_bits <= self.value.width_bits
+                and span.label in self.labels.explicit
+                and ends.get(span.label, -1) < span.bit_offset,
+                "Invalid fact bit-label range",
+            )
+            ends[span.label] = span.bit_offset + span.width_bits
+
+
+@dataclass(frozen=True)
+class LabelBitRange(Model):
+    label: str
+    bit_offset: int
+    width_bits: int
+
+    def __post_init__(self):
+        super().__post_init__()
+        require(
+            bool(self.label) and self.bit_offset >= 0 and self.width_bits > 0,
+            "Invalid label bit range",
+        )
 
 
 @dataclass(frozen=True)
@@ -376,9 +406,9 @@ class MemoryDependency(Model):
     object_id: str
     interval: ByteRange | None
     kind: Literal["memory_data_dependency"] = "memory_data_dependency"
-    rule_id: Literal["byte-reaching-store-v1", "unknown-memory-effect-v1"] = (
-        "byte-reaching-store-v1"
-    )
+    rule_id: Literal[
+        "byte-reaching-store-v1", "unknown-memory-effect-v1", "source-range-v1"
+    ] = "byte-reaching-store-v1"
     evidence_ids: tuple[str, ...] = ()
     precision: Literal["exact", "may_alias", "opaque"] = "opaque"
 

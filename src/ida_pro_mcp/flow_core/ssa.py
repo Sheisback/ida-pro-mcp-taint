@@ -1,6 +1,6 @@
 """Range-partitioned scalar SSA over structured microcode. Memory is a boundary."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal, cast
 
 from .cfg import Dominance, dominance
@@ -31,6 +31,7 @@ from .derived_calls import (
 from .states import (
     ByteRange,
     MemoryReference,
+    PointerValue,
     StorageLocation,
     canonical_set,
     check_id,
@@ -61,6 +62,28 @@ class EntryStorage(Model):
 
 
 @dataclass(frozen=True)
+class PointeeBinding(Model):
+    """A point-scoped symbolic pointer view, never a disjointness assertion."""
+
+    pointer_node_id: str
+    source_node_id: str
+    pointer: PointerValue
+    binding_mode: Literal["analyst_assumed_exact", "require_program_derived_exact"]
+
+    def __post_init__(self):
+        super().__post_init__()
+        check_id(self.pointer_node_id, "node")
+        check_id(self.source_node_id, "node")
+        require(
+            len(self.pointer.candidates) == 1
+            and not self.pointer.any_compatible_location
+            and not self.pointer.may_be_null
+            and self.pointer.candidates[0].offset is not None,
+            "Pointee binding requires one nonnull location",
+        )
+
+
+@dataclass(frozen=True)
 class SSAProgram(Model):
     graph: Graph
     dominance: Dominance
@@ -68,6 +91,9 @@ class SSAProgram(Model):
     entry_storage: tuple[EntryStorage, ...]
     diagnostics: tuple[str, ...]
     storage_model: Literal["scalar", "memory"] = "scalar"
+    pointee_bindings: tuple[PointeeBinding, ...] = field(
+        default=(), metadata={"omit_if_default": True}
+    )
 
     def __post_init__(self):
         super().__post_init__()
@@ -115,6 +141,43 @@ class SSAProgram(Model):
             )
         )
         graph_nodes = {n.node_id: n for n in self.graph.nodes}
+        canonical_set(tuple(b.source_node_id for b in self.pointee_bindings))
+        objects = {obj.object_id: obj for obj in self.graph.objects}
+        for binding in self.pointee_bindings:
+            require(
+                binding.pointer_node_id in graph_nodes
+                and binding.source_node_id in graph_nodes,
+                "Dangling pointee binding",
+            )
+            pointer = graph_nodes[binding.pointer_node_id]
+            source = graph_nodes[binding.source_node_id]
+            candidate = binding.pointer.candidates[0]
+            require(
+                pointer.kind in {"InputValue", "Load"}
+                and pointer.width_bits
+                == self.graph.snapshot.identity.environment.bitness
+                and pointer.width_bits == binding.pointer.width_bits
+                and source.kind == "InputMemory"
+                and source.operation == "pointee_source"
+                and source.memory is not None
+                and source.memory.object_id == candidate.object_id
+                and candidate.object_id in objects
+                and objects[candidate.object_id].singleton
+                and objects[candidate.object_id].address_space
+                == binding.pointer.address_space,
+                "Invalid pointee binding",
+            )
+            reaches(binding.pointer_node_id, definitions[binding.source_node_id])
+            require(
+                definitions[binding.pointer_node_id].block
+                == definitions[binding.source_node_id].block,
+                "Pointee source must follow its pointer in the same block",
+            )
+        require(
+            {b.source_node_id for b in self.pointee_bindings}
+            == {n.node_id for n in self.graph.nodes if n.operation == "pointee_source"},
+            "Pointee source binding coverage mismatch",
+        )
         for entry in self.entry_storage:
             require(entry.node_id in definitions, "Missing entry-storage definition")
             definition = definitions[entry.node_id]

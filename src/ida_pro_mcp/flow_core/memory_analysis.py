@@ -14,6 +14,7 @@ from .memory import (
     MemoryPolicy,
     MemoryResult,
     MemorySeed,
+    LabelBitRange,
     PointerSeed,
     alias_relation,
 )
@@ -336,6 +337,17 @@ class _Engine:
         self.nodes = {n.node_id: n for n in self.graph.nodes}
         self.objects = {o.object_id: o for o in objects}
         self.pointer_seeds = {s.node_id: s.pointer for s in pointer_seeds}
+        self.pointee_sources = {
+            binding.source_node_id: binding for binding in plan.program.pointee_bindings
+        }
+        self.pointee_pointers = {}
+        for binding in plan.program.pointee_bindings:
+            require(
+                binding.pointer_node_id not in self.pointee_pointers
+                or self.pointee_pointers[binding.pointer_node_id] == binding.pointer,
+                "Conflicting pointee pointer bindings",
+            )
+            self.pointee_pointers[binding.pointer_node_id] = binding.pointer
         # Repeated reads of the same entry atoms are equal SSA expressions, not
         # separate ABI arguments. This preserves a 64-bit pointer when extraction
         # partitions its entry storage into two 32-bit atoms (e.g. mixed widths).
@@ -390,6 +402,12 @@ class _Engine:
                     ((1 << seed.width_bits) - 1) << seed.bit_offset
                 )
         bit_names = {name for seed in bit_seeds for name in seed.labels.explicit}
+        bit_names.update(
+            name
+            for seed in value_seeds
+            if seed.node_id in self.pointee_sources
+            for name in seed.labels.explicit
+        )
         entry_ids = {entry.node_id for entry in plan.program.entry_storage}
         whole_entries = [
             seed
@@ -699,6 +717,41 @@ class _Engine:
             if key[0] in object_ids:
                 state.cells[key] = state.cells[key].join(unknown)
 
+    def source(self, state, node, labels):
+        """Label existing contents, without inventing a target memory write."""
+        reference = node.memory
+        oid, interval = reference.object_id, reference.interval
+
+        def label(cell, weak=False):
+            masks = dict(cell.bit_masks)
+            for name in labels.explicit:
+                if name in self.bit_names:
+                    masks[name] = 255
+            return replace(
+                cell,
+                labels=self.bounded_labels(
+                    cell.labels.join(labels).join(
+                        Labels(unknown_provenance=True) if weak else Labels()
+                    )
+                ),
+                definitions=tuple(sorted(set(cell.definitions) | {node.node_id})),
+                bit_masks=tuple(sorted(masks.items())),
+            )
+
+        require(
+            interval.end - interval.start <= self.policy.max_bytes,
+            "Pointee source exceeds byte budget",
+        )
+        for offset in range(interval.start, interval.end):
+            state.cells[oid, offset] = label(state.read(oid, offset))
+        aliases = self.affected(AccessCandidate(oid, interval)) - {oid}
+        for other in aliases:
+            state.defaults[other] = label(state.defaults.get(other, _Byte()), True)
+        for key, cell in list(state.cells.items()):
+            if key[0] in aliases:
+                state.cells[key] = label(cell, True)
+        self.enforce_byte_budget(state)
+
     def resolve(self, node, address):
         pointer = address.pointer or _top_pointer(
             self.space, self.graph.snapshot.identity.environment.bitness
@@ -814,7 +867,9 @@ class _Engine:
         evidence = tuple(
             sorted(set(self.nodes[definition].evidence_ids) | set(node.evidence_ids))
         )
-        havoc = self.steps[definition].effect == "havoc"
+        effect = self.steps[definition].effect
+        havoc = effect == "havoc"
+        source = effect == "source"
         source_access = self.accesses.get(definition)
         same_object_strong_store = (
             source_access is not None
@@ -826,7 +881,17 @@ class _Engine:
             if havoc or access.unresolved or interval is None
             else (
                 "exact"
-                if same_object_strong_store and access.alias == "must_alias"
+                if (
+                    same_object_strong_store
+                    or (
+                        source
+                        and self.nodes[definition].memory.object_id == oid
+                        and self.nodes[definition].memory.interval.start
+                        <= interval.start
+                        and interval.end <= self.nodes[definition].memory.interval.end
+                    )
+                )
+                and access.alias == "must_alias"
                 else "may_alias"
             )
         )
@@ -840,7 +905,13 @@ class _Engine:
             node.node_id,
             oid,
             interval,
-            rule_id="unknown-memory-effect-v1" if havoc else "byte-reaching-store-v1",
+            rule_id=(
+                "unknown-memory-effect-v1"
+                if havoc
+                else "source-range-v1"
+                if source
+                else "byte-reaching-store-v1"
+            ),
             evidence_ids=evidence,
             precision=precision,
         )
@@ -1050,7 +1121,15 @@ class _Engine:
         address_labels = Labels()
         pointer = None
         load_masks = None
-        if node.kind in {"Load", "Store"}:
+        if node.node_id in self.pointee_sources:
+            value = BitValue(node.width_bits)
+            self.source(state, node, labels)
+            load_masks = {
+                name: (1 << node.width_bits) - 1
+                for name in labels.explicit
+                if name in self.bit_names
+            }
+        elif node.kind in {"Load", "Store"}:
             address = self.facts[node.memory_operands.address]
             address_labels = address.labels
             if node.memory_operands.segment:
@@ -1073,12 +1152,9 @@ class _Engine:
                 value, invalid = _value(node, vals)
             if node.width_bits:
                 pointer = self.pointer_seeds.get(node.node_id)
-                if (
-                    pointer is None
-                    and not (
-                        node.kind == "CallResult"
-                        and node.operation == "derived_static_finite_indirect_return"
-                    )
+                if pointer is None and not (
+                    node.kind == "CallResult"
+                    and node.operation == "derived_static_finite_indirect_return"
                 ):
                     # The dispatch target is a control input, not the returned
                     # pointer value. Pointer use of this scalar result still
@@ -1119,6 +1195,8 @@ class _Engine:
             if invalid or unknown:
                 labels = labels.join(Labels(unknown_provenance=True))
                 self.diagnostics.add("unresolved_scalar_effect")
+        if node.node_id in self.pointee_pointers:
+            pointer = self.pointee_pointers[node.node_id]
         labels = self.project_bit_labels(node, label_deps, labels, load_masks)
         if node.node_id in self.steps and self.steps[node.node_id].effect == "havoc":
             self.havoc(state, set(self.objects), labels, (node.node_id,))
@@ -1280,18 +1358,25 @@ def analyze_memory(
         "CallResult",
         "Return",
     }
+    pointee_ids = {b.source_node_id for b in plan.program.pointee_bindings}
     for seed in value_seeds:
         plan.program.graph.validate_source(
             ValueSource(plan.program.graph.snapshot.snapshot_id, seed.node_id)
         )
         require(
-            nodes[seed.node_id].kind in value_kinds
+            (nodes[seed.node_id].kind in value_kinds or seed.node_id in pointee_ids)
             and nodes[seed.node_id].width_bits is not None,
             "Selected node has no seedable scalar value; use MemorySeed for memory contents or the Store data input node",
         )
     bit_names = {name for seed in bit_seeds for name in seed.labels.explicit}
+    source_names = {
+        name
+        for seed in value_seeds
+        if seed.node_id in pointee_ids
+        for name in seed.labels.explicit
+    }
     require(
-        len(bit_names) <= min(policy.max_labels, 16),
+        len(bit_names | source_names) <= min(policy.max_labels, 16),
         "Bit-range label budget exceeded",
     )
     require(
@@ -1349,13 +1434,35 @@ def analyze_memory(
     if bit_seeds:
         source_description["bit_transfer_ruleset"] = "bit-window-v2"
         source_description["bit_values"] = [s.to_data() for s in bit_seeds]
+    if plan.program.pointee_bindings:
+        source_description["pointee_bindings"] = [
+            binding.to_data() for binding in plan.program.pointee_bindings
+        ]
     source_digest = digest(source_description)
+
+    def published_fact(identifier):
+        fact = engine.facts[identifier]
+        spans = []
+        if fact.value is not None and fact.value.width_bits <= 4096:
+            for name, mask in sorted(engine.bit_masks.get(identifier, {}).items()):
+                if name not in fact.labels.explicit:
+                    continue
+                start = None
+                for bit in range(fact.value.width_bits + 1):
+                    selected = bit < fact.value.width_bits and (mask >> bit) & 1
+                    if selected and start is None:
+                        start = bit
+                    elif not selected and start is not None:
+                        spans.append(LabelBitRange(name, start, bit - start))
+                        start = None
+        return replace(fact, explicit_bit_ranges=tuple(spans))
+
     result = MemoryResult(
         plan.plan_digest,
         source_digest,
         digest(policy),
         objects,
-        tuple(engine.facts[n] for n in sorted(engine.facts)),
+        tuple(published_fact(n) for n in sorted(engine.facts)),
         tuple(engine.accesses[n] for n in sorted(engine.accesses)),
         tuple(
             sorted(

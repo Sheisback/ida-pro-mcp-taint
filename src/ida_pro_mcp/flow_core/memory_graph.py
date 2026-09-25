@@ -276,6 +276,17 @@ def _objects_and_pointers(plan):
             "Conflicting inferred address identity",
         )
         by_node[address.node_id] = pointer
+    graph_objects = {obj.object_id: obj for obj in graph.objects}
+    for binding in plan.program.pointee_bindings:
+        candidate = binding.pointer.candidates[0]
+        obj = graph_objects[candidate.object_id]
+        require(
+            obj.key not in objects or objects[obj.key] == obj,
+            "Conflicting bound pointee object",
+        )
+        objects[obj.key] = obj
+        if nodes[binding.pointer_node_id].kind != "Load":
+            by_node[binding.pointer_node_id] = binding.pointer
     return (
         tuple(sorted(objects.values(), key=lambda obj: obj.object_id)),
         tuple(PointerSeed(node, by_node[node]) for node in sorted(by_node)),
@@ -548,11 +559,6 @@ def build_memory_graph(
     checkpoint: Callable[[], None] | None = None,
 ) -> MemoryGraphAnalysis:
     """Build an alias-aware graph; relation precision is separate from completion."""
-    flat_assumption = (
-        RV32_FLAT_USERSPACE_ASSUMPTION
-        if type(snapshot) is StructuredSnapshot
-        else FLAT_USERSPACE_ASSUMPTION
-    )
     base_program = build_ssa(
         snapshot,
         storage_model="memory",
@@ -560,9 +566,46 @@ def build_memory_graph(
         derived_indirect_returns=derived_indirect_returns,
         derived_memory_writes=derived_memory_writes,
     )
+    return build_memory_graph_from_program(base_program, checkpoint=checkpoint)
+
+
+def build_memory_graph_from_program(
+    base_program: SSAProgram, *, checkpoint=None
+) -> MemoryGraphAnalysis:
+    """Bind an explicit source overlay without altering its original graph."""
+    snapshot = base_program.graph.snapshot
+    flat_assumption = (
+        RV32_FLAT_USERSPACE_ASSUMPTION
+        if type(snapshot) is StructuredSnapshot
+        else FLAT_USERSPACE_ASSUMPTION
+    )
+    # Public SSA artifacts already carry derived memory edges. Recompute them,
+    # not their native/value edges or analyst source-binding evidence.
+    old_derivations = {
+        evidence.evidence_id
+        for evidence in base_program.graph.evidence
+        if evidence.synthetic
+        and evidence.rule_id
+        in {"byte-reaching-store-v1", "unknown-memory-effect-v1", "source-range-v1"}
+    }
+    base_program = replace(
+        base_program,
+        graph=replace(
+            base_program.graph,
+            edges=tuple(
+                edge for edge in base_program.graph.edges if edge.memory_rule_id is None
+            ),
+            evidence=tuple(
+                e
+                for e in base_program.graph.evidence
+                if e.evidence_id not in old_derivations
+            ),
+        ),
+    )
     plan = build_memory_plan(base_program)
     objects, pointers, result = _analyze_plan(
-        plan, MemoryPolicy(flat_segment_assumption=flat_assumption),
+        plan,
+        MemoryPolicy(flat_segment_assumption=flat_assumption),
         checkpoint=checkpoint,
     )
     accesses = {access.node_id: access for access in result.accesses}
@@ -570,6 +613,10 @@ def build_memory_graph(
     object_by_id = {obj.object_id: obj for obj in result.objects}
     nodes = []
     for node in base_program.graph.nodes:
+        if node.kind == "InputMemory" and node.operation == "pointee_source":
+            node = replace(
+                node, memory=replace(node.memory, version_id=steps[node.node_id].after)
+            )
         access = accesses.get(node.node_id)
         if access is not None and len(access.candidates) == 1:
             candidate = access.candidates[0]
@@ -602,7 +649,9 @@ def build_memory_graph(
                 sorted(
                     (
                         flat_assumption,
-                        "current IDB type register argloc is an analyst assumption"
+                        "pointee contents are an analyst source assertion at the selected program point"
+                        if dependency.rule_id == "source-range-v1"
+                        else "current IDB type register argloc is an analyst assumption"
                         if object_kind == "typed_entry"
                         else "automatic object identity is structural and conservative; no ABI argument numbering",
                     )
@@ -776,4 +825,5 @@ __all__ = [
     "bind_memory_graph",
     "replay_memory_graph",
     "build_memory_graph",
+    "build_memory_graph_from_program",
 ]

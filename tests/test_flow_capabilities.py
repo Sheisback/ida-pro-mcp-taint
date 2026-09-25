@@ -1000,6 +1000,8 @@ def test_exact_tool_schema_and_no_supervisor_database_on_workers(flow):
         "flow_get_capabilities",
         "flow_create_snapshot",
         "flow_create_implicit_analysis",
+        "flow_get_pointee_evidence",
+        "flow_check_store",
         "flow_check_path",
         "flow_get_job",
         "flow_cancel_job",
@@ -1042,8 +1044,14 @@ def test_exact_tool_schema_and_no_supervisor_database_on_workers(flow):
         assert all(variant["additionalProperties"] is False for variant in variants)
     implicit = by_name["flow_create_implicit_analysis"]["inputSchema"]
     seed = implicit["properties"]["seeds"]["items"]
-    assert len(seed["anyOf"]) == 2
-    whole, bit_range = seed["anyOf"]
+    assert len(seed["anyOf"]) == 3
+    whole, bit_range, pointee = seed["anyOf"]
+    assert pointee["additionalProperties"] is False
+    assert set(pointee["required"]) == {
+        "kind", "schema_version", "pointer_node_id", "interval", "labels",
+        "binding_mode", "point",
+    }
+    assert pointee["properties"]["kind"]["enum"] == ["pointee_range"]
     assert whole["additionalProperties"] is False
     assert set(whole["required"]) == {"node_id", "labels"}
     assert bit_range["additionalProperties"] is False
