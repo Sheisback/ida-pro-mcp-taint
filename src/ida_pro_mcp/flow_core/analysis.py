@@ -50,6 +50,26 @@ class BitSeed(Model):
         )
 
 
+def canonical_seed_order(seeds):
+    """Sort ordinary seeds into the canonical order the implicit core requires.
+
+    Seed/BitSeed only; PointeeSeed never reaches the core (the service binds
+    it to content seeds first). Duplicates are preserved so the core still
+    rejects ambiguous same-node seeds instead of silently merging them.
+    """
+    return tuple(
+        sorted(
+            seeds,
+            key=lambda seed: (
+                seed.node_id,
+                1 if isinstance(seed, BitSeed) else 0,
+                seed.bit_offset if isinstance(seed, BitSeed) else 0,
+                seed.width_bits if isinstance(seed, BitSeed) else 0,
+            ),
+        )
+    )
+
+
 @dataclass(frozen=True)
 class ScalarPolicy(Model):
     max_evaluations: int = 100000

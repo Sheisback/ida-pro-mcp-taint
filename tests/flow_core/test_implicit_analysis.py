@@ -8,7 +8,7 @@ from typing import Literal
 import pytest
 
 from ida_pro_mcp.flow_core import ContractError, canonical_json, digest, stable_id
-from ida_pro_mcp.flow_core.analysis import Seed, analyze
+from ida_pro_mcp.flow_core.analysis import BitSeed, Seed, analyze, canonical_seed_order
 from ida_pro_mcp.flow_core.contracts import Block, FunctionInput, Instruction, Operand
 from ida_pro_mcp.flow_core.implicit_analysis import (
     ControlDependency,
@@ -781,3 +781,59 @@ def test_checkpoints_do_not_change_certificates_or_labels():
     assert analyze_implicit(program, checkpoint=checkpoint) == expected
     assert analyze_implicit(program, control=control, checkpoint=checkpoint) == expected
     assert checkpoints
+
+
+def _two_seed_program():
+    return build_ssa(
+        snapshot(
+            (
+                Block(0, (), (ins(0, "m_jcnd", reg(0)),)),
+                Block(
+                    1,
+                    (0,),
+                    (ins(0, "m_mov", const(1), dest=reg(8, role="destination")),),
+                ),
+                Block(2, (0,), (ins(0, "m_mov", reg(0), dest=reg(16, role="destination")),)),
+                Block(3, (1, 2), (ins(0, "m_ret", reg(8)),)),
+            )
+        )
+    )
+
+
+def test_core_rejects_unsorted_seed_order():
+    program = _two_seed_program()
+    first = entry_seed(program, 0, "A")
+    other = Seed(definitions(program, 1, "Constant")[0], Labels(("B",)))
+    assert first.node_id != other.node_id
+    unsorted = (
+        (first, other) if first.node_id > other.node_id else (other, first)
+    )
+    with pytest.raises(ContractError, match="Expected sorted unique set"):
+        analyze_implicit(program, unsorted)
+
+
+def test_canonical_seed_order_sorts_mixed_seeds_and_keeps_duplicates():
+    low, high = sorted([stable_id("node", "a"), stable_id("node", "b")])
+    whole_high = Seed(high, Labels(("H",)))
+    bit_low = BitSeed(low, Labels(("L",)), 0, 8)
+    whole_low = Seed(low, Labels(("W",)))
+    assert canonical_seed_order((whole_high, bit_low, whole_low)) == (
+        whole_low,
+        bit_low,
+        whole_high,
+    )
+    duplicates = canonical_seed_order((whole_high, whole_high))
+    assert duplicates == (whole_high, whole_high)
+
+
+def test_canonical_seed_order_output_satisfies_core_contract():
+    program = _two_seed_program()
+    first = entry_seed(program, 0, "A")
+    other = Seed(definitions(program, 1, "Constant")[0], Labels(("B",)))
+    unsorted = (
+        (first, other) if first.node_id > other.node_id else (other, first)
+    )
+    value = analyze_implicit(program, canonical_seed_order(unsorted))
+    assert {fact.node_id for fact in value.facts} == {
+        node.node_id for node in program.graph.nodes
+    }

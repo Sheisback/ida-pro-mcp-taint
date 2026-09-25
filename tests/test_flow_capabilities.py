@@ -133,6 +133,7 @@ def test_initialization_is_not_analysis_support(flow, monkeypatch, ready):
                 "path_proof",
                 "durable_jobs",
                 "microcode_extraction",
+                "symbolic_refinement",
             }
         )
     )
@@ -1003,6 +1004,8 @@ def test_exact_tool_schema_and_no_supervisor_database_on_workers(flow):
         "flow_get_pointee_evidence",
         "flow_check_store",
         "flow_check_path",
+        "flow_refine_path_proof",
+        "flow_refine_memory_proof",
         "flow_get_job",
         "flow_cancel_job",
         "flow_get_function_ssa",
@@ -1384,6 +1387,101 @@ def test_type_backed_argument_binding_exposes_exact_entry_atoms(flow):
     ]
     assert binding[0]["type_correctness"] == "analyst_assumption"
     assert binding[0]["idb_pointer_type_assumption"] is False
+
+
+def _entry_register_program():
+    from ida_pro_mcp.flow_core import digest
+    from ida_pro_mcp.flow_core.contracts import (
+        Block,
+        FunctionInput,
+        Instruction,
+        Operand,
+        Snapshot,
+    )
+    from ida_pro_mcp.flow_core.ssa import build_ssa
+    from ida_pro_mcp.flow_core.states import StorageLocation
+
+    base = Snapshot.from_data(
+        json.loads(
+            (ROOT / "tests/flow_fixtures/manifests/extraction_x64.json").read_text()
+        )["snapshot"]
+    )
+    read_a = StorageLocation("microregister", "microregister", 0, 8)
+    read_b = StorageLocation("microregister", "microregister", 64, 8)
+    written = StorageLocation("microregister", "microregister", 128, 8)
+    add = Instruction(
+        0,
+        "m_add",
+        (
+            Operand("storage", 8, storage=read_a),
+            Operand("storage", 8, storage=read_b),
+            Operand("storage", 8, storage=written, role="destination"),
+        ),
+    )
+    returned = Instruction(
+        1, "m_ret", (Operand("storage", 8, storage=written),)
+    )
+    function = FunctionInput(
+        "entry-register-test", 0, (Block(0, (), (add, returned)),)
+    )
+    identity = replace(
+        base.identity, function_id=function.function_id, input_digest=digest(function)
+    )
+    return build_ssa(Snapshot(identity, function, identity.snapshot_id))
+
+
+def test_entry_register_table_lists_only_exact_aliases(flow, monkeypatch):
+    hx = sys.modules["ida_hexrays"]
+    bases = {100: 0, 101: 8}
+    monkeypatch.setattr(
+        hx, "reg2mreg", lambda regno: bases.get(regno, -1), raising=False
+    )
+    monkeypatch.setattr(
+        hx,
+        "mreg2reg",
+        lambda mreg, size: (100 if (mreg, size) == (0, 1) else -1),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        hx, "get_mreg_name", lambda mreg, size: "al", raising=False
+    )
+    module, _ = flow
+    table, status = module._service().entry_register_table()
+    assert status == "resolved"
+    assert table == {"0/1": "al"}
+
+
+def test_entry_register_table_degrades_explicitly_without_hexrays(
+    flow, monkeypatch
+):
+    monkeypatch.setitem(sys.modules, "ida_hexrays", None)
+    module, _ = flow
+    table, status = module._service().entry_register_table()
+    assert table == {}
+    assert status == "hexrays_unavailable"
+
+
+def test_resolve_entry_registers_names_atoms_and_marks_the_rest(flow):
+    module, _ = flow
+    program = _entry_register_program()
+    resolved = module._service()._resolve_entry_registers(
+        program.entry_storage, {"table": {"0/1": "al"}, "status": "resolved"}
+    )
+    by_offset = {entry["bit_offset"]: entry for entry in resolved}
+    assert {0, 64} <= set(by_offset)
+    assert by_offset[0]["register"] == "al"
+    assert by_offset[0]["reason"] is None
+    assert by_offset[0]["width_bits"] == 8
+    assert by_offset[64]["register"] is None
+    assert by_offset[64]["reason"] == "no_exact_alias"
+    assert all(entry["node_id"] for entry in resolved)
+    degraded = module._service()._resolve_entry_registers(
+        program.entry_storage, {"table": {}, "status": "hexrays_unavailable"}
+    )
+    assert all(
+        entry["register"] is None and entry["reason"] == "hexrays_unavailable"
+        for entry in degraded
+    )
 
 
 def test_derived_call_evidence_page_checks_caller_callee_binding(flow):

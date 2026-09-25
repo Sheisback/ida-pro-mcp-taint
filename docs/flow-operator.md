@@ -81,6 +81,13 @@ unsupported arglocs are not fabricated. Seeded taint can remain `partial`
 because memory or call effects are unresolved even when exit and entry
 locations are known.
 
+Every snapshot result also carries `entry_registers`, a display-only map
+from each entry atom to its processor register name (for example `rdi`,
+`$a0`), resolved against the session database's own processor module at
+extraction time. Atoms without an exact single-register alias — such as
+multi-register spans — carry an explicit reason instead of a guessed name.
+Use it to pick seed nodes without sweeping candidates.
+
 For an analyst-designated external input such as a driver request buffer,
 first verify the transfer method, buffer pointer, length check, and the
 microcode `Load` that reads the specific byte or field. Page

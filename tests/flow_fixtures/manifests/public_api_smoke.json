@@ -12,7 +12,7 @@
     "tests/flow_core/native_api_smoke.py": "c752c6df9ba71faa66521fb943b699db5f7bdb152d86313c1918b19b6b0228ae",
     "src/ida_pro_mcp/flow_core/__init__.py": "1e03446910ecbbe1cd389ca6eeebec64f35d9d520a3006bc748f53bccff87e73",
     "src/ida_pro_mcp/flow_core/_reviewed_fixture_data.py": "a853c6265f104eb9b8a88a16593ef2ff37340bae7089a3102ff7f4a46918df57",
-    "src/ida_pro_mcp/flow_core/analysis.py": "d73da12f36278ea3a775790e4f884acdeff6a620d3bedf479e9274c3c68f5ead",
+    "src/ida_pro_mcp/flow_core/analysis.py": "cfc74fe1e4b8928ced78e5ab64b85e1afacec958d25571ebbbfb228ca5bc0aef",
     "src/ida_pro_mcp/flow_core/build_identity.py": "4c803c4eb9f84b34ff787e7370e618fbda3e89dd423205eef77805df0b6605e2",
     "src/ida_pro_mcp/flow_core/call_composition.py": "54d3b5cf6d35022bb4499fec5a65ab7bf73cb9facb931dc0fc5f75455ab959a5",
     "src/ida_pro_mcp/flow_core/call_symbolic.py": "a5e186ee7eee37d2d7b11b6455e029b84d0d41ce05e15e0e7c3e5a45b1547554",
@@ -65,7 +65,7 @@
     "src/ida_pro_mcp/ida_mcp/flow/reviewed_runtime.py": "8fee3fdb3df58a8fcef8c5218c7f52124019c935f21b34dcbe9102996205676d",
     "src/ida_pro_mcp/ida_mcp/flow/runtime.py": "159cf86fb84eb9b3e05d0db920fd912caa9cb630f8de4b0825e28e6e3ae814de",
     "src/ida_pro_mcp/ida_mcp/flow/rv32_extractor.py": "fa6a235b3e607dd0f0da48310808de25cc16bf4160a5487aff51ccb1d0979aaa",
-    "src/ida_pro_mcp/ida_mcp/flow/service.py": "b62c339173e3f9c85116830659d448bbb652d17a13ce1fe2be23848ba2340476",
+    "src/ida_pro_mcp/ida_mcp/flow/service.py": "4cfde0271aa111ac081408a2baf48ef3f2d0fa4ce2794e6b85b9b4f0788af5a7",
     "src/ida_pro_mcp/ida_mcp/flow/store_observation.py": "a4e79a56d3be9ed1e35bc914d53116987fddfb27fd2f86182c46ac2b172c82a3",
     "src/ida_pro_mcp/ida_mcp/flow/summary_catalog.py": "47ac4aa7cd2545a4e2ecf95d65182b551f29c78e59d20b6a40c0738b11ababbd"
   },
@@ -77,7 +77,7 @@
       "binary_sha256": "e98ee1f96dead5f8988573b9e8ce2e1466f30f8d5881af4b71a66b7b6e73436a",
       "job": {
         "schema_version": "flow-job/1",
-        "id": "job_a2ae27e4e9c743df8a9883e12746e8be",
+        "id": "job_27849b6f8090438a9bf3fd33b1b3f648",
         "state": "complete",
         "revision": 4,
         "progress": {},
@@ -85,7 +85,7 @@
         "error": null,
         "result": {
           "analysis": "complete_in_scope",
-          "call_composition_artifact": "artifact_d20c5d6761534cb9aeb61b17ec3a7b40",
+          "call_composition_artifact": "artifact_f9a1f85e9a43468194b8bd573b60ec72",
           "call_composition_count": 0,
           "callee_closure": {
             "boundaries": [],
@@ -100,16 +100,54 @@
           "derived_call_memory_evidence": [],
           "derived_call_memory_writes": [],
           "derived_call_returns": [],
-          "graph_artifact": "artifact_a79acce91ece4f898640e165801922bf",
-          "graph_digest": "sha256-v1:48eb7862ebc0b8bf3613635410bdebfaf2cf5f2a04502e9c3dd36adafcca8294",
+          "entry_register_status": "resolved",
+          "entry_registers": [
+            {
+              "bit_offset": 64,
+              "node_id": "node-v1:da775aad562b97d8184248bdfdfe57e1656fccf29f14aa9e28c43f43769b88ee",
+              "reason": null,
+              "register": "rax",
+              "width_bits": 64
+            },
+            {
+              "bit_offset": 128,
+              "node_id": "node-v1:0af74667251d2b9f1a43156e73fd89484a816813bf63fdb9cf345a6fc7f1d007",
+              "reason": "no_exact_alias",
+              "register": null,
+              "width_bits": 320
+            },
+            {
+              "bit_offset": 448,
+              "node_id": "node-v1:7bfd22685525bd258a0e9280ddfa8e5564b00b245df4f5a98e3069be9d4875bc",
+              "reason": null,
+              "register": "rdi",
+              "width_bits": 64
+            },
+            {
+              "bit_offset": 512,
+              "node_id": "node-v1:23b0fa7bba40bb471adfcfe3d496d781be7d88a38ccf9b82dc3754afb64035a5",
+              "reason": "no_exact_alias",
+              "register": null,
+              "width_bits": 1536
+            },
+            {
+              "bit_offset": 2048,
+              "node_id": "node-v1:b86d871757ece8e21161d2517f01cc4a0808d206d9697701876f8b6ff1b86c5f",
+              "reason": null,
+              "register": "ds",
+              "width_bits": 16
+            }
+          ],
+          "graph_artifact": "artifact_eec033c7341e46459ca8d35c00ab2e00",
+          "graph_digest": "sha256-v1:36ac3be7445428ef3ec5b442cb50e5937d11ca0613a64e3e3726fc39b39f3f0d",
           "maturity": "MMAT_CALLS",
           "memory_diagnostics": [],
-          "memory_plan_artifact": "artifact_97d451e175f34f03a65e4f5ece4944ed",
-          "memory_result_artifact": "artifact_f53bf63cbe354b4093fbe37f611f909c",
+          "memory_plan_artifact": "artifact_58aa455631f54ba0a2659926d64d95c3",
+          "memory_result_artifact": "artifact_98d2f14aef78408ca28a4ea5fdedaceb",
           "profile": "X64-LE",
-          "snapshot_artifact": "artifact_d07c4101f80748cb9f9b7d11746b9466",
-          "snapshot_id": "snapshot-v1:da874c3bb978bb7baad3591c512f328b054553c69aeb8d9d648450d42bbc1931",
-          "ssa_artifact": "artifact_fd12338332a1417e9e3a52e0362d0616",
+          "snapshot_artifact": "artifact_5ecb1ccf41aa4dffb49ea1f2e0a93300",
+          "snapshot_id": "snapshot-v1:d6c51bb71a4093f62f288257028905e40eb6f98299cf0b1f21008432e5e6b28e",
+          "ssa_artifact": "artifact_4d908d78bb3f4d1e89579afbe3adee64",
           "summary_digest": "sha256-v1:79f01e4de0cc97f8807a0447d2a2b0c8e72e4c93a5062efbc31db393b08abcfc",
           "summary_limitations": [
             "Reviewed summaries cover only the packaged owned fixtures, with fresh full-identity callee validation; arbitrary libraries remain unresolved.",
@@ -141,7 +179,7 @@
         },
         {
           "tool": "flow_get_job",
-          "response_chars": 1614,
+          "response_chars": 2501,
           "error": null
         },
         {
@@ -156,7 +194,7 @@
         },
         {
           "tool": "flow_cancel_job",
-          "response_chars": 1614,
+          "response_chars": 2501,
           "error": null
         },
         {
@@ -166,22 +204,22 @@
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 5473,
+          "response_chars": 6648,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 6595,
+          "response_chars": 4868,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 5541,
+          "response_chars": 6131,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 3663,
+          "response_chars": 3625,
           "error": null
         },
         {
@@ -191,47 +229,37 @@
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5555,
+          "response_chars": 6730,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 6677,
+          "response_chars": 4950,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5623,
+          "response_chars": 6213,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5802,
+          "response_chars": 6050,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5655,
+          "response_chars": 5933,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5938,
+          "response_chars": 5658,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 4904,
-          "error": null
-        },
-        {
-          "tool": "flow_get_evidence",
-          "response_chars": 4979,
-          "error": null
-        },
-        {
-          "tool": "flow_get_evidence",
-          "response_chars": 4046,
+          "response_chars": 4620,
           "error": null
         },
         {
@@ -241,7 +269,17 @@
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 2730,
+          "response_chars": 4351,
+          "error": null
+        },
+        {
+          "tool": "flow_get_evidence",
+          "response_chars": 4357,
+          "error": null
+        },
+        {
+          "tool": "flow_get_evidence",
+          "response_chars": 3047,
           "error": null
         },
         {
@@ -261,11 +299,6 @@
         },
         {
           "tool": "flow_get_job",
-          "response_chars": 176,
-          "error": null
-        },
-        {
-          "tool": "flow_get_job",
           "response_chars": 373,
           "error": null
         },
@@ -276,7 +309,7 @@
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 2566,
+          "response_chars": 2602,
           "error": null
         },
         {
@@ -287,6 +320,11 @@
         {
           "tool": "flow_get_job",
           "response_chars": 177,
+          "error": null
+        },
+        {
+          "tool": "flow_get_job",
+          "response_chars": 176,
           "error": null
         },
         {
@@ -365,7 +403,7 @@
         },
         {
           "tool": "flow_get_job",
-          "response_chars": 1614,
+          "response_chars": 2501,
           "error": null
         }
       ],
@@ -401,39 +439,39 @@
         "idb_list"
       ],
       "adoption_detach_preserved_job": true,
-      "flow_build_id": "flow-build-sha256-v1:46a1e5b029d61ec144df977a493dcb8ed0f1063032c0778b35930adb0fe88f86",
+      "flow_build_id": "flow-build-sha256-v1:649d6be5dc8c8f935bdc87cb4b842afb54e63176810283db1b68ec041d019af0",
       "readonly_direct_call_denied": true,
       "memory_source_selected_exact_access": true,
       "analyst_route_not_runtime_support": true,
       "memory_dependency": {
         "interval": {
-          "start": 7,
-          "end": 8
+          "start": 6,
+          "end": 7
         },
         "precision": "exact",
-        "object_id": "object-v1:af6f4a78827b56c7ead7a0679c1a67566077528b51a214a959dc19591e7d83ba",
+        "object_id": "object-v1:14ec2dd86bfa84bbc6acf34dbafc0ea89516401db7bd2aad487277b2faef08c6",
         "rule_id": "byte-reaching-store-v1",
         "evidence_ids": [
-          "evidence-v1:20d396be71e22bb3fea5cfd926e5e00b1fc3bc3f1261f163735893d82262ba18",
-          "evidence-v1:2e9049db4104a1ccc6048894bb107c6e3262e2ce5b5414bd059583f668d75c2d",
-          "evidence-v1:59b13734c014d5c608a7affc0f6136d9c1b98d0b7e773ee98e6fa8b0294e403a"
+          "evidence-v1:2891d98852cb712b1697f2e517061efc6c3310337d516966af809378db9f446d",
+          "evidence-v1:3211159f9ec0a8ee07490b40eba3486cd04ea2f91f155ce9d85aa6e14547816f",
+          "evidence-v1:c14507045af261693cfd5a3ec18309719eb257100bed55cadca7605f73204a18"
         ],
         "derivation_evidence": {
-          "evidence_id": "evidence-v1:59b13734c014d5c608a7affc0f6136d9c1b98d0b7e773ee98e6fa8b0294e403a",
-          "snapshot_id": "snapshot-v1:da874c3bb978bb7baad3591c512f328b054553c69aeb8d9d648450d42bbc1931",
+          "evidence_id": "evidence-v1:c14507045af261693cfd5a3ec18309719eb257100bed55cadca7605f73204a18",
+          "snapshot_id": "snapshot-v1:d6c51bb71a4093f62f288257028905e40eb6f98299cf0b1f21008432e5e6b28e",
           "rule_id": "byte-reaching-store-v1",
           "sites": [],
           "source_eas": [],
           "synthetic": true,
           "origins": [
-            "node-v1:62f1fae88bf509cb58b46223a40ec6b317eaedc61b2cf9e40ca99ad8fbda7308",
-            "node-v1:b30f4c27d9065c4a87a883d12f6f2617422cc24f79bbd60d339480b332da9350"
+            "node-v1:1fb8ceb3da6e27c2fd0b57249520319ee62a3aa4e8a0ebc416145775075a3bb4",
+            "node-v1:8c3c8fc1d1b5cb808dcdf4720bf4ed688335a39d135c9d68ae0f91e1c43ac5cc"
           ],
           "assumptions": [
             "automatic object identity is structural and conservative; no ABI argument numbering",
             "experimental Mach-O flat user-space address model; no TLS or MMIO semantics"
           ],
-          "memory_object_id": "object-v1:af6f4a78827b56c7ead7a0679c1a67566077528b51a214a959dc19591e7d83ba"
+          "memory_object_id": "object-v1:14ec2dd86bfa84bbc6acf34dbafc0ea89516401db7bd2aad487277b2faef08c6"
         }
       },
       "input_preserved": true,
@@ -446,7 +484,7 @@
       "binary_sha256": "fe9acefb7f883e942ebf836ae36b411b3ae110d20ff5dc442d9539334ef0c1cf",
       "job": {
         "schema_version": "flow-job/1",
-        "id": "job_7a20845cc28c4b86b5836f0f4661863e",
+        "id": "job_9037db7b83f9405096a09d2474fa361d",
         "state": "complete",
         "revision": 4,
         "progress": {},
@@ -454,7 +492,7 @@
         "error": null,
         "result": {
           "analysis": "complete_in_scope",
-          "call_composition_artifact": "artifact_cfe4b96954d54b1b8324bfea9060d230",
+          "call_composition_artifact": "artifact_19e13724b06f47b3942ff8001b36c717",
           "call_composition_count": 0,
           "callee_closure": {
             "boundaries": [],
@@ -469,16 +507,40 @@
           "derived_call_memory_evidence": [],
           "derived_call_memory_writes": [],
           "derived_call_returns": [],
-          "graph_artifact": "artifact_4ead8a00608a43fd91c24cfbab3220e6",
-          "graph_digest": "sha256-v1:05df7bdd7c6978fcb344e1fa4590df1003e01bc00c14e8bccbfed15437b2f5fa",
+          "entry_register_status": "resolved",
+          "entry_registers": [
+            {
+              "bit_offset": 64,
+              "node_id": "node-v1:365a801fac3db2b4ec8d85b51534d6f78bc859a62d9275ae70de545800c5a8de",
+              "reason": null,
+              "register": "x0",
+              "width_bits": 64
+            },
+            {
+              "bit_offset": 128,
+              "node_id": "node-v1:ffb3d3dbab1836ec754fbad5d6566025c142d4215bcb6432e47299eed717509c",
+              "reason": "no_exact_alias",
+              "register": null,
+              "width_bits": 6656
+            },
+            {
+              "bit_offset": 6784,
+              "node_id": "node-v1:0572f94d930220f5b28c6192f37c6fc1cf4f9a3b36be02ea1af3da8f2eb1c906",
+              "reason": "no_exact_alias",
+              "register": null,
+              "width_bits": 16
+            }
+          ],
+          "graph_artifact": "artifact_9082647db547428882526d512cb8733e",
+          "graph_digest": "sha256-v1:cdcb7ec33548c296c3181e1ba29e255ce4edd2e8c75c0cf8e676eee41a2f5764",
           "maturity": "MMAT_CALLS",
           "memory_diagnostics": [],
-          "memory_plan_artifact": "artifact_841189da9fde47febb8d83a78e5d8a20",
-          "memory_result_artifact": "artifact_8d0b74a98d5349c0909da6a3112194c3",
+          "memory_plan_artifact": "artifact_0efe619895c341dab42ad59680a93fb8",
+          "memory_result_artifact": "artifact_eeefb621cad24c97846b572fbec5081f",
           "profile": "A64-LE",
-          "snapshot_artifact": "artifact_ab020f6924f14e6e9980f855e8acc579",
-          "snapshot_id": "snapshot-v1:28e345c0aa2d7d33835788d97f8b996c72a3b9ae301e83ab79d148fd82d47f61",
-          "ssa_artifact": "artifact_bd79f33cec9b4e88ad0cc8dfdcdf24e0",
+          "snapshot_artifact": "artifact_af461dd137dc4d43a30603b7ea6e6476",
+          "snapshot_id": "snapshot-v1:73f73ee4aef974ef820bb3f777095b6f9a425778f63c19c85bdd5413459dcd2a",
+          "ssa_artifact": "artifact_4a1cd247afec4ebe90c0a1af8b6d5115",
           "summary_digest": "sha256-v1:79f01e4de0cc97f8807a0447d2a2b0c8e72e4c93a5062efbc31db393b08abcfc",
           "summary_limitations": [
             "Reviewed summaries cover only the packaged owned fixtures, with fresh full-identity callee validation; arbitrary libraries remain unresolved.",
@@ -517,7 +579,7 @@
         },
         {
           "tool": "flow_get_job",
-          "response_chars": 1614,
+          "response_chars": 2178,
           "error": null
         },
         {
@@ -532,7 +594,7 @@
         },
         {
           "tool": "flow_cancel_job",
-          "response_chars": 1614,
+          "response_chars": 2178,
           "error": null
         },
         {
@@ -542,22 +604,22 @@
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 4905,
+          "response_chars": 5522,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 6230,
+          "response_chars": 6192,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 6207,
+          "response_chars": 5480,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 4214,
+          "response_chars": 4362,
           "error": null
         },
         {
@@ -567,32 +629,27 @@
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 4987,
+          "response_chars": 5604,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 6312,
+          "response_chars": 6274,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 6289,
+          "response_chars": 5562,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5695,
+          "response_chars": 5835,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5632,
-          "error": null
-        },
-        {
-          "tool": "flow_get_graph",
-          "response_chars": 5635,
+          "response_chars": 5352,
           "error": null
         },
         {
@@ -602,27 +659,32 @@
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 3923,
+          "response_chars": 5350,
+          "error": null
+        },
+        {
+          "tool": "flow_get_graph",
+          "response_chars": 4496,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 4354,
+          "response_chars": 4672,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 4617,
+          "response_chars": 4068,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 4168,
+          "response_chars": 4373,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 2316,
+          "response_chars": 2342,
           "error": null
         },
         {
@@ -657,7 +719,7 @@
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 2560,
+          "response_chars": 2586,
           "error": null
         },
         {
@@ -904,7 +966,7 @@
         },
         {
           "tool": "flow_get_job",
-          "response_chars": 1614,
+          "response_chars": 2178,
           "error": null
         }
       ],
@@ -940,7 +1002,7 @@
         "idb_list"
       ],
       "adoption_detach_preserved_job": true,
-      "flow_build_id": "flow-build-sha256-v1:46a1e5b029d61ec144df977a493dcb8ed0f1063032c0778b35930adb0fe88f86",
+      "flow_build_id": "flow-build-sha256-v1:649d6be5dc8c8f935bdc87cb4b842afb54e63176810283db1b68ec041d019af0",
       "readonly_direct_call_denied": true,
       "memory_source_selected_exact_access": true,
       "analyst_route_not_runtime_support": true,
@@ -950,29 +1012,29 @@
           "end": 8
         },
         "precision": "exact",
-        "object_id": "object-v1:f3247619a94ad6321d5d7eea47e0cd6055314e14607cd1b2896f19e63ed7618d",
+        "object_id": "object-v1:a731a4ab91a101b2ec0d2f8e23e40f60681536543f2455c9260860feec5d37f8",
         "rule_id": "byte-reaching-store-v1",
         "evidence_ids": [
-          "evidence-v1:47a044aaaa2b56ef1a1cc9cb029854c108d7996d41fce4f5dd2c73174761e7e4",
-          "evidence-v1:82aebc4587e600f17a737744f16151a1abbf56979bafeeecb9633238df07a3ca",
-          "evidence-v1:b4f63d8cf5eb54f86fdb67bc841155c0cae8424622ff29d88c77bc9a7d8656b3"
+          "evidence-v1:475962ba8c36bdc9cafbdf5b1e004db477a2bd8c70372e732bff1ee5d53e348b",
+          "evidence-v1:48199ea0fa2b6a48084967e9bf35f4249ab0eda297d3df9fd7dbd74dbc9364a9",
+          "evidence-v1:b7a7025952280d388a37399e6168287b422e07df915365fab8f79d8c2e8b8d87"
         ],
         "derivation_evidence": {
-          "evidence_id": "evidence-v1:47a044aaaa2b56ef1a1cc9cb029854c108d7996d41fce4f5dd2c73174761e7e4",
-          "snapshot_id": "snapshot-v1:28e345c0aa2d7d33835788d97f8b996c72a3b9ae301e83ab79d148fd82d47f61",
+          "evidence_id": "evidence-v1:b7a7025952280d388a37399e6168287b422e07df915365fab8f79d8c2e8b8d87",
+          "snapshot_id": "snapshot-v1:73f73ee4aef974ef820bb3f777095b6f9a425778f63c19c85bdd5413459dcd2a",
           "rule_id": "byte-reaching-store-v1",
           "sites": [],
           "source_eas": [],
           "synthetic": true,
           "origins": [
-            "node-v1:55ae69d31a73197911d237ceba058811356a7745d1848007649b8b8e60e20a81",
-            "node-v1:d17f00960ec8821562980aa37aa9725ed9ef485b994d347ab60b091e42d8dee3"
+            "node-v1:44dd74ec360cf0d21214fc60ff2ef2b6fd975b27b64b4a4bef23b035a967e809",
+            "node-v1:b8b5ebdd947e8feac59e81f5bb83b737d82a01ca7341d48416d6d70dd9cd5280"
           ],
           "assumptions": [
             "automatic object identity is structural and conservative; no ABI argument numbering",
             "experimental Mach-O flat user-space address model; no TLS or MMIO semantics"
           ],
-          "memory_object_id": "object-v1:f3247619a94ad6321d5d7eea47e0cd6055314e14607cd1b2896f19e63ed7618d"
+          "memory_object_id": "object-v1:a731a4ab91a101b2ec0d2f8e23e40f60681536543f2455c9260860feec5d37f8"
         }
       },
       "input_preserved": true,

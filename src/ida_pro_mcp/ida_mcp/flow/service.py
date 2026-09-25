@@ -17,7 +17,7 @@ from ida_pro_mcp.flow_core.serialization import (
     validate_ea,
 )
 from ida_pro_mcp.flow_core.wire_contracts import validate_model_wire_v2, wire_v2_scope
-from ida_pro_mcp.flow_core.analysis import BitSeed, Seed
+from ida_pro_mcp.flow_core.analysis import BitSeed, Seed, canonical_seed_order
 from ida_pro_mcp.flow_core.build_identity import BUILD_ID
 from ida_pro_mcp.flow_core.call_composition import CallCompositionResult
 from ida_pro_mcp.flow_core.constraints import ConstraintBindings, ConstraintQuery
@@ -358,11 +358,105 @@ def _extract(ctx, request):
         _fingerprint(_context_for_request(request)) == request["fingerprint"],
         "stale_database",
     )
-    return (snapshot, callees, closure), request
+    try:
+        reg_table, reg_status = entry_register_table()
+    except Exception:
+        reg_table, reg_status = {}, "resolution_failed"
+    reg_info = {"table": reg_table, "status": reg_status}
+    return (snapshot, callees, closure, reg_info), request
+
+
+_REGISTER_TABLE_REGNOS = range(512)
+_REGISTER_TABLE_SIZES = (1, 2, 4, 8, 16, 32, 64)
+
+
+def entry_register_table():
+    """Map exact single-register (mreg, size) pairs to display names.
+
+    Main-thread only (Hex-Rays SDK calls); call from the snapshot extract
+    phase. Display metadata, never identity: only pairs that roundtrip
+    through mreg2reg/reg2mreg exactly are listed, so multi-register spans
+    and partial aliases are never mislabeled. Keys are "mreg/size" strings
+    so the table stays JSON-safe across the extract/analyze handoff.
+    Returns (table, status).
+    """
+    try:
+        import ida_hexrays as hx  # pyright: ignore[reportMissingImports]
+    except ImportError:
+        return {}, "hexrays_unavailable"
+    if not all(
+        callable(getattr(hx, name, None))
+        for name in ("mreg2reg", "reg2mreg", "get_mreg_name")
+    ):
+        return {}, "mreg_api_unavailable"
+    table = {}
+    try:
+        for regno in _REGISTER_TABLE_REGNOS:
+            try:
+                base = int(hx.reg2mreg(regno))
+            except Exception:
+                continue
+            if base < 0:
+                continue
+            for size in _REGISTER_TABLE_SIZES:
+                try:
+                    mapped = int(hx.mreg2reg(base, size))
+                except Exception:
+                    continue
+                if mapped != regno:
+                    continue
+                try:
+                    name = hx.get_mreg_name(base, size)
+                except Exception:
+                    name = None
+                table[f"{base}/{size}"] = name or None
+    except Exception:
+        return {}, "resolution_failed"
+    return table, "resolved"
+
+
+def _resolve_entry_registers(entry_storage, reg_info):
+    """Attach display register names to entry atoms; pure, never identity.
+
+    Atoms without an exact single-register table entry (multi-register
+    spans, sub-byte slices, non-register spaces) carry an explicit reason
+    instead of a guessed name.
+    """
+    table = reg_info.get("table", {})
+    status = reg_info.get("status", "unavailable")
+    resolved = []
+    for item in entry_storage:
+        storage = item.storage
+        entry = {
+            "node_id": item.node_id,
+            "bit_offset": storage.bit_offset,
+            "width_bits": storage.width_bits,
+            "register": None,
+            "reason": None,
+        }
+        if status != "resolved":
+            entry["reason"] = status
+        elif (storage.address_space, storage.name) != (
+            "microregister",
+            "microregister",
+        ):
+            entry["reason"] = "not_microregister"
+        elif storage.bit_offset % 8 or storage.width_bits % 8:
+            entry["reason"] = "sub_byte_atom"
+        else:
+            key = f"{storage.bit_offset // 8}/{storage.width_bits // 8}"
+            if key not in table:
+                entry["reason"] = "no_exact_alias"
+            elif table[key] is None:
+                entry["reason"] = "name_lookup_failed"
+            else:
+                entry["register"] = table[key]
+        resolved.append(entry)
+    return resolved
 
 
 def _analyze(ctx, extracted):
-    (function, callees, closure), request = extracted
+    (function, callees, closure, reg_info), request = extracted
     snapshot = function.snapshot
     ctx.check()
     info = _context_for_request(request, synchronized=True)
@@ -494,6 +588,7 @@ def _analyze(ctx, extracted):
     )
     program = memory.program
     ctx.check()
+    entry_registers = _resolve_entry_registers(program.entry_storage, reg_info)
     calls = compose_program_calls(function, program, catalog, callees, ctx.check)
     sid = current.store.put_artifact("snapshot", snapshot)
     gid = current.store.put_artifact("graph", memory.graph)
@@ -612,6 +707,8 @@ def _analyze(ctx, extracted):
         "snapshot_id": snapshot.snapshot_id,
         "graph_digest": program.graph.graph_digest,
         "analysis": program.graph.axes.analysis,
+        "entry_registers": entry_registers,
+        "entry_register_status": reg_info.get("status", "unavailable"),
         "memory_diagnostics": list(memory.result.diagnostics),
         "profile": request["profile"]["profile_id"],
         "maturity": "MMAT_CALLS",
@@ -648,13 +745,22 @@ def _extract_implicit(ctx, request):
         SSAProgram,
         SSAProgram.from_data(current.store.artifact(request["ssa_artifact"])),
     )
-    seeds = tuple(
+    parsed = tuple(
         cast(PointeeSeed, PointeeSeed.from_data(item))
         if type(item) is dict and item.get("kind") == "pointee_range"
         else cast(BitSeed, BitSeed.from_data(item))
         if type(item) is dict and item.get("kind") == "bit_range"
         else cast(Seed, Seed.from_data(item))
         for item in request["seeds"]
+    )
+    # Normalize caller seed order at the boundary; the core requires canonical
+    # order and rejects unsorted input. Pointee seeds bind to content seeds
+    # later; only ordinary seeds reach the canonical-order check.
+    seeds = (
+        *[seed for seed in parsed if isinstance(seed, PointeeSeed)],
+        *canonical_seed_order(
+            seed for seed in parsed if not isinstance(seed, PointeeSeed)
+        ),
     )
     policy = ImplicitPolicy(request["max_evaluations"])
     ctx.check()
@@ -675,17 +781,7 @@ def _analyze_implicit(ctx, extracted):
         )
         program = bound.program
         memory_model = replay_memory_graph(program)
-        seeds = tuple(
-            sorted(
-                (*ordinary_seeds, *content_seeds),
-                key=lambda seed: (
-                    seed.node_id,
-                    1 if isinstance(seed, BitSeed) else 0,
-                    seed.bit_offset if isinstance(seed, BitSeed) else 0,
-                    seed.width_bits if isinstance(seed, BitSeed) else 0,
-                ),
-            )
-        )
+        seeds = canonical_seed_order((*ordinary_seeds, *content_seeds))
     result = analyze_implicit(
         program, seeds, policy, memory_model=memory_model, checkpoint=ctx.check
     )
