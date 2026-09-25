@@ -58,8 +58,11 @@ def test_public_program_path_receipt_is_current_exact_and_static_only():
         assert anchor["fresh_builds"] == 2
         assert len(anchor["binary_sha256"]) == 2
         assert set(anchor["binary_sha256"]) == {anchor["copied_binary_sha256"]}
+        # P5 reviewed surface: the opt-in path refinement tool joins the
+        # read-only profile alongside the v1 path proof tool.
         assert {t for t in anchor["registered_tools"] if "path" in t} == {
-            "flow_check_path"
+            "flow_check_path",
+            "flow_refine_path_proof",
         }
         assert all(
             0 < call["response_chars"] < 40000 and call["truncated"] is False

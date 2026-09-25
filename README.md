@@ -269,8 +269,9 @@ The bundled Codex plugin forwards the runtime's `IDA_MCP_*` configuration variab
 ## Experimental SSA and Memory-Taint Analysis (This Fork)
 
 This fork adds static `flow_*` MCP tools for microcode extraction, value and
-memory SSA, provenance/taint tracing, bounded implicit and path analysis, and
-reviewed call compositions. The marketplace installation commands above point
+memory SSA, provenance/taint tracing, bounded implicit and path analysis,
+reviewed call compositions, and opt-in symbolic path/memory refinement.
+The marketplace installation commands above point
 to upstream `mrexodia/ida-pro-mcp`; use the
 [fork installation guide](docs/flow-installation.md) for a pinned GitHub
 revision or run this checkout to use these additions.
@@ -286,9 +287,14 @@ From this repository root, after activating idalib as described in
 flow profile:
 
 ```sh
-uv sync --dev
+uv sync --dev --extra solver
 uv run idalib-mcp --stdio --profile profiles/flow-readonly.txt
 ```
+
+The `solver` extra installs z3 for the opt-in symbolic refinement tiers
+(`flow_refine_path_proof`, `flow_refine_memory_proof`). Without it,
+requested tiers return unknown with `solver_unavailable` and the v1
+baseline stays intact.
 
 Configure your MCP client to launch that command from this checkout. For HTTP
 instead of stdio, run:

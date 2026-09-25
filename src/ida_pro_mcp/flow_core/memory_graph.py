@@ -9,6 +9,7 @@ from .contracts import (
     Graph,
     MemoryObject,
     MemoryReference,
+    Node,
     ResultAxes,
     Snapshot,
     StructuredSnapshot,
@@ -370,6 +371,56 @@ def _spilled_entry_pointer_origin(program, nodes, identifier, bitness):
     return root.node_id, kind, base
 
 
+def _address_spill_carrier(
+    nodes: Mapping[str, Node], identifier: str, bitness: int
+) -> Node | None:
+    """Find one full-width reload in a bounded base-plus-displacement expression.
+
+    Unsupported operations are inspected only to reject hidden/multiple reloads,
+    never to establish a pointer identity. Count occurrences, not unique nodes:
+    a shared reload in p+p or p-p is not one base. This does not prove an offset
+    range, successful access, or disjointness; the memory solver handles those.
+    """
+    pending = [(identifier, True, frozenset())]
+    carrier = None
+    visited = 0
+    while pending:
+        current, eligible, active = pending.pop()
+        visited += 1
+        if visited > 64 or current in active:
+            return None
+        node = nodes[current]
+        full_width = node.width_bits == bitness
+        if node.kind == "Load":
+            if full_width:
+                if not eligible or carrier is not None:
+                    return None
+                carrier = node
+            # The address of a scalar/reloaded pointer is a different memory
+            # access, not another base of this address expression.
+            continue
+        children = (
+            tuple(item.node_id for item in node.phi_inputs)
+            if node.kind == "Phi"
+            else node.inputs
+        )
+        active = active | {current}
+        for index, child in enumerate(children):
+            allowed = full_width and (
+                (node.kind == "Copy" and len(children) == 1)
+                or (
+                    node.kind == "Binary"
+                    and len(children) == 2
+                    and (
+                        node.operation == "add"
+                        or (node.operation == "sub" and index == 0)
+                    )
+                )
+            )
+            pending.append((child, eligible and allowed, active))
+    return carrier
+
+
 def _recover_spilled_entry_pointers(plan, result, objects, pointers, checkpoint=None):
     """Recover an entry pointer only through one exact full-byte stack spill.
 
@@ -397,8 +448,8 @@ def _recover_spilled_entry_pointers(plan, result, objects, pointers, checkpoint=
         node = nodes[dereference.node_id]
         if node.memory_operands is None:
             continue
-        carrier = _whole_width_origin(nodes, node.memory_operands.address)
-        if carrier.kind != "Load" or carrier.width_bits != bitness:
+        carrier = _address_spill_carrier(nodes, node.memory_operands.address, bitness)
+        if carrier is None:
             continue
         spill_load = accesses.get(carrier.node_id)
         if (
@@ -614,6 +665,7 @@ def build_memory_graph_from_program(
     nodes = []
     for node in base_program.graph.nodes:
         if node.kind == "InputMemory" and node.operation == "pointee_source":
+            assert node.memory is not None  # Enforced by Node's memory-kind contract.
             node = replace(
                 node, memory=replace(node.memory, version_id=steps[node.node_id].after)
             )

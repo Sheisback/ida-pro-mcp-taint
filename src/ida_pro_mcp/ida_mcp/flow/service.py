@@ -71,8 +71,17 @@ from ida_pro_mcp.flow_core.proof import (
     validate_proof_result,
 )
 from ida_pro_mcp.flow_core.query import Queries, artifact_page, evidence_chunks
+from ida_pro_mcp.flow_core.refine import (
+    RefinementSpec,
+    refined_memory_page,
+    refined_path_page,
+    resolve_inline_requests,
+    run_memory_refinement,
+    run_path_refinement,
+)
 from ida_pro_mcp.flow_core.runtime import Handler
 from ida_pro_mcp.flow_core.runtime_contracts import RuntimeScope
+from ida_pro_mcp.flow_core.symbolic import Z3Backend
 from ida_pro_mcp.flow_core.ssa import SSAProgram, argument_bindings
 
 from ..sync import idasync
@@ -242,12 +251,12 @@ def _context(
     *,
     retain_selection=True,
 ):
-    import ida_funcs
-    import ida_hexrays
-    import ida_ida
-    import ida_kernwin
-    import ida_loader
-    import ida_nalt
+    import ida_funcs  # pyright: ignore[reportMissingImports]
+    import ida_hexrays  # pyright: ignore[reportMissingImports]
+    import ida_ida  # pyright: ignore[reportMissingImports]
+    import ida_kernwin  # pyright: ignore[reportMissingImports]
+    import ida_loader  # pyright: ignore[reportMissingImports]
+    import ida_nalt  # pyright: ignore[reportMissingImports]
 
     from ..utils import parse_address
 
@@ -887,11 +896,53 @@ def _analyze_path_proof(ctx, extracted):
     }
 
 
+@idasync
+def _extract_path_refinement(ctx, request):
+    current = _request_runtime(request, _context_for_request(request))
+    ctx.check()
+    return current, request
+
+
+def _analyze_path_refinement(ctx, extracted):
+    current, request = extracted
+    ctx.check()
+    spec = RefinementSpec.from_data(request["refinement"])
+    return run_path_refinement(
+        current.store,
+        request,
+        backend=Z3Backend(timeout_ms=spec.solver_timeout_ms),
+        cancelled=ctx.cancel.is_set,
+    )
+
+
+@idasync
+def _extract_memory_refinement(ctx, request):
+    current = _request_runtime(request, _context_for_request(request))
+    ctx.check()
+    return current, request
+
+
+def _analyze_memory_refinement(ctx, extracted):
+    current, request = extracted
+    ctx.check()
+    spec = RefinementSpec.from_data(request["refinement"])
+    return run_memory_refinement(
+        current.store,
+        request,
+        backend=Z3Backend(timeout_ms=spec.solver_timeout_ms),
+        cancelled=ctx.cancel.is_set,
+    )
+
+
 HANDLERS = {
     "snapshot_ssa_v1": Handler(_extract, _analyze),
     "implicit_analysis_v1": Handler(_extract_implicit, _analyze_implicit),
     "path_proof_v1": Handler(_extract_path_proof, _analyze_path_proof),
     "store_proof_v1": Handler(_extract_store_proof, _analyze_store_proof),
+    "refine_path_proof_v1": Handler(_extract_path_refinement, _analyze_path_refinement),
+    "refine_memory_proof_v1": Handler(
+        _extract_memory_refinement, _analyze_memory_refinement
+    ),
 }
 
 
@@ -1085,6 +1136,121 @@ def create_store_proof(
     }
 
 
+def _refinement_spec(refinement):
+    require(type(refinement) is dict, "invalid_refinement_spec")
+    ensure_wire_v1_safe(refinement)
+    return RefinementSpec.from_data(refinement)
+
+
+def _refinement_inline(store, entries):
+    require(type(entries) is list, "invalid_refine_inline")
+    ensure_wire_v1_safe(entries)
+    # Full validation at submit time, including callee artifact existence;
+    # the job re-resolves the same entries for freshness.
+    resolve_inline_requests(store, entries)
+    return entries
+
+
+def create_path_refinement(
+    graph_artifact, path, refinement, request_key, proof_artifact=None, inline=()
+):
+    require(type(path) is dict, "invalid_path_query")
+    selector = PathSelector.from_data(path)
+    ensure_wire_v1_safe(path)
+    spec = _refinement_spec(refinement)
+    info = context()
+    engine = get_runtime(info)
+    entries = _refinement_inline(engine.store, list(inline))
+    graph = cast(Graph, Queries(engine.store).graph(graph_artifact))
+    require(
+        not graph.snapshot.snapshot_id.startswith("snapshot-v2:"),
+        "refine_wire_v2_unsupported",
+    )
+    require(selector.bindings == path_bindings(graph), "path_query_artifact_mismatch")
+    if proof_artifact is not None:
+        raw = engine.store.artifact(proof_artifact)
+        require(
+            type(raw) is dict
+            and raw.get("schema_version") == "flow-path-proof-artifact/1",
+            "invalid_refine_original",
+        )
+    request = {
+        "graph_artifact": graph_artifact,
+        "path": path,
+        "refinement": spec.to_data(),
+        "inline": entries,
+        "proof_artifact": proof_artifact,
+        "fingerprint": engine.store.scope.fingerprint,
+        "scope_digest": engine.store.scope.scope_digest,
+        "routing": info["routing"],
+    }
+    return {
+        "schema_version": "flow-job/1",
+        "job_id": engine.submit(
+            "refine_path_proof_v1", request, request_key, timeout=120
+        ),
+        "experimental": True,
+    }
+
+
+def create_memory_refinement(
+    ssa_artifact,
+    memory_plan_artifact,
+    memory_result_artifact,
+    path,
+    load_id,
+    store_id,
+    refinement,
+    request_key,
+    inline=(),
+):
+    require(type(path) is dict, "invalid_path_query")
+    selector = PathSelector.from_data(path)
+    ensure_wire_v1_safe(path)
+    spec = _refinement_spec(refinement)
+    info = context()
+    engine = get_runtime(info)
+    entries = _refinement_inline(engine.store, list(inline))
+    program = cast(
+        SSAProgram, SSAProgram.from_data(engine.store.artifact(ssa_artifact))
+    )
+    require(
+        not program.graph.snapshot.snapshot_id.startswith("snapshot-v2:"),
+        "refine_wire_v2_unsupported",
+    )
+    require(selector.bindings == path_bindings(program.graph), "path_query_artifact_mismatch")
+    nodes = {node.node_id: node for node in program.graph.nodes}
+    require(load_id in nodes and nodes[load_id].kind == "Load", "invalid_refine_load")
+    require(
+        store_id in nodes and nodes[store_id].kind == "Store", "invalid_refine_store"
+    )
+    plan = MemoryPlan.from_data(engine.store.artifact(memory_plan_artifact))
+    memory_result = MemoryResult.from_data(
+        engine.store.artifact(memory_result_artifact)
+    )
+    require(plan.plan_digest == memory_result.plan_digest, "refine_plan_mismatch")
+    request = {
+        "ssa_artifact": ssa_artifact,
+        "memory_plan_artifact": memory_plan_artifact,
+        "memory_result_artifact": memory_result_artifact,
+        "path": path,
+        "load_id": load_id,
+        "store_id": store_id,
+        "refinement": spec.to_data(),
+        "inline": entries,
+        "fingerprint": engine.store.scope.fingerprint,
+        "scope_digest": engine.store.scope.scope_digest,
+        "routing": info["routing"],
+    }
+    return {
+        "schema_version": "flow-job/1",
+        "job_id": engine.submit(
+            "refine_memory_proof_v1", request, request_key, timeout=120
+        ),
+        "experimental": True,
+    }
+
+
 def job(identifier, cancel=False):
     engine = get_runtime()
     if cancel:
@@ -1157,6 +1323,7 @@ def graph_digest_bytes(artifact_id: str, cursor: str | None = None) -> dict:
         require(type(cursor) is str, "invalid_cursor")
         match = re.fullmatch(r"([1-9][0-9]*)/sha256-v1:[0-9a-f]{64}", cursor)
         require(match is not None, "invalid_cursor")
+        assert match is not None
         # Bound conversion as well as the decoded offset.
         require(len(match[1]) <= 8, "invalid_cursor")
         offset = int(match[1])
@@ -1766,6 +1933,14 @@ def _proof_page(raw):
     }
 
 
+def _refined_path_page(raw):
+    return refined_path_page(raw)
+
+
+def _refined_memory_page(raw):
+    return refined_memory_page(raw)
+
+
 def _interprocedural_page(raw):
     raw_calls = raw.get("calls") if type(raw) is dict else None
     require(
@@ -1808,7 +1983,7 @@ def _interprocedural_page(raw):
     }
 
 
-def _pointee_page(raw):
+def _pointee_page(raw: dict[str, Any]):
     require(
         type(raw) is dict
         and set(raw)
@@ -1895,7 +2070,7 @@ def _pointee_page(raw):
     }
 
 
-def _store_page(raw):
+def _store_page(raw: dict[str, Any]):
     require(
         type(raw) is dict
         and set(raw)
@@ -1990,6 +2165,10 @@ def analysis_page(artifact_id, section, cursor=None, limit=50):
         items, metadata = _derived_call_page(raw)
     elif section == "path_proof":
         items, metadata = _proof_page(raw)
+    elif section == "refined_path_proof":
+        items, metadata = _refined_path_page(raw)
+    elif section == "refined_memory_proof":
+        items, metadata = _refined_memory_page(raw)
     elif section == "interprocedural":
         items, metadata = _interprocedural_page(raw)
     elif section == "pointee":

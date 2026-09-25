@@ -9,7 +9,7 @@ import pytest
 from ida_pro_mcp.flow_core import ContractError
 import ida_pro_mcp.flow_core.memory_graph as memory_graph
 from ida_pro_mcp.flow_core.contracts import Block, Instruction, Operand, Snapshot
-from ida_pro_mcp.flow_core.memory import MemoryPolicy, build_memory_plan
+from ida_pro_mcp.flow_core.memory import MemoryPolicy, alias_relation, build_memory_plan
 from ida_pro_mcp.flow_core.memory_graph import (
     MemoryGraphAnalysis,
     build_memory_graph,
@@ -214,7 +214,271 @@ def test_exact_full_width_entry_pointer_spill_recovers_pointee_abstract_object()
     assert len(access.candidates) == 1
     assert objects[access.candidates[0].object_id].kind == "argument"
     assert not access.unresolved
-    assert replay_memory_graph(bundle.program).result.dependencies == bundle.result.dependencies
+    assert (
+        replay_memory_graph(bundle.program).result.dependencies
+        == bundle.result.dependencies
+    )
+
+
+def _arithmetic_entry_pointer_spill_snapshot(
+    *,
+    index="constant",
+    operation="m_add",
+    displacement_value=4,
+    pointer_on_right=False,
+    damage=None,
+    wrapper=None,
+    write=False,
+):
+    spill = StorageLocation("stack", "stack", 0, 64)
+    instructions = []
+
+    def emit(opcode, operands):
+        instructions.append(Instruction(len(instructions), opcode, operands))
+
+    emit(
+        "m_mov", (reg(0, 64), Operand("storage", 64, storage=spill, role="destination"))
+    )
+    if damage == "partial":
+        emit(
+            "m_mov",
+            (
+                const(0, 32),
+                Operand(
+                    "storage",
+                    32,
+                    storage=StorageLocation("stack", "stack", 32, 32),
+                    role="destination",
+                ),
+            ),
+        )
+    elif damage == "may_alias":
+        instructions.append(
+            store(
+                len(instructions),
+                data=const(7, 32),
+                address=reg(768, 64, "destination"),
+            )
+        )
+    emit("m_mov", (Operand("storage", 64, storage=spill), reg(64, 64, "destination")))
+    pointer = reg(64, 64)
+    if wrapper == "copy":
+        emit("m_mov", (pointer, reg(640, 64, "destination")))
+        pointer = reg(640, 64)
+    elif wrapper == "narrow_extend":
+        emit("m_low", (pointer, reg(640, 32, "destination")))
+        emit("m_xdu", (reg(640, 32), reg(704, 64, "destination")))
+        pointer = reg(704, 64)
+    displacement = const(displacement_value, 64)
+    if index == "unbounded":
+        emit(
+            "m_mov",
+            (
+                Operand(
+                    "storage", 32, storage=StorageLocation("stack", "stack", 128, 32)
+                ),
+                reg(320, 32, "destination"),
+            ),
+        )
+        emit("m_xds", (reg(320, 32), reg(384, 64, "destination")))
+        displacement = reg(384, 64)
+    elif index == "bounded":
+        emit(
+            "m_and", (reg(256, 32), const(1, 32, "right"), reg(320, 32, "destination"))
+        )
+        emit("m_xdu", (reg(320, 32), reg(384, 64, "destination")))
+        emit(
+            "m_mul", (reg(384, 64), const(4, 64, "right"), reg(448, 64, "destination"))
+        )
+        displacement = reg(448, 64)
+    elif index == "same_pointer":
+        displacement = pointer
+    elif index in {"second_spill", "second_spill_scaled"}:
+        second = StorageLocation("stack", "stack", 128, 64)
+        emit(
+            "m_mov",
+            (reg(256, 64), Operand("storage", 64, storage=second, role="destination")),
+        )
+        emit(
+            "m_mov",
+            (Operand("storage", 64, storage=second), reg(384, 64, "destination")),
+        )
+        displacement = reg(384, 64)
+        if index == "second_spill_scaled":
+            emit(
+                "m_mul",
+                (displacement, const(2, 64, "right"), reg(448, 64, "destination")),
+            )
+            displacement = reg(448, 64)
+    left, right = (
+        (displacement, pointer) if pointer_on_right else (pointer, displacement)
+    )
+    emit(
+        operation,
+        (
+            replace(left, role="left"),
+            replace(right, role="right"),
+            reg(512, 64, "destination"),
+        ),
+    )
+    if write:
+        instructions.append(
+            store(len(instructions), data=const(9), address=reg(512, 64, "destination"))
+        )
+    instructions.append(load(len(instructions), address=reg(512, 64, "right")))
+    instructions.append(ret(len(instructions)))
+    return plan(tuple(instructions)).program.graph.snapshot
+
+
+def _arithmetic_spill_result(**kwargs):
+    bundle = build_memory_graph(_arithmetic_entry_pointer_spill_snapshot(**kwargs))
+    target = operations(bundle, "Load")[-1]
+    access = next(a for a in bundle.result.accesses if a.node_id == target.node_id)
+    root = next(
+        entry.node_id
+        for entry in bundle.program.entry_storage
+        if entry.storage == StorageLocation("microregister", "bank", 0, 64)
+    )
+    facts = {fact.node_id: fact for fact in bundle.result.facts}
+    return bundle, target, access, facts[root]
+
+
+@pytest.mark.parametrize("pointer_on_right", (False, True))
+def test_spilled_pointer_with_unbounded_index_recovers_base_not_address(
+    pointer_on_right,
+):
+    bundle, target, access, root = _arithmetic_spill_result(
+        index="unbounded",
+        pointer_on_right=pointer_on_right,
+    )
+    objects = {obj.object_id: obj for obj in bundle.result.objects}
+    assert root.pointer is not None
+    assert {objects[c.object_id].kind for c in root.pointer.candidates} == {"argument"}
+    reload = operations(bundle, "Load")[0]
+    facts = {fact.node_id: fact for fact in bundle.result.facts}
+    assert facts[reload.node_id].pointer == root.pointer
+    address = facts[target.memory_operands.address].pointer
+    assert address is not None and address.any_compatible_location
+    assert access.unresolved and bundle.result.status == "partial"
+    replayed = replay_memory_graph(bundle.program)
+    # Replay binds the published graph (including derived edges), so its plan
+    # identity differs; the analysis itself must remain identical.
+    assert replayed.result == replace(
+        bundle.result, plan_digest=replayed.plan.plan_digest
+    )
+
+
+@pytest.mark.parametrize("pointer_on_right", (False, True))
+def test_spilled_pointer_bounded_index_keeps_two_candidates_and_weak_store(
+    pointer_on_right,
+):
+    bundle, _, access, _ = _arithmetic_spill_result(
+        index="bounded",
+        pointer_on_right=pointer_on_right,
+        write=True,
+    )
+    objects = {obj.object_id: obj for obj in bundle.result.objects}
+    assert access.candidates and all(c.interval is not None for c in access.candidates)
+    assert {
+        (objects[c.object_id].kind, c.interval.start, c.interval.end)
+        for c in access.candidates
+    } == {("argument", 0, 1), ("argument", 4, 5)}
+    assert not access.unresolved and access.precision == "may_alias"
+    writer = operations(bundle, "Store")[-1]
+    write_access = next(
+        a for a in bundle.result.accesses if a.node_id == writer.node_id
+    )
+    assert not write_access.strong_update
+    assert write_access.precision == "may_alias"
+    replayed = replay_memory_graph(bundle.program)
+    assert replayed.result == replace(
+        bundle.result, plan_digest=replayed.plan.plan_digest
+    )
+
+
+@pytest.mark.parametrize(
+    "operation,displacement_value", (("m_add", 4), ("m_sub", (1 << 64) - 4))
+)
+def test_spilled_pointer_copy_and_constant_displacement_recover_object(
+    operation, displacement_value
+):
+    bundle, _, access, _ = _arithmetic_spill_result(
+        operation=operation, displacement_value=displacement_value, wrapper="copy"
+    )
+    objects = {obj.object_id: obj for obj in bundle.result.objects}
+    assert access.candidates and all(c.interval is not None for c in access.candidates)
+    assert {
+        (objects[c.object_id].kind, c.interval.start, c.interval.end)
+        for c in access.candidates
+    } == {("argument", 4, 5)}
+    assert not access.unresolved
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    (
+        {"index": "second_spill"},
+        {"index": "second_spill_scaled"},
+        {"index": "same_pointer"},
+        {"index": "same_pointer", "operation": "m_sub"},
+        {"operation": "m_mul"},
+        {"operation": "m_shl"},
+        {"operation": "m_sub", "pointer_on_right": True},
+        {"wrapper": "narrow_extend"},
+        {"damage": "partial"},
+        {"damage": "may_alias"},
+    ),
+)
+def test_ambiguous_or_damaged_arithmetic_spill_does_not_recover_pointer(kwargs):
+    _, _, access, root = _arithmetic_spill_result(**kwargs)
+    assert root.pointer is None
+    assert access.unresolved
+
+
+def test_arithmetic_recovered_untyped_pointer_can_alias_current_stack():
+    bundle, _, access, root = _arithmetic_spill_result()
+    objects = {obj.object_id: obj for obj in bundle.result.objects}
+    argument = objects[root.pointer.candidates[0].object_id]
+    stack = next(obj for obj in bundle.result.objects if obj.kind == "stack")
+    interval = access.candidates[0].interval
+    assert argument.kind == "argument" and not argument.disjoint
+    assert alias_relation(argument, interval, stack, interval) == "may_alias"
+    assert alias_relation(stack, interval, argument, interval) == "may_alias"
+
+
+def _copy_for_carrier_search(template, ordinal, source):
+    return replace(
+        template,
+        key=replace(template.key, site=None, synthetic=f"carrier-copy-{ordinal}"),
+        kind="Copy",
+        inputs=(source,),
+        memory=None,
+        memory_operands=None,
+        operation=None,
+    )
+
+
+@pytest.mark.parametrize("visits", (64, 65))
+def test_address_spill_carrier_respects_exact_visit_budget(visits):
+    bundle = build_memory_graph(_full_width_entry_pointer_spill_snapshot())
+    carrier = operations(bundle, "Load")[0]
+    nodes = {carrier.node_id: carrier}
+    head = carrier
+    for ordinal in range(visits - 1):
+        head = _copy_for_carrier_search(carrier, ordinal, head.node_id)
+        nodes[head.node_id] = head
+    actual = memory_graph._address_spill_carrier(nodes, head.node_id, 64)
+    assert actual == (carrier if visits == 64 else None)
+
+
+def test_address_spill_carrier_rejects_copy_cycle():
+    bundle = build_memory_graph(_full_width_entry_pointer_spill_snapshot())
+    carrier = operations(bundle, "Load")[0]
+    first = _copy_for_carrier_search(carrier, 0, carrier.node_id)
+    second = _copy_for_carrier_search(carrier, 1, first.node_id)
+    first = replace(first, inputs=(second.node_id,))
+    nodes = {node.node_id: node for node in (carrier, first, second)}
+    assert memory_graph._address_spill_carrier(nodes, first.node_id, 64) is None
 
 
 def _split_entry_pointer_spill(*, typed, separate_arguments=False):
@@ -479,7 +743,8 @@ def test_recovered_object_cannot_confirm_its_own_spill_proof(monkeypatch):
             if node.memory_operands is not None
             and memory_graph._whole_width_origin(
                 nodes, node.memory_operands.address
-            ).kind == "Load"
+            ).kind
+            == "Load"
         )
         spill_id = memory_graph._whole_width_origin(
             nodes, dereference.memory_operands.address
@@ -533,7 +798,9 @@ def test_two_anchor_before_store_after_and_alias_dependencies(arch):
     before_after = extracted(arch, "memory_before_after")
     nodes = {node.node_id: node for node in before_after.graph.nodes}
     typed_entry = {
-        obj.object_id for obj in before_after.result.objects if obj.kind == "typed_entry"
+        obj.object_id
+        for obj in before_after.result.objects
+        if obj.kind == "typed_entry"
     }
     assert len(typed_entry) == 1  # Refreshed IDA 9.3 IDB argloc evidence.
     loads = [

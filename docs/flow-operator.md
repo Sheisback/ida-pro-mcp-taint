@@ -19,7 +19,7 @@ baseline.
 1. Install Python 3.11 or newer, `uv`, and a supported IDA Pro installation.
 2. Activate idalib with IDA's `py-activate-idalib.py` script for the host OS.
 3. Install from the wheel used for release, or create a development environment
-   with `uv sync --dev`.
+   with `uv sync --dev --extra solver` (the extra enables symbolic refinement).
 4. Confirm the source, wheel, headless process, and (when actually available)
    GUI process report the same build ID. A GUI acceptance gate is a blocker,
    not evidence of GUI success. Do not create or overwrite EULA acceptance
@@ -280,6 +280,16 @@ overlap the current frame under the flat binary model. Inspect
 candidate object IDs, and the directly affected Load; trace forward from
 that Load for downstream impact.
 
+Recovery also recognizes a single full-width spill reload beneath same-width
+copies, addition, or the left side of subtraction in a bounded address expression.
+Multiple reload occurrences (including `p+p`/`p-p`), width-changing wrappers,
+unsupported arithmetic, cycles, and traversal-budget exhaustion do not establish
+a base this way. Existing finite-displacement rules can then resolve bounded
+indices such as `i & 1`. An unbounded index, including an unconstrained
+memory-carried string-loop counter, still widens the final access and remains
+partial even when the base pointer's provenance is recovered. A recovered base
+is not evidence that every offset stays inside that object.
+
 If that spill's entry pointer was split into smaller SSA atoms, recovery
 requires contiguous low-to-high bits from **one** exact IDB `m_arg` register
 location, not merely adjacent bits or two different formals. Only then does
@@ -508,3 +518,40 @@ byte. This exact identity does not assume high input bits are zero or truncate
 the domain of a wide input. Wider masks and signed projections remain Unknown.
 Informational extraction diagnostics do not imply missing semantics; unsupported
 function diagnostics still prevent a definite result.
+
+## Opt-in symbolic refinement (experimental)
+
+`flow_refine_path_proof` and `flow_refine_memory_proof` replay a v1 baseline
+and then run only the explicitly requested symbolic tiers. Submit with the
+same artifacts a v1 proof uses, plus a complete `refinement` object such as
+`{"schema_version": 1, "symbolic_path": true, "symbolic_memory": false,
+"solver_timeout_ms": 5000}`. All fields are required on the wire; tiers stay
+off unless explicitly true. An all-off refinement
+carries the v1 baseline verbatim (same digests, status, unresolved) with
+`solver_not_invoked`; the solver never runs by default. Poll
+`flow_get_job`, cancel via `flow_cancel_job`, and page the refined artifact
+with the submitting tool's `artifact_id` mode, exactly like v1 proofs.
+
+Refined artifacts (`flow-refined-path-artifact/1`,
+`flow-refined-memory-artifact/1`) record the original/baseline digests, the
+refined verdict with engine versions and solver stamps, the baseline/refined
+agreement (`consistent`, `refined`, or `contradiction`), and evidence links.
+Witness integers are hex-encoded so any width stays wire-safe. An optional
+`proof_artifact` cross-checks a quoted v1 original (mismatch refuses); optional
+`inline` entries splice explicit callee bodies by artifact reference with exact
+parameter/return/argument node IDs. No ABI inference happens: the caller
+asserts the mapping and the fragment records it. Refinement needs the
+z3-solver extra; without it, requested tiers return unknown with
+`solver_unavailable` while the baseline stays intact. Wire v2 graphs are
+refused explicitly until the symbolic layer gains tagged-int plumbing.
+
+Profile recommendation: keep both refinement tools in the read-only profile.
+They are static, additive (no existing tool path changes), and solver-free
+unless a request explicitly opts in.
+
+Environment note: the solver runs in the Python executing the tools.
+Headless idalib workers inherit the launch environment, so installing the
+`solver` extra (or `--with "z3-solver>=5.1,<6"` for `uvx`) enables the
+tiers there. A GUI-plugin deployment instead uses IDA's configured Python
+(`idapyswitch` on macOS); if `z3-solver` is not installed there, requested
+tiers degrade to `solver_unavailable` without touching the baseline.

@@ -2,19 +2,20 @@
   "schema_version": "flow-public-smoke/1",
   "target_executed": false,
   "implementation_sha256": {
-    "src/ida_pro_mcp/ida_mcp/api_flow.py": "976b3a344fe2df4ea7dd7122c0574afbbfce103f3a1718b7398214864e8ddeaf",
+    "src/ida_pro_mcp/ida_mcp/api_flow.py": "a73e2512a9db6d9570c36246b5c6bb8643104034ee51ee145f6fc3430d82044f",
     "src/ida_pro_mcp/ida_mcp/zeromcp/mcp.py": "05a4f9d1422d5d9c91969838cb56815acb0323097038aa981628ab3e540882db",
     "src/ida_pro_mcp/ida_mcp.py": "5a1c25460646a2577af58f3ee3e4c3069b2182ff0217883416f1d0d138c54e67",
     "src/ida_pro_mcp/idalib_server.py": "ef8376541d608fbee81c027cec9ae9676024d9777e29fc072ea7b3dc4b99e35d",
     "src/ida_pro_mcp/idalib_supervisor.py": "43ad1428f2e8ceec19b63fe0f0f9727d05c1192f2c3baf9093a414ccf7260539",
     "src/ida_pro_mcp/installer.py": "18ef1b3aad1cea8dbd038c909c19220b02f2299372253fdd4e5288d2efcdab7d",
-    "profiles/flow-readonly.txt": "cfa61ebd1e99f67abd0844502bdf755a3121b7ff7e05dff924d589f72fa9a891",
+    "profiles/flow-readonly.txt": "e742a5dfb343be1cd3fc2aa52ea111c08738ea120a82827ed7766b59a66e86f3",
     "tests/flow_core/native_api_smoke.py": "c752c6df9ba71faa66521fb943b699db5f7bdb152d86313c1918b19b6b0228ae",
     "src/ida_pro_mcp/flow_core/__init__.py": "1e03446910ecbbe1cd389ca6eeebec64f35d9d520a3006bc748f53bccff87e73",
     "src/ida_pro_mcp/flow_core/_reviewed_fixture_data.py": "a853c6265f104eb9b8a88a16593ef2ff37340bae7089a3102ff7f4a46918df57",
     "src/ida_pro_mcp/flow_core/analysis.py": "d73da12f36278ea3a775790e4f884acdeff6a620d3bedf479e9274c3c68f5ead",
     "src/ida_pro_mcp/flow_core/build_identity.py": "4c803c4eb9f84b34ff787e7370e618fbda3e89dd423205eef77805df0b6605e2",
     "src/ida_pro_mcp/flow_core/call_composition.py": "54d3b5cf6d35022bb4499fec5a65ab7bf73cb9facb931dc0fc5f75455ab959a5",
+    "src/ida_pro_mcp/flow_core/call_symbolic.py": "a5e186ee7eee37d2d7b11b6455e029b84d0d41ce05e15e0e7c3e5a45b1547554",
     "src/ida_pro_mcp/flow_core/cfg.py": "167a4491b93278888cda50641c8c1c4d5cc444ab5b57b8f078e76931c7f7749f",
     "src/ida_pro_mcp/flow_core/constraints.py": "84a5daf29589a312a3b553f17341aed2431297278da9cbd849517e25775e0346",
     "src/ida_pro_mcp/flow_core/contracts.py": "ff30b9e6b626198d170a5f29f1cb4227d3ff0fbba3ce80550157a1bc63920540",
@@ -28,8 +29,10 @@
     "src/ida_pro_mcp/flow_core/interproc.py": "f14587342ed8ac2e21ec2c03013b1899f45f7d21cc90c19bf0c6929af11e3a14",
     "src/ida_pro_mcp/flow_core/memory.py": "a2534573a9c9abeff59fb30c8ca00a0139f8c2c434b07fe85d1d6b4aae8b5593",
     "src/ida_pro_mcp/flow_core/memory_analysis.py": "9ad1f7dcb4cb474546ff75b8338f31beb177e56e67757f189aff48bde662eb40",
-    "src/ida_pro_mcp/flow_core/memory_graph.py": "d0a3f290e01d83e7f436dcafc168e4ec530489d44db799ed929e6ab343b6803f",
+    "src/ida_pro_mcp/flow_core/memory_graph.py": "c4cbc3ea43aabdd22cd1ee04219f1c934f117e0b1fbee8435898ac3ddd5f9b04",
+    "src/ida_pro_mcp/flow_core/memory_symbolic.py": "eb68568e4cb570459adb2b00d95045f66d4f5f0a461f44a127358a54e851f58f",
     "src/ida_pro_mcp/flow_core/path_conditions.py": "1a47eff9aa375e9cee7829573d051d4338a170e4a634f1011d614beb9a1ece9a",
+    "src/ida_pro_mcp/flow_core/path_symbolic.py": "ee8bf37a6a3f000a8533dd371f22665bd7fdfebe3232b8761187530325311e16",
     "src/ida_pro_mcp/flow_core/persistence.py": "e00928a040350e779965e232d00be9c6294e9826fec33d72623529e996693eb0",
     "src/ida_pro_mcp/flow_core/pointee.py": "27e8d4e641c5bdfe1bb19842196b26c52e23aaabada644b56a7ffca8cae716d8",
     "src/ida_pro_mcp/flow_core/profile_registry.py": "7f358be2a4dfcf4122f6b9b309409d593e3b58a48daedb9587e5d29870c40e28",
@@ -38,6 +41,7 @@
     "src/ida_pro_mcp/flow_core/profile_semantics.py": "d32c1bb1ba3432094ce9f59bde26c3b0d9fce70fa6dfb5f7da7950a763087a7d",
     "src/ida_pro_mcp/flow_core/proof.py": "f6b0de3f3f712f686e38d9745f906edbfb5c4dae6423cb7812b950d467c8c0b4",
     "src/ida_pro_mcp/flow_core/query.py": "18c13c459f7c8804fa875f3b3d7abcb2c2ea0deb34e2cb4e092b503a179138f0",
+    "src/ida_pro_mcp/flow_core/refine.py": "04eb44cd80b0de934caf1bf3ed577c567cd1cd6bdd7d5fdb7089a6d41e7d9c51",
     "src/ida_pro_mcp/flow_core/reviewed_fixtures.py": "2552ca64e79d307fa1d2d08dbb9c1bf9f33ecbe842a9ac962abfc2c55f401f39",
     "src/ida_pro_mcp/flow_core/runtime.py": "7c2ee3e54e7a3fdedefcd7a64f53d1690bbca8e971f7d69adf39cce1078e3554",
     "src/ida_pro_mcp/flow_core/runtime_contracts.py": "a7f58c57d75a6427fc9e3d503b06623fd483ca8abadeb63679658c26112bde8c",
@@ -50,6 +54,7 @@
     "src/ida_pro_mcp/flow_core/store_proof.py": "00c04c2f0094c5b9490be24f32e2a11aab27c0cec6e51ff86fba89f5c170b8c5",
     "src/ida_pro_mcp/flow_core/summaries.py": "acf58464917a9c31440c523654d10a3eb1d9584277596197393af6df9b72452d",
     "src/ida_pro_mcp/flow_core/support_receipts.py": "1f2ad71420f4ceb0b8c192d8ac0afdc81b5e5c91df7a5738caee63a2316696e6",
+    "src/ida_pro_mcp/flow_core/symbolic.py": "a89d85702e8e0492d5ed15f5ab3d33a93de9d956eb974488c07ef8ffeb9b2c4c",
     "src/ida_pro_mcp/flow_core/wire_contracts.py": "bf465b5063ef1568a0fe0ca6fbafba24317a30bb822f822453c0a07df4f7e274",
     "src/ida_pro_mcp/ida_mcp/flow/__init__.py": "e2ad972c65cc8799c94393f9784d2dfbed1afed393d43d7e999cf18562241f46",
     "src/ida_pro_mcp/ida_mcp/flow/call_state.py": "a0f70c1283c0aae1d88292225fd2a0a058e0781d741d39f156d1229a214f3c22",
@@ -60,7 +65,7 @@
     "src/ida_pro_mcp/ida_mcp/flow/reviewed_runtime.py": "8fee3fdb3df58a8fcef8c5218c7f52124019c935f21b34dcbe9102996205676d",
     "src/ida_pro_mcp/ida_mcp/flow/runtime.py": "159cf86fb84eb9b3e05d0db920fd912caa9cb630f8de4b0825e28e6e3ae814de",
     "src/ida_pro_mcp/ida_mcp/flow/rv32_extractor.py": "fa6a235b3e607dd0f0da48310808de25cc16bf4160a5487aff51ccb1d0979aaa",
-    "src/ida_pro_mcp/ida_mcp/flow/service.py": "cf6c590560bfd8930128036e9fd124f8bebff48c09fbcdbf5e4d7acf621d2431",
+    "src/ida_pro_mcp/ida_mcp/flow/service.py": "b62c339173e3f9c85116830659d448bbb652d17a13ce1fe2be23848ba2340476",
     "src/ida_pro_mcp/ida_mcp/flow/store_observation.py": "a4e79a56d3be9ed1e35bc914d53116987fddfb27fd2f86182c46ac2b172c82a3",
     "src/ida_pro_mcp/ida_mcp/flow/summary_catalog.py": "47ac4aa7cd2545a4e2ecf95d65182b551f29c78e59d20b6a40c0738b11ababbd"
   },
@@ -72,7 +77,7 @@
       "binary_sha256": "e98ee1f96dead5f8988573b9e8ce2e1466f30f8d5881af4b71a66b7b6e73436a",
       "job": {
         "schema_version": "flow-job/1",
-        "id": "job_c55afade00cb4a36bfdc979411671252",
+        "id": "job_a2ae27e4e9c743df8a9883e12746e8be",
         "state": "complete",
         "revision": 4,
         "progress": {},
@@ -80,7 +85,7 @@
         "error": null,
         "result": {
           "analysis": "complete_in_scope",
-          "call_composition_artifact": "artifact_e913442668f44bab92206ba05fb81d6b",
+          "call_composition_artifact": "artifact_d20c5d6761534cb9aeb61b17ec3a7b40",
           "call_composition_count": 0,
           "callee_closure": {
             "boundaries": [],
@@ -95,16 +100,16 @@
           "derived_call_memory_evidence": [],
           "derived_call_memory_writes": [],
           "derived_call_returns": [],
-          "graph_artifact": "artifact_b8b05dd26905404789bfa531f588860b",
-          "graph_digest": "sha256-v1:7d49f61f8377e676364488c3c3f75d95805d4fcc5e15417b898161cbb60bb585",
+          "graph_artifact": "artifact_a79acce91ece4f898640e165801922bf",
+          "graph_digest": "sha256-v1:48eb7862ebc0b8bf3613635410bdebfaf2cf5f2a04502e9c3dd36adafcca8294",
           "maturity": "MMAT_CALLS",
           "memory_diagnostics": [],
-          "memory_plan_artifact": "artifact_7afe4f108b6d42d6885488145e9fcf06",
-          "memory_result_artifact": "artifact_594f61cbcbad41cd80794ecbc2fcb98b",
+          "memory_plan_artifact": "artifact_97d451e175f34f03a65e4f5ece4944ed",
+          "memory_result_artifact": "artifact_f53bf63cbe354b4093fbe37f611f909c",
           "profile": "X64-LE",
-          "snapshot_artifact": "artifact_6119a94c911b43259c95456eb62a17f3",
-          "snapshot_id": "snapshot-v1:b69854856583b067c9bd1377089a8c12abfe714e5a2e042da80c7a7da212b3b9",
-          "ssa_artifact": "artifact_e168be8eeb9343d5b9e1c7fd8209fc1f",
+          "snapshot_artifact": "artifact_d07c4101f80748cb9f9b7d11746b9466",
+          "snapshot_id": "snapshot-v1:da874c3bb978bb7baad3591c512f328b054553c69aeb8d9d648450d42bbc1931",
+          "ssa_artifact": "artifact_fd12338332a1417e9e3a52e0362d0616",
           "summary_digest": "sha256-v1:79f01e4de0cc97f8807a0447d2a2b0c8e72e4c93a5062efbc31db393b08abcfc",
           "summary_limitations": [
             "Reviewed summaries cover only the packaged owned fixtures, with fresh full-identity callee validation; arbitrary libraries remain unresolved.",
@@ -121,7 +126,7 @@
       "calls": [
         {
           "tool": "flow_get_capabilities",
-          "response_chars": 3235,
+          "response_chars": 3385,
           "error": null
         },
         {
@@ -131,7 +136,7 @@
         },
         {
           "tool": "flow_get_job",
-          "response_chars": 177,
+          "response_chars": 176,
           "error": null
         },
         {
@@ -141,7 +146,7 @@
         },
         {
           "tool": "flow_get_capabilities",
-          "response_chars": 4677,
+          "response_chars": 4855,
           "error": null
         },
         {
@@ -161,22 +166,22 @@
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 6056,
+          "response_chars": 5473,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 5510,
+          "response_chars": 6595,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 6041,
+          "response_chars": 5541,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 3665,
+          "response_chars": 3663,
           "error": null
         },
         {
@@ -186,57 +191,57 @@
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 6138,
+          "response_chars": 5555,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5592,
+          "response_chars": 6677,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 6123,
+          "response_chars": 5623,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 6086,
+          "response_chars": 5802,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5375,
+          "response_chars": 5655,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5649,
+          "response_chars": 5938,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5191,
+          "response_chars": 4904,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 4287,
+          "response_chars": 4979,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 4361,
+          "response_chars": 4046,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 4651,
+          "response_chars": 4278,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 2734,
+          "response_chars": 2730,
           "error": null
         },
         {
@@ -256,6 +261,11 @@
         },
         {
           "tool": "flow_get_job",
+          "response_chars": 176,
+          "error": null
+        },
+        {
+          "tool": "flow_get_job",
           "response_chars": 373,
           "error": null
         },
@@ -266,7 +276,7 @@
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 2604,
+          "response_chars": 2566,
           "error": null
         },
         {
@@ -371,6 +381,8 @@
         "flow_get_pointee_evidence",
         "flow_check_store",
         "flow_check_path",
+        "flow_refine_path_proof",
+        "flow_refine_memory_proof",
         "flow_get_function_ssa",
         "flow_get_cfg",
         "flow_get_graph",
@@ -389,7 +401,7 @@
         "idb_list"
       ],
       "adoption_detach_preserved_job": true,
-      "flow_build_id": "flow-build-sha256-v1:a861c491c151640c3a48fc58f5c11e94114d596b6c817f027e000e966f534f56",
+      "flow_build_id": "flow-build-sha256-v1:46a1e5b029d61ec144df977a493dcb8ed0f1063032c0778b35930adb0fe88f86",
       "readonly_direct_call_denied": true,
       "memory_source_selected_exact_access": true,
       "analyst_route_not_runtime_support": true,
@@ -399,29 +411,29 @@
           "end": 8
         },
         "precision": "exact",
-        "object_id": "object-v1:5e7cd433e7d887d35aaa5fe667662469e77b1a673ec852405843e27abd3fc689",
+        "object_id": "object-v1:af6f4a78827b56c7ead7a0679c1a67566077528b51a214a959dc19591e7d83ba",
         "rule_id": "byte-reaching-store-v1",
         "evidence_ids": [
-          "evidence-v1:39b44ee864b52dbff4c93451bd92129f38f27c796f1bdc4eb8e2861ebb20bea0",
-          "evidence-v1:8d06a9df81edbeaa986ab6fbd7acaa0803e5edbfeceab60e956d1968859b9797",
-          "evidence-v1:af913c277626fadd08969ba6d84dba514ce16f26c397438782c5f02d9cb79449"
+          "evidence-v1:20d396be71e22bb3fea5cfd926e5e00b1fc3bc3f1261f163735893d82262ba18",
+          "evidence-v1:2e9049db4104a1ccc6048894bb107c6e3262e2ce5b5414bd059583f668d75c2d",
+          "evidence-v1:59b13734c014d5c608a7affc0f6136d9c1b98d0b7e773ee98e6fa8b0294e403a"
         ],
         "derivation_evidence": {
-          "evidence_id": "evidence-v1:8d06a9df81edbeaa986ab6fbd7acaa0803e5edbfeceab60e956d1968859b9797",
-          "snapshot_id": "snapshot-v1:b69854856583b067c9bd1377089a8c12abfe714e5a2e042da80c7a7da212b3b9",
+          "evidence_id": "evidence-v1:59b13734c014d5c608a7affc0f6136d9c1b98d0b7e773ee98e6fa8b0294e403a",
+          "snapshot_id": "snapshot-v1:da874c3bb978bb7baad3591c512f328b054553c69aeb8d9d648450d42bbc1931",
           "rule_id": "byte-reaching-store-v1",
           "sites": [],
           "source_eas": [],
           "synthetic": true,
           "origins": [
-            "node-v1:6288411dc37ec218a7e524384e9f4cb8cf1e0915e1a51373bc5c6bc1767ce3e5",
-            "node-v1:c3f975b890677a4183d2d69dba8842c3dd7394a470139a73117c28b10e3c9604"
+            "node-v1:62f1fae88bf509cb58b46223a40ec6b317eaedc61b2cf9e40ca99ad8fbda7308",
+            "node-v1:b30f4c27d9065c4a87a883d12f6f2617422cc24f79bbd60d339480b332da9350"
           ],
           "assumptions": [
             "automatic object identity is structural and conservative; no ABI argument numbering",
             "experimental Mach-O flat user-space address model; no TLS or MMIO semantics"
           ],
-          "memory_object_id": "object-v1:5e7cd433e7d887d35aaa5fe667662469e77b1a673ec852405843e27abd3fc689"
+          "memory_object_id": "object-v1:af6f4a78827b56c7ead7a0679c1a67566077528b51a214a959dc19591e7d83ba"
         }
       },
       "input_preserved": true,
@@ -434,7 +446,7 @@
       "binary_sha256": "fe9acefb7f883e942ebf836ae36b411b3ae110d20ff5dc442d9539334ef0c1cf",
       "job": {
         "schema_version": "flow-job/1",
-        "id": "job_a6d06b6d86844927b3714e305a97c18b",
+        "id": "job_7a20845cc28c4b86b5836f0f4661863e",
         "state": "complete",
         "revision": 4,
         "progress": {},
@@ -442,7 +454,7 @@
         "error": null,
         "result": {
           "analysis": "complete_in_scope",
-          "call_composition_artifact": "artifact_a319432a58a14b96b1b9f40d961a0d71",
+          "call_composition_artifact": "artifact_cfe4b96954d54b1b8324bfea9060d230",
           "call_composition_count": 0,
           "callee_closure": {
             "boundaries": [],
@@ -457,16 +469,16 @@
           "derived_call_memory_evidence": [],
           "derived_call_memory_writes": [],
           "derived_call_returns": [],
-          "graph_artifact": "artifact_b24e0063756c4dfb80168c109b2fe9c0",
-          "graph_digest": "sha256-v1:7d91ffa5b6f30763dd974dba7cb303b427ad6c6552692ffeb1820e65dad2b99d",
+          "graph_artifact": "artifact_4ead8a00608a43fd91c24cfbab3220e6",
+          "graph_digest": "sha256-v1:05df7bdd7c6978fcb344e1fa4590df1003e01bc00c14e8bccbfed15437b2f5fa",
           "maturity": "MMAT_CALLS",
           "memory_diagnostics": [],
-          "memory_plan_artifact": "artifact_4a4649c989174881ac91cc0ece716c2b",
-          "memory_result_artifact": "artifact_4707062745c343e584c56045e5dcad3f",
+          "memory_plan_artifact": "artifact_841189da9fde47febb8d83a78e5d8a20",
+          "memory_result_artifact": "artifact_8d0b74a98d5349c0909da6a3112194c3",
           "profile": "A64-LE",
-          "snapshot_artifact": "artifact_992860a9158a4cf5b86616b00d8f7a3b",
-          "snapshot_id": "snapshot-v1:d1cd968980eccba6f768cb48bee1a7c8c3453089a5cf4fe3875f0cfa833cd3f2",
-          "ssa_artifact": "artifact_d484f6d4402947399ea6e1729d7e990f",
+          "snapshot_artifact": "artifact_ab020f6924f14e6e9980f855e8acc579",
+          "snapshot_id": "snapshot-v1:28e345c0aa2d7d33835788d97f8b996c72a3b9ae301e83ab79d148fd82d47f61",
+          "ssa_artifact": "artifact_bd79f33cec9b4e88ad0cc8dfdcdf24e0",
           "summary_digest": "sha256-v1:79f01e4de0cc97f8807a0447d2a2b0c8e72e4c93a5062efbc31db393b08abcfc",
           "summary_limitations": [
             "Reviewed summaries cover only the packaged owned fixtures, with fresh full-identity callee validation; arbitrary libraries remain unresolved.",
@@ -483,7 +495,7 @@
       "calls": [
         {
           "tool": "flow_get_capabilities",
-          "response_chars": 3232,
+          "response_chars": 3382,
           "error": null
         },
         {
@@ -510,7 +522,7 @@
         },
         {
           "tool": "flow_get_capabilities",
-          "response_chars": 4566,
+          "response_chars": 4744,
           "error": null
         },
         {
@@ -530,22 +542,22 @@
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 5942,
+          "response_chars": 4905,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 6309,
+          "response_chars": 6230,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 5641,
+          "response_chars": 6207,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 3664,
+          "response_chars": 4214,
           "error": null
         },
         {
@@ -555,62 +567,62 @@
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 6024,
+          "response_chars": 4987,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 6391,
+          "response_chars": 6312,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5723,
+          "response_chars": 6289,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5145,
+          "response_chars": 5695,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5354,
+          "response_chars": 5632,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5346,
+          "response_chars": 5635,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5630,
+          "response_chars": 5636,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 4496,
+          "response_chars": 3923,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 4072,
+          "response_chars": 4354,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 4656,
+          "response_chars": 4617,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 4384,
+          "response_chars": 4168,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 2343,
+          "response_chars": 2316,
           "error": null
         },
         {
@@ -626,6 +638,11 @@
         {
           "tool": "flow_get_job",
           "response_chars": 177,
+          "error": null
+        },
+        {
+          "tool": "flow_get_job",
+          "response_chars": 176,
           "error": null
         },
         {
@@ -655,6 +672,11 @@
         },
         {
           "tool": "flow_get_job",
+          "response_chars": 176,
+          "error": null
+        },
+        {
+          "tool": "flow_get_job",
           "response_chars": 436,
           "error": null
         },
@@ -770,6 +792,23 @@
         },
         {
           "tool": "flow_continue_trace",
+          "response_chars": 1205,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 1205,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 74,
+          "error": {
+            "code": "revision_conflict"
+          }
+        },
+        {
+          "tool": "flow_continue_trace",
           "response_chars": 1864,
           "error": null
         },
@@ -787,12 +826,12 @@
         },
         {
           "tool": "flow_continue_trace",
-          "response_chars": 1205,
+          "response_chars": 548,
           "error": null
         },
         {
           "tool": "flow_continue_trace",
-          "response_chars": 1205,
+          "response_chars": 548,
           "error": null
         },
         {
@@ -827,23 +866,6 @@
         {
           "tool": "flow_continue_trace",
           "response_chars": 552,
-          "error": null
-        },
-        {
-          "tool": "flow_continue_trace",
-          "response_chars": 74,
-          "error": {
-            "code": "revision_conflict"
-          }
-        },
-        {
-          "tool": "flow_continue_trace",
-          "response_chars": 548,
-          "error": null
-        },
-        {
-          "tool": "flow_continue_trace",
-          "response_chars": 548,
           "error": null
         },
         {
@@ -898,6 +920,8 @@
         "flow_get_pointee_evidence",
         "flow_check_store",
         "flow_check_path",
+        "flow_refine_path_proof",
+        "flow_refine_memory_proof",
         "flow_get_function_ssa",
         "flow_get_cfg",
         "flow_get_graph",
@@ -916,7 +940,7 @@
         "idb_list"
       ],
       "adoption_detach_preserved_job": true,
-      "flow_build_id": "flow-build-sha256-v1:a861c491c151640c3a48fc58f5c11e94114d596b6c817f027e000e966f534f56",
+      "flow_build_id": "flow-build-sha256-v1:46a1e5b029d61ec144df977a493dcb8ed0f1063032c0778b35930adb0fe88f86",
       "readonly_direct_call_denied": true,
       "memory_source_selected_exact_access": true,
       "analyst_route_not_runtime_support": true,
@@ -926,29 +950,29 @@
           "end": 8
         },
         "precision": "exact",
-        "object_id": "object-v1:f3fd9bbd7d98804cf83b6b56a103127ac109854f619f4c317f18762c638d1df2",
+        "object_id": "object-v1:f3247619a94ad6321d5d7eea47e0cd6055314e14607cd1b2896f19e63ed7618d",
         "rule_id": "byte-reaching-store-v1",
         "evidence_ids": [
-          "evidence-v1:9c0ad5f30c6674a3001b07e155247c871c38ee1c23071879431dd59777464c1d",
-          "evidence-v1:cdfb14f24565cb4616ef500a111ca4161270016879db406a8320f78849fad067",
-          "evidence-v1:ecfb3c59877b0f96543c0f89fd9e1f24cc475fda5c2e6f892262c1ee7a543efb"
+          "evidence-v1:47a044aaaa2b56ef1a1cc9cb029854c108d7996d41fce4f5dd2c73174761e7e4",
+          "evidence-v1:82aebc4587e600f17a737744f16151a1abbf56979bafeeecb9633238df07a3ca",
+          "evidence-v1:b4f63d8cf5eb54f86fdb67bc841155c0cae8424622ff29d88c77bc9a7d8656b3"
         ],
         "derivation_evidence": {
-          "evidence_id": "evidence-v1:9c0ad5f30c6674a3001b07e155247c871c38ee1c23071879431dd59777464c1d",
-          "snapshot_id": "snapshot-v1:d1cd968980eccba6f768cb48bee1a7c8c3453089a5cf4fe3875f0cfa833cd3f2",
+          "evidence_id": "evidence-v1:47a044aaaa2b56ef1a1cc9cb029854c108d7996d41fce4f5dd2c73174761e7e4",
+          "snapshot_id": "snapshot-v1:28e345c0aa2d7d33835788d97f8b996c72a3b9ae301e83ab79d148fd82d47f61",
           "rule_id": "byte-reaching-store-v1",
           "sites": [],
           "source_eas": [],
           "synthetic": true,
           "origins": [
-            "node-v1:3b73f6701badf901a27079996a667976b9f3e347ce02340f716347b690d77611",
-            "node-v1:717b9ac3e1337fa097c92db3ad5b1863332155001bc1df790dc753519cb369e6"
+            "node-v1:55ae69d31a73197911d237ceba058811356a7745d1848007649b8b8e60e20a81",
+            "node-v1:d17f00960ec8821562980aa37aa9725ed9ef485b994d347ab60b091e42d8dee3"
           ],
           "assumptions": [
             "automatic object identity is structural and conservative; no ABI argument numbering",
             "experimental Mach-O flat user-space address model; no TLS or MMIO semantics"
           ],
-          "memory_object_id": "object-v1:f3fd9bbd7d98804cf83b6b56a103127ac109854f619f4c317f18762c638d1df2"
+          "memory_object_id": "object-v1:f3247619a94ad6321d5d7eea47e0cd6055314e14607cd1b2896f19e63ed7618d"
         }
       },
       "input_preserved": true,

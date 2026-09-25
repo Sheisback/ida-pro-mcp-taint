@@ -336,6 +336,27 @@ def flow_get_capabilities() -> FlowCapabilities:
             "remain available as conservative Unknown compositions"
         ),
     }
+    try:
+        from ida_pro_mcp.flow_core.symbolic import Z3Backend as _RefineBackend
+
+        solver_ready = _RefineBackend().available
+    except Exception:  # noqa: BLE001 - discovery must fail closed, not abort.
+        solver_ready = False
+    features["symbolic_refinement"] = {
+        "status": (
+            "available"
+            if route_ready and solver_ready
+            else "unavailable"
+        ),
+        "reason": (
+            "Opt-in symbolic path/memory refinement over v1 proofs; solver runs "
+            "only when an explicit refinement tier requests it"
+            if route_ready and solver_ready
+            else "Refinement unavailable: "
+            + ("no validated route" if not route_ready else "z3 solver not installed")
+            + "; v1 proofs remain available and solver-free"
+        ),
+    }
     return {
         "schema_version": SCHEMA_VERSION,
         "build_id": BUILD_ID,
@@ -460,23 +481,19 @@ def flow_create_implicit_analysis(
 ) -> FlowJobSubmission | FlowError:
     """Queue explicit-plus-control taint from analyst-chosen SSA nodes.
 
-    A whole-value seed is ``{node_id, labels}``; ``node_id`` may identify a
-    verified input-buffer ``Load`` value from ``flow_get_function_ssa``. This
-    marks the value read at that node, not all bytes of the pointer's
-    pointee. The caller must establish why the selected value is user input.
-    Control labels remain separate from explicit labels. Unresolved alias,
-    call, CFG, or budget effects stay partial/unknown, not safe or vulnerable.
+    A whole-value seed ``{node_id, labels}`` marks the value read at that
+    node, not all bytes of the pointer's pointee. The caller must establish
+    input status. Control labels stay separate from explicit labels;
+    unresolved alias, call, CFG, or budget effects stay partial/unknown,
+    never safe or vulnerable.
 
-    A ``kind=bit_range`` seed selects whole bytes of an ``InputValue``. Exact
-    single-candidate byte Store/Load replay can preserve source bits; weak or
-    unresolved memory effects widen conservatively.
+    A ``kind=bit_range`` seed selects ``InputValue`` bytes; exact
+    Store/Load replay preserves source bits while weak effects widen.
 
-    A ``kind=pointee_range`` seed labels [start,end) bytes immediately after an
-    entry InputValue or acyclic full-width pointer Load. Its binding_mode must
-    explicitly choose a derived exact pointer or an analyst-assumed valid nonnull
-    singleton view. Neither mode proves OS input status or disjointness. Results
-    return a separate bound SSA/graph and a pointee certificate; bit ranges in
-    facts report which source bits survive exact partial overwrites.
+    A ``kind=pointee_range`` seed labels [start,end) bytes after an entry
+    value or acyclic full-width pointer Load. binding_mode must choose a
+    derived exact pointer or an analyst-assumed nonnull singleton; neither
+    proves OS input status. Results add a bound SSA/graph and certificate.
     """
     return _service().create_implicit(ssa_artifact, seeds, request_key, max_evaluations)
 
@@ -596,6 +613,130 @@ def _flow_create_path_proof(
 ) -> FlowJobSubmission | FlowError:
     """Unregistered compatibility helper; accepts selectors, not caller equations."""
     return _service().create_path_proof(graph_artifact, query, request_key)
+
+
+@tool
+@_flow_api
+def flow_refine_path_proof(
+    graph_artifact: str | None = None,
+    path: dict | None = None,
+    refinement: dict | None = None,
+    request_key: str | None = None,
+    proof_artifact: str | None = None,
+    inline: list[dict] | None = None,
+    artifact_id: str | None = None,
+    cursor: str | None = None,
+    limit: int = 50,
+) -> FlowJobSubmission | FlowArtifactPage | FlowError:
+    """Refine a v1 path proof with opt-in symbolic tiers, OR page the result.
+
+    Submit with graph_artifact, path, refinement, request_key. ``refinement``
+    explicitly opts into symbolic tiers (symbolic_path, solver_timeout_ms);
+    an all-off refinement replays the v1 baseline verbatim and never runs
+    the solver. Optional proof_artifact cross-checks a quoted v1 original;
+    optional inline entries splice explicit callee bodies (no ABI inference).
+    Poll flow_get_job; page its refined artifact with artifact_id/cursor/limit.
+    Submission and paging arguments are mutually exclusive. Static only; no
+    target execution or automatic vulnerability verdict occurs.
+    """
+    if artifact_id is not None:
+        if any(
+            value is not None
+            for value in (
+                graph_artifact,
+                path,
+                refinement,
+                request_key,
+                proof_artifact,
+                inline,
+            )
+        ):
+            raise ValueError("mixed_refine_request")
+        return _service().analysis_page(artifact_id, "refined_path_proof", cursor, limit)
+    if (
+        graph_artifact is None
+        or path is None
+        or refinement is None
+        or request_key is None
+        or cursor is not None
+        or limit != 50
+    ):
+        raise ValueError("invalid_refine_submission")
+    return _service().create_path_refinement(
+        graph_artifact, path, refinement, request_key, proof_artifact, inline or []
+    )
+
+
+@tool
+@_flow_api
+def flow_refine_memory_proof(
+    ssa_artifact: str | None = None,
+    memory_plan_artifact: str | None = None,
+    memory_result_artifact: str | None = None,
+    path: dict | None = None,
+    load_id: str | None = None,
+    store_id: str | None = None,
+    refinement: dict | None = None,
+    request_key: str | None = None,
+    inline: list[dict] | None = None,
+    artifact_id: str | None = None,
+    cursor: str | None = None,
+    limit: int = 50,
+) -> FlowJobSubmission | FlowArtifactPage | FlowError:
+    """Refine a v1 memory pair verdict with opt-in symbolic tiers, OR page it.
+
+    Submit with ssa_artifact, memory_plan_artifact, memory_result_artifact,
+    path, load_id, store_id, refinement, request_key. ``refinement``
+    explicitly opts into symbolic tiers (symbolic_memory, solver_timeout_ms);
+    an all-off refinement quotes the v1 pair facts verbatim and never runs
+    the solver. Optional inline entries splice explicit callee bodies.
+    Poll flow_get_job; page its refined artifact with artifact_id/cursor/limit.
+    Submission and paging arguments are mutually exclusive. Static only; no
+    target execution or automatic vulnerability verdict occurs.
+    """
+    if artifact_id is not None:
+        if any(
+            value is not None
+            for value in (
+                ssa_artifact,
+                memory_plan_artifact,
+                memory_result_artifact,
+                path,
+                load_id,
+                store_id,
+                refinement,
+                request_key,
+                inline,
+            )
+        ):
+            raise ValueError("mixed_refine_request")
+        return _service().analysis_page(
+            artifact_id, "refined_memory_proof", cursor, limit
+        )
+    if (
+        ssa_artifact is None
+        or memory_plan_artifact is None
+        or memory_result_artifact is None
+        or path is None
+        or load_id is None
+        or store_id is None
+        or refinement is None
+        or request_key is None
+        or cursor is not None
+        or limit != 50
+    ):
+        raise ValueError("invalid_refine_submission")
+    return _service().create_memory_refinement(
+        ssa_artifact,
+        memory_plan_artifact,
+        memory_result_artifact,
+        path,
+        load_id,
+        store_id,
+        refinement,
+        request_key,
+        inline or [],
+    )
 
 
 @tool
