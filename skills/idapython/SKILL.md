@@ -1,11 +1,20 @@
 ---
 name: idapython
-description: IDA Pro Python scripting for reverse engineering. Use when writing IDAPython scripts, analyzing binaries, working with IDA's API for disassembly, decompilation (Hex-Rays), type systems, cross-references, functions, segments, or any IDA database manipulation. Covers ida_* modules (50+), idautils iterators, and common patterns.
+description: IDA Pro Python scripting for reverse engineering. Use when writing IDAPython scripts or working directly with IDA's API for disassembly, decompilation (Hex-Rays), types, cross-references, functions, segments, or database manipulation. Covers ida_* modules, idautils iterators, and SDK patterns. For this fork's flow_* MCP workflows, use ida-flow instead.
 ---
 
 # IDAPython
 
 Use modern `ida_*` modules. Avoid legacy `idc` module.
+
+## Choose the correct surface
+
+For this fork's `flow_*` SSA, taint, path, or evidence tools, use the separate
+`ida-flow` skill. This skill is for actual IDAPython scripting and SDK calls.
+The `flow-readonly` profile intentionally excludes Python execution, debugger,
+patching and renaming tools; do not bypass it to complete a flow query.
+Apply the write examples below only when database modification is in scope,
+using a disposable working copy when the original must remain unchanged.
 
 ## Module Router
 
@@ -141,7 +150,7 @@ ida_auto.auto_wait()  # Block until autoanalysis completes
 | `idc.*` functions | Use `ida_*` modules |
 | Hardcoded addresses | Use names, patterns, or xrefs |
 | Manual hex conversion | Use `int_convert` tool |
-| Blocking main thread | Use `execute_sync()` for long ops |
+| Long pure computations on the IDA thread | Extract SDK data on the main thread, then compute off-thread; use `execute_sync()` only to dispatch SDK work |
 | Guessing at types | Derive from disassembly/decompilation |
 
 ## Detailed API Reference

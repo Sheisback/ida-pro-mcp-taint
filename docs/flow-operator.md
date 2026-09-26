@@ -453,6 +453,33 @@ If IDA, a processor/decompiler module, license entitlement, or GUI acceptance
 is unavailable, report that exact blocker and leave the corresponding claim
 unverified.
 
+## Whole-graph digest bytes and integer wire versions
+
+`flow_get_graph_digest_bytes(artifact_id, cursor)` exports the exact digest
+preimage of a **completed** graph, not a page-shaped reconstruction. Decode
+each unpadded base64url `chunk_base64url`, concatenate in `offset` order, and
+hash the bytes before parsing JSON. Require consistent artifact/snapshot/digest
+bindings, `next_cursor: null`, and `offset + byte_count == total_bytes` on the
+last page. Pages carry at most 16 KiB of payload; exports above 16 MiB fail
+explicitly rather than truncating. For `identity_version: 2`, the bytes contain
+the graph domain/version wrapper, which must be included in the hash.
+
+Snapshot creation defaults to `wire_version: "flow-wire/1"`. Opt into
+`"flow-wire/2"` for large addresses/constants: graph payload integers are tagged
+as `{"$int":"9007199254740993"}`, with distinct v2 snapshot/node/graph IDs.
+Keep them as exact integers or strings, not JavaScript `Number`. V1 node pages
+may instead carry a wide constant as `constant: null` plus `constant_hex`.
+Neither representation means that the original constant was absent.
+
+V2 graph-related input payload integers must also use tags, while bounded
+control arguments such as `limit` and the graph-byte export's offsets/lengths
+remain ordinary JSON numbers. Pass trace `revision` exactly as returned,
+including its tag where present. Do not mix v1/v2 identities or convert a
+v2 artifact into v1 by stripping tags. The two refinement tools currently reject
+v2 artifacts (`refine_wire_v2_unsupported`); reviewed-summary snapshot routes
+also refuse v2 (`wire_v2_reviewed_summary_unavailable`). Report those boundaries
+instead of narrowing addresses or inventing compatibility.
+
 ## Large trace items
 
 `flow_trace_forward` and `flow_trace_backward` return structural reachability,

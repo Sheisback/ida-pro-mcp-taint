@@ -1,5 +1,11 @@
 # IDA Pro MCP
 
+> **This fork's SSA/taint tools:** start with the
+> [pinned fork installation](docs/flow-installation.md) and
+> [flow quickstart](#experimental-ssa-and-memory-taint-analysis-this-fork).
+> They require the reviewed **IDA 9.3** environment. The upstream marketplace
+> commands below do not install this fork.
+
 Simple [MCP Server](https://modelcontextprotocol.io/introduction) to allow vibe reversing in IDA Pro.
 
 https://github.com/user-attachments/assets/6ebeaa92-a9db-43fa-b756-eececce2aca0
@@ -54,7 +60,7 @@ For the static flow-analysis support boundary, see the
 [operator guide](docs/flow-operator.md). These documents distinguish exact
 recorded observations from runtime support claims.
 
-## Installation (Claude Code)
+## Installation (Claude Code — upstream project)
 
 To install the latest IDA Pro MCP in Claude Code:
 
@@ -78,7 +84,7 @@ codex plugin remove ida-pro-mcp@mrexodia
 codex plugin add ida-pro-mcp@mrexodia
 ```
 
-## Installation (Kimi Code)
+## Installation (Kimi Code — upstream project)
 
 To install the latest IDA Pro MCP in Kimi Code, run this slash command in the chat:
 
@@ -91,7 +97,7 @@ This installs the `idalib` MCP server and the `idapython` skill. Plugins are cop
 `$KIMI_CODE_HOME/plugins/managed/`, so `uv` must be on your `PATH`. The first session after
 installing is slower, because `uv` resolves the dependencies before the server responds.
 
-## Installation (GUI)
+## Installation (GUI — upstream project)
 
 **Note**: the MCP plugin is no longer recommended and will eventually be deprecated. Use `idalib-mcp` instead.
 
@@ -111,6 +117,11 @@ ida-pro-mcp --install
 **Important**: Make sure you completely restart IDA and your MCP client for the installation to take effect. Some clients (like Claude) run in the background and need to be quit from the tray icon.
 
 ## Prompt Engineering
+
+The following prompts assume the general MCP surface, including database
+modification tools. For this fork's read-only flow connection, use the
+[`ida-flow` skill](skills/ida-flow/SKILL.md) instead; do not bypass the profile
+with Python, debugger, or mutation tools.
 
 LLMs are prone to hallucinations and you need to be specific with your prompting. For reverse engineering the conversion between integers and bytes are especially problematic. Below is a minimal example prompt, feel free to start a discussion or open an issue if you have good results with a different prompt:
 
@@ -259,18 +270,22 @@ Worker controls:
 - `--max-workers N`: maximum simultaneous database workers (`0` = unlimited, default `4`).
 - `IDA_MCP_MAX_WORKERS`: environment default for `--max-workers`.
 
-The bundled Codex plugin forwards the runtime's `IDA_MCP_*` configuration variables from the Codex host environment:
+This checkout's bundled Codex plugin forwards the following configuration variables from the Codex host environment:
 
 - Capacity and lifecycle: `IDA_MCP_MAX_WORKERS`, `IDA_MCP_OPEN_TIMEOUT`, `IDA_MCP_WEDGED_GRACE_SEC`, `IDA_MCP_WORKER_CALL_TIMEOUT`.
 - Health probes: `IDA_MCP_HEALTH_TCP_TIMEOUT`, `IDA_MCP_HEALTH_RPC_TIMEOUT`, `IDA_MCP_HEALTH_RETRIES`, `IDA_MCP_HEALTH_RETRY_BACKOFF`.
 - Worker behavior: `IDA_MCP_TOOL_TIMEOUT_SEC`, `IDA_MCP_ANALYSIS_PROMPT`, `IDA_MCP_URL`.
 - Request logging: `IDA_MCP_LOG_REQUESTS`, `IDA_MCP_LOG_SKIP_METHODS`.
+- Optional flow sidecar: `IDA_MCP_ANGR_PYTHON`. This does not enable refinement
+  automatically. The inherited plugin configuration is not the restricted
+  fork connection; use the installation guide for `flow-readonly` setup.
 
 ## Experimental SSA and Memory-Taint Analysis (This Fork)
 
 This fork adds static `flow_*` MCP tools for microcode extraction, value and
 memory SSA, provenance/taint tracing, bounded implicit and path analysis,
-reviewed call compositions, and opt-in symbolic path/memory refinement.
+reviewed call compositions, opt-in angr path refinement, and evidence-only
+memory refinement (not a symbolic alias-narrowing engine).
 The marketplace installation commands above point
 to upstream `mrexodia/ida-pro-mcp`; use the
 [fork installation guide](docs/flow-installation.md) for a pinned GitHub
@@ -291,10 +306,12 @@ uv sync --dev
 uv run idalib-mcp --stdio --profile profiles/flow-readonly.txt
 ```
 
-The opt-in angr path tier runs in a sidecar under a separately configured
-interpreter (`IDA_MCP_ANGR_PYTHON`). Without it, requested refinement
-tiers return unknown with an explicit unavailability reason and the v1 baseline stays
-intact.
+The opt-in angr path tier runs under a separately configured interpreter
+(`IDA_MCP_ANGR_PYTHON`), not inside IDA's Python environment. It supports only
+representable x64 prefixes and currently requires v1 artifacts. Missing engines
+or unsupported prefixes produce explicit unknowns while preserving the v1
+baseline. Discovery reports `configured_unverified` for configured paths, not
+proof of engine readiness. See the [optional sidecar setup](docs/flow-installation.md#optional-angr-sidecar).
 
 Configure your MCP client to launch that command from this checkout. For HTTP
 instead of stdio, run:
@@ -313,24 +330,24 @@ bracketed IDs with values returned by the previous call). First copy
 ```text
 idb_open(input_path="/absolute/path/to/disposable/typed_fixture.elf",
          mode="force_headless", preferred_session_id="typed")
-# Use the returned session.session_id as database below.
-flow_get_capabilities(database="typed")
+# Use the actual returned session.session_id, not the preferred alias.
+flow_get_capabilities(database="<session.session_id>")
 flow_create_snapshot(function="sum_point", profile="X64-LE", abi="sysv-amd64",
                      routing_mode="analyst_selected", request_key="sum-point-1",
-                     database="typed")
-flow_get_job(job_id="<job_id>", database="typed")
+                     database="<session.session_id>")
+flow_get_job(job_id="<job_id>", database="<session.session_id>")
 # Poll until state is complete; take IDs from result, not from this example.
-flow_get_function_ssa(artifact_id="<result.ssa_artifact>", database="typed")
-flow_get_graph(artifact_id="<result.graph_artifact>", database="typed")
+flow_get_function_ssa(artifact_id="<result.ssa_artifact>", database="<session.session_id>")
+flow_get_graph(artifact_id="<result.graph_artifact>", database="<session.session_id>")
 flow_get_memory_analysis(artifact_id="<result.memory_result_artifact>",
-                         database="typed")
+                         database="<session.session_id>")
 flow_get_evidence(artifact_id="<result.graph_artifact>",
-                  evidence_ids=["<Load evidence_id>"], database="typed")
+                  evidence_ids=["<Load evidence_id>"], database="<session.session_id>")
 flow_trace_backward(snapshot_artifact="<result.snapshot_artifact>",
                     graph_artifact="<result.graph_artifact>",
                     source={"kind":"value","node_id":"<node_id from graph>"},
-                    request_key="sum-point-trace-1", database="typed")
-idb_close(database="typed", save=False)
+                    request_key="sum-point-trace-1", database="<session.session_id>")
+# Keep this session open for any further analysis below.
 ```
 
 To start **analyst-selected taint**, page `flow_get_function_ssa` and identify
@@ -362,6 +379,22 @@ an OS input buffer as user-controlled. See the [operator guide](docs/flow-operat
 for alias/call boundaries and the difference between a pointer seed and its
 pointee contents.
 
+Additional workflows use distinct evidence contracts:
+
+| Need | Tools / contract |
+| --- | --- |
+| Label pointee bytes after a pointer definition | `flow_create_implicit_analysis` with `kind: "pointee_range"`; use its new bound SSA/graph and `flow_get_pointee_evidence` certificate |
+| Check a function-address Store | `flow_check_store`; conditional on reaching that Store, not final registration or callback execution |
+| Export the exact graph digest preimage | `flow_get_graph_digest_bytes`; decode/concatenate byte pages and hash before JSON parsing |
+| Lossless large addresses/constants | Opt into `wire_version: "flow-wire/2"` when creating the snapshot; preserve tagged integers |
+| Opt-in path refinement | `flow_refine_path_proof`; separate angr interpreter, x64/v1 scope, unknowns preserved |
+| Replay memory-pair evidence | `flow_refine_memory_proof`; no automatic alias narrowing |
+
+For reusable agent instructions and request examples, see the
+[`ida-flow` skill](skills/ida-flow/SKILL.md) and its
+[optional installation](docs/flow-installation.md#optional-client-skill).
+Registering an MCP server does not install its skills.
+
 `flow_get_capabilities.routing` reports a configured route; an
 `analyst_selected` route deliberately leaves `supported_profiles` empty and
 analysis features `unverified`, even after submission. This query does not
@@ -392,7 +425,13 @@ limitations.
 Analysis never executes the target, but MCP call tracing and IDA close/save
 policies can change a **working** IDB. Use a disposable database copy when the
 original must remain unchanged, and close an owned headless session with
-`save=False`. For SDK-free regression checks, run:
+`save=False` after all analysis and paging are finished:
+
+```text
+idb_close(database="<session.session_id>", save=False)
+```
+
+For SDK-free regression checks, run:
 
 ```sh
 PYTHONPATH=src:. uv run pytest -q tests/flow_core tests/test_flow_capabilities.py

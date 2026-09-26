@@ -6,7 +6,7 @@ marketplace plugin. The `mrexodia/codex-marketplace` commands in the upstream
 README install the original project, not these `flow_*` tools. Codex's
 `mcp add --url` expects a running HTTP MCP endpoint, **not** a GitHub repository
 URL; the Git source belongs in the local stdio command run by `uvx`.
-See the [official Codex MCP connection guide](https://developers.openai.com/learn/docs-mcp)
+See the [official Codex MCP connection guide](https://learn.chatgpt.com/docs/extend/mcp?surface=cli)
 for the CLI configuration model.
 
 ## Prerequisites
@@ -31,13 +31,14 @@ revision below is the latest reviewed developer-install pin, not a moving
 included in the Python wheel.
 
 ```sh
-FLOW_REF=7b9c5d383fff79d60e473dec82aaafd73eacac35
+set -eu
+FLOW_REF=e0202f6469d382a5798f136429a991da9d946c01
 PROFILE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/ida-pro-mcp-taint"
 mkdir -p "$PROFILE_DIR"
 curl -fsSL \
   "https://raw.githubusercontent.com/Sheisback/ida-pro-mcp-taint/$FLOW_REF/profiles/flow-readonly.txt" \
   -o "$PROFILE_DIR/flow-readonly.txt"
-printf '02187a3b23e3d0297278f56cab07633b6006474c551a4630c7eaa10793f4873a  %s\n' \
+printf 'e742a5dfb343be1cd3fc2aa52ea111c08738ea120a82827ed7766b59a66e86f3  %s\n' \
   "$PROFILE_DIR/flow-readonly.txt" | shasum -a 256 -c -
 
 codex mcp add ida-pro-mcp-taint -- \
@@ -45,6 +46,12 @@ codex mcp add ida-pro-mcp-taint -- \
   idalib-mcp --stdio --profile "$PROFILE_DIR/flow-readonly.txt"
 codex mcp list
 ```
+
+This pin includes pointee/Store evidence, lossless graph export, the angr
+sidecar, and the reviewed refinement/wire fixes. The matching profile exposes
+these tools; an older profile can hide tools even when the package is newer.
+The local verification record is [the review-fix report](flow-review-fixes-2026-09-26.ko.txt),
+not a public release certification.
 
 The opt-in angr path tier (`flow_refine_path_proof` with `symbolic_angr`)
 runs in a sidecar under a separately configured interpreter
@@ -66,6 +73,86 @@ returned session ID as `database` to subsequent `flow_*` calls. A restricted
 connection exposes only the tools listed in `profiles/flow-readonly.txt` plus
 supervisor database-management tools. Close an owned test session with
 `idb_close(database=<session_id>, save=False)`.
+
+## Local-checkout alternative
+
+Use absolute paths so the client's working directory does not select a different
+project or profile. For a new entry, or an intentional replacement of the exact
+entry inspected above:
+
+```sh
+# Run from the root of this checkout.
+REPO_ROOT="$(pwd -P)"
+codex mcp add ida-pro-mcp-taint -- \
+  uv run --project "$REPO_ROOT" idalib-mcp --stdio \
+  --profile "$REPO_ROOT/profiles/flow-readonly.txt"
+```
+
+This runs the checkout rather than the pinned GitHub package. Restart the MCP
+server/client session after changing source or configuration. Do not keep an
+old upstream server entry and mistake its tools for this connection's tools.
+
+## Optional angr sidecar
+
+Basic extraction, taint, graph tracing, bounded v1 path checks, and memory
+evidence do **not** require angr. Do not install a `solver` extra or Z3 into
+IDA's environment: the former in-process engine was retired.
+
+The local review used Python 3.11, angr/claripy 9.2.213 and Z3 4.13.0. To prepare
+a separate environment on a macOS/Linux host, without altering this project's
+dependencies:
+
+```sh
+ANGR_ENV="${XDG_DATA_HOME:-$HOME/.local/share}/ida-pro-mcp-taint/angr"
+test -x "$ANGR_ENV/bin/python" || uv venv --python 3.11 "$ANGR_ENV"
+uv pip install --python "$ANGR_ENV/bin/python" "angr==9.2.213"
+"$ANGR_ENV/bin/python" -c 'import angr, claripy, z3; print(angr.__version__, claripy.__version__, z3.get_version_string())'
+```
+
+Pass the interpreter to the MCP **server process**, not just to an unrelated
+terminal. Using `FLOW_REF` and `PROFILE_DIR` from the pinned-install example,
+register or intentionally replace that one entry with:
+
+```sh
+codex mcp add ida-pro-mcp-taint \
+  --env "IDA_MCP_ANGR_PYTHON=$ANGR_ENV/bin/python" -- \
+  uvx --from "git+https://github.com/Sheisback/ida-pro-mcp-taint.git@$FLOW_REF" \
+  idalib-mcp --stdio --profile "$PROFILE_DIR/flow-readonly.txt"
+```
+
+For the checkout alternative, retain the same `--env` option and use its
+`uv run --project ...` command after `--`. The CLI environment syntax is
+documented in the [official MCP guide](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
+
+`configured_unverified` means the interpreter and runner paths exist; capability
+discovery does not import or launch angr. Only an explicit
+`symbolic_angr: true` request attempts it, and failures remain `unknown` with
+the original baseline preserved. This tier currently accepts only representable
+x64 prefixes over **v1** artifacts. Memory refinement is `evidence_only`, not
+an alias-narrowing solver. See the [operator contract](flow-operator.md#opt-in-symbolic-refinement-experimental).
+
+## Optional client skill
+
+MCP registration makes tools available; skill installation supplies the agent's
+workflow instructions. From a checkout containing `skills/ida-flow/`, install
+that **whole directory**, including its request reference:
+
+```sh
+# Review an existing customized skill before replacing its files.
+SKILL_DIR="$HOME/.agents/skills/ida-flow"
+mkdir -p "$SKILL_DIR"
+cp -R skills/ida-flow/. "$SKILL_DIR/"
+```
+
+Codex documents `~/.agents/skills/` for user skills and `.agents/skills/` for
+repository-scoped skills in its [skill guide](https://learn.chatgpt.com/docs/build-skills).
+Invoke `$ida-flow` or ask for static flow analysis; restart the client if the
+new skill is not discovered. Other clients should use their own skill-loading
+mechanism or load `skills/ida-flow/SKILL.md` as instructions.
+
+The skill does not install IDA, register an MCP server, enable unsafe tools, or
+turn this repository into a published fork plugin. Keep `idapython` for explicit
+IDAPython scripting, not as a way around the restricted flow profile.
 
 ## Distribution boundary
 
