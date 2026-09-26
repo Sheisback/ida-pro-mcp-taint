@@ -30,6 +30,11 @@ ANGR_DEFAULT_LOOP_BOUND = 8
 
 X64_ARG_REGISTERS = ("rdi", "rsi", "rdx", "rcx", "r8", "r9")
 
+ARG_MARKER_NATIVE_KINDS = (
+    "typed_argument_argloc",
+    "typed_pointer_argument_argloc",
+)
+
 
 @dataclass(frozen=True)
 class AngrContext:
@@ -50,6 +55,89 @@ class AngrContext:
         )
 
 
+def _native_function_entry(graph) -> int:
+    """Authoritative native entry from the owned canonical function identity.
+
+    The first microcode origin can follow the prologue, so the execution
+    start must come from the validated ``function-entry:<decimal>`` identity,
+    never from the first available instruction EA. Invalid identities refuse
+    instead of guessing an address.
+    """
+    function_id = graph.snapshot.function.function_id
+    bitness = graph.snapshot.identity.environment.bitness
+    require(
+        type(function_id) is str and function_id.startswith("function-entry:"),
+        "angr_invalid_function_identity",
+    )
+    encoded = function_id.removeprefix("function-entry:")
+    require(
+        encoded.isdecimal() and len(encoded) <= 20,
+        "angr_invalid_function_identity",
+    )
+    entry_ea = int(encoded)
+    require(
+        0 <= entry_ea < (1 << bitness) - 1,
+        "angr_invalid_function_identity",
+    )
+    return entry_ea
+
+
+def _is_exact_argument_marker(instruction) -> bool:
+    """Whitelist one extractor-shaped typed-argument marker.
+
+    Matches only the synthetic ``m_arg`` metadata the extractor appends for
+    IDB argument arglocs: addressless, 32-bit ordinal plus byte-aligned
+    microregister storage with an extractor native kind.
+    """
+    if (
+        instruction.opcode != "m_arg"
+        or instruction.synthetic is not True
+        or instruction.source_eas != ()
+        or len(instruction.operands) != 2
+    ):
+        return False
+    ordinal, storage = instruction.operands
+    if (
+        ordinal.kind != "constant"
+        or ordinal.width_bits != 32
+        or type(ordinal.constant) is not int
+        or ordinal.role != "left"
+        or ordinal.source_eas != ()
+        or ordinal.native_kind is not None
+        or ordinal.synthetic is not False
+    ):
+        return False
+    location = storage.storage
+    return (
+        storage.kind == "storage"
+        and storage.role == "argument"
+        and storage.source_eas == ()
+        and storage.native_kind in ARG_MARKER_NATIVE_KINDS
+        and storage.synthetic is True
+        and location is not None
+        and location.address_space == "microregister"
+        and location.name == "microregister"
+        and location.bit_offset % 8 == 0
+        and location.width_bits % 8 == 0
+        and 0 < location.width_bits <= 64
+        and location.bit_offset // 8 <= 65535
+    )
+
+
+def _is_exact_marker_block(block) -> bool:
+    """True only for an entry block of exact argument markers.
+
+    Ordinals must increase without duplicates; gaps stay allowed because
+    unmapped arguments are skipped by the extractor.
+    """
+    if not block.instructions:
+        return False
+    if not all(_is_exact_argument_marker(item) for item in block.instructions):
+        return False
+    ordinals = [item.operands[0].constant for item in block.instructions]
+    return all(first < second for first, second in zip(ordinals, ordinals[1:]))
+
+
 def build_prefix_query(
     graph,
     selector,
@@ -60,12 +148,17 @@ def build_prefix_query(
 ) -> AngrQuery:
     """Translate an entry-rooted block prefix into a sidecar question.
 
-    Find targets are the final block's entry addresses; every off-prefix
-    successor along the way becomes an avoid address. Reject repeats,
-    shortcuts, re-entry and ambiguous native translations that this global
-    find/avoid encoding cannot represent. Missing addresses or a non-X64
-    environment also refuse, so the caller degrades honestly instead of
-    asking a different question than the selector names.
+    Execution starts at the validated native function entry so a prologue
+    before the first microcode origin is never skipped. Find targets are the
+    final block's microcode entry addresses (the native entry itself for an
+    entry-only path); every off-prefix successor along the way becomes an
+    avoid address. Reject repeats, shortcuts, re-entry and ambiguous native
+    translations that this global find/avoid encoding cannot represent.
+    Missing addresses, unexpected argument markers, an invalid native
+    identity or a non-X64 environment also refuse, so the caller degrades
+    honestly instead of asking a different question than the selector names.
+    Only an entry block consisting solely of exact typed-argument markers is
+    transparent; every other addressless block still fails explicitly.
     """
     environment = graph.snapshot.identity.environment
     if not (
@@ -94,11 +187,22 @@ def build_prefix_query(
             "angr_prefix_order_unencodable",
         )
 
+    native_entry = _native_function_entry(graph)
+    for block in blocks.values():
+        if block.index == entry:
+            continue
+        for instruction in block.instructions:
+            require(
+                instruction.opcode != "m_arg",
+                "angr_unexpected_argument_marker",
+            )
+
     def entry_addresses(index):
         # Empty blocks are common in real extraction (synthetic entries,
         # address-less glue). A block with no instructions of its own starts
         # where its linear successor chain starts; a fork in that chain is
-        # ambiguous, so it refuses instead of guessing an address.
+        # ambiguous, so it refuses instead of guessing an address. An entry
+        # block of exact typed-argument markers is transparent the same way.
         seen = set()
         current = index
         while True:
@@ -107,10 +211,19 @@ def build_prefix_query(
             seen.add(current)
             instructions = blocks[current].instructions
             if instructions:
-                require(bool(instructions[0].source_eas), "angr_missing_block_addresses")
-                addresses = tuple(instructions[0].source_eas)
-                require(len(addresses) == 1, "angr_ambiguous_block_addresses")
-                return addresses
+                if (
+                    current == index == entry
+                    and _is_exact_marker_block(blocks[entry])
+                ):
+                    pass
+                else:
+                    if instructions[0].opcode == "m_arg":
+                        raise ContractError("angr_unexpected_argument_marker")
+                    require(bool(instructions[0].source_eas),
+                            "angr_missing_block_addresses")
+                    addresses = tuple(instructions[0].source_eas)
+                    require(len(addresses) == 1, "angr_ambiguous_block_addresses")
+                    return addresses
             successors = blocks[current].successors
             require(len(successors) == 1, "angr_missing_block_addresses")
             current = successors[0]
@@ -135,18 +248,28 @@ def build_prefix_query(
     for index in path:
         address = entry_addresses(index)[0]
         if address in selected_addresses:
-            # Only forward, consecutive empty glue can share a native entry.
-            # An empty tail pointing back at real code is a new visit, not
+            # Only forward, consecutive transparent glue can share a native
+            # entry: an empty block or an exact marker-only entry block. An
+            # empty tail pointing back at real code is a new visit, not
             # the already-satisfied global find condition at function entry.
             require(
                 previous_index is not None
-                and not blocks[previous_index].instructions
-                and address == previous_address,
+                and address == previous_address
+                and (
+                    not blocks[previous_index].instructions
+                    or (
+                        previous_index == entry
+                        and _is_exact_marker_block(blocks[entry])
+                    )
+                ),
                 "angr_prefix_address_reentry",
             )
         selected_addresses.add(address)
         previous_index, previous_address = index, address
-    find = entry_addresses(path[-1])
+    if len(path) == 1:
+        find = (native_entry,)
+    else:
+        find = entry_addresses(path[-1])
     avoid_addresses: list[int] = []
     for position in range(len(path) - 1):
         for successor in blocks[path[position]].successors:
@@ -154,14 +277,14 @@ def build_prefix_query(
                 avoid_addresses.extend(entry_addresses(successor))
     avoid = tuple(sorted(set(avoid_addresses)))
     require(
-        not (selected_addresses & set(avoid)),
+        not ((selected_addresses | {native_entry}) & set(avoid)),
         "angr_find_avoid_overlap",
     )
     return AngrQuery(
         binary_path=context.binary_path,
         binary_sha256=context.binary_sha256,
         image_base=context.image_base,
-        entry_ea=entry_addresses(path[0])[0],
+        entry_ea=native_entry,
         find_eas=find,
         avoid_eas=avoid,
         symbolic_registers=tuple(

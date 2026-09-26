@@ -117,8 +117,17 @@ def main(request_path, response_path):
             symbols[name] = claripy.BVS(f"angr_{name}", 64)
         setattr(state.regs, name, symbols[name])
     simgr = proj.factory.simulation_manager(state)
+    # LoopSeer's implicit CFG scans the entire image, including unrelated
+    # runtime code. Start only at this query's entry while retaining reachable
+    # callees and indirect-target recovery for loop enforcement.
+    cfg = proj.analyses.CFGFast(
+        normalize=True, function_starts=[entry], start_at_entry=False,
+        symbols=False, function_prologues=False, force_smart_scan=False,
+        force_complete_scan=False, eh_frame=False, data_references=False,
+        resolve_indirect_jumps=True,
+    )
     loop_seer = angr.exploration_techniques.LoopSeer(
-        bound=request["loop_bound"])
+        cfg=cfg, bound=request["loop_bound"])
     simgr.use_technique(loop_seer)
     steps_before = len(simgr.active)
     simgr.explore(find=tuple(request["find_eas"]),

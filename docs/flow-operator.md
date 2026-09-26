@@ -601,6 +601,14 @@ selected blocks, re-entry, or ambiguous native address mappings. These requests
 remain `unknown` rather than being replaced with endpoint reachability. An
 unconstrained engine state likewise cannot establish `infeasible`.
 
+Symbolic execution starts at the validated native function entry, not the
+first microcode origin, so a prologue before the first lifted address is never
+skipped. Only an entry block consisting solely of exact typed-argument markers
+is transparent; other addressless blocks, non-entry markers, and invalid native
+identities refuse explicitly. Loop detection uses a CFG rooted at the queried
+entry instead of a whole-image scan; loop-bound and other unresolved outcomes
+stay `unknown`.
+
 Profile recommendation: keep both refinement tools in the read-only profile.
 They are static, additive (no existing tool path changes), and engine-free
 unless a request explicitly opts in.

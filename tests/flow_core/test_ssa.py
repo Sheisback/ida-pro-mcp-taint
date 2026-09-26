@@ -43,7 +43,7 @@ def ins(index, opcode, left, right=None, dest=None):
     )
 
 
-def snapshot(blocks):
+def snapshot(blocks, *, function_id="scalar-test"):
     base = Snapshot.from_data(
         json.loads(
             (ROOT / "tests/flow_fixtures/manifests/extraction_x64.json").read_text()
@@ -55,7 +55,7 @@ def snapshot(blocks):
         )
         for b in blocks
     )
-    function = FunctionInput("scalar-test", 0, blocks)
+    function = FunctionInput(function_id, 0, blocks)
     identity = replace(
         base.identity, function_id=function.function_id, input_digest=digest(function)
     )

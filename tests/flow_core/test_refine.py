@@ -104,7 +104,7 @@ def addressed(blocks, base=0x401000):
             patched.append(replace(instruction, source_eas=(ea,)))
             ea += 1
         out.append(Block(block.index, block.predecessors, tuple(patched)))
-    return snapshot(tuple(out))
+    return snapshot(tuple(out), function_id=f"function-entry:{base - 4}")
 
 
 def angr_branch_graph():
