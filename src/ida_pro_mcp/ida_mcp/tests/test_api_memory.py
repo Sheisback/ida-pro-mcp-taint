@@ -50,6 +50,31 @@ def test_get_bytes_reads_valid_region():
 
 
 @test()
+def test_get_bytes_zero_pads_single_digit_bytes():
+    """get_bytes emits fixed-width hex so reads round-trip through patch."""
+    data_addr = get_data_address()
+    if not data_addr:
+        skip_test("binary has no data segment")
+
+    original = get_bytes({"addr": data_addr, "size": 2})[0]
+    assert_ok(original, "data")
+    original_plain = _plain_hex_bytes(original["data"])
+
+    try:
+        written = patch({"addr": data_addr, "data": "04 00"})[0]
+        assert "error" not in written
+        probe = get_bytes({"addr": data_addr, "size": 2})[0]
+        assert_ok(probe, "data")
+        assert probe["data"] == "0x04 0x00"
+        assert _plain_hex_bytes(probe["data"]) == "0400"
+    finally:
+        patch({"addr": data_addr, "data": original_plain})
+
+    restored = get_bytes({"addr": data_addr, "size": 2})[0]
+    assert _plain_hex_bytes(restored["data"]) == original_plain
+
+
+@test()
 def test_get_bytes_invalid():
     """get_bytes reports an error for an unmapped address."""
     result = get_bytes({"addr": get_unmapped_address(), "size": 16})

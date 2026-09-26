@@ -82,7 +82,7 @@ def get_bytes(regions: list[MemoryRead] | MemoryRead) -> list[BytesReadResult]:
         try:
             ea = parse_address(addr)
             raw = read_bytes_bss_safe(ea, size)
-            data = " ".join(f"{x:#02x}" for x in raw)
+            data = " ".join(f"{x:#04x}" for x in raw)
             results.append({"addr": addr, "data": data})
         except Exception as e:
             results.append({"addr": addr, "data": None, "error": str(e)})
@@ -195,7 +195,7 @@ def get_global_variable_value_internal(ea: int) -> str:
 
     tif = ida_typeinf.tinfo_t()
     if not ida_nalt.get_tinfo(tif, ea):
-        if not ida_bytes.has_any_name(ea):
+        if not ida_bytes.has_any_name(ida_bytes.get_flags(ea)):
             raise IDAError(f"Failed to get type information for variable at {ea:#x}")
 
         size = ida_bytes.get_item_size(ea)
@@ -213,7 +213,7 @@ def get_global_variable_value_internal(ea: int) -> str:
 
     if size in (1, 2, 4, 8):
         return hex(read_int_bss_safe(ea, size))
-    return " ".join(hex(b) for b in read_bytes_bss_safe(ea, size))
+    return " ".join(f"{b:#04x}" for b in read_bytes_bss_safe(ea, size))
 
 
 @tool
