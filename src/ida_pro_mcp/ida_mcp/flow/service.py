@@ -80,6 +80,7 @@ from ida_pro_mcp.flow_core.query import (
 from ida_pro_mcp.flow_core.angr_client import sidecar_from_environment
 from ida_pro_mcp.flow_core.refine import (
     RefinementSpec,
+    validate_memory_refinement,
     refined_memory_page,
     refined_path_page,
     run_memory_refinement,
@@ -1016,7 +1017,7 @@ def _resolve_angr_binary():
     """Snapshot the IDA input binary for the sidecar. Main thread only."""
     import hashlib
 
-    import ida_nalt
+    import ida_nalt  # pyright: ignore[reportMissingImports]
 
     try:
         path = ida_nalt.get_input_file_path()
@@ -1353,7 +1354,7 @@ def create_memory_refinement(
     memory_result = MemoryResult.from_data(
         engine.store.artifact(memory_result_artifact)
     )
-    require(plan.plan_digest == memory_result.plan_digest, "refine_plan_mismatch")
+    validate_memory_refinement(program, plan, memory_result, load_id, store_id)
     request = {
         "ssa_artifact": ssa_artifact,
         "memory_plan_artifact": memory_plan_artifact,
@@ -1484,9 +1485,9 @@ def page(artifact_id, section, cursor=None, limit=50, evidence_ids=None):
         argument_bindings = _argument_bindings(program)
         items = (
             [
-                wire_safe_node_item(
-                    {"node_id": node.node_id, **node.to_data()}
-                )
+                {"node_id": node.node_id, **node.to_data()}
+                if graph.snapshot.snapshot_id.startswith("snapshot-v2:")
+                else wire_safe_node_item({"node_id": node.node_id, **node.to_data()})
                 for node in graph.nodes
             ]
             if section == "ssa"
@@ -1510,7 +1511,9 @@ def page(artifact_id, section, cursor=None, limit=50, evidence_ids=None):
         )
         if section == "graph":
             items = [
-                wire_safe_node_item(
+                {"type": "node", "node_id": n.node_id, **n.to_data()}
+                if identity_version == 2
+                else wire_safe_node_item(
                     {"type": "node", "node_id": n.node_id, **n.to_data()}
                 )
                 for n in graph.nodes
@@ -1591,7 +1594,15 @@ def _chunk_large_items(section, items, *, wire_version="flow-wire/1"):
     for index, item in enumerate(items):
         text = canonical_json_v2(item) if v2 else canonical_json(item)
         size = len(json.dumps(to_wire_v2(item) if v2 else item))
-        if size < 8000:
+        wire_safe = True
+        if not v2:
+            try:
+                ensure_wire_v1_safe(item)
+            except ContractError as exc:
+                if str(exc) != "unsafe_integer_for_wire_v1":
+                    raise
+                wire_safe = False
+        if size < 8000 and wire_safe:
             result.append(item)
             continue
         item_id = digest({"section": section, "index": index, "item": item})

@@ -16,12 +16,13 @@ import hashlib
 import json
 import logging
 import sys
+from typing import NoReturn
 
 RUNNER_VERSION = "flow-angr-runner/1"
 NUM_FIND_ALL = 65536
 
 
-def fail(message):
+def fail(message: str) -> NoReturn:
     print(f"angr-runner: {message}", file=sys.stderr)
     raise SystemExit(2)
 
@@ -134,7 +135,7 @@ def main(request_path, response_path):
         "exploration_steps": steps,
     }
     if simgr.found:
-        found = sorted(simgr.found, key=lambda s: s.history.bbl_addrs)
+        found = sorted(simgr.found, key=lambda s: tuple(s.history.bbl_addrs))
         witness_state = found[0]
         engine["exploration_steps"] = len(witness_state.history.bbl_addrs)
         witness = []
@@ -150,6 +151,12 @@ def main(request_path, response_path):
         return
     engine["exploration_steps"] = 0
     limited = len(getattr(simgr, "spinning", []) or []) > 0
+    if getattr(simgr, "unconstrained", []):
+        write(response_path, {
+            "status": "unknown", "witness": [], "engine": engine,
+            "unresolved": ["unconstrained_states"], "target_executed": False,
+        })
+        return
     if simgr.errored:
         write(response_path, {
             "status": "unknown", "witness": [], "engine": engine,

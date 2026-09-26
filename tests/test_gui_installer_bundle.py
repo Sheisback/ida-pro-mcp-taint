@@ -39,6 +39,12 @@ if len(sys.argv) > 2:
 _prepare_runtime()
 import ida_pro_mcp.flow_core as core
 from ida_pro_mcp.flow_core.build_identity import BUILD_ID
+from ida_pro_mcp.flow_core.angr_client import default_runner_path
+runner = default_runner_path()
+assert runner.is_file()
+assert runner.parent.parent == __import__('pathlib').Path(core.__file__).resolve().parents[1]
+assert 'angr' not in sys.modules
+print(runner)
 assert sys.path == before
 assert 'idaapi' not in sys.modules
 print(core.__file__)
@@ -235,3 +241,41 @@ def test_loader_wires_runtime_shutdown_before_reload_and_termination():
         calls(methods["run"], "unload_package")
     )
     assert calls(methods["term"], "_shutdown_flow_runtime")
+
+
+def test_bundle_includes_sidecar_runner_and_resolves_it_locally(tmp_path):
+    folder = install(tmp_path)
+    root = folder / installer.GUI_BUNDLE
+    manifest = json.loads((root / installer.GUI_MANIFEST).read_text())
+    assert {"flow_angr/__init__.py", "flow_angr/runner.py"} <= set(manifest["files"])
+    result = bootstrap(folder)
+    assert result.returncode == 0, result.stderr
+    assert str(root / "flow_angr" / "runner.py") in result.stdout
+
+
+@pytest.mark.parametrize("damage", ["missing", "changed"])
+def test_missing_or_modified_sidecar_runner_fails_closed(tmp_path, damage):
+    folder = install(tmp_path)
+    runner = folder / installer.GUI_BUNDLE / "flow_angr" / "runner.py"
+    if damage == "missing":
+        runner.unlink()
+    else:
+        runner.write_text("# modified runner\n")
+    result = bootstrap(folder)
+    assert result.returncode != 0
+    assert "missing or stale" in result.stderr
+
+
+def test_runner_only_change_changes_runtime_build_identity(tmp_path, monkeypatch):
+    from ida_pro_mcp.flow_core import build_identity
+
+    root = install(tmp_path) / installer.GUI_BUNDLE
+    # Hash the disposable installed runtime without touching checkout sources.
+    monkeypatch.setattr(build_identity, "__file__", str(root / "flow_core" / "build_identity.py"))
+    before = build_identity.extension_build_id()
+    assert before == BUILD_ID
+    runner = root / "flow_angr" / "runner.py"
+    assert runner.is_file()
+    runner.write_text(runner.read_text() + "\n# changed runner only\n")
+    assert build_identity.extension_build_id() != before
+    assert "flow_angr/*.py" in build_identity.BUILD_SCOPE

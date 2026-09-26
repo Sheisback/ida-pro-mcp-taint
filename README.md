@@ -293,7 +293,7 @@ uv run idalib-mcp --stdio --profile profiles/flow-readonly.txt
 
 The opt-in angr path tier runs in a sidecar under a separately configured
 interpreter (`IDA_MCP_ANGR_PYTHON`). Without it, requested refinement
-tiers return unknown with `angr_not_configured` and the v1 baseline stays
+tiers return unknown with an explicit unavailability reason and the v1 baseline stays
 intact.
 
 Configure your MCP client to launch that command from this checkout. For HTTP

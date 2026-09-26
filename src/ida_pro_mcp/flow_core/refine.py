@@ -18,7 +18,7 @@ service handlers and SDK-free runtime tests; only scope ownership (which
 store) stays host-side.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Literal, cast
 
 from .angr_client import (
@@ -30,9 +30,11 @@ from .angr_client import (
 from .angr_client import query as run_angr_query
 from .contracts import Graph
 from .memory import MemoryPlan, MemoryResult
+from .memory_graph import build_memory_graph_from_program
 from .path_conditions import PathSelector, path_bindings, prove_path
 from .proof import validate_proof_result
 from .serialization import ContractError, Model, digest
+from .ssa import SSAProgram
 from .states import check_digest, nonempty, require
 
 REFINE_VERSION = "flow-refine/1"
@@ -357,6 +359,37 @@ def check_refined_section(refined: dict[str, Any], *, attempted_kind: str) -> No
             require(False, "invalid_refined_engine")
 
 
+def validate_memory_refinement(
+    program: SSAProgram,
+    plan: MemoryPlan,
+    result: MemoryResult,
+    load_id: str,
+    store_id: str,
+) -> None:
+    """Join owned artifacts, including the snapshot's enriched public graph."""
+    require(plan.plan_digest == result.plan_digest, "refine_plan_mismatch")
+    result.validate_plan(plan)
+    require(
+        plan.program.graph.snapshot == program.graph.snapshot,
+        "refine_snapshot_mismatch",
+    )
+    if plan.program != program:
+        # Snapshot jobs publish memory-enriched SSA alongside its base plan.
+        # Accept that relation only after exact replay, not by snapshot ID alone.
+        rebuilt = build_memory_graph_from_program(plan.program)
+        require(rebuilt.program == program, "refine_program_mismatch")
+        require(rebuilt.plan == plan, "refine_plan_mismatch")
+        require(rebuilt.result == result, "refine_result_mismatch")
+    nodes = {node.node_id: node for node in program.graph.nodes}
+    require(load_id in nodes and nodes[load_id].kind == "Load", "invalid_refine_load")
+    require(
+        store_id in nodes and nodes[store_id].kind == "Store", "invalid_refine_store"
+    )
+    accesses = {access.node_id for access in result.accesses}
+    require(load_id in accesses, "invalid_refine_load_result")
+    require(store_id in accesses, "invalid_refine_store_result")
+
+
 def refine_memory_proof(
     plan: MemoryPlan,
     graph: Graph,
@@ -378,9 +411,9 @@ def refine_memory_proof(
     """
     del cancelled
     require(selector.bindings == path_bindings(graph), "path_query_artifact_mismatch")
-    require(
-        plan.plan_digest == memory_result.plan_digest,
-        "refine_plan_mismatch",
+    require(plan.plan_digest == memory_result.plan_digest, "refine_plan_mismatch")
+    validate_memory_refinement(
+        replace(plan.program, graph=graph), plan, memory_result, load_id, store_id
     )
     pair = {load_id, store_id}
     baseline = {
@@ -513,6 +546,7 @@ def run_path_refinement(
             and set(binary) == {"path", "sha256", "image_base"},
             "invalid_refine_angr_binary",
         )
+        binary = cast(dict[str, Any], binary)
         if angr_sidecar is not None:
             context = AngrContext(
                 angr_sidecar,
@@ -548,7 +582,6 @@ def run_memory_refinement(
 ):
     """Resolve, replay, and store one memory refinement. Host-agnostic."""
     from .contracts import Graph
-    from .ssa import SSAProgram
 
     require(
         type(request) is dict
@@ -571,12 +604,16 @@ def run_memory_refinement(
         if request.get("graph_artifact") is not None
         else program.graph
     )
+    require(graph == program.graph, "refine_graph_mismatch")
     plan = MemoryPlan.from_data(store.artifact(request["memory_plan_artifact"]))
     memory_result = MemoryResult.from_data(
         store.artifact(request["memory_result_artifact"])
     )
     selector = PathSelector.from_data(request["path"])
     spec = RefinementSpec.from_data(request["refinement"])
+    validate_memory_refinement(
+        program, plan, memory_result, request["load_id"], request["store_id"]
+    )
     artifact = refine_memory_proof(
         plan,
         graph,

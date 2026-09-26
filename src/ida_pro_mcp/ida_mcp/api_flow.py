@@ -339,24 +339,25 @@ def flow_get_capabilities() -> FlowCapabilities:
     try:
         from ida_pro_mcp.flow_core.angr_client import sidecar_from_environment
 
-        solver_ready = sidecar_from_environment().probe() is None
+        solver_probe = sidecar_from_environment().probe()
     except Exception:  # noqa: BLE001 - discovery must fail closed, not abort.
-        solver_ready = False
+        solver_probe = "angr_unavailable"
     features["symbolic_refinement"] = {
         "status": (
-            "available"
-            if route_ready and solver_ready
+            "configured_unverified"
+            if route_ready and solver_probe == "angr_configured_unverified"
             else "unavailable"
         ),
         "reason": (
-            "Opt-in angr path refinement over v1 proofs; sidecar runs "
-            "only when an explicit refinement tier requests it"
-            if route_ready and solver_ready
+            "angr interpreter and runner configured; engine imports and versions "
+            "not verified. Sidecar runs only for explicitly requested refinement; "
+            "engine failures remain unknown"
+            if route_ready and solver_probe == "angr_configured_unverified"
             else "Refinement unavailable: "
             + (
                 "no validated route"
                 if not route_ready
-                else "angr sidecar not configured (IDA_MCP_ANGR_PYTHON)"
+                else f"{solver_probe} (IDA_MCP_ANGR_PYTHON)"
             )
             + "; v1 proofs remain available and engine-free"
         ),

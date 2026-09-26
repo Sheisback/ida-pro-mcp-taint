@@ -536,6 +536,7 @@ def _install_gui_bundle(folder: str) -> None:
         for name, source in (
             ("ida_mcp", IDA_PLUGIN_PKG),
             ("flow_core", os.path.join(SCRIPT_DIR, "flow_core")),
+            ("flow_angr", os.path.join(SCRIPT_DIR, "flow_angr")),
         ):
             shutil.copytree(
                 source,

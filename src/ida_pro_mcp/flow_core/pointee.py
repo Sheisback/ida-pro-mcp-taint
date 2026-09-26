@@ -151,6 +151,7 @@ def bind_pointee_sources(
             "analyst designates these bytes as explicit taint at the source point",
         )
         if exact:
+            assert pointer is not None
             candidate = pointer.candidates[0]
             obj = result_objects[candidate.object_id]
             require(obj.singleton, "Pointee source requires singleton storage")
@@ -187,6 +188,7 @@ def bind_pointee_sources(
             and candidate.offset + source.interval.start >= 0,
             "Pointee range precedes object",
         )
+        assert candidate.offset is not None  # Validated by require above.
         interval = ByteRange(
             candidate.offset + source.interval.start,
             candidate.offset + source.interval.end,

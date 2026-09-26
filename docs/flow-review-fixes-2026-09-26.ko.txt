@@ -1,0 +1,84 @@
+# 2026-09-26 리뷰 보완 및 최종 검증
+
+검토 기준은 `f16499f`이며, 이 문서는 해당 기준 이후의 보완 기록이다.
+기존 OMX G001–G022 완료 기록이나 과거 Z3 측정을 현재 angr 검증으로
+대체 인용하지 않는다. 자동 취약점 판정이나 지원 프로필 승격은 없다.
+
+## 보완 내용
+
+- **경로 질의:** 반복 블록, 지름길, 재진입, 중복·불명확한 native 주소와
+  주소 없는 비어 있지 않은 블록을 명시적으로 거절한다. 실제로 빈 선형
+  연결 블록만 건너뛴다. 표현하지 못하는 경로를 다른 도달성 질문으로
+  바꾸지 않으며, 지원되지 않는 경우는 `unknown`으로 남는다.
+- **angr 결과:** 미해결 `unconstrained` 상태를 `infeasible`로 판정하지
+  않는다. 여러 성공 상태의 이력은 비교 가능한 tuple로 정렬한다.
+- **배포·식별:** GUI 번들, 공통 BUILD_ID, wheel 검사, 전체 runtime
+  receipt manifest에 `flow_angr`를 포함한다. capability는 엔진을 실행하지
+  않고 `configured_unverified`와 실제 설정 오류를 구분한다.
+- **wire:** v2의 큰 상수는 tagged integer를 유지한다. v1 분석 항목에 큰
+  정수가 있으면 크기와 무관하게 기존 canonical-JSON chunk 형식을 쓴다.
+  메모리 범위의 끝값이나 저장된 근거를 삭제·축소하지 않는다.
+- **분석 근거 연결:** SSA·plan·result·선택한 Load/Store를 함께 검증한다.
+  snapshot이 생성한 메모리 정보가 추가된 SSA는 원본 plan에서 정확히
+  재계산한 결과와 일치해야 한다. 다른 함수·변형된 그래프·누락된 접근은
+  거절하며, 정당한 원본/보강 그래프 조합은 그대로 지원한다.
+- **타입·테스트 정리:** 이미 보장된 계약을 명시적으로 좁히고, 실패한
+  reviewed-call native 검사도 소유한 세션을 `save=False`로 닫는다.
+
+## 검증 결과
+
+| 검증 | 결과 |
+| --- | --- |
+| 전체 SDK-free `PYTHONPATH=src:. uv run pytest -q tests` | **1,926 passed + 117 subtests**, 실패 0 |
+| 지정 Ruff 및 변경 Python 파일 | 통과 |
+| Pyright 1.1.414: `flow_core`, `flow/service.py` | **0 errors** |
+| support audit 및 `git diff --check` | 통과 |
+| 새 wheel 생성 및 SDK 없는 격리 import/roundtrip | 통과 |
+| 임시 GUI 설치·격리 로더·runner 누락/변조 검사 | 통과 |
+| IDA 9.3: crackme03 / typed_fixture | **359 / 333 passed**, typed fixture 2 skip |
+| 실제 MCP-mode `api_flow` | **2 passed** |
+| native wire-v2 | 통과 |
+| native path / public API | 각각 x86_64·arm64 통과 |
+| native pointee/Store | **8개 통과** |
+| native reviewed-call | **12개 통과**; 기존 wide-endpoint 실패 해소 |
+| 실제 IDA→MCP→angr job/paging | 두 분기의 off/on **4개 통과** |
+
+angr/claripy **9.2.213**, Z3 **4.13.0**, Python **3.11.16**의 기존 분리
+환경을 사용했다. 자체 작성한 산술/분기 fixture의 실제 symbolic 검사로
+단일·다중 성공, 도달 불가, 미해결 간접 분기를 확인했다. SDK-free stub
+회귀 테스트도 함께 두어 angr가 없는 CI에서 핵심 수정 경계를 검사한다.
+
+독립 code-reviewer는 소스와 receipt 통합을 **APPROVE**, architect는
+**CLEAR**로 검토했다. 이는 아래에 제외한 release 검증의 승인이 아니다.
+
+## Native 근거 갱신
+
+IDA **9.3 / Hex-Rays 9.3.0.260213**에서 실제로 다시 생성한 뒤 검증했다.
+구현 해시를 수기로 교체하지 않았다.
+
+- `path_public_smoke.json`, `public_api_smoke.json`, `pointee_store_native.json`
+- `calls/public_runtime.json`, `calls/extraction_{x86_64,arm64}.json`
+- 새 call extraction에 대한 `calls/*_analysis.json` 순수 재계산
+- public-sample 9개 native receipt 및 그 `matrix.json`
+
+최종 runtime build ID:
+
+```text
+flow-build-sha256-v1:b28c6aadc2d237ff0541ad64490ae0988b29398b942e6e388128092c76d010c8
+```
+
+58개 runtime 파일의 해시를 native 검사 전후 대조했다. 로컬 원문 로그와
+명령·종료 코드·재생성 출력은 `/private/tmp/flow-review-fixes.myIVZm/`에
+보관했다. 임시 경로는 배포에 필요한 입력이나 영구 release 근거가 아니다.
+
+## 유지한 경계
+
+- 대상 프로그램은 네이티브 실행하지 않았다. 원본 fixture 해시는 그대로이며,
+  IDA는 일회용 복사본으로 검사했다.
+- 기록된 과거 taint 기준선과 성능 기준값은 덮어쓰지 않았다.
+  `taint_scenarios_native.json`은 그 문서에 명시된 수정 전 기준선이다.
+- 현재 angr 경로 지원은 여전히 x64의 표현 가능한 prefix에 한정된다.
+  보수적 거절로 커버리지가 줄 수 있으며, memory refinement는
+  `evidence_only`이고 이전 inline/Z3 엔진은 되살리지 않았다.
+- 실제 GUI semantic execution, 전체 ISA 재측정, protected Linux release CI와
+  공식 성능 게이트의 성공을 이 로컬 검증으로 주장하지 않는다.

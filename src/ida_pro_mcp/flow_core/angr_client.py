@@ -61,9 +61,11 @@ def build_prefix_query(
     """Translate an entry-rooted block prefix into a sidecar question.
 
     Find targets are the final block's entry addresses; every off-prefix
-    successor along the way becomes an avoid address. Missing addresses or
-    a non-X64 environment refuse loudly so the caller degrades honestly
-    instead of asking a different question than the selector names.
+    successor along the way becomes an avoid address. Reject repeats,
+    shortcuts, re-entry and ambiguous native translations that this global
+    find/avoid encoding cannot represent. Missing addresses or a non-X64
+    environment also refuse, so the caller degrades honestly instead of
+    asking a different question than the selector names.
     """
     environment = graph.snapshot.identity.environment
     if not (
@@ -83,6 +85,15 @@ def build_prefix_query(
         "angr prefix must be entry-rooted",
     )
 
+    require(len(set(path)) == len(path), "angr_prefix_repeated_block")
+    for current, following in zip(path, path[1:]):
+        require(following in blocks[current].successors, "angr_prefix_nonedge")
+        require(
+            all(successor == following or successor not in path
+                for successor in blocks[current].successors),
+            "angr_prefix_order_unencodable",
+        )
+
     def entry_addresses(index):
         # Empty blocks are common in real extraction (synthetic entries,
         # address-less glue). A block with no instructions of its own starts
@@ -95,21 +106,55 @@ def build_prefix_query(
             require(current in blocks, "angr_missing_block_addresses")
             seen.add(current)
             instructions = blocks[current].instructions
-            if instructions and instructions[0].source_eas:
-                return tuple(instructions[0].source_eas)
+            if instructions:
+                require(bool(instructions[0].source_eas), "angr_missing_block_addresses")
+                addresses = tuple(instructions[0].source_eas)
+                require(len(addresses) == 1, "angr_ambiguous_block_addresses")
+                return addresses
             successors = blocks[current].successors
             require(len(successors) == 1, "angr_missing_block_addresses")
             current = successors[0]
 
+    # Distinct native blocks must not share instruction provenance. Empty
+    # linear glue may resolve to its successor, but real overlapping blocks
+    # cannot be represented faithfully by a global address find/avoid set.
+    address_owners: dict[int, int] = {}
+    for block in blocks.values():
+        for instruction in block.instructions:
+            for address in instruction.source_eas:
+                require(
+                    address not in address_owners
+                    or address_owners[address] == block.index,
+                    "angr_block_address_overlap",
+                )
+                address_owners[address] = block.index
+
+    selected_addresses: set[int] = set()
+    previous_index = None
+    previous_address = None
+    for index in path:
+        address = entry_addresses(index)[0]
+        if address in selected_addresses:
+            # Only forward, consecutive empty glue can share a native entry.
+            # An empty tail pointing back at real code is a new visit, not
+            # the already-satisfied global find condition at function entry.
+            require(
+                previous_index is not None
+                and not blocks[previous_index].instructions
+                and address == previous_address,
+                "angr_prefix_address_reentry",
+            )
+        selected_addresses.add(address)
+        previous_index, previous_address = index, address
     find = entry_addresses(path[-1])
-    avoid: list[int] = []
+    avoid_addresses: list[int] = []
     for position in range(len(path) - 1):
         for successor in blocks[path[position]].successors:
             if successor not in path:
-                avoid.extend(entry_addresses(successor))
-    avoid = tuple(sorted(set(avoid)))
+                avoid_addresses.extend(entry_addresses(successor))
+    avoid = tuple(sorted(set(avoid_addresses)))
     require(
-        not (set(find) & set(avoid)),
+        not (selected_addresses & set(avoid)),
         "angr_find_avoid_overlap",
     )
     return AngrQuery(
@@ -269,15 +314,19 @@ class AngrSidecar:
         runner = self.runner or str(default_runner_path())
         object.__setattr__(self, "runner", runner)
 
-    def probe(self) -> str | None:
-        """Return None when usable, else the explicit unavailability reason."""
+    def probe(self) -> str:
+        """Inspect configuration only; never import or launch the engine.
+
+        Existing paths are configured, not proof that engine imports work.
+        Only an explicitly requested query runs the sidecar.
+        """
         if not os.path.isfile(self.interpreter) or not os.access(
             self.interpreter, os.X_OK
         ):
             return "angr_unavailable"
         if not os.path.isfile(self.runner):
             return "angr_runner_missing"
-        return None
+        return "angr_configured_unverified"
 
 
 def sidecar_from_environment(explicit: str | None = None) -> AngrSidecar:
@@ -298,7 +347,7 @@ def query(
     """Run one sidecar question. Engine failures become explicit unknown."""
     require(type(query) is AngrQuery, "angr query must be validated first")
     blocked = sidecar.probe()
-    if blocked is not None:
+    if blocked != "angr_configured_unverified":
         return _unknown(blocked)
     if cancelled():
         return _unknown("cancelled")

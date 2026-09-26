@@ -528,6 +528,10 @@ def test_public_native_receipt_current_and_untruncated():
         ),
         *(
             str(path.relative_to(root))
+            for path in (root / "src/ida_pro_mcp/flow_angr").glob("*.py")
+        ),
+        *(
+            str(path.relative_to(root))
             for path in (root / "src/ida_pro_mcp/ida_mcp/flow").glob("*.py")
         ),
     }

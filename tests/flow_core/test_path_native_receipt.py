@@ -36,6 +36,7 @@ def test_public_program_path_receipt_is_current_exact_and_static_only():
         ROOT / "src/ida_pro_mcp/installer.py",
         ROOT / "profiles/flow-readonly.txt",
         *(ROOT / "src/ida_pro_mcp/flow_core").glob("*.py"),
+        *(ROOT / "src/ida_pro_mcp/flow_angr").glob("*.py"),
         *(ROOT / "src/ida_pro_mcp/ida_mcp/flow").glob("*.py"),
     }
     assert receipt["implementation_sha256"] == {

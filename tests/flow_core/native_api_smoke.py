@@ -507,6 +507,7 @@ def main(build_dir, output):
             ROOT / "tests/flow_core/native_api_smoke.py",
         ]
         + sorted((ROOT / "src/ida_pro_mcp/flow_core").glob("*.py"))
+        + sorted((ROOT / "src/ida_pro_mcp/flow_angr").glob("*.py"))
         + sorted((ROOT / "src/ida_pro_mcp/ida_mcp/flow").glob("*.py"))
     )
     output = Path(output)

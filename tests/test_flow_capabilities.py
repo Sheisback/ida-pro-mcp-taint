@@ -2418,3 +2418,34 @@ def test_check_path_requires_explicit_selector_version_before_runtime(
     )
     result = module.flow_check_path("graph", {"bindings": {}, "blocks": [0]}, "key")
     assert result["error"]["code"] == "Wrong fields for PathSelector"
+
+
+def test_symbolic_configuration_is_not_engine_readiness(flow, monkeypatch):
+    import subprocess
+
+    module, _ = flow
+    monkeypatch.setenv("IDA_MCP_ANGR_PYTHON", sys.executable)
+    monkeypatch.setattr(subprocess, "Popen", lambda *a, **kw: pytest.fail(
+        "capability discovery must not launch an engine"))
+    capability = module.flow_get_capabilities()["features"]["symbolic_refinement"]
+    assert capability["status"] == "configured_unverified"
+    assert "not verified" in capability["reason"]
+
+
+def test_symbolic_missing_configuration_is_unavailable(flow, monkeypatch):
+    module, _ = flow
+    monkeypatch.delenv("IDA_MCP_ANGR_PYTHON", raising=False)
+    capability = module.flow_get_capabilities()["features"]["symbolic_refinement"]
+    assert capability["status"] == "unavailable"
+
+
+def test_symbolic_missing_runner_reports_exact_probe_reason(flow, monkeypatch):
+    from ida_pro_mcp.flow_core.angr_client import AngrSidecar
+
+    module, _ = flow
+    monkeypatch.setenv("IDA_MCP_ANGR_PYTHON", sys.executable)
+    monkeypatch.setattr(AngrSidecar, "probe", lambda self: "angr_runner_missing")
+    capability = module.flow_get_capabilities()["features"]["symbolic_refinement"]
+    assert capability["status"] == "unavailable"
+    assert "angr_runner_missing" in capability["reason"]
+    assert "not configured" not in capability["reason"]

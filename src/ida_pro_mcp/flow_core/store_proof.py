@@ -187,6 +187,7 @@ def prove_store(
             if node.kind == "Constant":
                 if node.operation not in {None, "global_address"}:
                     raise _Unknown("non_numeric_address_constant")
+                assert node.constant is not None  # Constant Node contract.
                 result = (None, node.constant)
             elif node.kind == "Copy" or (
                 node.kind == "Unary"
@@ -239,6 +240,7 @@ def prove_store(
         if store.width_bits != bits:
             raise _Unknown("non_pointer_width_store")
         roles = store.memory_operands
+        assert roles is not None and roles.data is not None  # Store Node contract.
         if roles.segment is not None:
             segment = nodes[roles.segment]
             record(segment, "flat_segment")

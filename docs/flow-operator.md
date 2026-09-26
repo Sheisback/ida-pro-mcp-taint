@@ -564,12 +564,35 @@ section always carries `evidence_only` explicitly. The previous z3 alias
 engine was retired rather than replaced: this MCP surface reports
 evidence and leaves verdicts to the analyst.
 
+Refinement validates the selected SSA, memory plan, result, and access IDs
+together. Snapshot jobs publish a memory-enriched SSA graph alongside its base
+plan; that relationship is accepted only after exact deterministic replay.
+Artifacts from another function or a different source overlay are rejected.
+
+The current path protocol cannot represent repeated blocks, shortcuts to later
+selected blocks, re-entry, or ambiguous native address mappings. These requests
+remain `unknown` rather than being replaced with endpoint reachability. An
+unconstrained engine state likewise cannot establish `infeasible`.
+
 Profile recommendation: keep both refinement tools in the read-only profile.
 They are static, additive (no existing tool path changes), and engine-free
 unless a request explicitly opts in.
 
 Environment note: set `IDA_MCP_ANGR_PYTHON` to an angr-capable interpreter
-for the sidecar; without it the tier reports `angr_not_configured`.
+for the sidecar; without it the tier reports an explicit unavailability reason
+(such as `angr_unavailable`) while preserving the baseline.
+Capability discovery does not launch the interpreter: existing interpreter and
+runner paths are reported as `configured_unverified`, not `available`. Actual
+engine import/version or execution failures are reported by an explicitly
+requested refinement. GUI bundles and the common flow build ID include the
+vendored runner, while its external interpreter remains operator-configured.
 Headless idalib workers inherit the launch environment. A GUI-plugin
 deployment instead uses IDA's configured Python (`idapyswitch` on macOS);
 the sidecar interpreter is still a separate, explicitly configured path.
+
+V1 analysis-page items containing integers outside the JavaScript-safe range
+use the existing `canonical_json_chunk` representation even when the item is
+small. Reassemble every chunk in order and use a lossless integer parser for
+the canonical JSON text; item size does not change the integer contract. V2
+SSA/graph constants retain their original tagged integers, not v1's
+`constant_hex` compatibility rendering.

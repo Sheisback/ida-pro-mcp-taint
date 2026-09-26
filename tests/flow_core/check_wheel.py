@@ -17,6 +17,8 @@ def check(directory: Path):
         with zipfile.ZipFile(wheels[0]) as wheel:
             expected = {
                 "ida_pro_mcp/flow_core/__init__.py",
+                "ida_pro_mcp/flow_angr/__init__.py",
+                "ida_pro_mcp/flow_angr/runner.py",
                 "ida_pro_mcp/flow_core/build_identity.py",
                 "ida_pro_mcp/flow_core/serialization.py",
                 "ida_pro_mcp/flow_core/states.py",
@@ -82,6 +84,11 @@ from ida_pro_mcp.flow_core.profile_registry import PROFILE_IDS, REGISTRY
 from ida_pro_mcp.flow_core.constraints import ConstraintBindings, ConstraintExpression, ConstraintQuery, ConstraintVariable, DeclaredCoverage, PathConstraint, ProofBounds, ProofBudget, variable_domain_digest
 from ida_pro_mcp.flow_core.proof import ProofResult, ReferenceProofEngine, classify_proof
 from ida_pro_mcp.flow_core.build_identity import BUILD_ID
+from ida_pro_mcp.flow_core.angr_client import default_runner_path
+from pathlib import Path
+assert default_runner_path() == Path(sys.argv[1]).resolve() / 'ida_pro_mcp/flow_angr/runner.py'
+assert default_runner_path().is_file()
+assert 'angr' not in sys.modules
 from ida_pro_mcp.flow_core.path_conditions import PathSelector
 from ida_pro_mcp.flow_core.reviewed_fixtures import REVIEWED_FIXTURES, reviewed_fixture
 from ida_pro_mcp.flow_core.runtime_contracts import RuntimeScope

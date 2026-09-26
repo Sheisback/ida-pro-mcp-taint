@@ -35,6 +35,7 @@ def implementation_hashes():
         ROOT / "src/ida_pro_mcp/installer.py",
         ROOT / "profiles/flow-readonly.txt",
         *sorted((ROOT / "src/ida_pro_mcp/flow_core").glob("*.py")),
+        *sorted((ROOT / "src/ida_pro_mcp/flow_angr").glob("*.py")),
         *sorted((ROOT / "src/ida_pro_mcp/ida_mcp/flow").glob("*.py")),
     ]
     return {str(path.relative_to(ROOT)): sha(path) for path in paths}

@@ -280,6 +280,8 @@ def main(output):
             supervisor.close_session(database, save=False)
             assert sha(binary) == manifest["binary_sha256"]
     finally:
+        for database in list(supervisor.sessions):
+            supervisor.close_session(database, save=False)
         supervisor.shutdown()
     Path(output).write_text(
         json.dumps(

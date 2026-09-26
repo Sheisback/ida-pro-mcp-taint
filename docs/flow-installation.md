@@ -50,7 +50,7 @@ The opt-in angr path tier (`flow_refine_path_proof` with `symbolic_angr`)
 runs in a sidecar under a separately configured interpreter
 (`IDA_MCP_ANGR_PYTHON`); nothing in the host environment provides it.
 Without that interpreter, requested tiers return unknown with
-`angr_not_configured` while the v1 baseline stays intact.
+an explicit unavailability reason while the v1 baseline stays intact.
 
 If `ida-pro-mcp-taint` is already configured, inspect it with
 `codex mcp get ida-pro-mcp-taint --json`; remove that exact entry with

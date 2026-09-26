@@ -364,6 +364,7 @@ def _analyze_regions(
         for seed in explicit_seeds
     )
     require(not bit_seeds or use_memory, "Bit-range source requires memory replay")
+    explicit_ranges: dict[str, tuple[LabelBitRange, ...]] = {}
     if use_memory:
         from .memory_graph import analyze_seeded_memory
 
@@ -392,14 +393,12 @@ def _analyze_regions(
             memory_result.diagnostics,
             memory_result.iterations,
         )
+        explicit_ranges = {
+            fact.node_id: fact.explicit_bit_ranges for fact in memory_result.facts
+        }
     else:
         explicit = analyze(graph, value_seeds, checkpoint=checkpoint)
     explicit_facts = {fact.node_id: fact for fact in explicit.facts}
-    explicit_ranges = (
-        {fact.node_id: fact.explicit_bit_ranges for fact in memory_result.facts}
-        if use_memory
-        else {}
-    )
     seed_controls: dict[str, Labels] = {}
     for seed in seeds:
         seed_controls[seed.node_id] = seed_controls.get(seed.node_id, Labels()).join(

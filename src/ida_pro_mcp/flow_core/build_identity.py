@@ -9,6 +9,7 @@ from .serialization import digest
 def _runtime_files() -> tuple[Path, ...]:
     package = Path(__file__).resolve().parents[1]
     files = list((package / "flow_core").glob("*.py"))
+    files.extend((package / "flow_angr").glob("*.py"))
     files.extend((package / "ida_mcp" / "flow").glob("*.py"))
     files.append(package / "ida_mcp" / "api_flow.py")
     return tuple(sorted(files, key=lambda path: str(path.relative_to(package))))
@@ -26,7 +27,8 @@ def extension_build_id() -> str:
 
 BUILD_ID = extension_build_id()
 BUILD_SCOPE = (
-    "flow_core/*.py, ida_mcp/flow/*.py, and ida_mcp/api_flow.py content manifest"
+    "flow_core/*.py, flow_angr/*.py, ida_mcp/flow/*.py, "
+    "and ida_mcp/api_flow.py content manifest"
 )
 
 

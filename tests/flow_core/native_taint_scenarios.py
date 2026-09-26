@@ -720,6 +720,7 @@ def main():
     sm.supervisor = supervisor
     implementation = [
         *sorted((ROOT / "src/ida_pro_mcp/flow_core").glob("*.py")),
+        *sorted((ROOT / "src/ida_pro_mcp/flow_angr").glob("*.py")),
         *sorted((ROOT / "src/ida_pro_mcp/ida_mcp/flow").glob("*.py")),
         ROOT / "src/ida_pro_mcp/ida_mcp/api_flow.py",
     ]

@@ -87,7 +87,7 @@ def test_refinement_spec_retired_solver_fields_rejected():
 def test_happy_path_round_trip(tmp_path):
     runner = write_runner(tmp_path, OK_RUNNER)
     sidecar = AngrSidecar(interpreter=sys.executable, runner=runner)
-    assert sidecar.probe() is None
+    assert sidecar.probe() == "angr_configured_unverified"
     result = query(sidecar, make_query())
     assert result.status == "feasible"
     assert result.engine is not None
@@ -115,7 +115,7 @@ def test_env_selects_interpreter(tmp_path, monkeypatch):
     runner = write_runner(tmp_path, OK_RUNNER)
     monkeypatch.setenv("IDA_MCP_ANGR_PYTHON", sys.executable)
     sidecar = sidecar_from_environment()
-    assert sidecar.probe() is None  # vendored runner ships with the package
+    assert sidecar.probe() == "angr_configured_unverified"  # vendored runner ships with the package
     sidecar = AngrSidecar(interpreter=sidecar.interpreter, runner=runner)
     assert query(sidecar, make_query()).status == "feasible"
     monkeypatch.delenv("IDA_MCP_ANGR_PYTHON")
@@ -341,3 +341,107 @@ def test_query_construction_rejects_programmer_errors():
         make_query(timeout_ms=1)
     with pytest.raises(ContractError):
         query(AngrSidecar(interpreter=sys.executable, runner="x"), {"no": "model"})
+
+
+def _prefix_graph(predecessors):
+    return build_ssa(sparse_addressed(tuple(
+        Block(index, incoming, (ins(0, "m_mov", reg(bits=8),
+                                   dest=reg(8, role="destination")),))
+        for index, incoming in enumerate(predecessors)
+    ))).graph
+
+
+@pytest.mark.parametrize(("predecessors", "path", "reason"), [
+    (((), (0,), (1,)), (0, 2), "angr_prefix_nonedge"),
+    (((), (0, 1), (1,)), (0, 1, 1, 2), "angr_prefix_repeated_block"),
+    (((), (0,), (0, 1)), (0, 1, 2), "angr_prefix_order_unencodable"),
+    (((), (0, 2), (1,), (2,)), (0, 1, 2, 3), "angr_prefix_order_unencodable"),
+])
+def test_prefix_rejects_paths_global_find_avoid_cannot_encode(predecessors, path, reason):
+    graph = _prefix_graph(predecessors)
+    with pytest.raises(ContractError, match=reason):
+        build_prefix_query(graph, PathSelector(path_bindings(graph), path),
+                           _context(), timeout_ms=5000)
+
+
+def test_prefix_rejects_overlapping_native_addresses():
+    from dataclasses import replace
+    from test_ssa import snapshot
+
+    original = _prefix_graph(((), (0,), (1,))).snapshot.function.blocks
+    blocks = tuple(replace(block, instructions=tuple(
+        replace(instruction, source_eas=(0x500000,))
+        for instruction in block.instructions
+    )) for block in original)
+    graph = build_ssa(snapshot(blocks)).graph
+    with pytest.raises(ContractError, match="angr_block_address_overlap"):
+        build_prefix_query(graph, PathSelector(path_bindings(graph), (0, 1, 2)),
+                           _context(), timeout_ms=5000)
+
+
+def test_configuration_probe_never_imports_or_launches_engine(monkeypatch):
+    import ida_pro_mcp.flow_core.angr_client as client
+
+    monkeypatch.setattr(client.subprocess, "Popen", lambda *a, **kw: pytest.fail(
+        "configuration discovery must not start an engine"))
+    assert AngrSidecar(sys.executable).probe() == "angr_configured_unverified"
+
+
+def test_empty_tail_must_not_alias_an_already_visited_native_block():
+    graph = build_ssa(sparse_addressed((
+        Block(0, (), ()),
+        Block(1, (0, 2), (ins(0, "m_mov", reg(bits=8),
+                             dest=reg(8, role="destination")),)),
+        Block(2, (1,), ()),
+    ))).graph
+    with pytest.raises(ContractError, match="angr_prefix_address_reentry"):
+        build_prefix_query(graph, PathSelector(path_bindings(graph), (0, 1, 2)),
+                           _context(), timeout_ms=5000)
+
+
+def test_ambiguous_native_entry_addresses_are_rejected():
+    from dataclasses import replace
+    from test_ssa import snapshot
+
+    blocks = _prefix_graph(((), (0,))).snapshot.function.blocks
+    first = blocks[0]
+    first = replace(first, instructions=(replace(first.instructions[0],
+                                               source_eas=(0x500000, 0x500010)),))
+    graph = build_ssa(snapshot((first, blocks[1]))).graph
+    with pytest.raises(ContractError, match="angr_ambiguous_block_addresses"):
+        build_prefix_query(graph, PathSelector(path_bindings(graph), (0, 1)),
+                           _context(), timeout_ms=5000)
+
+
+def test_linear_prefix_remains_encodable():
+    graph = _prefix_graph(((), (0,), (1,)))
+    built = build_prefix_query(graph, PathSelector(path_bindings(graph), (0, 1, 2)),
+                               _context(), timeout_ms=5000)
+    assert built.entry_ea == 0x500000
+    assert built.find_eas == (0x500002,)
+    assert built.avoid_eas == ()
+
+
+def test_configured_sidecar_missing_engine_dependencies_returns_unknown(tmp_path):
+    runner = write_runner(tmp_path, "raise ModuleNotFoundError('angr')\n")
+    sidecar = AngrSidecar(sys.executable, runner)
+    assert sidecar.probe() == "angr_configured_unverified"
+    result = query(sidecar, make_query())
+    assert result.status == "unknown"
+    assert result.unresolved == ("angr_runner_failed",)
+    assert result.target_executed is False
+
+
+@pytest.mark.parametrize("path", [(0, 1), (0, 1, 2)])
+def test_nonempty_addressless_block_never_borrows_successor_entry(path):
+    from dataclasses import replace
+    from test_ssa import snapshot
+
+    blocks = list(_prefix_graph(((), (0,), (1,))).snapshot.function.blocks)
+    blocks[1] = replace(blocks[1], instructions=tuple(
+        replace(instruction, source_eas=()) for instruction in blocks[1].instructions
+    ))
+    graph = build_ssa(snapshot(tuple(blocks))).graph
+    with pytest.raises(ContractError, match="angr_missing_block_addresses"):
+        build_prefix_query(graph, PathSelector(path_bindings(graph), path),
+                           _context(), timeout_ms=5000)
