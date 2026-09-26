@@ -99,6 +99,11 @@ class Queries:
         limit=50,
     ):
         require(type(budget) is int and 1 <= budget <= 100000, "invalid_trace_budget")
+        require(
+            type(edge_kinds) in (list, tuple)
+            and all(type(kind) is str for kind in edge_kinds),
+            "invalid_trace_edge_filter",
+        )
         require(type(source) is dict, "invalid_trace_source")
         require(
             set(source)

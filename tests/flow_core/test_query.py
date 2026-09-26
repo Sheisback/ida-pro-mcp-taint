@@ -298,6 +298,16 @@ def test_trace_cancel_budget_invalid_source_and_wrong_cursor(tmp_path):
                 "forward",
                 "cross",
             )
+        with pytest.raises(PersistenceError, match="invalid_trace_edge_filter"):
+            q.start(
+                sid, gid, source, "forward", "mixed", edge_kinds=[1, "value_dependency"]
+            )
+        with pytest.raises(PersistenceError, match="invalid_trace_edge_filter"):
+            q.start(sid, gid, source, "forward", "str", edge_kinds="value_dependency")
+        page = q.start(
+            sid, gid, source, "forward", "tuple", edge_kinds=("value_dependency",)
+        )
+        assert page["status"] in ("frontier_exhausted", "budget_exceeded")
     finally:
         store.close()
 

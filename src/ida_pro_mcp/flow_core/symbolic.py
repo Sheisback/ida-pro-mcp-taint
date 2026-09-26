@@ -665,8 +665,16 @@ class Z3Backend:
         except Exception as exc:
             return Z3Answer("unknown", reason=f"solver_error:{type(exc).__name__}", solver_version=version)
         if verdict == z3.sat:
+            try:
+                model = self.read_model(solver, variables)
+            except MalformedSolverResponse as exc:
+                return Z3Answer(
+                    "unknown",
+                    reason=f"solver_error:{exc}",
+                    solver_version=version,
+                )
             return Z3Answer(
-                "sat", model=self.read_model(solver, variables),
+                "sat", model=model,
                 stamp=self.stamp(), solver_version=version,
             )
         if verdict == z3.unsat:

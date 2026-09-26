@@ -563,6 +563,10 @@ def extract_snapshot(
         if op.t in (hx.mop_r, hx.mop_S):
             space = "microregister" if op.t == hx.mop_r else "stack"
             offset = int(op.r) if op.t == hx.mop_r else int(op.s.off)
+            if offset < 0:
+                return opaque(
+                    kind, bits, role, f"Negative {space} offset: {offset}"
+                )
             return Operand(
                 "storage",
                 bits,

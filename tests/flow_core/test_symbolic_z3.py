@@ -119,3 +119,22 @@ def test_definite_answers_require_stamp():
     with pytest.raises(Exception):
         Z3Answer("unsat", stamp="")
     assert Z3Answer("unknown").status == "unknown"
+
+
+@needs_z3
+def test_unreadable_sat_model_is_unknown_not_job_failure():
+    import unittest.mock as mock
+
+    from ida_pro_mcp.flow_core.symbolic import MalformedSolverResponse
+
+    expr = op("eq", 1, op("add", 32, var("x", 32), const(1, 32)), const(42, 32))
+    backend = Z3Backend()
+    with mock.patch.object(
+        Z3Backend,
+        "read_model",
+        side_effect=MalformedSolverResponse("unreadable model: probe"),
+    ):
+        answer = backend.check_nonzero(expr)
+    assert answer.status == "unknown"
+    assert answer.reason is not None and "solver_error" in answer.reason
+    assert answer.model == ()
