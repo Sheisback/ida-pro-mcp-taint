@@ -1,70 +1,89 @@
-"""Opt-in symbolic refinement over v1 path/memory proofs. SDK-free core.
+"""Opt-in angr refinement over v1 path/memory proofs. SDK-free core.
 
 A refinement replays the v1 baseline (or cross-checks a quoted original),
-then runs ONLY the explicitly requested symbolic tiers. With a default spec
-no solver code runs at all: the refined artifact carries the v1 baseline
-verbatim plus ``solver_not_invoked``. Refined artifacts are versioned dicts
-with exact-key validation, following the v1 ``flow-path-proof-artifact/1``
-pattern; witness integers are hex-encoded so the artifact stays wire-v1
-safe at any bit width.
+then runs ONLY the explicitly requested angr tier. With a default spec no
+engine code runs at all: the refined artifact carries the v1 baseline
+verbatim plus ``solver_not_invoked``. The previous in-process z3 engine was
+fully replaced by the angr sidecar: claripy pins z3 4.x while the host
+verifies nothing in-process anymore, so the sidecar runs under its own
+interpreter (see ``IDA_MCP_ANGR_PYTHON``) and every engine verdict arrives
+stamped with versions, simprocedures, and bounds.
+
+Refined artifacts are versioned dicts with exact-key validation, following
+the v1 ``flow-path-proof-artifact/1`` pattern; witness integers are
+hex-encoded so the artifact stays wire-v1 safe at any bit width.
 
 The job runners take an explicit store so the same code serves the IDA
 service handlers and SDK-free runtime tests; only scope ownership (which
 store) stays host-side.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Literal, cast
 
+from .angr_client import (
+    ANGR_DEFAULT_LOOP_BOUND,
+    AngrContext,
+    AngrEngineInfo,
+    build_prefix_query,
+)
+from .angr_client import query as run_angr_query
 from .contracts import Graph
 from .memory import MemoryPlan, MemoryResult
-from .memory_symbolic import prove_store_to_load, validate_memory_result
 from .path_conditions import PathSelector, path_bindings, prove_path
-from .path_symbolic import prove_symbolic_path, validate_symbolic_result
-from .symbolic import SymBinding, Z3Backend
 from .proof import validate_proof_result
-from .serialization import Model, digest
+from .serialization import ContractError, Model, digest
 from .states import check_digest, nonempty, require
 
 REFINE_VERSION = "flow-refine/1"
 REFINED_PATH_ARTIFACT = "flow-refined-path-artifact/1"
 REFINED_MEMORY_ARTIFACT = "flow-refined-memory-artifact/1"
-REFINE_MAX_INLINES = 8
 
 Agreement = Literal["consistent", "refined", "contradiction"]
+
+ANGR_SCOPE = "bounded_exploration"
+ANGR_MODEL_KIND = "bounded_symbolic"
 
 
 @dataclass(frozen=True)
 class RefinementSpec(Model):
-    """Explicit opt-in: every symbolic tier defaults OFF."""
+    """Explicit opt-in: the angr tier defaults OFF."""
 
-    symbolic_path: bool = False
-    symbolic_memory: bool = False
     solver_timeout_ms: int = 5000
     schema_version: Literal[1] = 1
+    symbolic_angr: bool = field(
+        default=False, metadata={"omit_if_default": True}
+    )
+    loop_bound: int = field(
+        default=ANGR_DEFAULT_LOOP_BOUND, metadata={"omit_if_default": True}
+    )
 
     def __post_init__(self):
         super().__post_init__()
         require(self.schema_version == 1, "invalid_refinement_spec_version")
-        # Tier flags are strict bools by Model field typing; only the range
-        # needs an explicit check here.
+        # Tier flags are strict bools by Model field typing; only the ranges
+        # need explicit checks here.
         require(
             type(self.solver_timeout_ms) is int
             and 0 < self.solver_timeout_ms <= 120000,
             "invalid_refinement_timeout",
         )
+        require(
+            type(self.loop_bound) is int and 0 < self.loop_bound <= 1024,
+            "invalid_refinement_loop_bound",
+        )
 
 
 def _disposition(status: str) -> str:
-    if status in {"feasible", "feasible_symbolic_v1"}:
+    if status in {"feasible", "feasible_angr_v1"}:
         return "sat"
-    if status in {"infeasible", "infeasible_smt_bounded_v1"}:
+    if status in {"infeasible", "infeasible_angr_v1"}:
         return "unsat"
     return "unknown"
 
 
 def refinement_agreement(baseline_status: str, refined_status: str) -> Agreement:
-    """Compare v1 and symbolic verdicts. Definite disagreement alarms."""
+    """Compare v1 and angr verdicts. Definite disagreement alarms."""
     base, refined = _disposition(baseline_status), _disposition(refined_status)
     if base == refined:
         return "consistent"
@@ -75,35 +94,13 @@ def refinement_agreement(baseline_status: str, refined_status: str) -> Agreement
     return "contradiction"
 
 
-def encode_witness(witness) -> list[dict[str, Any]]:
-    """Hex-encode bindings so any width stays wire-v1 safe."""
-    return [
-        {
-            "name": item.name,
-            "width_bits": item.width_bits,
-            "value_hex": hex(item.value),
-        }
-        for item in witness
-    ]
-
-
-def decode_witness(encoded: list[dict[str, Any]]) -> tuple:
-    """Decode hex bindings back to solver model tuples (name, width, value)."""
-    decoded = []
-    for item in encoded:
-        require(
-            type(item) is dict
-            and set(item) == {"name", "width_bits", "value_hex"},
-            "invalid_refined_witness",
-        )
-        value = int(item["value_hex"], 16)
-        require(
-            type(item["width_bits"]) is int
-            and 0 <= value < (1 << item["width_bits"]),
-            "refined_witness_out_of_range",
-        )
-        decoded.append(SymBinding(item["name"], item["width_bits"], value))
-    return tuple(decoded)
+def _unattempted_reason(reason: str) -> None:
+    require(
+        reason == "solver_not_invoked"
+        or reason.startswith("angr_")
+        or reason == "evidence_only",
+        "invalid_refined_reason",
+    )
 
 
 def refine_path_proof(
@@ -111,12 +108,12 @@ def refine_path_proof(
     selector: PathSelector,
     spec: RefinementSpec,
     *,
-    backend: Z3Backend | None = None,
-    inlines: tuple = (),
+    angr: AngrContext | None = None,
+    angr_unavailable_reason: str = "angr_not_configured",
     original: dict[str, Any] | None = None,
     cancelled=lambda: False,
 ):
-    """Refine one v1 path proof. Default spec never touches the solver."""
+    """Refine one v1 path proof. Default spec never touches the engine."""
     require(selector.bindings == path_bindings(graph), "path_query_artifact_mismatch")
     base_query, baseline = prove_path(graph, selector, cancelled=cancelled)
     validate_proof_result(base_query, baseline)
@@ -140,36 +137,84 @@ def refine_path_proof(
             "status": quoted_proof.status,
         }
     refined: dict[str, Any]
-    if not spec.symbolic_path:
+    if not spec.symbolic_angr:
         refined = {
             "attempted": False,
             "status": "unknown",
             "reason": "solver_not_invoked",
         }
-    else:
-        query, result = prove_symbolic_path(
-            graph,
-            selector,
-            backend=backend,
-            timeout_ms=spec.solver_timeout_ms,
-            cancelled=cancelled,
-            inlines=inlines,
-        )
-        validate_symbolic_result(query, result)
+    elif angr is None:
+        _unattempted_reason(angr_unavailable_reason)
         refined = {
-            "attempted": True,
-            "query_digest": query.query_digest,
-            "status": result.status,
-            "scope": result.scope,
-            "model_kind": result.model_kind,
-            "engine_version": result.engine_version,
-            "solver_stamp": result.solver_stamp,
-            "solver_version": result.solver_version,
-            "unresolved": list(result.unresolved),
-            "diagnostics": list(result.diagnostics),
-            "evidence_ids": list(result.evidence_ids),
-            "witness": encode_witness(result.witness),
+            "attempted": False,
+            "status": "unknown",
+            "reason": angr_unavailable_reason,
         }
+    else:
+        try:
+            angr_query = build_prefix_query(
+                graph,
+                selector,
+                angr,
+                timeout_ms=spec.solver_timeout_ms,
+                loop_bound=spec.loop_bound,
+            )
+        except ContractError as exc:
+            refined = {
+                "attempted": False,
+                "status": "unknown",
+                "reason": f"angr_query_unbuildable:{exc}",
+            }
+        else:
+            result = run_angr_query(
+                angr.sidecar, angr_query, cancelled=cancelled
+            )
+            refined = {
+                "attempted": True,
+                "query_digest": digest(angr_query.to_data()),
+                "status": {
+                    "feasible": "feasible_angr_v1",
+                    "infeasible": "infeasible_angr_v1",
+                    "unknown": "unknown",
+                }[result.status],
+                "scope": ANGR_SCOPE,
+                "model_kind": ANGR_MODEL_KIND,
+                "engine_version": (
+                    f"angr-sidecar/{result.engine.angr_version}"
+                    f"+z3-{result.engine.z3_version}"
+                    if result.engine is not None
+                    else "angr-sidecar/unavailable"
+                ),
+                "solver_stamp": (
+                    f"angr_derived_v1:{result.engine.angr_version}"
+                    f":z3-{result.engine.z3_version}"
+                    f":timeout_ms={spec.solver_timeout_ms}"
+                    if result.engine is not None
+                    and result.status != "unknown"
+                    else ""
+                ),
+                "solver_version": (
+                    result.engine.z3_version
+                    if result.engine is not None
+                    else ""
+                ),
+                "unresolved": list(result.unresolved),
+                "diagnostics": [],
+                "evidence_ids": [],
+                "witness": [
+                    {
+                        "name": item.name,
+                        "width_bits": item.width_bits,
+                        "value_hex": item.value_hex,
+                    }
+                    for item in result.witness
+                ],
+                "engine": (
+                    result.engine.to_data()
+                    if result.engine is not None
+                    else None
+                ),
+            }
     agreement = (
         "consistent" if not refined["attempted"] else refinement_agreement(
             baseline.status, refined["status"]
@@ -261,10 +306,10 @@ def check_refined_section(refined: dict[str, Any], *, attempted_kind: str) -> No
             type(refined) is dict
             and set(refined) == {"attempted", "status", "reason"}
             and refined.get("attempted") is False
-            and refined.get("status") == "unknown"
-            and refined.get("reason") == "solver_not_invoked",
+            and refined.get("status") == "unknown",
             "invalid_refined_unattempted",
         )
+        _unattempted_reason(refined.get("reason", ""))
         return
     del attempted_kind
     require(
@@ -283,6 +328,7 @@ def check_refined_section(refined: dict[str, Any], *, attempted_kind: str) -> No
             "diagnostics",
             "evidence_ids",
             "witness",
+            "engine",
         }
         and refined["attempted"] is True,
         "invalid_refined_attempted",
@@ -297,7 +343,18 @@ def check_refined_section(refined: dict[str, Any], *, attempted_kind: str) -> No
             "invalid_refined_witness",
         )
         item = cast(dict[str, Any], item)
-        int(item["value_hex"], 16)
+        value = int(item["value_hex"], 16)
+        require(
+            type(item["width_bits"]) is int
+            and 0 <= value < (1 << item["width_bits"]),
+            "refined_witness_out_of_range",
+        )
+    engine: Any = refined["engine"]
+    if engine is not None:
+        try:
+            AngrEngineInfo.from_data(engine)
+        except ContractError:
+            require(False, "invalid_refined_engine")
 
 
 def refine_memory_proof(
@@ -309,11 +366,17 @@ def refine_memory_proof(
     store_id: str,
     spec: RefinementSpec,
     *,
-    backend: Z3Backend | None = None,
-    inlines: tuple = (),
     cancelled=lambda: False,
 ):
-    """Refine one v1 memory pair verdict. Default spec never solves."""
+    """Replay one v1 memory pair verdict. Evidence only, by design.
+
+    The baseline below is the complete engine answer: straight-line
+    analysis plus provenance, with may-alias pairs flowing taint onward.
+    Narrowing an alias unknown is the analyst's (LLM's) judgement call on
+    that evidence, not a third engine's verdict, so the refined section
+    always carries ``evidence_only`` explicitly.
+    """
+    del cancelled
     require(selector.bindings == path_bindings(graph), "path_query_artifact_mismatch")
     require(
         plan.plan_digest == memory_result.plan_digest,
@@ -341,43 +404,11 @@ def refine_memory_proof(
         ],
         "diagnostics": list(memory_result.diagnostics),
     }
-    refined: dict[str, Any]
-    if not spec.symbolic_memory:
-        refined = {
-            "attempted": False,
-            "status": "unknown",
-            "reason": "solver_not_invoked",
-        }
-    else:
-        query, result = prove_store_to_load(
-            plan,
-            graph,
-            selector,
-            load_id,
-            store_id,
-            backend=backend,
-            timeout_ms=spec.solver_timeout_ms,
-            memory_facts=memory_result,
-            cancelled=cancelled,
-            inlines=inlines,
-        )
-        validate_memory_result(query, result)
-        refined = {
-            "attempted": True,
-            "query_digest": query.query_digest,
-            "status": result.status,
-            "scope": result.scope,
-            "model_kind": result.model_kind,
-            "overlap": result.overlap,
-            "value_forward": result.value_forward,
-            "engine_version": result.engine_version,
-            "solver_stamp": result.solver_stamp,
-            "solver_version": result.solver_version,
-            "unresolved": list(result.unresolved),
-            "diagnostics": list(result.diagnostics),
-            "evidence_ids": list(result.evidence_ids),
-            "witness": encode_witness(result.witness),
-        }
+    refined: dict[str, Any] = {
+        "attempted": False,
+        "status": "unknown",
+        "reason": "evidence_only",
+    }
     artifact = {
         "schema_version": REFINED_MEMORY_ARTIFACT,
         "refine_version": REFINE_VERSION,
@@ -432,116 +463,22 @@ def check_refined_memory_artifact(raw: dict[str, Any]) -> None:
     baseline = cast(dict[str, Any], baseline)
     check_digest(baseline["result_digest"])
     check_digest(baseline["plan_digest"])
-    refined: Any = raw["refined"]
-    if refined.get("attempted") is False:
-        check_refined_section(refined, attempted_kind="memory")
-        return
-    require(
-        type(refined) is dict
-        and set(refined)
-        == {
-            "attempted",
-            "query_digest",
-            "status",
-            "scope",
-            "model_kind",
-            "overlap",
-            "value_forward",
-            "engine_version",
-            "solver_stamp",
-            "solver_version",
-            "unresolved",
-            "diagnostics",
-            "evidence_ids",
-            "witness",
-        }
-        and refined["attempted"] is True,
-        "invalid_refined_memory_attempted",
-    )
-    refined = cast(dict[str, Any], refined)
-    check_digest(refined["query_digest"])
+    # No alias-narrowing tier by design; only the explicit marker shape
+    # validates. Narrowing an alias unknown is the analyst's call.
+    check_refined_section(raw["refined"], attempted_kind="memory")
+    require(raw["refined"].get("attempted") is False, "invalid_refined_memory_attempted")
     RefinementSpec.from_data(raw["spec"])
 
 
-def resolve_inline_requests(store: Any, entries: list[dict[str, Any]]) -> tuple:
-    """Build InlineRequests from stored callee programs. Explicit only.
-
-    Each entry names a callee SSA artifact plus the exact interface
-    (blocks, params, return, arguments). No ABI inference happens here;
-    the caller asserts the mapping and the fragment records it.
-    """
-    from .call_symbolic import (
-        CalleeBody,
-        InlineRequest,
-        callee_body_digest,
-    )
-    from .memory import build_memory_plan
-    from .ssa import SSAProgram
-
-    require(
-        type(entries) is list and len(entries) <= REFINE_MAX_INLINES,
-        "invalid_refine_inline",
-    )
-    requests = []
-    for entry in entries:
-        require(
-            type(entry) is dict
-            and set(entry)
-            == {
-                "call_id",
-                "caller_result_id",
-                "callee_ssa_artifact",
-                "callee_blocks",
-                "entry_params",
-                "return_id",
-                "arguments",
-            },
-            "invalid_refine_inline",
-        )
-        require(
-            type(entry["call_id"]) is str
-            and type(entry["caller_result_id"]) is str
-            and type(entry["callee_ssa_artifact"]) is str
-            and type(entry["return_id"]) is str
-            and type(entry["callee_blocks"]) is list
-            and 0 < len(entry["callee_blocks"]) <= 256
-            and all(
-                type(block) is int and block >= 0
-                for block in entry["callee_blocks"]
-            )
-            and type(entry["entry_params"]) is list
-            and all(type(item) is str for item in entry["entry_params"])
-            and type(entry["arguments"]) is list
-            and all(type(item) is str for item in entry["arguments"]),
-            "invalid_refine_inline",
-        )
-        program = SSAProgram.from_data(
-            store.artifact(entry["callee_ssa_artifact"])
-        )
-        graph = program.graph
-        entry_params = tuple(entry["entry_params"])
-        return_id = entry["return_id"] or None
-        body = CalleeBody(
-            graph=graph,
-            plan=build_memory_plan(program),
-            entry_params=entry_params,
-            return_id=return_id,
-            callee_digest=callee_body_digest(graph, entry_params, return_id),
-        )
-        requests.append(
-            InlineRequest(
-                entry["call_id"],
-                entry["caller_result_id"] or None,
-                body,
-                tuple(entry["callee_blocks"]),
-                tuple(entry["arguments"]),
-            )
-        )
-    return tuple(requests)
-
-
-def run_path_refinement(store: Any, request: dict[str, Any], *, backend: Z3Backend | None = None, cancelled=lambda: False):
+def run_path_refinement(
+    store: Any,
+    request: dict[str, Any],
+    *,
+    angr_sidecar=None,
+    cancelled=lambda: False,
+):
     """Resolve, refine, and store one path refinement. Host-agnostic."""
+    from .angr_client import AngrContext
     from .contracts import Graph
 
     require(
@@ -550,10 +487,10 @@ def run_path_refinement(store: Any, request: dict[str, Any], *, backend: Z3Backe
         >= {"graph_artifact", "path", "refinement"},
         "invalid_refine_request",
     )
+    require("inline" not in request, "refine_inline_retired")
     graph = Graph.from_data(store.artifact(request["graph_artifact"]))
     selector = PathSelector.from_data(request["path"])
     spec = RefinementSpec.from_data(request["refinement"])
-    inlines = resolve_inline_requests(store, request.get("inline", []))
     original = None
     if request.get("proof_artifact") is not None:
         raw = store.artifact(request["proof_artifact"])
@@ -567,12 +504,30 @@ def run_path_refinement(store: Any, request: dict[str, Any], *, backend: Z3Backe
             "query": raw["query"],
             "proof": raw["proof"],
         }
+    context = None
+    missing_reason = "angr_not_configured"
+    binary = request.get("angr_binary")
+    if binary is not None:
+        require(
+            type(binary) is dict
+            and set(binary) == {"path", "sha256", "image_base"},
+            "invalid_refine_angr_binary",
+        )
+        if angr_sidecar is not None:
+            context = AngrContext(
+                angr_sidecar,
+                binary["path"],
+                binary["sha256"],
+                binary["image_base"],
+            )
+    elif angr_sidecar is not None:
+        missing_reason = "angr_binary_unavailable"
     artifact = refine_path_proof(
         graph,
         selector,
         spec,
-        backend=backend,
-        inlines=inlines,
+        angr=context,
+        angr_unavailable_reason=missing_reason,
         original=original,
         cancelled=cancelled,
     )
@@ -588,8 +543,10 @@ def run_path_refinement(store: Any, request: dict[str, Any], *, backend: Z3Backe
     }
 
 
-def run_memory_refinement(store: Any, request: dict[str, Any], *, backend: Z3Backend | None = None, cancelled=lambda: False):
-    """Resolve, refine, and store one memory refinement. Host-agnostic."""
+def run_memory_refinement(
+    store: Any, request: dict[str, Any], *, cancelled=lambda: False
+):
+    """Resolve, replay, and store one memory refinement. Host-agnostic."""
     from .contracts import Graph
     from .ssa import SSAProgram
 
@@ -607,6 +564,7 @@ def run_memory_refinement(store: Any, request: dict[str, Any], *, backend: Z3Bac
         },
         "invalid_refine_request",
     )
+    require("inline" not in request, "refine_inline_retired")
     program = SSAProgram.from_data(store.artifact(request["ssa_artifact"]))
     graph = (
         Graph.from_data(store.artifact(request["graph_artifact"]))
@@ -619,7 +577,6 @@ def run_memory_refinement(store: Any, request: dict[str, Any], *, backend: Z3Bac
     )
     selector = PathSelector.from_data(request["path"])
     spec = RefinementSpec.from_data(request["refinement"])
-    inlines = resolve_inline_requests(store, request.get("inline", []))
     artifact = refine_memory_proof(
         plan,
         graph,
@@ -628,8 +585,6 @@ def run_memory_refinement(store: Any, request: dict[str, Any], *, backend: Z3Bac
         request["load_id"],
         request["store_id"],
         spec,
-        backend=backend,
-        inlines=inlines,
         cancelled=cancelled,
     )
     identifier = store.put_artifact("analysis", artifact)

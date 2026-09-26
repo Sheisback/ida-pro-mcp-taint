@@ -287,14 +287,14 @@ From this repository root, after activating idalib as described in
 flow profile:
 
 ```sh
-uv sync --dev --extra solver
+uv sync --dev
 uv run idalib-mcp --stdio --profile profiles/flow-readonly.txt
 ```
 
-The `solver` extra installs z3 for the opt-in symbolic refinement tiers
-(`flow_refine_path_proof`, `flow_refine_memory_proof`). Without it,
-requested tiers return unknown with `solver_unavailable` and the v1
-baseline stays intact.
+The opt-in angr path tier runs in a sidecar under a separately configured
+interpreter (`IDA_MCP_ANGR_PYTHON`). Without it, requested refinement
+tiers return unknown with `angr_not_configured` and the v1 baseline stays
+intact.
 
 Configure your MCP client to launch that command from this checkout. For HTTP
 instead of stdio, run:

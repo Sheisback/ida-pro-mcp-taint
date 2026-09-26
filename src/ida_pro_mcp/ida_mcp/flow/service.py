@@ -71,17 +71,16 @@ from ida_pro_mcp.flow_core.proof import (
     validate_proof_result,
 )
 from ida_pro_mcp.flow_core.query import Queries, artifact_page, evidence_chunks
+from ida_pro_mcp.flow_core.angr_client import sidecar_from_environment
 from ida_pro_mcp.flow_core.refine import (
     RefinementSpec,
     refined_memory_page,
     refined_path_page,
-    resolve_inline_requests,
     run_memory_refinement,
     run_path_refinement,
 )
 from ida_pro_mcp.flow_core.runtime import Handler
 from ida_pro_mcp.flow_core.runtime_contracts import RuntimeScope
-from ida_pro_mcp.flow_core.symbolic import Z3Backend
 from ida_pro_mcp.flow_core.ssa import SSAProgram, argument_bindings
 
 from ..sync import idasync
@@ -992,21 +991,45 @@ def _analyze_path_proof(ctx, extracted):
     }
 
 
+def _resolve_angr_binary():
+    """Snapshot the IDA input binary for the sidecar. Main thread only."""
+    import hashlib
+
+    import ida_nalt
+
+    try:
+        path = ida_nalt.get_input_file_path()
+        if not path:
+            return None
+        raw = Path(path).read_bytes()
+        image_base = ida_nalt.get_imagebase()
+        if type(image_base) is not int or image_base < 0:
+            return None
+    except Exception:
+        return None
+    return {
+        "path": path,
+        "sha256": "sha256-v1:" + hashlib.sha256(raw).hexdigest(),
+        "image_base": image_base,
+    }
+
+
 @idasync
 def _extract_path_refinement(ctx, request):
     current = _request_runtime(request, _context_for_request(request))
     ctx.check()
-    return current, request
+    return current, request, _resolve_angr_binary()
 
 
 def _analyze_path_refinement(ctx, extracted):
-    current, request = extracted
+    current, request, angr_binary = extracted
     ctx.check()
-    spec = RefinementSpec.from_data(request["refinement"])
+    if angr_binary is not None:
+        request = {**request, "angr_binary": angr_binary}
     return run_path_refinement(
         current.store,
         request,
-        backend=Z3Backend(timeout_ms=spec.solver_timeout_ms),
+        angr_sidecar=sidecar_from_environment(),
         cancelled=ctx.cancel.is_set,
     )
 
@@ -1021,11 +1044,9 @@ def _extract_memory_refinement(ctx, request):
 def _analyze_memory_refinement(ctx, extracted):
     current, request = extracted
     ctx.check()
-    spec = RefinementSpec.from_data(request["refinement"])
     return run_memory_refinement(
         current.store,
         request,
-        backend=Z3Backend(timeout_ms=spec.solver_timeout_ms),
         cancelled=ctx.cancel.is_set,
     )
 
@@ -1238,17 +1259,8 @@ def _refinement_spec(refinement):
     return RefinementSpec.from_data(refinement)
 
 
-def _refinement_inline(store, entries):
-    require(type(entries) is list, "invalid_refine_inline")
-    ensure_wire_v1_safe(entries)
-    # Full validation at submit time, including callee artifact existence;
-    # the job re-resolves the same entries for freshness.
-    resolve_inline_requests(store, entries)
-    return entries
-
-
 def create_path_refinement(
-    graph_artifact, path, refinement, request_key, proof_artifact=None, inline=()
+    graph_artifact, path, refinement, request_key, proof_artifact=None
 ):
     require(type(path) is dict, "invalid_path_query")
     selector = PathSelector.from_data(path)
@@ -1256,7 +1268,6 @@ def create_path_refinement(
     spec = _refinement_spec(refinement)
     info = context()
     engine = get_runtime(info)
-    entries = _refinement_inline(engine.store, list(inline))
     graph = cast(Graph, Queries(engine.store).graph(graph_artifact))
     require(
         not graph.snapshot.snapshot_id.startswith("snapshot-v2:"),
@@ -1274,7 +1285,6 @@ def create_path_refinement(
         "graph_artifact": graph_artifact,
         "path": path,
         "refinement": spec.to_data(),
-        "inline": entries,
         "proof_artifact": proof_artifact,
         "fingerprint": engine.store.scope.fingerprint,
         "scope_digest": engine.store.scope.scope_digest,
@@ -1298,7 +1308,6 @@ def create_memory_refinement(
     store_id,
     refinement,
     request_key,
-    inline=(),
 ):
     require(type(path) is dict, "invalid_path_query")
     selector = PathSelector.from_data(path)
@@ -1306,7 +1315,6 @@ def create_memory_refinement(
     spec = _refinement_spec(refinement)
     info = context()
     engine = get_runtime(info)
-    entries = _refinement_inline(engine.store, list(inline))
     program = cast(
         SSAProgram, SSAProgram.from_data(engine.store.artifact(ssa_artifact))
     )
@@ -1333,7 +1341,6 @@ def create_memory_refinement(
         "load_id": load_id,
         "store_id": store_id,
         "refinement": spec.to_data(),
-        "inline": entries,
         "fingerprint": engine.store.scope.fingerprint,
         "scope_digest": engine.store.scope.scope_digest,
         "routing": info["routing"],

@@ -19,7 +19,9 @@ baseline.
 1. Install Python 3.11 or newer, `uv`, and a supported IDA Pro installation.
 2. Activate idalib with IDA's `py-activate-idalib.py` script for the host OS.
 3. Install from the wheel used for release, or create a development environment
-   with `uv sync --dev --extra solver` (the extra enables symbolic refinement).
+   with `uv sync --dev`. Path refinement runs in an angr sidecar under a
+   separately configured interpreter (`IDA_MCP_ANGR_PYTHON`); no extra
+   enables it in the host environment.
 4. Confirm the source, wheel, headless process, and (when actually available)
    GUI process report the same build ID. A GUI acceptance gate is a blocker,
    not evidence of GUI success. Do not create or overwrite EULA acceptance
@@ -528,37 +530,46 @@ function diagnostics still prevent a definite result.
 
 ## Opt-in symbolic refinement (experimental)
 
-`flow_refine_path_proof` and `flow_refine_memory_proof` replay a v1 baseline
-and then run only the explicitly requested symbolic tiers. Submit with the
-same artifacts a v1 proof uses, plus a complete `refinement` object such as
-`{"schema_version": 1, "symbolic_path": true, "symbolic_memory": false,
-"solver_timeout_ms": 5000}`. All fields are required on the wire; tiers stay
-off unless explicitly true. An all-off refinement
+`flow_refine_path_proof` replays a v1 baseline and then runs only the
+explicitly requested angr tier. Submit with the same artifacts a v1 proof
+uses, plus a complete `refinement` object such as `{"schema_version": 1,
+"symbolic_angr": true, "solver_timeout_ms": 5000, "loop_bound": 8}`.
+`symbolic_angr` stays off unless explicitly true; an all-off refinement
 carries the v1 baseline verbatim (same digests, status, unresolved) with
-`solver_not_invoked`; the solver never runs by default. Poll
-`flow_get_job`, cancel via `flow_cancel_job`, and page the refined artifact
-with the submitting tool's `artifact_id` mode, exactly like v1 proofs.
+`solver_not_invoked`. The previous in-process z3 engine was fully retired:
+path questions now run as bounded symbolic exploration inside a vendored
+angr sidecar runner under its own interpreter (claripy pins z3 4.x, which
+cannot share the host interpreter). Poll `flow_get_job`, cancel via
+`flow_cancel_job`, and page the refined artifact with the submitting
+tool's `artifact_id` mode, exactly like v1 proofs.
 
-Refined artifacts (`flow-refined-path-artifact/1`,
-`flow-refined-memory-artifact/1`) record the original/baseline digests, the
-refined verdict with engine versions and solver stamps, the baseline/refined
-agreement (`consistent`, `refined`, or `contradiction`), and evidence links.
-Witness integers are hex-encoded so any width stays wire-safe. An optional
-`proof_artifact` cross-checks a quoted v1 original (mismatch refuses); optional
-`inline` entries splice explicit callee bodies by artifact reference with exact
-parameter/return/argument node IDs. No ABI inference happens: the caller
-asserts the mapping and the fragment records it. Refinement needs the
-z3-solver extra; without it, requested tiers return unknown with
-`solver_unavailable` while the baseline stays intact. Wire v2 graphs are
-refused explicitly until the symbolic layer gains tagged-int plumbing.
+Refined path artifacts (`flow-refined-path-artifact/1`) record the
+original/baseline digests, the refined verdict with engine versions and
+solver stamps, the baseline/refined agreement (`consistent`, `refined`, or
+`contradiction`), and evidence links. Witness integers are hex-encoded so
+any width stays wire-safe. An optional `proof_artifact` cross-checks a
+quoted v1 original (mismatch refuses). The retired `inline` protocol
+refuses loudly (`refine_inline_retired`). Every sidecar or engine failure
+degrades to an explicit unknown (`angr_not_configured`,
+`angr_binary_unavailable`, `angr_timeout`, ...) while the baseline stays
+intact. Only x64 (`metapc`/64) prefixes with block addresses are
+translatable; anything else reports `angr_query_unbuildable` with the
+reason attached.
+
+`flow_refine_memory_proof` replays the v1 memory verdict only, by design.
+May-alias pairs keep taint flowing onward; narrowing an alias unknown is
+the analyst's (LLM's) judgement call on that evidence, not an engine
+verdict. There is intentionally no alias-narrowing tier, so the refined
+section always carries `evidence_only` explicitly. The previous z3 alias
+engine was retired rather than replaced: this MCP surface reports
+evidence and leaves verdicts to the analyst.
 
 Profile recommendation: keep both refinement tools in the read-only profile.
-They are static, additive (no existing tool path changes), and solver-free
+They are static, additive (no existing tool path changes), and engine-free
 unless a request explicitly opts in.
 
-Environment note: the solver runs in the Python executing the tools.
-Headless idalib workers inherit the launch environment, so installing the
-`solver` extra (or `--with "z3-solver>=5.1,<6"` for `uvx`) enables the
-tiers there. A GUI-plugin deployment instead uses IDA's configured Python
-(`idapyswitch` on macOS); if `z3-solver` is not installed there, requested
-tiers degrade to `solver_unavailable` without touching the baseline.
+Environment note: set `IDA_MCP_ANGR_PYTHON` to an angr-capable interpreter
+for the sidecar; without it the tier reports `angr_not_configured`.
+Headless idalib workers inherit the launch environment. A GUI-plugin
+deployment instead uses IDA's configured Python (`idapyswitch` on macOS);
+the sidecar interpreter is still a separate, explicitly configured path.

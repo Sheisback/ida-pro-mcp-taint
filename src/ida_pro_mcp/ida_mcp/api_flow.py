@@ -337,9 +337,9 @@ def flow_get_capabilities() -> FlowCapabilities:
         ),
     }
     try:
-        from ida_pro_mcp.flow_core.symbolic import Z3Backend as _RefineBackend
+        from ida_pro_mcp.flow_core.angr_client import sidecar_from_environment
 
-        solver_ready = _RefineBackend().available
+        solver_ready = sidecar_from_environment().probe() is None
     except Exception:  # noqa: BLE001 - discovery must fail closed, not abort.
         solver_ready = False
     features["symbolic_refinement"] = {
@@ -349,12 +349,16 @@ def flow_get_capabilities() -> FlowCapabilities:
             else "unavailable"
         ),
         "reason": (
-            "Opt-in symbolic path/memory refinement over v1 proofs; solver runs "
+            "Opt-in angr path refinement over v1 proofs; sidecar runs "
             "only when an explicit refinement tier requests it"
             if route_ready and solver_ready
             else "Refinement unavailable: "
-            + ("no validated route" if not route_ready else "z3 solver not installed")
-            + "; v1 proofs remain available and solver-free"
+            + (
+                "no validated route"
+                if not route_ready
+                else "angr sidecar not configured (IDA_MCP_ANGR_PYTHON)"
+            )
+            + "; v1 proofs remain available and engine-free"
         ),
     }
     return {
@@ -623,21 +627,22 @@ def flow_refine_path_proof(
     refinement: dict | None = None,
     request_key: str | None = None,
     proof_artifact: str | None = None,
-    inline: list[dict] | None = None,
     artifact_id: str | None = None,
     cursor: str | None = None,
     limit: int = 50,
 ) -> FlowJobSubmission | FlowArtifactPage | FlowError:
-    """Refine a v1 path proof with opt-in symbolic tiers, OR page the result.
+    """Refine a v1 path proof with the opt-in angr tier, OR page the result.
 
     Submit with graph_artifact, path, refinement, request_key. ``refinement``
-    explicitly opts into symbolic tiers (symbolic_path, solver_timeout_ms);
-    an all-off refinement replays the v1 baseline verbatim and never runs
-    the solver. Optional proof_artifact cross-checks a quoted v1 original;
-    optional inline entries splice explicit callee bodies (no ABI inference).
-    Poll flow_get_job; page its refined artifact with artifact_id/cursor/limit.
-    Submission and paging arguments are mutually exclusive. Static only; no
-    target execution or automatic vulnerability verdict occurs.
+    explicitly opts into the angr sidecar tier (symbolic_angr,
+    solver_timeout_ms, loop_bound); an all-off refinement replays the v1
+    baseline verbatim and never runs the engine. Optional proof_artifact
+    cross-checks a quoted v1 original. The sidecar needs IDA_MCP_ANGR_PYTHON
+    pointing at an angr-capable interpreter; without it the tier reports
+    angr_not_configured. Poll flow_get_job; page its refined artifact with
+    artifact_id/cursor/limit. Submission and paging arguments are mutually
+    exclusive. Static only; no target execution or automatic vulnerability
+    verdict occurs.
     """
     if artifact_id is not None:
         if any(
@@ -648,7 +653,6 @@ def flow_refine_path_proof(
                 refinement,
                 request_key,
                 proof_artifact,
-                inline,
             )
         ):
             raise ValueError("mixed_refine_request")
@@ -663,7 +667,7 @@ def flow_refine_path_proof(
     ):
         raise ValueError("invalid_refine_submission")
     return _service().create_path_refinement(
-        graph_artifact, path, refinement, request_key, proof_artifact, inline or []
+        graph_artifact, path, refinement, request_key, proof_artifact
     )
 
 
@@ -678,18 +682,17 @@ def flow_refine_memory_proof(
     store_id: str | None = None,
     refinement: dict | None = None,
     request_key: str | None = None,
-    inline: list[dict] | None = None,
     artifact_id: str | None = None,
     cursor: str | None = None,
     limit: int = 50,
 ) -> FlowJobSubmission | FlowArtifactPage | FlowError:
-    """Refine a v1 memory pair verdict with opt-in symbolic tiers, OR page it.
+    """Replay a v1 memory pair verdict, OR page a recorded replay.
 
     Submit with ssa_artifact, memory_plan_artifact, memory_result_artifact,
-    path, load_id, store_id, refinement, request_key. ``refinement``
-    explicitly opts into symbolic tiers (symbolic_memory, solver_timeout_ms);
-    an all-off refinement quotes the v1 pair facts verbatim and never runs
-    the solver. Optional inline entries splice explicit callee bodies.
+    path, load_id, store_id, refinement, request_key. The call quotes the v1
+    pair facts verbatim; there is intentionally no alias-narrowing tier
+    (the refined section carries `evidence_only`), because narrowing an
+    alias unknown is the analyst's judgement call on that evidence.
     Poll flow_get_job; page its refined artifact with artifact_id/cursor/limit.
     Submission and paging arguments are mutually exclusive. Static only; no
     target execution or automatic vulnerability verdict occurs.
@@ -706,7 +709,6 @@ def flow_refine_memory_proof(
                 store_id,
                 refinement,
                 request_key,
-                inline,
             )
         ):
             raise ValueError("mixed_refine_request")
@@ -735,7 +737,6 @@ def flow_refine_memory_proof(
         store_id,
         refinement,
         request_key,
-        inline or [],
     )
 
 

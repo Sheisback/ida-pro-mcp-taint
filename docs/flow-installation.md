@@ -42,16 +42,15 @@ printf '02187a3b23e3d0297278f56cab07633b6006474c551a4630c7eaa10793f4873a  %s\n' 
 
 codex mcp add ida-pro-mcp-taint -- \
   uvx --from "git+https://github.com/Sheisback/ida-pro-mcp-taint.git@$FLOW_REF" \
-  --with "z3-solver>=5.1,<6" \
   idalib-mcp --stdio --profile "$PROFILE_DIR/flow-readonly.txt"
 codex mcp list
 ```
 
-The `--with` flag provides the z3 solver that the opt-in symbolic
-refinement tiers (`flow_refine_path_proof`, `flow_refine_memory_proof`)
-need; the version pin mirrors the package's `solver` extra. Without z3,
-requested tiers return unknown with `solver_unavailable` while the v1
-baseline stays intact.
+The opt-in angr path tier (`flow_refine_path_proof` with `symbolic_angr`)
+runs in a sidecar under a separately configured interpreter
+(`IDA_MCP_ANGR_PYTHON`); nothing in the host environment provides it.
+Without that interpreter, requested tiers return unknown with
+`angr_not_configured` while the v1 baseline stays intact.
 
 If `ida-pro-mcp-taint` is already configured, inspect it with
 `codex mcp get ida-pro-mcp-taint --json`; remove that exact entry with

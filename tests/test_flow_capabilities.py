@@ -107,6 +107,9 @@ def flow(monkeypatch, tmp_path):
 @pytest.mark.parametrize("ready", [True, False])
 def test_initialization_is_not_analysis_support(flow, monkeypatch, ready):
     module, _ = flow
+    # The sidecar probe only checks configuration (interpreter + vendored
+    # runner); the test interpreter satisfies both without importing angr.
+    monkeypatch.setenv("IDA_MCP_ANGR_PYTHON", sys.executable)
     monkeypatch.setattr(module.ida_hexrays, "init_hexrays_plugin", lambda: ready)
     result = module.flow_get_capabilities()
     assert result["environment"]["hexrays_initialization"]["status"] == (
