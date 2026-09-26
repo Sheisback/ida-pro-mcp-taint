@@ -10,9 +10,28 @@ import json
 from .contracts import Graph, MemorySource, ValueSource
 from .persistence import PAGE_HARD_CHARS, PAGE_TARGET_CHARS, PersistenceError, require
 from .runtime_contracts import TraceSpec, TraceState
-from .serialization import digest, canonical_json, canonical_json_v2, to_wire_v2
+from .serialization import (
+    JS_SAFE_INTEGER,
+    digest,
+    canonical_json,
+    canonical_json_v2,
+    to_wire_v2,
+)
 
 DEFAULT_EDGES = ("memory_data_dependency", "phi_input", "value_dependency")
+
+
+def wire_safe_node_item(item: dict) -> dict:
+    """Render one node for a v1 page without losing wide constants.
+
+    A 64-bit constant (2**53 and above) cannot travel as a v1 JSON number,
+    so it is preserved as ``constant_hex`` with ``constant`` nulled. Narrow
+    values pass through untouched; no other field is rewritten.
+    """
+    constant = item.get("constant")
+    if type(constant) is int and abs(constant) > JS_SAFE_INTEGER:
+        item = {**item, "constant": None, "constant_hex": hex(constant)}
+    return item
 
 
 def trace_cursor(trace_id, revision):

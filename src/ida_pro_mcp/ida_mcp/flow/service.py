@@ -15,6 +15,7 @@ from ida_pro_mcp.flow_core.serialization import (
     graph_digest_bytes_v2,
     to_wire_v2,
     validate_ea,
+    wire_safe_rva,
 )
 from ida_pro_mcp.flow_core.wire_contracts import validate_model_wire_v2, wire_v2_scope
 from ida_pro_mcp.flow_core.analysis import BitSeed, Seed, canonical_seed_order
@@ -70,7 +71,12 @@ from ida_pro_mcp.flow_core.proof import (
     ProofResult,
     validate_proof_result,
 )
-from ida_pro_mcp.flow_core.query import Queries, artifact_page, evidence_chunks
+from ida_pro_mcp.flow_core.query import (
+    Queries,
+    artifact_page,
+    evidence_chunks,
+    wire_safe_node_item,
+)
 from ida_pro_mcp.flow_core.angr_client import sidecar_from_environment
 from ida_pro_mcp.flow_core.refine import (
     RefinementSpec,
@@ -516,14 +522,21 @@ def _analyze(ctx, extracted):
                 except ContractError:
                     memory_write = None
             if effect is None and memory_write is None:
+                instruction_rva = wire_safe_rva(
+                    observation.instruction_ea, function.image_base
+                )
                 closure["boundaries"].append(
                     {
                         "caller_rva": function.function_rva,
-                        "instruction_rva": observation.instruction_ea
-                        - function.image_base,
+                        "instruction_rva": instruction_rva,
                         "callee_rva": rva,
                         "reason": "derived_call_effect_unavailable",
                         "callinfo_argument_count": len(observation.call.arguments),
+                        **(
+                            {"rva_unrepresentable": True}
+                            if instruction_rva is None
+                            else {}
+                        ),
                     }
                 )
             if effect is not None:
@@ -558,16 +571,24 @@ def _analyze(ctx, extracted):
                 except ContractError:
                     effect = None
             if effect is None:
+                instruction_rva = (
+                    None
+                    if observation is None
+                    else wire_safe_rva(
+                        observation.instruction_ea, function.image_base
+                    )
+                )
                 closure["boundaries"].append(
                     {
                         "caller_rva": function.function_rva,
-                        "instruction_rva": (
-                            None
-                            if observation is None
-                            else observation.instruction_ea - function.image_base
-                        ),
+                        "instruction_rva": instruction_rva,
                         "callee_rva": None,
                         "reason": "finite_indirect_return_unavailable",
+                        **(
+                            {"rva_unrepresentable": True}
+                            if observation is not None and instruction_rva is None
+                            else {}
+                        ),
                     }
                 )
             else:
@@ -1462,7 +1483,12 @@ def page(artifact_id, section, cursor=None, limit=50, evidence_ids=None):
         graph = program.graph
         argument_bindings = _argument_bindings(program)
         items = (
-            [{"node_id": node.node_id, **node.to_data()} for node in graph.nodes]
+            [
+                wire_safe_node_item(
+                    {"node_id": node.node_id, **node.to_data()}
+                )
+                for node in graph.nodes
+            ]
             if section == "ssa"
             else [
                 {
@@ -1484,7 +1510,9 @@ def page(artifact_id, section, cursor=None, limit=50, evidence_ids=None):
         )
         if section == "graph":
             items = [
-                {"type": "node", "node_id": n.node_id, **n.to_data()}
+                wire_safe_node_item(
+                    {"type": "node", "node_id": n.node_id, **n.to_data()}
+                )
                 for n in graph.nodes
             ] + [
                 {"type": "edge", "edge_id": e.edge_id, **e.to_data()}

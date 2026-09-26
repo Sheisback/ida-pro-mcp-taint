@@ -8,7 +8,7 @@ import pytest
 from ida_pro_mcp.flow_core import digest
 from ida_pro_mcp.flow_core.contracts import Edge, Graph, Node, NodeKey
 from ida_pro_mcp.flow_core.persistence import PersistenceError, Store
-from ida_pro_mcp.flow_core.query import Queries, artifact_page
+from ida_pro_mcp.flow_core.query import Queries, artifact_page, wire_safe_node_item
 from ida_pro_mcp.flow_core.ssa import build_ssa
 from test_memory import load as memory_load
 from test_memory import plan as memory_plan
@@ -591,3 +591,40 @@ def test_public_native_receipt_current_and_untruncated():
         assert not {"flow_create_path_proof", "flow_get_path_proof", "idb_save"} & set(
             anchor["tools"]
         )
+
+
+def test_wide_constant_survives_v1_page_as_hex():
+    from ida_pro_mcp.flow_core.serialization import (
+        JS_SAFE_INTEGER,
+        ensure_wire_v1_safe,
+    )
+
+    wide = 2**64 - 1
+    assert wide > JS_SAFE_INTEGER
+    rendered = wire_safe_node_item(
+        {"type": "node", "node_id": "node-v1:abc", "constant": wide,
+         "width_bits": 64}
+    )
+    assert rendered["constant"] is None
+    assert int(rendered["constant_hex"], 16) == wide
+    assert rendered["width_bits"] == 64
+    ensure_wire_v1_safe(rendered)
+    # Narrow values pass through untouched, without the extra key.
+    narrow = wire_safe_node_item({"constant": 42})
+    assert narrow == {"constant": 42}
+    ensure_wire_v1_safe(narrow)
+
+
+def test_boundary_rva_degrades_on_wild_addresses():
+    from ida_pro_mcp.flow_core.serialization import (
+        JS_SAFE_INTEGER,
+        ensure_wire_v1_safe,
+        wire_safe_rva,
+    )
+
+    assert wire_safe_rva(0x401000, 0x400000) == 0x1000
+    assert wire_safe_rva(0x1000, 0x400000) is None
+    wild = 0xF1BFFFFFFFC00074
+    assert wild - 0x400000 > JS_SAFE_INTEGER
+    assert wire_safe_rva(wild, 0x400000) is None
+    ensure_wire_v1_safe({"instruction_rva": wire_safe_rva(wild, 0x400000)})

@@ -3,7 +3,7 @@
 from typing import cast
 
 from ida_pro_mcp.flow_core.derived_calls import resolve_finite_indirect_targets
-from ida_pro_mcp.flow_core.serialization import ContractError
+from ida_pro_mcp.flow_core.serialization import ContractError, wire_safe_rva
 from ida_pro_mcp.flow_core.ssa import build_ssa
 
 from . import extractor
@@ -82,13 +82,21 @@ def extract_local_direct_callees(ctx, root: extractor.ExtractedFunction, info):
         return rva, reason
 
     def boundary(observation, rva, reason, **details):
+        instruction_rva = wire_safe_rva(
+            observation.instruction_ea, root.image_base
+        )
         result["boundaries"].append(
             {
                 "caller_rva": root.function_rva,
-                "instruction_rva": observation.instruction_ea - root.image_base,
+                "instruction_rva": instruction_rva,
                 "callee_rva": rva,
                 "reason": reason,
                 **details,
+                **(
+                    {"rva_unrepresentable": True}
+                    if instruction_rva is None
+                    else {}
+                ),
             }
         )
 

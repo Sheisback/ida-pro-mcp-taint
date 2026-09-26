@@ -72,6 +72,20 @@ JS_SAFE_INTEGER = (1 << 53) - 1
 _DECIMAL_INTEGER = re.compile(r"(?:0|[1-9][0-9]*|-[1-9][0-9]*)\Z")
 
 
+def wire_safe_rva(instruction_ea: int, image_base: int) -> int | None:
+    """Boundary RVA, or None when the address cannot travel on wire v1.
+
+    Hex-Rays occasionally reports a synthetic instruction EA outside the
+    loaded image; subtracting the base then yields a negative or enormous
+    RVA. Callers record None plus an explicit marker instead of failing
+    the whole job or shipping a corrupt address as evidence.
+    """
+    rva = instruction_ea - image_base
+    if rva < 0 or rva > JS_SAFE_INTEGER:
+        return None
+    return rva
+
+
 def validate_unsigned(value: int, bits: int = 64, *, exclude_max: bool = False) -> int:
     """Validate an unsigned bit pattern without coercing booleans or floats."""
     if type(bits) is not int or not 1 <= bits <= 4096:
