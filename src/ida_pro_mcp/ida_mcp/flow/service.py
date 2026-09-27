@@ -80,7 +80,10 @@ from ida_pro_mcp.flow_core.query import (
     evidence_chunks,
     wire_safe_node_item,
 )
-from ida_pro_mcp.flow_core.angr_client import sidecar_from_environment
+from ida_pro_mcp.flow_core.angr_client import (
+    resolve_block_addresses,
+    sidecar_from_environment,
+)
 from ida_pro_mcp.flow_core.refine import (
     RefinementSpec,
     validate_memory_refinement,
@@ -464,6 +467,31 @@ def _resolve_entry_registers(entry_storage, reg_info):
     return resolved
 
 
+def _block_anchor_ea(block):
+    """First native address of a snapshot block for refine path selection.
+
+    Agent clients cannot page Host-only CFG artifacts, so the completed
+    snapshot result echoes one anchor EA per block. Callers match taint
+    addresses against these anchors and submit indices only.
+    """
+    eas = sorted({ea for ins in block.instructions for ea in ins.source_eas})
+    return hex(eas[0]) if eas else None
+
+
+def _block_angr_eligible(blocks, index, entry):
+    """Whether the angr tier can address one snapshot block.
+
+    Mirrors the query builder exactly: only blocks resolving to one native
+    entry address are eligible path members. Callers walk eligible blocks
+    only instead of discovering refusals one attempt at a time.
+    """
+    try:
+        resolve_block_addresses(blocks, index, entry)
+    except ContractError:
+        return False
+    return True
+
+
 def _analyze(ctx, extracted):
     (function, callees, closure, reg_info), request = extracted
     snapshot = function.snapshot
@@ -746,6 +774,7 @@ def _analyze(ctx, extracted):
                 "proof_digest": effect.proof_digest,
             }
         )
+    echo_blocks = {block.index: block for block in snapshot.function.blocks}
     response = {
         "snapshot_artifact": sid,
         "graph_artifact": gid,
@@ -773,6 +802,22 @@ def _analyze(ctx, extracted):
         "profile": request["profile"]["profile_id"],
         "maturity": "MMAT_CALLS",
         "summary_digest": snapshot.identity.summary_digest,
+        "profile_digest": snapshot.identity.profile_digest,
+        "rule_digest": snapshot.identity.rule_digest,
+        "refine_blocks": {
+            "entry": snapshot.function.entry_block,
+            "blocks": [
+                {
+                    "index": block.index,
+                    "ea": _block_anchor_ea(block),
+                    "successors": list(block.successors),
+                    "angr": _block_angr_eligible(
+                        echo_blocks, block.index, snapshot.function.entry_block
+                    ),
+                }
+                for block in snapshot.function.blocks
+            ],
+        },
         "summary_limitations": [
             "Reviewed summaries cover only the packaged owned fixtures, with fresh full-identity callee validation; arbitrary libraries remain unresolved.",
             "Incomplete indirect, external, recursive, and context-limited calls retain unresolved effects; complete local finite targets have derived scalar returns only.",

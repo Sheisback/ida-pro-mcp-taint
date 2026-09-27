@@ -138,6 +138,44 @@ def _is_exact_marker_block(block) -> bool:
     return all(first < second for first, second in zip(ordinals, ordinals[1:]))
 
 
+def resolve_block_addresses(blocks, index, entry=None):
+    """Native entry addresses of one snapshot block for angr queries.
+
+    Empty blocks are common in real extraction (synthetic entries,
+    address-less glue). A block with no instructions of its own starts
+    where its linear successor chain starts; a fork in that chain is
+    ambiguous, so it refuses instead of guessing an address. An entry
+    block of exact typed-argument markers is transparent the same way.
+    """
+    seen = set()
+    current = index
+    while True:
+        require(current not in seen, "angr_missing_block_addresses")
+        require(current in blocks, "angr_missing_block_addresses")
+        seen.add(current)
+        instructions = blocks[current].instructions
+        if instructions:
+            if (
+                entry is not None
+                and current == index == entry
+                and _is_exact_marker_block(blocks[entry])
+            ):
+                pass
+            else:
+                if getattr(instructions[0], "opcode", None) == "m_arg":
+                    raise ContractError("angr_unexpected_argument_marker")
+                require(
+                    bool(instructions[0].source_eas),
+                    "angr_missing_block_addresses",
+                )
+                addresses = tuple(instructions[0].source_eas)
+                require(len(addresses) == 1, "angr_ambiguous_block_addresses")
+                return addresses
+        successors = blocks[current].successors
+        require(len(successors) == 1, "angr_missing_block_addresses")
+        current = successors[0]
+
+
 def build_prefix_query(
     graph,
     selector,
@@ -197,37 +235,6 @@ def build_prefix_query(
                 "angr_unexpected_argument_marker",
             )
 
-    def entry_addresses(index):
-        # Empty blocks are common in real extraction (synthetic entries,
-        # address-less glue). A block with no instructions of its own starts
-        # where its linear successor chain starts; a fork in that chain is
-        # ambiguous, so it refuses instead of guessing an address. An entry
-        # block of exact typed-argument markers is transparent the same way.
-        seen = set()
-        current = index
-        while True:
-            require(current not in seen, "angr_missing_block_addresses")
-            require(current in blocks, "angr_missing_block_addresses")
-            seen.add(current)
-            instructions = blocks[current].instructions
-            if instructions:
-                if (
-                    current == index == entry
-                    and _is_exact_marker_block(blocks[entry])
-                ):
-                    pass
-                else:
-                    if instructions[0].opcode == "m_arg":
-                        raise ContractError("angr_unexpected_argument_marker")
-                    require(bool(instructions[0].source_eas),
-                            "angr_missing_block_addresses")
-                    addresses = tuple(instructions[0].source_eas)
-                    require(len(addresses) == 1, "angr_ambiguous_block_addresses")
-                    return addresses
-            successors = blocks[current].successors
-            require(len(successors) == 1, "angr_missing_block_addresses")
-            current = successors[0]
-
     # Distinct native blocks must not share instruction provenance. Empty
     # linear glue may resolve to its successor, but real overlapping blocks
     # cannot be represented faithfully by a global address find/avoid set.
@@ -246,7 +253,7 @@ def build_prefix_query(
     previous_index = None
     previous_address = None
     for index in path:
-        address = entry_addresses(index)[0]
+        address = resolve_block_addresses(blocks, index, entry)[0]
         if address in selected_addresses:
             # Only forward, consecutive transparent glue can share a native
             # entry: an empty block or an exact marker-only entry block. An
@@ -269,12 +276,14 @@ def build_prefix_query(
     if len(path) == 1:
         find = (native_entry,)
     else:
-        find = entry_addresses(path[-1])
+        find = resolve_block_addresses(blocks, path[-1], entry)
     avoid_addresses: list[int] = []
     for position in range(len(path) - 1):
         for successor in blocks[path[position]].successors:
             if successor not in path:
-                avoid_addresses.extend(entry_addresses(successor))
+                avoid_addresses.extend(
+                    resolve_block_addresses(blocks, successor, entry)
+                )
     avoid = tuple(sorted(set(avoid_addresses)))
     require(
         not ((selected_addresses | {native_entry}) & set(avoid)),

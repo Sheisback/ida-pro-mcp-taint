@@ -852,3 +852,84 @@ def test_unreachable_call_never_imports_reachable_prefix_heap(flow, arch):
     assert unreachable["state"]["heap"] == []
     assert unreachable["branches"] == []
     assert unreachable["heap_observations"] == []
+
+
+@pytest.mark.parametrize("arch", ["x86_64", "arm64"])
+def test_snapshot_result_echoes_refine_selector_inputs(flow, monkeypatch, arch):
+    """Completed snapshot jobs carry every refine binding plus a block map.
+
+    Agent clients cannot page Host-only graph/CFG artifacts, so the polled
+    job result must echo profile/rule digests and the entry-rooted block
+    map the PathSelector needs. Every echoed value is copied verbatim from
+    the completed snapshot; callers never invent digests or indices.
+    """
+    module, _ = flow
+    service = module._service()
+    data = receipt(arch)
+    records, _ = install_recorded_extractor(service, monkeypatch, data)
+    selected = next(iter(records.values()))
+    profile = data["profile"]
+    baseline = selected["baseline"]["snapshot"]["identity"]
+    from ida_pro_mcp.flow_core.profile_registry import REGISTRY
+
+    info = dict(
+        dbpath="/tmp/owned-call.i64",
+        binary=baseline["binary_digest"],
+        profile=profile,
+        registry=REGISTRY,
+        count=0,
+        ida=baseline["environment"]["ida_build"],
+        hexrays=baseline["environment"]["hexrays_build"],
+    )
+    monkeypatch.setattr(service, "_context_for_request", lambda *a, **kw: info)
+    catalog = service.reviewed_catalog(info)
+    scope = service._runtime_scope(info, "runtime-owner")
+    artifacts = {}
+
+    def put(kind, value):
+        key = f"{kind}-{len(artifacts)}"
+        artifacts[key] = value.to_data() if hasattr(value, "to_data") else value
+        return key
+
+    engine = SimpleNamespace(store=SimpleNamespace(scope=scope, put_artifact=put))
+    monkeypatch.setattr(service, "get_runtime", lambda *_: engine)
+    request = dict(
+        ea=selected["baseline"]["function_ea"],
+        profile=profile,
+        namespace="runtime-owner",
+        function_key="public-entry",
+        fingerprint=service._fingerprint(info),
+        summary_digest=catalog.catalog_digest,
+    )
+    ctx = SimpleNamespace(
+        deadline=None, cancel=SimpleNamespace(is_set=lambda: False), check=lambda: None
+    )
+    result = service._analyze(ctx, service._extract(ctx, request))
+    snap = artifacts[result["snapshot_artifact"]]
+    assert result["profile_digest"] == snap["identity"]["profile_digest"]
+    assert result["rule_digest"] == snap["identity"]["rule_digest"]
+    echoed = result["refine_blocks"]
+    assert echoed["entry"] == snap["function"]["entry_block"]
+    assert [b["index"] for b in echoed["blocks"]] == [
+        b["index"] for b in snap["function"]["blocks"]
+    ]
+    for got, want in zip(echoed["blocks"], snap["function"]["blocks"]):
+        assert got["successors"] == list(want["successors"])
+        eas = sorted(
+            {ea for ins in want["instructions"] for ea in ins["source_eas"]}
+        )
+        assert got["ea"] == (hex(eas[0]) if eas else None)
+    from ida_pro_mcp.flow_core.angr_client import resolve_block_addresses
+    from ida_pro_mcp.flow_core.contracts import Block
+    from ida_pro_mcp.flow_core.serialization import ContractError
+
+    by_index = {
+        row["index"]: Block.from_data(row) for row in snap["function"]["blocks"]
+    }
+    for got in echoed["blocks"]:
+        try:
+            resolve_block_addresses(by_index, got["index"], echoed["entry"])
+            eligible = True
+        except ContractError:
+            eligible = False
+        assert got["angr"] is eligible
