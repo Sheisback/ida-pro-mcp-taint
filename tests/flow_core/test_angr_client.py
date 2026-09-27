@@ -15,6 +15,7 @@ from ida_pro_mcp.flow_core.angr_client import (
     AngrSymbolicRegister,
     build_prefix_query,
     query,
+    resolve_block_addresses,
     sidecar_from_environment,
 )
 from ida_pro_mcp.flow_core.contracts import Block, Operand
@@ -445,3 +446,39 @@ def test_nonempty_addressless_block_never_borrows_successor_entry(path):
     with pytest.raises(ContractError, match="angr_missing_block_addresses"):
         build_prefix_query(graph, PathSelector(path_bindings(graph), path),
                            _context(), timeout_ms=5000)
+
+
+def _addr_blocks(spec):
+    from types import SimpleNamespace
+
+    blocks = {}
+    for index, (eas, successors) in spec.items():
+        instructions = (
+            (SimpleNamespace(source_eas=tuple(eas)),) if eas is not None else ()
+        )
+        blocks[index] = SimpleNamespace(
+            index=index, instructions=instructions, successors=tuple(successors)
+        )
+    return blocks
+
+
+def test_resolve_block_addresses_unique_first_ea():
+    blocks = _addr_blocks({0: ([0x1000], [1]), 1: ([0x1010], [])})
+    assert resolve_block_addresses(blocks, 0) == (0x1000,)
+    assert resolve_block_addresses(blocks, 1) == (0x1010,)
+
+
+def test_resolve_block_addresses_empty_linear_glue_borrows_successor():
+    blocks = _addr_blocks({0: (None, [1]), 1: ([0x1010], [])})
+    assert resolve_block_addresses(blocks, 0) == (0x1010,)
+
+
+def test_resolve_block_addresses_refuses_fork_loop_and_ambiguity():
+    with pytest.raises(ContractError, match="angr_missing_block_addresses"):
+        resolve_block_addresses(_addr_blocks({0: (None, [1, 2])}), 0)
+    with pytest.raises(ContractError, match="angr_missing_block_addresses"):
+        resolve_block_addresses(_addr_blocks({0: (None, [0])}), 0)
+    with pytest.raises(ContractError, match="angr_missing_block_addresses"):
+        resolve_block_addresses(_addr_blocks({0: ([], [1]), 1: ([0x10], [])}), 0)
+    with pytest.raises(ContractError, match="angr_ambiguous_block_addresses"):
+        resolve_block_addresses(_addr_blocks({0: ([0x10, 0x20], [])}), 0)

@@ -50,6 +50,31 @@ class AngrContext:
         )
 
 
+def resolve_block_addresses(blocks, index):
+    """Native entry addresses of one snapshot block for angr queries.
+
+    Empty blocks are common in real extraction (synthetic entries,
+    address-less glue). A block with no instructions of its own starts
+    where its linear successor chain starts; a fork in that chain is
+    ambiguous, so it refuses instead of guessing an address.
+    """
+    seen = set()
+    current = index
+    while True:
+        require(current not in seen, "angr_missing_block_addresses")
+        require(current in blocks, "angr_missing_block_addresses")
+        seen.add(current)
+        instructions = blocks[current].instructions
+        if instructions:
+            require(bool(instructions[0].source_eas), "angr_missing_block_addresses")
+            addresses = tuple(instructions[0].source_eas)
+            require(len(addresses) == 1, "angr_ambiguous_block_addresses")
+            return addresses
+        successors = blocks[current].successors
+        require(len(successors) == 1, "angr_missing_block_addresses")
+        current = successors[0]
+
+
 def build_prefix_query(
     graph,
     selector,
@@ -94,27 +119,6 @@ def build_prefix_query(
             "angr_prefix_order_unencodable",
         )
 
-    def entry_addresses(index):
-        # Empty blocks are common in real extraction (synthetic entries,
-        # address-less glue). A block with no instructions of its own starts
-        # where its linear successor chain starts; a fork in that chain is
-        # ambiguous, so it refuses instead of guessing an address.
-        seen = set()
-        current = index
-        while True:
-            require(current not in seen, "angr_missing_block_addresses")
-            require(current in blocks, "angr_missing_block_addresses")
-            seen.add(current)
-            instructions = blocks[current].instructions
-            if instructions:
-                require(bool(instructions[0].source_eas), "angr_missing_block_addresses")
-                addresses = tuple(instructions[0].source_eas)
-                require(len(addresses) == 1, "angr_ambiguous_block_addresses")
-                return addresses
-            successors = blocks[current].successors
-            require(len(successors) == 1, "angr_missing_block_addresses")
-            current = successors[0]
-
     # Distinct native blocks must not share instruction provenance. Empty
     # linear glue may resolve to its successor, but real overlapping blocks
     # cannot be represented faithfully by a global address find/avoid set.
@@ -133,7 +137,7 @@ def build_prefix_query(
     previous_index = None
     previous_address = None
     for index in path:
-        address = entry_addresses(index)[0]
+        address = resolve_block_addresses(blocks, index)[0]
         if address in selected_addresses:
             # Only forward, consecutive empty glue can share a native entry.
             # An empty tail pointing back at real code is a new visit, not
@@ -146,12 +150,12 @@ def build_prefix_query(
             )
         selected_addresses.add(address)
         previous_index, previous_address = index, address
-    find = entry_addresses(path[-1])
+    find = resolve_block_addresses(blocks, path[-1])
     avoid_addresses: list[int] = []
     for position in range(len(path) - 1):
         for successor in blocks[path[position]].successors:
             if successor not in path:
-                avoid_addresses.extend(entry_addresses(successor))
+                avoid_addresses.extend(resolve_block_addresses(blocks, successor))
     avoid = tuple(sorted(set(avoid_addresses)))
     require(
         not (selected_addresses & set(avoid)),
@@ -161,7 +165,7 @@ def build_prefix_query(
         binary_path=context.binary_path,
         binary_sha256=context.binary_sha256,
         image_base=context.image_base,
-        entry_ea=entry_addresses(path[0])[0],
+        entry_ea=resolve_block_addresses(blocks, path[0])[0],
         find_eas=find,
         avoid_eas=avoid,
         symbolic_registers=tuple(

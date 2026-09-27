@@ -92,15 +92,18 @@ Use it to pick seed nodes without sweeping candidates.
 
 Every snapshot result also echoes `profile_digest`, `rule_digest`, and a
 `refine_blocks` entry/block map (`{entry, blocks:[{index, ea,
-successors}]}`) so clients that cannot page Host-only graph/CFG artifacts
-can still assemble an exact refine path selector by selecting echoed
-values only. Copy the five bindings verbatim (`rule_digest` fills
+successors, angr}]}`) so clients that cannot page Host-only graph/CFG
+artifacts can still assemble an exact refine path selector by selecting
+echoed values only. Copy the five bindings verbatim (`rule_digest` fills
 `ruleset_digest`, `summary_digest` fills `summary_digests`); walk `blocks`
 from `entry` through `successors`, matching taint addresses to echoed
 `ea` anchors (greatest anchor at or below each address). A `null` anchor
 marks a block with no native address; include it only when the successor
-walk requires it. Validation semantics are unchanged: mismatched bindings
-or non-successor transitions still fail closed.
+walk requires it. Walk `angr:true` blocks only (the flag mirrors the
+query builder's address resolution exactly), never revisit a block, and
+treat a target reachable only through ineligible blocks or a revisit as
+refinement-unavailable. Validation semantics are unchanged: mismatched
+bindings, non-successor transitions, or repeats still fail closed.
 
 For an analyst-designated external input such as a driver request buffer,
 first verify the transfer method, buffer pointer, length check, and the

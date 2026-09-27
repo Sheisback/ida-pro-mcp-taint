@@ -919,3 +919,17 @@ def test_snapshot_result_echoes_refine_selector_inputs(flow, monkeypatch, arch):
             {ea for ins in want["instructions"] for ea in ins["source_eas"]}
         )
         assert got["ea"] == (hex(eas[0]) if eas else None)
+    from ida_pro_mcp.flow_core.angr_client import resolve_block_addresses
+    from ida_pro_mcp.flow_core.contracts import Block
+    from ida_pro_mcp.flow_core.serialization import ContractError
+
+    by_index = {
+        row["index"]: Block.from_data(row) for row in snap["function"]["blocks"]
+    }
+    for got in echoed["blocks"]:
+        try:
+            resolve_block_addresses(by_index, got["index"])
+            eligible = True
+        except ContractError:
+            eligible = False
+        assert got["angr"] is eligible
