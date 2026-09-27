@@ -42,12 +42,12 @@ def write_runner(path: Path, body: str) -> str:
 OK_RUNNER = """
 import json, sys
 request = json.loads(open(sys.argv[1]).read())
-assert request["schema_version"] == 1, request
+assert request["schema_version"] == 2, request
 assert request["find_eas"], request
 json.dump({
     "status": "feasible",
     "witness": [{"name": "size", "width_bits": 64, "value_hex": "0x5"}],
-    "engine": {"name": "angr-sidecar", "runner_version": "flow-angr-runner/1",
+    "engine": {"name": "angr-sidecar", "runner_version": "flow-angr-runner/2",
                "angr_version": "9.2.213", "z3_version": "4.13.0.0",
                "simprocedures": ["memset"], "loop_bound": 8,
                "exploration_steps": 12},
@@ -400,14 +400,100 @@ def _prefix_graph(predecessors):
 @pytest.mark.parametrize(("predecessors", "path", "reason"), [
     (((), (0,), (1,)), (0, 2), "angr_prefix_nonedge"),
     (((), (0, 1), (1,)), (0, 1, 1, 2), "angr_prefix_repeated_block"),
-    (((), (0,), (0, 1)), (0, 1, 2), "angr_prefix_order_unencodable"),
-    (((), (0, 2), (1,), (2,)), (0, 1, 2, 3), "angr_prefix_order_unencodable"),
 ])
-def test_prefix_rejects_paths_global_find_avoid_cannot_encode(predecessors, path, reason):
+def test_prefix_rejects_nonedge_and_repeated_paths(predecessors, path, reason):
     graph = _prefix_graph(predecessors)
     with pytest.raises(ContractError, match=reason):
         build_prefix_query(graph, PathSelector(path_bindings(graph), path),
                            _context(), timeout_ms=5000)
+
+
+def test_prefix_skip_join_builds_ordered_waypoints():
+    graph = _prefix_graph(((), (0,), (0, 1)))
+    built = build_prefix_query(graph, PathSelector(path_bindings(graph), (0, 1, 2)),
+                               _context(), timeout_ms=5000)
+    assert built.schema_version == 2
+    assert built.waypoint_eas == ((BASE_EA + 1,),)
+    assert built.find_eas == (BASE_EA + 2,)
+    assert built.avoid_eas == ()
+
+
+def test_prefix_diamond_keeps_off_path_branch_avoided():
+    graph = _prefix_graph(((), (0,), (1, 3), (0,)))
+    built = build_prefix_query(graph, PathSelector(path_bindings(graph), (0, 1, 2)),
+                               _context(), timeout_ms=5000)
+    assert built.waypoint_eas == ((BASE_EA + 1,),)
+    assert built.find_eas == (BASE_EA + 2,)
+    assert built.avoid_eas == (BASE_EA + 3,)
+
+
+def test_prefix_loop_back_rejoin_builds():
+    graph = _prefix_graph(((), (0, 2), (1,), (2,)))
+    built = build_prefix_query(graph, PathSelector(path_bindings(graph), (0, 1, 2, 3)),
+                               _context(), timeout_ms=5000)
+    assert built.waypoint_eas == ((BASE_EA + 1,), (BASE_EA + 2,))
+    assert built.find_eas == (BASE_EA + 3,)
+    assert built.avoid_eas == ()
+
+
+def test_prefix_self_loop_on_path_builds():
+    graph = _prefix_graph(((), (0, 1), (1,)))
+    built = build_prefix_query(graph, PathSelector(path_bindings(graph), (0, 1, 2)),
+                               _context(), timeout_ms=5000)
+    assert built.waypoint_eas == ((BASE_EA + 1,),)
+    assert built.find_eas == (BASE_EA + 2,)
+
+
+def test_prefix_linear_path_emits_intermediate_waypoints():
+    graph = _prefix_graph(((), (0,), (1,)))
+    built = build_prefix_query(graph, PathSelector(path_bindings(graph), (0, 1, 2)),
+                               _context(), timeout_ms=5000)
+    assert built.waypoint_eas == ((BASE_EA + 1,),)
+    assert built.find_eas == (BASE_EA + 2,)
+    assert built.avoid_eas == ()
+
+
+def test_prefix_entry_only_path_has_no_waypoints():
+    graph = _prefix_graph(((),))
+    built = build_prefix_query(graph, PathSelector(path_bindings(graph), (0,)),
+                               _context(), timeout_ms=5000)
+    assert built.waypoint_eas == ()
+    assert built.find_eas == (NATIVE_ENTRY_EA,)
+
+
+def test_prefix_transparent_glue_waypoint_dedupes_to_find():
+    real = ins(0, "m_mov", reg(bits=8), dest=reg(8, role="destination"))
+    graph = build_ssa(
+        sparse_addressed(
+            (
+                Block(0, (), (real,)),
+                Block(1, (0,), ()),
+                Block(2, (1,), (real,)),
+            ),
+        )
+    ).graph
+    built = build_prefix_query(graph, PathSelector(path_bindings(graph), (0, 1, 2)),
+                               _context(), timeout_ms=5000)
+    assert built.find_eas == (BASE_EA + 1,)
+    assert built.waypoint_eas == ()
+
+
+def test_waypoint_query_validation():
+    with pytest.raises(ContractError):
+        make_query(waypoint_eas=((BASE_EA,), ()))
+    with pytest.raises(ContractError):
+        make_query(waypoint_eas=(("0x500000",),))
+    with pytest.raises(ContractError):
+        make_query(waypoint_eas=([-1],))
+    with pytest.raises(ContractError):
+        AngrQuery.from_data({**make_query().to_data(), "schema_version": 1})
+    assert make_query().schema_version == 2
+    assert (
+        AngrQuery.from_data(
+            make_query(waypoint_eas=((1,), (2, 3))).to_data()
+        ).waypoint_eas
+        == ((1,), (2, 3))
+    )
 
 
 def test_prefix_rejects_overlapping_native_addresses():

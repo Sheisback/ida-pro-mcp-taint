@@ -146,11 +146,11 @@ def write_runner(tmp_path, status, witness=(), unresolved=()):
     target.write_text(
         "import json, sys\n"
         f"request = json.loads(open(sys.argv[1]).read())\n"
-        "assert request['schema_version'] == 1, request\n"
+        "assert request['schema_version'] == 2, request\n"
         "assert request['find_eas'], request\n"
         f"json.dump({{'status': {status!r}, 'witness': list({witness!r}), "
         "'engine': {'name': 'angr-sidecar', "
-        "'runner_version': 'flow-angr-runner/1', "
+        "'runner_version': 'flow-angr-runner/2', "
         "'angr_version': '9.2.213', 'z3_version': '4.13.0', "
         "'simprocedures': [], 'loop_bound': 8, 'exploration_steps': 3}, "
         f"'unresolved': list({unresolved!r}), 'target_executed': False}}, "

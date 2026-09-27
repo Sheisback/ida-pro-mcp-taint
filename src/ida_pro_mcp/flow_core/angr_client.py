@@ -22,8 +22,8 @@ from .serialization import ContractError, Model
 from .states import check_digest, nonempty, require
 
 ANGR_INTERPRETER_ENV = "IDA_MCP_ANGR_PYTHON"
-ANGR_REQUEST_VERSION = 1
-ANGR_RUNNER_VERSION = "flow-angr-runner/1"
+ANGR_REQUEST_VERSION = 2
+ANGR_RUNNER_VERSION = "flow-angr-runner/2"
 ANGR_MIN_TIMEOUT_MS = 100
 ANGR_MAX_TIMEOUT_MS = 120000
 ANGR_DEFAULT_LOOP_BOUND = 8
@@ -187,16 +187,20 @@ def build_prefix_query(
     """Translate an entry-rooted block prefix into a sidecar question.
 
     Execution starts at the validated native function entry so a prologue
-    before the first microcode origin is never skipped. Find targets are the
-    final block's microcode entry addresses (the native entry itself for an
-    entry-only path); every off-prefix successor along the way becomes an
-    avoid address. Reject repeats, shortcuts, re-entry and ambiguous native
-    translations that this global find/avoid encoding cannot represent.
-    Missing addresses, unexpected argument markers, an invalid native
-    identity or a non-X64 environment also refuse, so the caller degrades
-    honestly instead of asking a different question than the selector names.
-    Only an entry block consisting solely of exact typed-argument markers is
-    transparent; every other addressless block still fails explicitly.
+    before the first microcode origin is never skipped. Every intermediate
+    path block becomes an ordered waypoint; the runner must visit them in
+    path order while forwarding exploration states, so skip/join shapes no
+    longer need a refusal: a shortcut that bypasses a waypoint simply never
+    reaches the terminal find through the ordered stages. Find targets are
+    the final block's microcode entry addresses (the native entry itself for
+    an entry-only path); every off-prefix successor along the way becomes an
+    avoid address for all stages. Reject repeats, non-edges, re-entry and
+    ambiguous native translations. Missing addresses, unexpected argument
+    markers, an invalid native identity or a non-X64 environment also
+    refuse, so the caller degrades honestly instead of asking a different
+    question than the selector names. Only an entry block consisting solely
+    of exact typed-argument markers is transparent; every other addressless
+    block still fails explicitly.
     """
     environment = graph.snapshot.identity.environment
     if not (
@@ -219,11 +223,6 @@ def build_prefix_query(
     require(len(set(path)) == len(path), "angr_prefix_repeated_block")
     for current, following in zip(path, path[1:]):
         require(following in blocks[current].successors, "angr_prefix_nonedge")
-        require(
-            all(successor == following or successor not in path
-                for successor in blocks[current].successors),
-            "angr_prefix_order_unencodable",
-        )
 
     native_entry = _native_function_entry(graph)
     for block in blocks.values():
@@ -250,10 +249,12 @@ def build_prefix_query(
                 address_owners[address] = block.index
 
     selected_addresses: set[int] = set()
+    resolved: dict[int, tuple[int, ...]] = {}
     previous_index = None
     previous_address = None
     for index in path:
-        address = resolve_block_addresses(blocks, index, entry)[0]
+        resolved[index] = resolve_block_addresses(blocks, index, entry)
+        address = resolved[index][0]
         if address in selected_addresses:
             # Only forward, consecutive transparent glue can share a native
             # entry: an empty block or an exact marker-only entry block. An
@@ -276,7 +277,14 @@ def build_prefix_query(
     if len(path) == 1:
         find = (native_entry,)
     else:
-        find = resolve_block_addresses(blocks, path[-1], entry)
+        find = resolved[path[-1]]
+    waypoints: list[tuple[int, ...]] = []
+    for index in path[1:-1]:
+        candidate = resolved[index]
+        if not waypoints or waypoints[-1] != candidate:
+            waypoints.append(candidate)
+    while waypoints and waypoints[-1] == find:
+        waypoints.pop()
     avoid_addresses: list[int] = []
     for position in range(len(path) - 1):
         for successor in blocks[path[position]].successors:
@@ -295,6 +303,7 @@ def build_prefix_query(
         image_base=context.image_base,
         entry_ea=native_entry,
         find_eas=find,
+        waypoint_eas=tuple(waypoints),
         avoid_eas=avoid,
         symbolic_registers=tuple(
             AngrSymbolicRegister(name, 64) for name in X64_ARG_REGISTERS
@@ -328,11 +337,12 @@ class AngrQuery(Model):
     image_base: int
     entry_ea: int
     find_eas: tuple[int, ...]
+    waypoint_eas: tuple[tuple[int, ...], ...] = ()
     avoid_eas: tuple[int, ...] = ()
     symbolic_registers: tuple[AngrSymbolicRegister, ...] = ()
     loop_bound: int = 8
     timeout_ms: int = 5000
-    schema_version: Literal[1] = 1
+    schema_version: Literal[2] = 2
 
     def __post_init__(self):
         super().__post_init__()
@@ -347,6 +357,15 @@ class AngrQuery(Model):
             all(type(ea) is int and ea >= 0 for ea in self.find_eas)
             and len(self.find_eas) > 0,
             "find_eas needs at least one address",
+        )
+        require(
+            all(
+                type(stage) is tuple
+                and len(stage) > 0
+                and all(type(ea) is int and ea >= 0 for ea in stage)
+                for stage in self.waypoint_eas
+            ),
+            "waypoint_eas needs ordered non-empty address stages",
         )
         require(
             all(type(ea) is int and ea >= 0 for ea in self.avoid_eas),

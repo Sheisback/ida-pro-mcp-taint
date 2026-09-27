@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""angr sidecar runner: prefix feasibility as bounded symbolic execution.
+"""angr sidecar runner: ordered waypoint feasibility as bounded symbolic execution.
 
 Usage: runner.py <request.json> <response.json>
 
@@ -16,9 +16,10 @@ import hashlib
 import json
 import logging
 import sys
+import time
 from typing import NoReturn
 
-RUNNER_VERSION = "flow-angr-runner/1"
+RUNNER_VERSION = "flow-angr-runner/2"
 NUM_FIND_ALL = 65536
 
 
@@ -35,14 +36,24 @@ def load_request(path):
     if type(raw) is not dict:
         fail("request must be an object")
     for key in ("binary_path", "binary_sha256", "image_base", "entry_ea",
-                "find_eas", "symbolic_registers", "loop_bound", "timeout_ms",
-                "schema_version"):
+                "find_eas", "waypoint_eas", "symbolic_registers", "loop_bound",
+                "timeout_ms", "schema_version"):
         if key not in raw:
             fail(f"request missing {key}")
-    if raw["schema_version"] != 1:
+    if raw["schema_version"] != 2:
         fail("unsupported request version")
     if not raw["find_eas"]:
         fail("find_eas needs at least one address")
+    waypoints = raw["waypoint_eas"]
+    if type(waypoints) is not list or any(
+        type(stage) is not list
+        or not stage
+        or any(type(ea) is not int or ea < 0 for ea in stage)
+        for stage in waypoints
+    ):
+        fail("waypoint_eas must be a list of non-empty address lists")
+    if type(raw["timeout_ms"]) is not int or raw["timeout_ms"] <= 0:
+        fail("timeout_ms must be a positive integer")
     return raw
 
 
@@ -110,7 +121,7 @@ def main(request_path, response_path):
     state = proj.factory.call_state(entry)
     symbols = {}
     for item in request["symbolic_registers"]:
-        name, width = item["name"], item["width_bits"]
+        name = item["name"]
         if not hasattr(state.regs, name):
             fail(f"unknown register {name}")
         if name not in symbols:
@@ -129,11 +140,6 @@ def main(request_path, response_path):
     loop_seer = angr.exploration_techniques.LoopSeer(
         cfg=cfg, bound=request["loop_bound"])
     simgr.use_technique(loop_seer)
-    steps_before = len(simgr.active)
-    simgr.explore(find=tuple(request["find_eas"]),
-                  avoid=tuple(request.get("avoid_eas", ())),
-                  num_find=NUM_FIND_ALL)
-    steps = steps_before  # replaced below by history depth accounting
     engine = {
         "name": "angr-sidecar",
         "runner_version": RUNNER_VERSION,
@@ -141,53 +147,85 @@ def main(request_path, response_path):
         "z3_version": z3_version,
         "simprocedures": hooked_procedures(proj),
         "loop_bound": request["loop_bound"],
-        "exploration_steps": steps,
+        "exploration_steps": 0,
     }
-    if simgr.found:
-        found = sorted(simgr.found, key=lambda s: tuple(s.history.bbl_addrs))
-        witness_state = found[0]
-        engine["exploration_steps"] = len(witness_state.history.bbl_addrs)
-        witness = []
-        for item in request["symbolic_registers"]:
-            name, width = item["name"], item["width_bits"]
-            value = witness_state.solver.eval(symbols[name][width - 1:0])
-            witness.append({"name": name, "width_bits": width,
-                            "value_hex": hex(value)})
-        write(response_path, {
-            "status": "feasible", "witness": witness, "engine": engine,
-            "unresolved": [], "target_executed": False,
-        })
-        return
+    # Ordered stages: each waypoint in path order, then the terminal find.
+    # Only states that reached the current stage continue; a shortcut that
+    # bypasses a waypoint is dropped with the non-found stashes. States keep
+    # their history and constraints across stages, so one witness proves one
+    # input drives the whole ordered path. Budgets are checked per stage; the
+    # host still enforces the global deadline if a stage overruns.
+    stages = [tuple(stage) for stage in request["waypoint_eas"]]
+    stages.append(tuple(request["find_eas"]))
+    avoid = tuple(request.get("avoid_eas", ()))
+    start = time.monotonic()
+    budget = request["timeout_ms"] / 1000
+    capped = False
+    for position, stage in enumerate(stages):
+        if time.monotonic() - start >= budget:
+            write(response_path, {
+                "status": "unknown", "witness": [], "engine": None,
+                "unresolved": ["waypoint_budget_exhausted"],
+                "target_executed": False,
+            })
+            return
+        simgr.explore(find=stage, avoid=avoid, num_find=NUM_FIND_ALL)
+        if not simgr.found:
+            write(response_path, _terminal_payload(
+                simgr, engine, capped))
+            return
+        if position == len(stages) - 1:
+            write(response_path, _feasible_payload(
+                simgr, engine, request, symbols))
+            return
+        if simgr.active:
+            # Stopped by the find cap: the forwarded set is a sample, so a
+            # later empty stage cannot prove infeasibility.
+            capped = True
+        simgr.stashes["active"] = list(simgr.found)
+        for name in list(simgr.stashes):
+            if name != "active":
+                simgr.stashes[name] = []
+
+
+def _feasible_payload(simgr, engine, request, symbols):
+    found = sorted(simgr.found, key=lambda s: tuple(s.history.bbl_addrs))
+    witness_state = found[0]
+    engine["exploration_steps"] = len(witness_state.history.bbl_addrs)
+    witness = []
+    for item in request["symbolic_registers"]:
+        name, width = item["name"], item["width_bits"]
+        value = witness_state.solver.eval(symbols[name][width - 1:0])
+        witness.append({"name": name, "width_bits": width,
+                        "value_hex": hex(value)})
+    return {
+        "status": "feasible", "witness": witness, "engine": engine,
+        "unresolved": [], "target_executed": False,
+    }
+
+
+def _terminal_payload(simgr, engine, capped):
     engine["exploration_steps"] = 0
     limited = len(getattr(simgr, "spinning", []) or []) > 0
     if getattr(simgr, "unconstrained", []):
-        write(response_path, {
-            "status": "unknown", "witness": [], "engine": engine,
-            "unresolved": ["unconstrained_states"], "target_executed": False,
-        })
-        return
-    if simgr.errored:
-        write(response_path, {
-            "status": "unknown", "witness": [], "engine": engine,
-            "unresolved": ["unexplored_errors"], "target_executed": False,
-        })
-        return
-    if simgr.active:
-        write(response_path, {
-            "status": "unknown", "witness": [], "engine": engine,
-            "unresolved": ["exploration_incomplete"], "target_executed": False,
-        })
-        return
-    if limited:
-        write(response_path, {
-            "status": "unknown", "witness": [], "engine": engine,
-            "unresolved": ["loop_bound_exceeded"], "target_executed": False,
-        })
-        return
-    write(response_path, {
-        "status": "infeasible", "witness": [], "engine": engine,
-        "unresolved": [], "target_executed": False,
-    })
+        reason = "unconstrained_states"
+    elif simgr.errored:
+        reason = "unexplored_errors"
+    elif simgr.active:
+        reason = "exploration_incomplete"
+    elif limited:
+        reason = "loop_bound_exceeded"
+    elif capped:
+        reason = "waypoint_exploration_capped"
+    else:
+        return {
+            "status": "infeasible", "witness": [], "engine": engine,
+            "unresolved": [], "target_executed": False,
+        }
+    return {
+        "status": "unknown", "witness": [], "engine": engine,
+        "unresolved": [reason], "target_executed": False,
+    }
 
 
 def write(path, payload):

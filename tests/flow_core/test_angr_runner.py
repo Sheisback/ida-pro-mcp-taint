@@ -24,11 +24,15 @@ def run_stub(tmp_path, monkeypatch, *, found=(), unconstrained=(), spinning=(),
              setup=None):
     request = {"binary_path": "unused", "binary_sha256": "unused",
                "image_base": 0x400000, "entry_ea": 0x400000,
-               "find_eas": [0x400010], "symbolic_registers": [],
-               "loop_bound": 8, "timeout_ms": 5000, "schema_version": 1}
-    simgr = SimpleNamespace(active=[], found=list(found), errored=[],
+               "find_eas": [0x400010], "waypoint_eas": [],
+               "symbolic_registers": [],
+               "loop_bound": 8, "timeout_ms": 5000, "schema_version": 2}
+    stashes = {"active": [], "found": list(found), "deadended": [],
+               "errored": []}
+    simgr = SimpleNamespace(active=stashes["active"], found=stashes["found"],
+                            errored=stashes["errored"],
                             unconstrained=list(unconstrained),
-                            spinning=list(spinning),
+                            spinning=list(spinning), stashes=stashes,
                             use_technique=lambda _: None, explore=lambda **_: None)
     factory = SimpleNamespace(call_state=lambda _: object(),
                               simulation_manager=lambda _: simgr)
