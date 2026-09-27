@@ -1139,6 +1139,7 @@ def get_runtime(info=None):
 
 DEFAULT_WINDOW_STEPS = 64
 DEFAULT_WINDOW_MAX_DEPENDENCIES = 16384
+JOB_TIMEOUT_SECONDS = 240
 
 
 def _window_options(window_steps, window_max_dependencies):
@@ -1207,7 +1208,7 @@ def create(
             info["dbpath"],
             _routing_selection(info, engine.store.scope),
         )
-    job_id = engine.submit("snapshot_ssa_v1", request, request_key, timeout=120)
+    job_id = engine.submit("snapshot_ssa_v1", request, request_key, timeout=JOB_TIMEOUT_SECONDS)
     return {
         "schema_version": "flow-job/1",
         "job_id": job_id,
@@ -1246,7 +1247,7 @@ def create_implicit(ssa_artifact, seeds, request_key, max_evaluations=100000):
     return {
         "schema_version": "flow-job/1",
         "job_id": engine.submit(
-            "implicit_analysis_v1", request, request_key, timeout=120
+            "implicit_analysis_v1", request, request_key, timeout=JOB_TIMEOUT_SECONDS
         ),
         "experimental": True,
     }
@@ -1284,7 +1285,7 @@ def create_path_proof(graph_artifact, query, request_key):
         request["wire_version"] = "flow-wire/2"
     return {
         "schema_version": "flow-job/1",
-        "job_id": engine.submit("path_proof_v1", request, request_key, timeout=120),
+        "job_id": engine.submit("path_proof_v1", request, request_key, timeout=JOB_TIMEOUT_SECONDS),
         "experimental": True,
     }
 
@@ -1344,7 +1345,7 @@ def create_store_proof(
     return {
         "schema_version": "flow-job/1",
         "experimental": True,
-        "job_id": engine.submit("store_proof_v1", request, request_key, timeout=120),
+        "job_id": engine.submit("store_proof_v1", request, request_key, timeout=JOB_TIMEOUT_SECONDS),
     }
 
 
@@ -1388,7 +1389,7 @@ def create_path_refinement(
     return {
         "schema_version": "flow-job/1",
         "job_id": engine.submit(
-            "refine_path_proof_v1", request, request_key, timeout=120
+            "refine_path_proof_v1", request, request_key, timeout=JOB_TIMEOUT_SECONDS
         ),
         "experimental": True,
     }
@@ -1443,7 +1444,7 @@ def create_memory_refinement(
     return {
         "schema_version": "flow-job/1",
         "job_id": engine.submit(
-            "refine_memory_proof_v1", request, request_key, timeout=120
+            "refine_memory_proof_v1", request, request_key, timeout=JOB_TIMEOUT_SECONDS
         ),
         "experimental": True,
     }

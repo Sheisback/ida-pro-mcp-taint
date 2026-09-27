@@ -2531,3 +2531,57 @@ def test_reassemble_tool_threads_chain_artifact(flow, monkeypatch):
     assert seen["chain"] == "artifact_chain"
     assert result["schema_version"] == "flow-window-reassembly/1"
     assert result["graph_artifact"] == "artifact_graph"
+
+
+def test_snapshot_submit_uses_shared_job_timeout(flow, monkeypatch):
+    module, _ = flow
+    service = module._service()
+    assert service.JOB_TIMEOUT_SECONDS == 240
+    route = next(
+        row
+        for row in FROZEN_PROFILE_EVIDENCE
+        if row.profile_id == "X64-LE" and row.format_id == "FMT-ELF"
+    )
+    current = "sha256-v1:" + "e" * 64
+    resolved = resolve_open_database_profile(
+        OpenDatabaseEvidence(
+            current,
+            route.processor,
+            64,
+            "little",
+            route.format_id,
+            route.ida_build,
+            route.hexrays_build,
+        ),
+        route.profile_id,
+        route.abi_id,
+        "analyst_selected",
+    )
+    info = {
+        "dbpath": "/tmp/selected.i64",
+        "profile": resolved.profile,
+        "registry": resolved.registry,
+        "binary": current,
+        "count": 0,
+        "ida": route.ida_build,
+        "hexrays": route.hexrays_build,
+        "routing": {
+            "routing_mode": "analyst_selected",
+            "profile_id": route.profile_id,
+            "abi_id": route.abi_id,
+            "binary_digest": current,
+        },
+        "persist_selection": False,
+        "ea": 0x1000,
+    }
+    scope = service._runtime_scope(info, "database_" + "f" * 48)
+    seen = {}
+    store = types.SimpleNamespace(scope=scope)
+    engine = types.SimpleNamespace(
+        store=store,
+        submit=lambda *args, **kwargs: seen.update(kwargs) or "job",
+    )
+    monkeypatch.setattr(service, "context", lambda *_args: info)
+    monkeypatch.setattr(service, "get_runtime", lambda actual: engine)
+    service.create("0x1000", route.profile_id, "request", route.abi_id, "analyst_selected")
+    assert seen["timeout"] == service.JOB_TIMEOUT_SECONDS == 240
