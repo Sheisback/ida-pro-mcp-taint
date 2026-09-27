@@ -333,6 +333,8 @@ class MemoryPolicy(Model):
     max_labels: int = 128
     flat_segment_assumption: str | None = None
     ruleset: Literal["range-memory-v7"] = "range-memory-v7"
+    window_steps: int = 64
+    window_max_dependencies: int = 16384
 
     def __post_init__(self):
         super().__post_init__()
@@ -340,7 +342,9 @@ class MemoryPolicy(Model):
             self.max_iterations > 0
             and self.max_bytes > 0
             and self.max_candidates > 0
-            and self.max_labels > 0,
+            and self.max_labels > 0
+            and self.window_steps > 0
+            and self.window_max_dependencies > 0,
             "Invalid memory budget",
         )
         require(
@@ -441,11 +445,20 @@ class MemoryResult(Model):
     frontier: tuple[str, ...]
     iterations: int
     schema_version: Literal[1] = 1
+    window_steps: int | None = field(default=None, metadata={"omit_if_default": True})
+    window_max_dependencies: int | None = field(
+        default=None, metadata={"omit_if_default": True}
+    )
 
     def __post_init__(self):
         super().__post_init__()
         for value in (self.plan_digest, self.source_digest, self.policy_digest):
             check_digest(value)
+        for value in (self.window_steps, self.window_max_dependencies):
+            require(
+                value is None or (type(value) is int and value > 0),
+                "Invalid recorded window budget",
+            )
         canonical_set(tuple(o.object_id for o in self.objects))
         canonical_set(tuple(f.node_id for f in self.facts))
         canonical_set(tuple(a.node_id for a in self.accesses))
@@ -578,3 +591,32 @@ def alias_relation(
     if arange == brange and a.singleton:
         return "must_alias"
     return "may_alias"
+
+
+def plan_windows(
+    block_ids: tuple[int, ...],
+    step_counts: dict[int, int],
+    window_steps: int,
+) -> tuple[tuple[int, ...], ...]:
+    """Partition whole blocks in plan order into fixed-step windows.
+
+    A block larger than ``window_steps`` occupies its own window; blocks are
+    never split, so a windowed sweep evaluates blocks in exactly batch order.
+    """
+    require(
+        type(window_steps) is int and window_steps > 0, "Invalid window steps"
+    )
+    windows: list[tuple[int, ...]] = []
+    current: list[int] = []
+    used = 0
+    for block in block_ids:
+        count = step_counts.get(block, 0)
+        if current and used + count > window_steps:
+            windows.append(tuple(current))
+            current = []
+            used = 0
+        current.append(block)
+        used += count
+    if current:
+        windows.append(tuple(current))
+    return tuple(windows)

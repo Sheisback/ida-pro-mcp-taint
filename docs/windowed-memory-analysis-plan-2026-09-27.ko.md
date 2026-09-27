@@ -3,7 +3,14 @@
 - 일자: 2026-09-27
 - 대상 저장소: `ida-pro-mcp-taint` (`main` @ `3b00c30`, `629a89d` 포함 확인)
 - 작성: AASystem 측 분석 → ida-pro-mcp 측 전달용
-- 상태: 계획 (미구현)
+- 상태: 구현 완료 (Phase 0–5, 2026-09-27; Phase 6 live e2e만 남음)
+- 구현 기록: `window_steps`(기본 64)·`window_max_dependencies`(기본 16384)를
+  `MemoryPolicy`·스냅샷 요청·`flow_create_snapshot` 도구까지 스레딩.
+  예산 초과분은 coarse(`interval: null`, `opaque`)로 넓히고
+  `window_dependency_budget_widened` + `partial`로 기록. 설정은 결과에
+  persist되어 seeded replay·refine이 그대로 재현. 잡 `progress`에
+  `phase_times_ms` 기록. 상세는 `docs/flow-operator.md`의
+  "Windowed memory analysis" 절 참조.
 
 ## Goal
 

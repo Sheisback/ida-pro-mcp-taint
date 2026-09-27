@@ -312,6 +312,8 @@ class Runtime:
 
     def _run(self, identifier, handler, cancel, done, deadline):
         phase = "setup"
+        spans: dict[str, int] = {}
+        mark = self.clock()
         context = JobContext(
             cancel,
             deadline,
@@ -320,6 +322,26 @@ class Runtime:
                 identifier, self.owner, progress, checkpoint
             ),
         )
+
+        def record(span):
+            nonlocal mark
+            now = self.clock()
+            spans[span] = int(round((now - mark) * 1000))
+            mark = now
+
+        def publish_spans():
+            # Best-effort diagnostics: never block terminal completion on
+            # a contended store.
+            try:
+                self.store.checkpoint_job(
+                    identifier,
+                    self.owner,
+                    {"phase_times_ms": dict(spans), "failed_phase": phase},
+                    _busy_timeout_ms=0,
+                )
+            except PersistenceError:
+                pass
+
         try:
             context.check()
             row = self.store.job(identifier)
@@ -332,29 +354,39 @@ class Runtime:
                 deadline=time.time() + max(0, deadline - self.clock()),
             )
             phase = "extract"
+            record("setup_ms")
             extracted = handler.extract(context, row["input"])
             context.check()
             self.store.transition_job(
                 identifier, "extracting", "analyzing", owner=self.owner
             )
+            record("extract_ms")
             phase = "analyze"
             result = handler.analyze(context, extracted)
             context.check()
+            record("analyze_ms")
             phase = "commit"
             self.store.transition_job(
                 identifier, "analyzing", "committing", owner=self.owner
             )
             context.check()
             self.store.transition_job(
-                identifier, "committing", "complete", owner=self.owner, result=result
+                identifier,
+                "committing",
+                "complete",
+                owner=self.owner,
+                result=result,
+                progress={"phase_times_ms": dict(spans)},
             )
         except JobCancelled:
+            publish_spans()
             self._finish(
                 identifier,
                 "cancelled",
                 {"code": "cancelled", "phase": phase, "reason": "cancelled"},
             )
         except JobDeadline:
+            publish_spans()
             self._finish(
                 identifier,
                 "interrupted",
@@ -366,6 +398,7 @@ class Runtime:
                 nonblocking=True,
             )
         except BaseException as exc:
+            publish_spans()
             self._finish(
                 identifier,
                 "failed",

@@ -103,6 +103,30 @@ buffers as user-controlled or prove that the read is reachable. Inspect
 `flow_explain_implicit_analysis` for local uncertainty before interpreting
 downstream Store/Return labels.
 
+### Windowed memory analysis (experimental)
+
+Large functions analyze memory in fixed whole-block windows.
+`flow_create_snapshot` accepts `window_steps` (default 64; for example 120
+or 240) and `window_max_dependencies` (default 16384) per window. Each
+window keeps that many fine per-byte dependencies; the overflow widens
+honestly to coarse whole-object dependencies (`interval: null`,
+`opaque`) with the `window_dependency_budget_widened` diagnostic and a
+`partial` result status. Nothing is dropped silently: fewer fine edges
+always arrive with the widened marker. Default requests keep their exact
+historical request bytes, so existing idempotency keys replay unchanged.
+
+The effective window configuration is recorded on the memory result, and
+seeded replay plus memory refinement reuse it, so tuned snapshots refine
+exactly. Snapshot results also store a `base_graph_artifact` and a digest
+chained `window_chain_artifact` alongside the regular `graph_artifact`;
+`flow_reassemble_graph` verifies the chain and publishes a content
+identical graph for traces, path proofs, and paging. Program-only replay
+paths (implicit analysis, store proofs, pointee binding, explanation)
+replay with default windows and fail closed on tuned snapshots; keep
+defaults when those paths must run, or reassemble first for graph reads.
+Job `progress` carries `phase_times_ms` (`setup_ms`, `extract_ms`,
+`analyze_ms`, plus `failed_phase` on failure) for timeout triage.
+
 ### Explicit pointee byte sources (experimental)
 
 `flow_create_implicit_analysis` additionally accepts `kind: "pointee_range"`:

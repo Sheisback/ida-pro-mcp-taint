@@ -1,194 +1,194 @@
 {
-  "schema_version": "flow-profile-semantics-complete/2",
-  "profile_count": 17,
-  "semantic_row_count": 21,
-  "normal_success_count": 16,
-  "format_variant_count": 4,
-  "format_success_count": 4,
-  "rv32_normal_failure_count": 1,
-  "rv32_fallback_count": 1,
-  "profiles": [
-    {
-      "profile_id": "X86-LE",
-      "format": "FMT-ELF",
-      "evidence_path": "normal",
-      "status": "success_partial_with_named_limitations",
-      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/normal/x86-le.json",
-      "receipt_digest": "sha256-v1:21abdb46538eaedb31358a1ef9aea3057e115b0a861861e16584bd3fbced0156"
-    },
-    {
-      "profile_id": "X64-LE",
-      "format": "FMT-ELF",
-      "evidence_path": "normal",
-      "status": "success_partial_with_named_limitations",
-      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/normal/x64-le.json",
-      "receipt_digest": "sha256-v1:a9cc9866d3d272cdcce0bd483393108aac9d87b408a24b8b35f7af77262cd55c"
-    },
-    {
-      "profile_id": "ARM32-LE",
-      "format": "FMT-ELF",
-      "evidence_path": "normal",
-      "status": "success_partial_with_named_limitations",
-      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/normal/arm32-le.json",
-      "receipt_digest": "sha256-v1:b9d5029e8950e1dc3bb9bc8df6e0306bdb7b4c9791a70c5c20d5c1387b62000f"
-    },
-    {
-      "profile_id": "ARM32-BE",
-      "format": "FMT-ELF",
-      "evidence_path": "normal",
-      "status": "success_partial_with_named_limitations",
-      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/normal/arm32-be.json",
-      "receipt_digest": "sha256-v1:eac9808bf28a02c37321a0dcfc5447b04e592a745be8e65c752f37506edd0c9b"
-    },
-    {
-      "profile_id": "THUMB-LE",
-      "format": "FMT-ELF",
-      "evidence_path": "normal",
-      "status": "success_partial_with_named_limitations",
-      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/normal/thumb-le.json",
-      "receipt_digest": "sha256-v1:4763101d8e9a0198aeda2c6db2d95c6ec090742d88bea4ccdc01d36bfe71e8f8"
-    },
-    {
-      "profile_id": "THUMB-BE",
-      "format": "FMT-ELF",
-      "evidence_path": "normal",
-      "status": "success_partial_with_named_limitations",
-      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/normal/thumb-be.json",
-      "receipt_digest": "sha256-v1:a072f408d7c0486258179b4d651a45f05ac900310716cd180875487250a260d3"
-    },
-    {
-      "profile_id": "A64-LE",
-      "format": "FMT-ELF",
-      "evidence_path": "normal",
-      "status": "success_partial_with_named_limitations",
-      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/normal/a64-le.json",
-      "receipt_digest": "sha256-v1:894e773d0fa962e8c95120d00ea8c6f56bc101cc59a635210ee03897287794f9"
-    },
-    {
-      "profile_id": "MIPS32-LE",
-      "format": "FMT-ELF",
-      "evidence_path": "normal",
-      "status": "success_partial_with_named_limitations",
-      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/normal/mips32-le.json",
-      "receipt_digest": "sha256-v1:d7771b0a52853c8b0f0f541966e9f540385152de84b6bcd4e5bc696372929f1a"
-    },
-    {
-      "profile_id": "MIPS32-BE",
-      "format": "FMT-ELF",
-      "evidence_path": "normal",
-      "status": "success_partial_with_named_limitations",
-      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/normal/mips32-be.json",
-      "receipt_digest": "sha256-v1:f59df623be773d93a4e8dd456e9e314d7e847d205ae6718ca84eff8dbfe52a8a"
-    },
-    {
-      "profile_id": "MIPS64-LE",
-      "format": "FMT-ELF",
-      "evidence_path": "normal",
-      "status": "success_partial_with_named_limitations",
-      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/normal/mips64-le.json",
-      "receipt_digest": "sha256-v1:570eb146707cdc589d48c23030942e0c9f86724727b5e84c88264d5350479f69"
-    },
-    {
-      "profile_id": "MIPS64-BE",
-      "format": "FMT-ELF",
-      "evidence_path": "normal",
-      "status": "success_partial_with_named_limitations",
-      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/normal/mips64-be.json",
-      "receipt_digest": "sha256-v1:48a3cc01d9e6f732b559051031237ef3156e241d70e0a741744d0f58041f426e"
-    },
-    {
-      "profile_id": "PPC32-LE",
-      "format": "FMT-ELF",
-      "evidence_path": "normal",
-      "status": "success_partial_with_named_limitations",
-      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/normal/ppc32-le.json",
-      "receipt_digest": "sha256-v1:dcd4410ddf3402bfde730266666cc04a7f500de9a03bd33f4819153753ed7b26"
-    },
-    {
-      "profile_id": "PPC32-BE",
-      "format": "FMT-ELF",
-      "evidence_path": "normal",
-      "status": "success_partial_with_named_limitations",
-      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/normal/ppc32-be.json",
-      "receipt_digest": "sha256-v1:6b40685172a4060c2e1153ee52515b58757db0fe02832705f8d4b2ce7e92d3d0"
-    },
-    {
-      "profile_id": "PPC64-LE",
-      "format": "FMT-ELF",
-      "evidence_path": "normal",
-      "status": "success_partial_with_named_limitations",
-      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/normal/ppc64-le.json",
-      "receipt_digest": "sha256-v1:f5ee3bcefcc9bfab6d7b3aa0817b092b06ae93a73e754075d1853610a919aa9d"
-    },
-    {
-      "profile_id": "PPC64-BE",
-      "format": "FMT-ELF",
-      "evidence_path": "normal",
-      "status": "success_partial_with_named_limitations",
-      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/normal/ppc64-be.json",
-      "receipt_digest": "sha256-v1:8c9d35cb5316857e5dd082dd0e2002118b412be4f783491eba16992c5084e7ea"
-    },
-    {
-      "profile_id": "RV64-LE",
-      "format": "FMT-ELF",
-      "evidence_path": "normal",
-      "status": "success_partial_with_named_limitations",
-      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/normal/rv64-le.json",
-      "receipt_digest": "sha256-v1:dc8b6f945b811c601c7ea59895979245e802a861d55c0a91f1a7e44fefc55122"
-    },
-    {
-      "profile_id": "X64-LE",
-      "format": "FMT-PE",
-      "evidence_path": "format",
-      "status": "success_partial_with_named_limitations",
-      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/formats/x64-le--pe.json",
-      "receipt_digest": "sha256-v1:b3ece178647ec851a259651e6c89ec2b12b74b8a66b01e2eaf12658acc0b973d"
-    },
-    {
-      "profile_id": "ARM32-LE",
-      "format": "FMT-RAW",
-      "evidence_path": "format",
-      "status": "success_partial_with_named_limitations",
-      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/formats/arm32-le--raw.json",
-      "receipt_digest": "sha256-v1:f97c53ad02947f74dfa7c032b5d079503d8a61ca076421cce6ff4198c0f40d3b"
-    },
-    {
-      "profile_id": "X64-LE",
-      "format": "FMT-MACHO",
-      "evidence_path": "format",
-      "status": "success_partial_with_named_limitations",
-      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/formats/x64-le--macho.json",
-      "receipt_digest": "sha256-v1:ab8829c160fc747cc355264c881087e4472843f1f10af579bcd796efe130eb45"
-    },
-    {
-      "profile_id": "A64-LE",
-      "format": "FMT-MACHO",
-      "evidence_path": "format",
-      "status": "success_partial_with_named_limitations",
-      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/formats/a64-le--macho.json",
-      "receipt_digest": "sha256-v1:1ad3737fccc6d021928dcde93ef33d7c3bf0a4c2ac6af938f95214b7dd3be839"
-    },
-    {
-      "profile_id": "RV32-LE",
-      "format": "FMT-ELF",
-      "evidence_path": "fallback",
-      "status": "accepted_candidate_partial_normal_failed",
-      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/rv32-fallback.json",
-      "receipt_digest": "sha256-v1:1093146a4346f3931cf4e77c9db2feabb912b1a116556fe9fd37dd4171de5a78"
-    }
-  ],
   "build_manifest": "tests/flow_fixtures/manifests/profiles/build.json",
   "build_manifest_digest": "sha256-v1:26e03c2b775ad8ed930cb3b9e2a61811613e1622f27e0535f4f0c91dd6fd6962",
-  "oracle_file": "tests/flow_fixtures/oracles/isa_profiles.json",
-  "oracle_digest": "sha256-v1:953c668474b919a7558a4c701db3f1e1af7f08e579ca4ea281a2f1445a06940f",
-  "normal_matrix_file": "tests/flow_fixtures/manifests/profile_semantics/normal/matrix.json",
-  "normal_matrix_digest": "sha256-v1:a376384fab966472015330524414112c50d3e4dc925df31b6876e039a3441307",
-  "format_matrix_file": "tests/flow_fixtures/manifests/profile_semantics/formats/matrix.json",
   "format_matrix_digest": "sha256-v1:215c39a0dcbf389dea18c9b036a0ae5b802250bb53b93eaa08014046226f5ed7",
-  "target_executed": false,
+  "format_matrix_file": "tests/flow_fixtures/manifests/profile_semantics/formats/matrix.json",
+  "format_success_count": 4,
+  "format_variant_count": 4,
   "input_preserved": true,
   "normal_fallback_separate": true,
+  "normal_matrix_digest": "sha256-v1:a376384fab966472015330524414112c50d3e4dc925df31b6876e039a3441307",
+  "normal_matrix_file": "tests/flow_fixtures/manifests/profile_semantics/normal/matrix.json",
+  "normal_success_count": 16,
+  "oracle_digest": "sha256-v1:953c668474b919a7558a4c701db3f1e1af7f08e579ca4ea281a2f1445a06940f",
+  "oracle_file": "tests/flow_fixtures/oracles/isa_profiles.json",
+  "profile_count": 17,
+  "profiles": [
+    {
+      "evidence_path": "normal",
+      "format": "FMT-ELF",
+      "profile_id": "X86-LE",
+      "receipt_digest": "sha256-v1:21abdb46538eaedb31358a1ef9aea3057e115b0a861861e16584bd3fbced0156",
+      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/normal/x86-le.json",
+      "status": "success_partial_with_named_limitations"
+    },
+    {
+      "evidence_path": "normal",
+      "format": "FMT-ELF",
+      "profile_id": "X64-LE",
+      "receipt_digest": "sha256-v1:a9cc9866d3d272cdcce0bd483393108aac9d87b408a24b8b35f7af77262cd55c",
+      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/normal/x64-le.json",
+      "status": "success_partial_with_named_limitations"
+    },
+    {
+      "evidence_path": "normal",
+      "format": "FMT-ELF",
+      "profile_id": "ARM32-LE",
+      "receipt_digest": "sha256-v1:b9d5029e8950e1dc3bb9bc8df6e0306bdb7b4c9791a70c5c20d5c1387b62000f",
+      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/normal/arm32-le.json",
+      "status": "success_partial_with_named_limitations"
+    },
+    {
+      "evidence_path": "normal",
+      "format": "FMT-ELF",
+      "profile_id": "ARM32-BE",
+      "receipt_digest": "sha256-v1:eac9808bf28a02c37321a0dcfc5447b04e592a745be8e65c752f37506edd0c9b",
+      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/normal/arm32-be.json",
+      "status": "success_partial_with_named_limitations"
+    },
+    {
+      "evidence_path": "normal",
+      "format": "FMT-ELF",
+      "profile_id": "THUMB-LE",
+      "receipt_digest": "sha256-v1:4763101d8e9a0198aeda2c6db2d95c6ec090742d88bea4ccdc01d36bfe71e8f8",
+      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/normal/thumb-le.json",
+      "status": "success_partial_with_named_limitations"
+    },
+    {
+      "evidence_path": "normal",
+      "format": "FMT-ELF",
+      "profile_id": "THUMB-BE",
+      "receipt_digest": "sha256-v1:a072f408d7c0486258179b4d651a45f05ac900310716cd180875487250a260d3",
+      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/normal/thumb-be.json",
+      "status": "success_partial_with_named_limitations"
+    },
+    {
+      "evidence_path": "normal",
+      "format": "FMT-ELF",
+      "profile_id": "A64-LE",
+      "receipt_digest": "sha256-v1:894e773d0fa962e8c95120d00ea8c6f56bc101cc59a635210ee03897287794f9",
+      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/normal/a64-le.json",
+      "status": "success_partial_with_named_limitations"
+    },
+    {
+      "evidence_path": "normal",
+      "format": "FMT-ELF",
+      "profile_id": "MIPS32-LE",
+      "receipt_digest": "sha256-v1:d7771b0a52853c8b0f0f541966e9f540385152de84b6bcd4e5bc696372929f1a",
+      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/normal/mips32-le.json",
+      "status": "success_partial_with_named_limitations"
+    },
+    {
+      "evidence_path": "normal",
+      "format": "FMT-ELF",
+      "profile_id": "MIPS32-BE",
+      "receipt_digest": "sha256-v1:f59df623be773d93a4e8dd456e9e314d7e847d205ae6718ca84eff8dbfe52a8a",
+      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/normal/mips32-be.json",
+      "status": "success_partial_with_named_limitations"
+    },
+    {
+      "evidence_path": "normal",
+      "format": "FMT-ELF",
+      "profile_id": "MIPS64-LE",
+      "receipt_digest": "sha256-v1:570eb146707cdc589d48c23030942e0c9f86724727b5e84c88264d5350479f69",
+      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/normal/mips64-le.json",
+      "status": "success_partial_with_named_limitations"
+    },
+    {
+      "evidence_path": "normal",
+      "format": "FMT-ELF",
+      "profile_id": "MIPS64-BE",
+      "receipt_digest": "sha256-v1:48a3cc01d9e6f732b559051031237ef3156e241d70e0a741744d0f58041f426e",
+      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/normal/mips64-be.json",
+      "status": "success_partial_with_named_limitations"
+    },
+    {
+      "evidence_path": "normal",
+      "format": "FMT-ELF",
+      "profile_id": "PPC32-LE",
+      "receipt_digest": "sha256-v1:dcd4410ddf3402bfde730266666cc04a7f500de9a03bd33f4819153753ed7b26",
+      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/normal/ppc32-le.json",
+      "status": "success_partial_with_named_limitations"
+    },
+    {
+      "evidence_path": "normal",
+      "format": "FMT-ELF",
+      "profile_id": "PPC32-BE",
+      "receipt_digest": "sha256-v1:6b40685172a4060c2e1153ee52515b58757db0fe02832705f8d4b2ce7e92d3d0",
+      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/normal/ppc32-be.json",
+      "status": "success_partial_with_named_limitations"
+    },
+    {
+      "evidence_path": "normal",
+      "format": "FMT-ELF",
+      "profile_id": "PPC64-LE",
+      "receipt_digest": "sha256-v1:f5ee3bcefcc9bfab6d7b3aa0817b092b06ae93a73e754075d1853610a919aa9d",
+      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/normal/ppc64-le.json",
+      "status": "success_partial_with_named_limitations"
+    },
+    {
+      "evidence_path": "normal",
+      "format": "FMT-ELF",
+      "profile_id": "PPC64-BE",
+      "receipt_digest": "sha256-v1:8c9d35cb5316857e5dd082dd0e2002118b412be4f783491eba16992c5084e7ea",
+      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/normal/ppc64-be.json",
+      "status": "success_partial_with_named_limitations"
+    },
+    {
+      "evidence_path": "normal",
+      "format": "FMT-ELF",
+      "profile_id": "RV64-LE",
+      "receipt_digest": "sha256-v1:dc8b6f945b811c601c7ea59895979245e802a861d55c0a91f1a7e44fefc55122",
+      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/normal/rv64-le.json",
+      "status": "success_partial_with_named_limitations"
+    },
+    {
+      "evidence_path": "format",
+      "format": "FMT-PE",
+      "profile_id": "X64-LE",
+      "receipt_digest": "sha256-v1:b3ece178647ec851a259651e6c89ec2b12b74b8a66b01e2eaf12658acc0b973d",
+      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/formats/x64-le--pe.json",
+      "status": "success_partial_with_named_limitations"
+    },
+    {
+      "evidence_path": "format",
+      "format": "FMT-RAW",
+      "profile_id": "ARM32-LE",
+      "receipt_digest": "sha256-v1:f97c53ad02947f74dfa7c032b5d079503d8a61ca076421cce6ff4198c0f40d3b",
+      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/formats/arm32-le--raw.json",
+      "status": "success_partial_with_named_limitations"
+    },
+    {
+      "evidence_path": "format",
+      "format": "FMT-MACHO",
+      "profile_id": "X64-LE",
+      "receipt_digest": "sha256-v1:ab8829c160fc747cc355264c881087e4472843f1f10af579bcd796efe130eb45",
+      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/formats/x64-le--macho.json",
+      "status": "success_partial_with_named_limitations"
+    },
+    {
+      "evidence_path": "format",
+      "format": "FMT-MACHO",
+      "profile_id": "A64-LE",
+      "receipt_digest": "sha256-v1:1ad3737fccc6d021928dcde93ef33d7c3bf0a4c2ac6af938f95214b7dd3be839",
+      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/formats/a64-le--macho.json",
+      "status": "success_partial_with_named_limitations"
+    },
+    {
+      "evidence_path": "fallback",
+      "format": "FMT-ELF",
+      "profile_id": "RV32-LE",
+      "receipt_digest": "sha256-v1:1907eb35221fe4c698e60540f2408a0efd8714e67d85e527767ea3fa696f73f8",
+      "receipt_file": "tests/flow_fixtures/manifests/profile_semantics/rv32-fallback.json",
+      "status": "accepted_candidate_partial_normal_failed"
+    }
+  ],
+  "receipt_digest": "sha256-v1:ba8c392e7342dbf8cb121d741b142e5ece26919f6c7e1ffdafdb69bbd04a68e2",
   "registry_service_capabilities_promoted": false,
+  "rv32_fallback_count": 1,
+  "rv32_normal_failure_count": 1,
+  "schema_version": "flow-profile-semantics-complete/2",
+  "semantic_row_count": 21,
   "status": "accepted_candidate_partial_with_named_limitations",
-  "receipt_digest": "sha256-v1:0a7463115f287bae7112543c94aa6cc12c341d54e961e068a5da86fe4270c3da"
+  "target_executed": false
 }

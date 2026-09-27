@@ -376,7 +376,13 @@ def validate_memory_refinement(
     if plan.program != program:
         # Snapshot jobs publish memory-enriched SSA alongside its base plan.
         # Accept that relation only after exact replay, not by snapshot ID alone.
-        rebuilt = build_memory_graph_from_program(plan.program)
+        # The replay reuses the stored window configuration so a tuned
+        # snapshot budget replays instead of failing closed.
+        rebuilt = build_memory_graph_from_program(
+            plan.program,
+            window_steps=result.window_steps,
+            window_max_dependencies=result.window_max_dependencies,
+        )
         require(rebuilt.program == program, "refine_program_mismatch")
         require(rebuilt.plan == plan, "refine_plan_mismatch")
         require(rebuilt.result == result, "refine_result_mismatch")

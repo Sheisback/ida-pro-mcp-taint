@@ -22,6 +22,7 @@ from .memory import (
     MemoryDependency,
     PointerSeed,
     build_memory_plan,
+    plan_windows,
 )
 from .memory_analysis import analyze_memory
 from .analysis import BitSeed, Seed
@@ -599,6 +600,16 @@ def _analyze_plan(plan, policy, *, value_seeds=(), bit_seeds=(), checkpoint=None
     return recovered_objects, recovered_pointers, result
 
 
+def _windowed_policy(flat_assumption, window_steps, window_max_dependencies):
+    """Explicit window knobs or policy defaults; invalid values fail closed."""
+    options: dict = {"flat_segment_assumption": flat_assumption}
+    if window_steps is not None:
+        options["window_steps"] = window_steps
+    if window_max_dependencies is not None:
+        options["window_max_dependencies"] = window_max_dependencies
+    return MemoryPolicy(**options)
+
+
 def build_memory_graph(
     snapshot: Snapshot | StructuredSnapshot,
     *,
@@ -608,6 +619,8 @@ def build_memory_graph(
         DerivedMemoryWriteEffect | DerivedGlobalWriteEffect, ...
     ] = (),
     checkpoint: Callable[[], None] | None = None,
+    window_steps: int | None = None,
+    window_max_dependencies: int | None = None,
 ) -> MemoryGraphAnalysis:
     """Build an alias-aware graph; relation precision is separate from completion."""
     base_program = build_ssa(
@@ -617,11 +630,20 @@ def build_memory_graph(
         derived_indirect_returns=derived_indirect_returns,
         derived_memory_writes=derived_memory_writes,
     )
-    return build_memory_graph_from_program(base_program, checkpoint=checkpoint)
+    return build_memory_graph_from_program(
+        base_program,
+        checkpoint=checkpoint,
+        window_steps=window_steps,
+        window_max_dependencies=window_max_dependencies,
+    )
 
 
 def build_memory_graph_from_program(
-    base_program: SSAProgram, *, checkpoint=None
+    base_program: SSAProgram,
+    *,
+    checkpoint=None,
+    window_steps: int | None = None,
+    window_max_dependencies: int | None = None,
 ) -> MemoryGraphAnalysis:
     """Bind an explicit source overlay without altering its original graph."""
     snapshot = base_program.graph.snapshot
@@ -656,7 +678,7 @@ def build_memory_graph_from_program(
     plan = build_memory_plan(base_program)
     objects, pointers, result = _analyze_plan(
         plan,
-        MemoryPolicy(flat_segment_assumption=flat_assumption),
+        _windowed_policy(flat_assumption, window_steps, window_max_dependencies),
         checkpoint=checkpoint,
     )
     accesses = {access.node_id: access for access in result.accesses}
@@ -787,9 +809,15 @@ def analyze_seeded_memory(
         if type(snapshot) is StructuredSnapshot
         else FLAT_USERSPACE_ASSUMPTION
     )
+    # Seeded replay must reproduce the stored certificate, so it reuses the
+    # stored window configuration instead of silently switching budgets.
     _, _, result = _analyze_plan(
         bundle.plan,
-        MemoryPolicy(flat_segment_assumption=assumption),
+        _windowed_policy(
+            assumption,
+            bundle.result.window_steps,
+            bundle.result.window_max_dependencies,
+        ),
         value_seeds=value_seeds,
         bit_seeds=bit_seeds,
         checkpoint=checkpoint,
@@ -803,8 +831,17 @@ def analyze_seeded_memory(
     return result
 
 
-def replay_memory_graph(program: SSAProgram) -> MemoryGraphAnalysis:
-    """Recompute an owned graph's memory certificate without relifting native IR."""
+def replay_memory_graph(
+    program: SSAProgram,
+    *,
+    window_steps: int | None = None,
+    window_max_dependencies: int | None = None,
+) -> MemoryGraphAnalysis:
+    """Recompute an owned graph's memory certificate without relifting native IR.
+
+    Callers replaying a stored certificate must pass that certificate's
+    recorded window configuration; omitted knobs mean policy defaults.
+    """
     snapshot = program.graph.snapshot
     plan = build_memory_plan(program)
     assumption = (
@@ -812,8 +849,222 @@ def replay_memory_graph(program: SSAProgram) -> MemoryGraphAnalysis:
         if type(snapshot) is StructuredSnapshot
         else FLAT_USERSPACE_ASSUMPTION
     )
-    _, _, result = _analyze_plan(plan, MemoryPolicy(flat_segment_assumption=assumption))
+    _, _, result = _analyze_plan(
+        plan, _windowed_policy(assumption, window_steps, window_max_dependencies)
+    )
     return bind_memory_graph(program, plan, result)
+
+
+DERIVED_MEMORY_RULES = frozenset(
+    {"byte-reaching-store-v1", "unknown-memory-effect-v1", "source-range-v1"}
+)
+
+
+def _is_memory_edge(edge) -> bool:
+    return (
+        edge.kind == "memory_data_dependency"
+        and edge.memory_object_id is not None
+        and edge.memory_rule_id is not None
+    )
+
+
+def strip_memory_derivations(graph: Graph) -> Graph:
+    """Return the base graph without derived memory edges and their evidence.
+
+    Nodes keep their memory references; native edges and native evidence are
+    untouched. The removed derivations are exactly what window slices carry.
+    """
+    evidence = {
+        item.evidence_id: item
+        for item in graph.evidence
+        if not (
+            item.synthetic
+            and item.rule_id in DERIVED_MEMORY_RULES
+            and item.memory_object_id is not None
+        )
+    }
+    # Derivation evidence is referenced only by derived memory edges; native
+    # evidence stays even when a memory edge cites it.
+    return replace(
+        graph,
+        edges=tuple(edge for edge in graph.edges if not _is_memory_edge(edge)),
+        evidence=tuple(
+            sorted(evidence.values(), key=lambda item: item.evidence_id)
+        ),
+    )
+
+
+def build_window_slices(
+    bundle: MemoryGraphAnalysis, window_steps: int
+) -> tuple[dict, ...]:
+    """Partition derived memory edges by target window with a digest chain.
+
+    Slice zero chains from the enriched graph digest, binding the slice set
+    to exactly that graph version. Every slice is self-contained: it carries
+    all evidence its edges cite.
+    """
+    require(type(window_steps) is int and window_steps > 0, "Invalid window steps")
+    plan = bundle.plan
+    graph = bundle.graph
+    definitions = {d.node_id: d.block for d in plan.program.definitions}
+    step_counts: dict[int, int] = {}
+    for step in plan.steps:
+        require(step.node_id in definitions, "Memory step without SSA definition")
+        block = definitions[step.node_id]
+        step_counts[block] = step_counts.get(block, 0) + 1
+    windows = plan_windows(
+        tuple(block.block for block in plan.blocks), step_counts, window_steps
+    )
+    block_window = {b: i for i, window in enumerate(windows) for b in window}
+    by_window: list[list] = [[] for _ in windows]
+    for edge in graph.edges:
+        if not _is_memory_edge(edge):
+            continue
+        require(edge.target in definitions, "Memory edge outside plan blocks")
+        require(
+            definitions[edge.target] in block_window,
+            "Memory edge outside plan blocks",
+        )
+        by_window[block_window[definitions[edge.target]]].append(edge)
+    evidence = {item.evidence_id: item for item in graph.evidence}
+    slices: list[dict] = []
+    prev = graph.graph_digest
+    for index, window in enumerate(windows):
+        window_edges = sorted(by_window[index], key=lambda edge: edge.edge_id)
+        wanted: set[str] = set()
+        for edge in window_edges:
+            wanted.update(edge.evidence_ids)
+        window_evidence = sorted(
+            (evidence[eid] for eid in wanted if eid in evidence),
+            key=lambda item: item.evidence_id,
+        )
+        missing = wanted - {item.evidence_id for item in window_evidence}
+        require(not missing, "Memory edge cites unknown evidence")
+        body = {
+            "schema_version": "flow-window-slice/1",
+            "snapshot_id": graph.snapshot.snapshot_id,
+            "window_index": index,
+            "window_count": len(windows),
+            "window_steps": window_steps,
+            "blocks": list(window),
+            "edges": [edge.to_data() for edge in window_edges],
+            "evidence": [item.to_data() for item in window_evidence],
+            "prev_digest": prev,
+        }
+        body["slice_digest"] = digest(body)
+        prev = body["slice_digest"]
+        slices.append(body)
+    return tuple(slices)
+
+
+def verify_window_slices(slices: tuple[dict, ...] | list[dict], graph_digest: str) -> str:
+    """Verify slice integrity and chain linkage; return the head digest."""
+    require(type(slices) in (tuple, list), "Invalid window chain")
+    ordered = list(slices)
+    require(bool(ordered), "Empty window chain")
+    require(all(type(body) is dict for body in ordered), "Invalid window slice")
+    require(
+        [body.get("window_index") for body in ordered]
+        == list(range(len(ordered))),
+        "Window chain order mismatch",
+    )
+    require(
+        all(s.get("window_count") == len(ordered) for s in ordered),
+        "Window chain count mismatch",
+    )
+    prev = graph_digest
+    for body in ordered:
+        require(
+            body.get("schema_version") == "flow-window-slice/1",
+            "Invalid window slice version",
+        )
+        require(body.get("prev_digest") == prev, "Window chain linkage mismatch")
+        claimed = body.get("slice_digest")
+        recomputed = digest({k: v for k, v in body.items() if k != "slice_digest"})
+        require(
+            type(claimed) is str and claimed == recomputed,
+            "Window slice digest mismatch",
+        )
+        prev = claimed
+    return prev
+
+
+def build_window_manifest(
+    snapshot_id: str,
+    graph_artifact: str,
+    base_graph_artifact: str,
+    graph_digest: str,
+    window_steps: int,
+    slice_refs: list[dict],
+    head_digest: str | None,
+) -> dict:
+    """Describe a stored window chain; slices are verified on read."""
+    require(type(snapshot_id) is str and bool(snapshot_id), "Invalid window chain")
+    require(
+        type(graph_artifact) is str
+        and type(base_graph_artifact) is str
+        and type(graph_digest) is str,
+        "Invalid window chain",
+    )
+    require(type(window_steps) is int and window_steps > 0, "Invalid window steps")
+    require(type(slice_refs) is list, "Invalid window chain")
+    require(
+        all(
+            type(ref) is dict
+            and type(ref.get("window_index")) is int
+            and type(ref.get("artifact_id")) is str
+            and type(ref.get("slice_digest")) is str
+            for ref in slice_refs
+        ),
+        "Invalid window chain",
+    )
+    require(
+        [ref["window_index"] for ref in slice_refs]
+        == list(range(len(slice_refs))),
+        "Window chain order mismatch",
+    )
+    return {
+        "schema_version": "flow-window-chain/1",
+        "snapshot_id": snapshot_id,
+        "graph_artifact": graph_artifact,
+        "base_graph_artifact": base_graph_artifact,
+        "graph_digest": graph_digest,
+        "window_steps": window_steps,
+        "window_count": len(slice_refs),
+        "slices": slice_refs,
+        "head_digest": head_digest,
+        "target_executed": False,
+    }
+
+
+def reassemble_graph(base: Graph, slices: tuple[dict, ...] | list[dict]) -> Graph:
+    """Rebuild the enriched graph from its base plus verified window slices."""
+    require(type(slices) in (tuple, list), "Invalid window chain")
+    require(type(base) is Graph, "Invalid base graph")
+    edges = {edge.edge_id: edge for edge in base.edges}
+    evidence = {item.evidence_id: item for item in base.evidence}
+    for body in slices:
+        require(type(body) is dict, "Invalid window slice")
+        require(type(body.get("edges", [])) is list, "Invalid window slice")
+        require(type(body.get("evidence", [])) is list, "Invalid window slice")
+        for raw in body.get("edges", []):
+            edge = Edge.from_data(raw)
+            require(edge.edge_id not in edges, "Window slice edge collision")
+            edges[edge.edge_id] = edge
+        for raw in body.get("evidence", []):
+            item = Evidence.from_data(raw)
+            if item.evidence_id in evidence:
+                require(
+                    evidence[item.evidence_id] == item,
+                    "Window slice evidence mismatch",
+                )
+            else:
+                evidence[item.evidence_id] = item
+    return replace(
+        base,
+        edges=tuple(sorted(edges.values(), key=lambda edge: edge.edge_id)),
+        evidence=tuple(sorted(evidence.values(), key=lambda item: item.evidence_id)),
+    )
 
 
 def bind_memory_graph(
@@ -872,10 +1123,16 @@ def bind_memory_graph(
 __all__ = [
     "FLAT_USERSPACE_ASSUMPTION",
     "RV32_FLAT_USERSPACE_ASSUMPTION",
+    "DERIVED_MEMORY_RULES",
     "MemoryGraphAnalysis",
     "analyze_seeded_memory",
     "bind_memory_graph",
+    "build_window_manifest",
+    "build_window_slices",
+    "reassemble_graph",
     "replay_memory_graph",
+    "strip_memory_derivations",
+    "verify_window_slices",
     "build_memory_graph",
     "build_memory_graph_from_program",
 ]

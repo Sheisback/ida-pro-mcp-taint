@@ -733,9 +733,11 @@ class Store:
             return row["revision"] + 1
 
     @_scope_operation
-    def checkpoint_job(self, identifier, owner, progress, checkpoint=None):
+    def checkpoint_job(
+        self, identifier, owner, progress, checkpoint=None, *, _busy_timeout_ms=5000
+    ):
         require(type(progress) is dict, "invalid_job_progress")
-        with self._transaction() as conn:
+        with self._transaction(busy_timeout_ms=_busy_timeout_ms) as conn:
             row = self._row(conn, "jobs", identifier)
             require(
                 row["state"] in {"extracting", "analyzing", "committing"},

@@ -8,6 +8,7 @@ from dataclasses import replace
 import json
 
 from .contracts import Graph, MemorySource, ValueSource
+from .memory_graph import reassemble_graph, verify_window_slices
 from .persistence import PAGE_HARD_CHARS, PAGE_TARGET_CHARS, PersistenceError, require
 from .runtime_contracts import TraceSpec, TraceState
 from .serialization import (
@@ -104,6 +105,52 @@ class Queries:
 
     def graph(self, artifact_id):
         return Graph.from_data(self.store.artifact(artifact_id))
+
+    def graph_from_chain(self, chain_artifact):
+        """Verify a window chain and reassemble its enriched graph.
+
+        Slices are integrity-checked against the manifest digest before use,
+        and the reassembled graph must reproduce the manifest graph digest,
+        so neither a swapped base graph nor a tampered slice passes.
+        """
+        manifest = self.store.artifact(chain_artifact)
+        require(type(manifest) is dict, "invalid_window_chain")
+        require(
+            manifest.get("schema_version") == "flow-window-chain/1",
+            "invalid_window_chain",
+        )
+        for key in (
+            "base_graph_artifact",
+            "graph_digest",
+            "head_digest",
+        ):
+            require(type(manifest.get(key)) is str, "invalid_window_chain")
+        refs = manifest.get("slices")
+        require(type(refs) is list and bool(refs), "invalid_window_chain")
+        require(
+            all(
+                type(ref) is dict
+                and type(ref.get("artifact_id")) is str
+                and type(ref.get("slice_digest")) is str
+                for ref in refs
+            ),
+            "invalid_window_chain",
+        )
+        base = self.graph(manifest["base_graph_artifact"])
+        slices = [self.store.artifact(ref["artifact_id"]) for ref in refs]
+        head = verify_window_slices(slices, manifest["graph_digest"])
+        require(head == manifest["head_digest"], "Window chain head mismatch")
+        for ref, body in zip(refs, slices):
+            require(
+                body.get("slice_digest") == ref["slice_digest"],
+                "Window chain manifest mismatch",
+            )
+        reassembled = reassemble_graph(base, slices)
+        require(
+            reassembled.graph_digest == manifest["graph_digest"],
+            "Window chain graph mismatch",
+        )
+        return reassembled
 
     def start(
         self,

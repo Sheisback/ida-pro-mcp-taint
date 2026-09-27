@@ -17,6 +17,7 @@ from .memory import (
     LabelBitRange,
     PointerSeed,
     alias_relation,
+    plan_windows,
 )
 from .serialization import digest
 from .states import (
@@ -433,6 +434,38 @@ class _Engine:
         self.diagnostics = set()
         self.outputs = {}
         self.steps = {s.node_id: s for s in plan.steps}
+        definition_blocks = {d.node_id: d.block for d in plan.program.definitions}
+        for step in plan.steps:
+            require(
+                step.node_id in definition_blocks,
+                "Memory step without SSA definition",
+            )
+        step_counts: dict[int, int] = {}
+        for step in plan.steps:
+            block = definition_blocks[step.node_id]
+            step_counts[block] = step_counts.get(block, 0) + 1
+        by_block = {block.block: block for block in plan.blocks}
+        self.windows = tuple(
+            tuple(by_block[block] for block in window)
+            for window in plan_windows(
+                tuple(block.block for block in plan.blocks),
+                step_counts,
+                policy.window_steps,
+            )
+        )
+        block_window = {}
+        for index, window in enumerate(self.windows):
+            for block in window:
+                block_window[block.block] = index
+        self.node_window = {}
+        for node_id, block in definition_blocks.items():
+            require(block in block_window, "Memory definition outside plan blocks")
+            self.node_window[node_id] = block_window[block]
+        self.window_fine_counts = [0] * len(self.windows)
+        # Pairs already widened to coarse in the current sweep. Within one
+        # sweep each load evaluates once with fixed facts, so repeat coarse
+        # records for the same triple are provably identical and skipped.
+        self._coarse_memo: set[tuple[str, str, str]] = set()
         self.entry = self.graph.snapshot.function.entry_block
         self.space = self.graph.snapshot.identity.environment.address_space
         self.endian = self.graph.snapshot.identity.environment.data_endian
@@ -864,6 +897,18 @@ class _Engine:
             interval.start if interval else -1,
             interval.end if interval else -1,
         )
+        if interval is not None and key not in self.dependencies:
+            window = self.node_window[node.node_id]
+            if self.window_fine_counts[window] >= self.policy.window_max_dependencies:
+                triple = (definition, node.node_id, oid)
+                if triple in self._coarse_memo:
+                    return
+                self._coarse_memo.add(triple)
+                self.diagnostics.add("window_dependency_budget_widened")
+                interval = None
+                key = (definition, node.node_id, oid, -1, -1)
+            else:
+                self.window_fine_counts[window] += 1
         evidence = tuple(
             sorted(set(self.nodes[definition].evidence_ids) | set(node.evidence_ids))
         )
@@ -1225,46 +1270,48 @@ class _Engine:
                 self.checkpoint()
             changed = False
             self.bit_mask_changed = False
+            self._coarse_memo.clear()
             iterations += 1
-            for b in self.plan.blocks:
-                if b.block == self.entry:
-                    state = self.initial.copy()
-                else:
-                    states = [
-                        self.outputs[p]
-                        for p in self.graph.snapshot.function.blocks[
-                            b.block
-                        ].predecessors
-                        if p in self.outputs
-                    ]
-                    if not states:
-                        continue
-                    state = states[0].copy()
-                    for other in states[1:]:
-                        state = state.join(other)
-                complete = True
-                for definition in schedule[b.block]:
-                    if self.checkpoint is not None:
-                        self.checkpoint()
-                    node = self.nodes[definition.node_id]
-                    new = self.evaluate(node, state)
-                    processed += 1
-                    if self.checkpoint is not None:
-                        self.checkpoint()
-                    if new is None:
-                        complete = False
-                        break
-                    new = self.join_fact(self.facts.get(node.node_id), new)
-                    if new != self.facts.get(node.node_id):
-                        self.facts[node.node_id] = new
-                        changed = True
-                if complete:
-                    old = self.outputs.get(b.block)
-                    joined = state if old is None else old.join(state)
-                    self.enforce_byte_budget(joined)
-                    if old != joined:
-                        self.outputs[b.block] = joined
-                        changed = True
+            for window in self.windows:
+                for b in window:
+                    if b.block == self.entry:
+                        state = self.initial.copy()
+                    else:
+                        states = [
+                            self.outputs[p]
+                            for p in self.graph.snapshot.function.blocks[
+                                b.block
+                            ].predecessors
+                            if p in self.outputs
+                        ]
+                        if not states:
+                            continue
+                        state = states[0].copy()
+                        for other in states[1:]:
+                            state = state.join(other)
+                    complete = True
+                    for definition in schedule[b.block]:
+                        if self.checkpoint is not None:
+                            self.checkpoint()
+                        node = self.nodes[definition.node_id]
+                        new = self.evaluate(node, state)
+                        processed += 1
+                        if self.checkpoint is not None:
+                            self.checkpoint()
+                        if new is None:
+                            complete = False
+                            break
+                        new = self.join_fact(self.facts.get(node.node_id), new)
+                        if new != self.facts.get(node.node_id):
+                            self.facts[node.node_id] = new
+                            changed = True
+                    if complete:
+                        old = self.outputs.get(b.block)
+                        joined = state if old is None else old.join(state)
+                        self.enforce_byte_budget(joined)
+                        if old != joined:
+                            self.outputs[b.block] = joined
+                            changed = True
             changed = changed or self.bit_mask_changed
         frontier = set()
         if changed or len(self.facts) != len(self.nodes):
@@ -1480,6 +1527,8 @@ def analyze_memory(
         tuple(sorted(engine.diagnostics)),
         tuple(sorted(frontier)),
         iterations,
+        window_steps=policy.window_steps,
+        window_max_dependencies=policy.window_max_dependencies,
     )
 
     result.validate_plan(plan)

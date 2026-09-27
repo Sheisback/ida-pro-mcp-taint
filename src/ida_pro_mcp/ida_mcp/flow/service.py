@@ -50,9 +50,12 @@ from ida_pro_mcp.flow_core.path_conditions import (
 from ida_pro_mcp.flow_core.memory_graph import (
     bind_memory_graph,
     build_memory_graph,
+    build_window_manifest,
+    build_window_slices,
     memory_access_reasons,
     memory_dependency_cause,
     replay_memory_graph,
+    strip_memory_derivations,
 )
 from ida_pro_mcp.flow_core.memory import MemoryPlan, MemoryResult
 from ida_pro_mcp.flow_core.pointee import PointeeSeed, bind_pointee_sources
@@ -601,11 +604,17 @@ def _analyze(ctx, extracted):
     derived_memory_writes = tuple(
         sorted(derived_memory_writes, key=lambda effect: effect.sort_key)
     )
+    window_steps, window_max_dependencies = _window_options(
+        request.get("window_steps", DEFAULT_WINDOW_STEPS),
+        request.get("window_max_dependencies", DEFAULT_WINDOW_MAX_DEPENDENCIES),
+    )
     memory = build_memory_graph(
         snapshot,
         derived_returns=derived_returns,
         derived_indirect_returns=derived_indirect_returns,
         derived_memory_writes=derived_memory_writes,
+        window_steps=window_steps,
+        window_max_dependencies=window_max_dependencies,
     )
     program = memory.program
     ctx.check()
@@ -613,6 +622,33 @@ def _analyze(ctx, extracted):
     calls = compose_program_calls(function, program, catalog, callees, ctx.check)
     sid = current.store.put_artifact("snapshot", snapshot)
     gid = current.store.put_artifact("graph", memory.graph)
+    base_graph = strip_memory_derivations(memory.graph)
+    base_id = current.store.put_artifact("graph", base_graph)
+    window_chain = build_window_slices(
+        memory, memory.result.window_steps or DEFAULT_WINDOW_STEPS
+    )
+    slice_ids = []
+    for window_slice in window_chain:
+        ctx.check()
+        slice_ids.append(
+            {
+                "window_index": window_slice["window_index"],
+                "artifact_id": current.store.put_artifact("analysis", window_slice),
+                "slice_digest": window_slice["slice_digest"],
+            }
+        )
+    chain_id = current.store.put_artifact(
+        "analysis",
+        build_window_manifest(
+            snapshot.snapshot_id,
+            gid,
+            base_id,
+            memory.graph.graph_digest,
+            memory.result.window_steps or DEFAULT_WINDOW_STEPS,
+            slice_ids,
+            window_chain[-1]["slice_digest"] if window_chain else None,
+        ),
+    )
     pid = current.store.put_artifact("analysis", program.to_data())
     mid = current.store.put_artifact("analysis", memory.plan.to_data())
     rid = current.store.put_artifact("analysis", memory.result.to_data())
@@ -713,6 +749,9 @@ def _analyze(ctx, extracted):
     response = {
         "snapshot_artifact": sid,
         "graph_artifact": gid,
+        "base_graph_artifact": base_id,
+        "window_chain_artifact": chain_id,
+        "window_slice_count": len(window_chain),
         "ssa_artifact": pid,
         "memory_plan_artifact": mid,
         "memory_result_artifact": rid,
@@ -1098,6 +1137,30 @@ def get_runtime(info=None):
     return runtime.refresh_runtime(root / namespace, scope, owner, HANDLERS)
 
 
+DEFAULT_WINDOW_STEPS = 64
+DEFAULT_WINDOW_MAX_DEPENDENCIES = 16384
+
+
+def _window_options(window_steps, window_max_dependencies):
+    require(
+        type(window_steps) is int and 0 < window_steps <= 1000000,
+        "invalid_window_steps",
+    )
+    require(
+        type(window_max_dependencies) is int
+        and 0 < window_max_dependencies <= 10000000,
+        "invalid_window_dependencies",
+    )
+    return window_steps, window_max_dependencies
+
+
+def _default_window_options(window_steps, window_max_dependencies):
+    return (
+        window_steps == DEFAULT_WINDOW_STEPS
+        and window_max_dependencies == DEFAULT_WINDOW_MAX_DEPENDENCIES
+    )
+
+
 def create(
     selector,
     profile,
@@ -1105,8 +1168,13 @@ def create(
     abi=None,
     routing_mode: RoutingMode = "exact_fixture",
     wire_version: str = "flow-wire/1",
+    window_steps: int = DEFAULT_WINDOW_STEPS,
+    window_max_dependencies: int = DEFAULT_WINDOW_MAX_DEPENDENCIES,
 ):
     require(wire_version in ("flow-wire/1", "flow-wire/2"), "invalid_wire_version")
+    window_steps, window_max_dependencies = _window_options(
+        window_steps, window_max_dependencies
+    )
     info = context(selector, profile, abi, routing_mode)
     if wire_version == "flow-wire/2":
         validate_ea(info["ea"], info["profile"]["bitness"])
@@ -1126,6 +1194,11 @@ def create(
         "function_key": "function-entry:" + str(info["ea"]),
         "routing": info["routing"],
     }
+    if not _default_window_options(window_steps, window_max_dependencies):
+        # Tuned windows change the request identity; default requests keep
+        # their exact historical bytes so existing idempotency keys replay.
+        request["window_steps"] = window_steps
+        request["window_max_dependencies"] = window_max_dependencies
     if wire_version == "flow-wire/2":
         request["wire_version"] = wire_version
     if info["persist_selection"]:
@@ -2281,6 +2354,27 @@ def _store_page(raw: dict[str, Any]):
         "scope": "store_site_if_reached_not_final_registration_or_path_proof",
         "target_executed": False,
         "no_auto_vulnerability_verdict": True,
+    }
+
+
+def reassemble_window_chain(chain_artifact):
+    """Verify a window chain and publish its reassembled enriched graph.
+
+    The reassembled graph is content-identical to the job's graph_artifact,
+    so all existing graph consumers (traces, path proofs, paging) work
+    unchanged on the returned artifact.
+    """
+    queries = Queries(get_runtime().store)
+    graph = queries.graph_from_chain(chain_artifact)
+    manifest = queries.store.artifact(chain_artifact)
+    identifier = queries.store.put_artifact("graph", graph)
+    return {
+        "schema_version": "flow-window-reassembly/1",
+        "graph_artifact": identifier,
+        "graph_digest": graph.graph_digest,
+        "window_count": len(manifest["slices"]),
+        "head_digest": manifest["head_digest"],
+        "target_executed": False,
     }
 
 

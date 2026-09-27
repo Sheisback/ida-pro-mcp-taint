@@ -255,11 +255,28 @@ def _typed(value, annotation, decode=False):
     return value
 
 
+_HINTS_CACHE: dict[type, dict[str, Any]] = {}
+
+
+def _hints_for(cls: type) -> dict[str, Any]:
+    """Cache resolved annotations per model class.
+
+    Annotations are fixed at class definition time, so resolving once is
+    observationally identical to resolving per construction while avoiding
+    millions of redundant typing evaluations in hot loops.
+    """
+    hints = _HINTS_CACHE.get(cls)
+    if hints is None:
+        hints = get_type_hints(cls)
+        _HINTS_CACHE[cls] = hints
+    return hints
+
+
 class Model:
     """Frozen dataclass mixin: exact fields/types, no coercion or extension bags."""
 
     def __post_init__(self):
-        hints = get_type_hints(type(self))
+        hints = _hints_for(type(self))
         for field in fields(cast(Any, self)):
             _typed(getattr(self, field.name), hints[field.name])
 
@@ -294,7 +311,7 @@ class Model:
             raise ContractError(f"Wrong fields for {cls.__name__}")
         try:
             _json_value(data)
-            hints = get_type_hints(cls)
+            hints = _hints_for(cls)
             return cls(
                 **{key: _typed(value, hints[key], True) for key, value in data.items()}
             )

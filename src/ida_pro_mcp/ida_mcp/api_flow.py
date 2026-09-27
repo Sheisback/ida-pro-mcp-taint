@@ -106,6 +106,14 @@ class FlowGraphBytesPage(TypedDict):
     next_cursor: str | None
 
 
+class FlowWindowReassembly(TypedDict):
+    schema_version: Literal["flow-window-reassembly/1"]
+    graph_artifact: str
+    graph_digest: str
+    window_count: int
+    head_digest: str
+
+
 class FlowTracePage(TypedDict):
     schema_version: Literal["flow-trace-page/1"]
     trace_id: str
@@ -442,6 +450,8 @@ def flow_create_snapshot(
     abi: str | None = None,
     routing_mode: str = "exact_fixture",
     wire_version: str = "flow-wire/1",
+    window_steps: int = 64,
+    window_max_dependencies: int = 16384,
 ) -> FlowJobSubmission | FlowError:
     """Queue an experimental MMAT_CALLS snapshot for an exact function entry.
 
@@ -453,12 +463,28 @@ def flow_create_snapshot(
     support or infers an ABI. RV32 has no normal route and is rejected. Reuse
     ``request_key`` only for the identical request. Opt into ``flow-wire/2``
     for tagged integers and separate v2 snapshot/graph identities; omitted
-    ``wire_version`` preserves v1.
+    ``wire_version`` preserves v1. ``window_steps`` (e.g. 64, 120, 240)
+    bounds windows; each keeps at most ``window_max_dependencies`` fine
+    dependencies, honestly widening overflow coarsely as partial.
     """
-    if wire_version == "flow-wire/1":
-        return _service().create(function, profile, request_key, abi, routing_mode)
-    return _service().create(
-        function, profile, request_key, abi, routing_mode, wire_version
+    service = _service()
+    # Default comparison uses this tool's own signature defaults (mirroring
+    # service.DEFAULT_WINDOW_*); a capabilities test locks the two together.
+    if (window_steps, window_max_dependencies) == (64, 16384):
+        if wire_version == "flow-wire/1":
+            return service.create(function, profile, request_key, abi, routing_mode)
+        return service.create(
+            function, profile, request_key, abi, routing_mode, wire_version
+        )
+    return service.create(
+        function,
+        profile,
+        request_key,
+        abi,
+        routing_mode,
+        wire_version,
+        window_steps,
+        window_max_dependencies,
     )
 
 
@@ -770,6 +796,20 @@ def flow_get_graph(
 ) -> FlowArtifactPage | FlowError:
     """Page immutable typed nodes and edges from the job's graph_artifact."""
     return _service().page(artifact_id, "graph", cursor, limit)
+
+
+@tool
+@_flow_api
+def flow_reassemble_graph(
+    window_chain_artifact: str,
+) -> FlowWindowReassembly | FlowError:
+    """Verify a window chain and publish its reassembled enriched graph.
+
+    The returned graph_artifact is content-identical to the job's
+    graph_artifact, so traces, path proofs, and paging work unchanged on it.
+    A tampered slice, swapped base graph, or broken chain fails closed.
+    """
+    return _service().reassemble_window_chain(window_chain_artifact)
 
 
 @tool

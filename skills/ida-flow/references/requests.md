@@ -29,6 +29,17 @@ example applies to the repository's x64 ELF fixture, not arbitrary binaries.
 Poll to terminal `complete`. On any other terminal state, stop this branch and
 report the diagnostic; do not use example IDs as if they were results.
 
+For a large function that interrupts with `lease_expired` in analyze, retry
+once with a fresh key and explicit windows, then reassemble for later queries:
+
+```json
+{"name":"flow_create_snapshot","arguments":{"database":"<session.session_id>","function":"<large function>","profile":"X64-LE","abi":"sysv-amd64","routing_mode":"analyst_selected","request_key":"snapshot-large-1","window_steps":120}}
+```
+
+```json
+{"name":"flow_reassemble_graph","arguments":{"database":"<session.session_id>","window_chain_artifact":"<snapshot.result.window_chain_artifact>"}}
+```
+
 ```json
 {"name":"flow_get_function_ssa","arguments":{"database":"<session.session_id>","artifact_id":"<snapshot.result.ssa_artifact>","limit":50}}
 ```

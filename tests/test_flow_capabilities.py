@@ -1024,6 +1024,7 @@ def test_exact_tool_schema_and_no_supervisor_database_on_workers(flow):
         "flow_cancel_trace",
         "flow_get_graph",
         "flow_get_graph_digest_bytes",
+        "flow_reassemble_graph",
         "flow_get_evidence",
     }
     tools = server._mcp_tools_list()["tools"]
@@ -2449,3 +2450,84 @@ def test_symbolic_missing_runner_reports_exact_probe_reason(flow, monkeypatch):
     assert capability["status"] == "unavailable"
     assert "angr_runner_missing" in capability["reason"]
     assert "not configured" not in capability["reason"]
+
+
+def test_window_options_validation_is_strict(flow):
+    module, _ = flow
+    service = module._service()
+    assert service._window_options(64, 16384) == (64, 16384)
+    assert service._window_options(120, 240) == (120, 240)
+    for bad_steps in (0, -1, "64", 64.0, None, 1000001):
+        with pytest.raises(ContractError, match="invalid_window_steps"):
+            service._window_options(bad_steps, 16384)
+    for bad_deps in (0, -5, "16384", None, 10000001):
+        with pytest.raises(ContractError, match="invalid_window_dependencies"):
+            service._window_options(64, bad_deps)
+
+
+def test_snapshot_tool_threads_window_options(flow, monkeypatch):
+    module, _ = flow
+    service = module._service()
+    seen = {}
+
+    def fake_create(*args):
+        seen["args"] = args
+        return {"schema_version": "flow-job/1", "job_id": "job_x", "experimental": True}
+
+    monkeypatch.setattr(service, "create", fake_create)
+    module.flow_create_snapshot("target", "X64-LE", "key-1")
+    assert seen["args"] == ("target", "X64-LE", "key-1", None, "exact_fixture")
+    module.flow_create_snapshot(
+        "target",
+        "X64-LE",
+        "key-0",
+        window_steps=service.DEFAULT_WINDOW_STEPS,
+        window_max_dependencies=service.DEFAULT_WINDOW_MAX_DEPENDENCIES,
+    )
+    assert seen["args"] == ("target", "X64-LE", "key-0", None, "exact_fixture")
+    module.flow_create_snapshot(
+        "target", "X64-LE", "key-2", window_steps=120, window_max_dependencies=240
+    )
+    assert seen["args"][-3:] == ("flow-wire/1", 120, 240)
+    module.flow_create_snapshot(
+        "target",
+        "X64-LE",
+        "key-3",
+        wire_version="flow-wire/2",
+        window_steps=240,
+        window_max_dependencies=4096,
+    )
+    assert seen["args"][-3:] == ("flow-wire/2", 240, 4096)
+    module.flow_create_snapshot(
+        "target", "X64-LE", "key-4", wire_version="flow-wire/2"
+    )
+    assert seen["args"] == (
+        "target",
+        "X64-LE",
+        "key-4",
+        None,
+        "exact_fixture",
+        "flow-wire/2",
+    )
+
+
+def test_reassemble_tool_threads_chain_artifact(flow, monkeypatch):
+    module, _ = flow
+    service = module._service()
+    seen = {}
+
+    def fake_reassemble(chain_artifact):
+        seen["chain"] = chain_artifact
+        return {
+            "schema_version": "flow-window-reassembly/1",
+            "graph_artifact": "artifact_graph",
+            "graph_digest": "sha256-v1:abc",
+            "window_count": 4,
+            "head_digest": "sha256-v1:def",
+        }
+
+    monkeypatch.setattr(service, "reassemble_window_chain", fake_reassemble)
+    result = module.flow_reassemble_graph("artifact_chain")
+    assert seen["chain"] == "artifact_chain"
+    assert result["schema_version"] == "flow-window-reassembly/1"
+    assert result["graph_artifact"] == "artifact_graph"

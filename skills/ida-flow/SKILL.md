@@ -34,6 +34,10 @@ prefix. This skill supplies instructions, not an MCP connection or IDA license.
    wait limit, report the state rather than inventing results or widening scope.
    If abandoning your own pending job, request `flow_cancel_job` before cleanup;
    cancellation is cooperative, so do not assume a native call stopped instantly.
+   For a large function whose job reports `interrupted`/`lease_expired` with
+   `analyze_ms` near the lease, retry once with a fresh `request_key` and
+   `window_steps` 120 or 240; the tuned snapshot keeps its own chain artifact
+   and `flow_reassemble_graph` rebuilds the equivalent graph for later queries.
 3. Inspect returned SSA/CFG/graph/evidence artifacts. Follow `next_cursor` until
    null; one page is not a whole graph. Keep artifact IDs in the same database,
    snapshot, wire version and analysis lineage.
