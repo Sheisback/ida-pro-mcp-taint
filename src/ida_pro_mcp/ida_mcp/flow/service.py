@@ -461,6 +461,17 @@ def _resolve_entry_registers(entry_storage, reg_info):
     return resolved
 
 
+def _block_anchor_ea(block):
+    """First native address of a snapshot block for refine path selection.
+
+    Agent clients cannot page Host-only CFG artifacts, so the completed
+    snapshot result echoes one anchor EA per block. Callers match taint
+    addresses against these anchors and submit indices only.
+    """
+    eas = sorted({ea for ins in block.instructions for ea in ins.source_eas})
+    return hex(eas[0]) if eas else None
+
+
 def _analyze(ctx, extracted):
     (function, callees, closure, reg_info), request = extracted
     snapshot = function.snapshot
@@ -734,6 +745,19 @@ def _analyze(ctx, extracted):
         "profile": request["profile"]["profile_id"],
         "maturity": "MMAT_CALLS",
         "summary_digest": snapshot.identity.summary_digest,
+        "profile_digest": snapshot.identity.profile_digest,
+        "rule_digest": snapshot.identity.rule_digest,
+        "refine_blocks": {
+            "entry": snapshot.function.entry_block,
+            "blocks": [
+                {
+                    "index": block.index,
+                    "ea": _block_anchor_ea(block),
+                    "successors": list(block.successors),
+                }
+                for block in snapshot.function.blocks
+            ],
+        },
         "summary_limitations": [
             "Reviewed summaries cover only the packaged owned fixtures, with fresh full-identity callee validation; arbitrary libraries remain unresolved.",
             "Incomplete indirect, external, recursive, and context-limited calls retain unresolved effects; complete local finite targets have derived scalar returns only.",
