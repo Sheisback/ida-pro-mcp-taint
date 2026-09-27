@@ -90,6 +90,18 @@ extraction time. Atoms without an exact single-register alias — such as
 multi-register spans — carry an explicit reason instead of a guessed name.
 Use it to pick seed nodes without sweeping candidates.
 
+Every snapshot result also echoes `profile_digest`, `rule_digest`, and a
+`refine_blocks` entry/block map (`{entry, blocks:[{index, ea,
+successors}]}`) so clients that cannot page Host-only graph/CFG artifacts
+can still assemble an exact refine path selector by selecting echoed
+values only. Copy the five bindings verbatim (`rule_digest` fills
+`ruleset_digest`, `summary_digest` fills `summary_digests`); walk `blocks`
+from `entry` through `successors`, matching taint addresses to echoed
+`ea` anchors (greatest anchor at or below each address). A `null` anchor
+marks a block with no native address; include it only when the successor
+walk requires it. Validation semantics are unchanged: mismatched bindings
+or non-successor transitions still fail closed.
+
 For an analyst-designated external input such as a driver request buffer,
 first verify the transfer method, buffer pointer, length check, and the
 microcode `Load` that reads the specific byte or field. Page
