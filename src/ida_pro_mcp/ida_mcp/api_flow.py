@@ -661,9 +661,10 @@ def flow_refine_path_proof(
     """Refine a v1 path proof with the opt-in angr tier, OR page the result.
 
     Submit with graph_artifact, path, refinement, request_key. ``refinement``
-    explicitly opts into the angr sidecar tier (symbolic_angr,
-    solver_timeout_ms, loop_bound); an all-off refinement replays the v1
-    baseline verbatim and never runs the engine. Optional proof_artifact
+    explicitly opts into the angr sidecar tier: required solver_timeout_ms
+    (1..120000) and schema_version 1, optional symbolic_angr and loop_bound
+    (1..1024); no other keys are accepted. An all-off refinement replays
+    the v1 baseline verbatim and never runs the engine. Optional proof_artifact
     cross-checks a quoted v1 original. The sidecar needs IDA_MCP_ANGR_PYTHON
     pointing at an angr-capable interpreter; without it the tier reports
     angr_not_configured. Poll flow_get_job; page its refined artifact with

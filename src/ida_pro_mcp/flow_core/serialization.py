@@ -308,7 +308,12 @@ class Model:
             f.name for f in fields(cls) if f.metadata.get("omit_if_default")
         }
         if not model_fields - optional_fields <= set(data) <= model_fields:
-            raise ContractError(f"Wrong fields for {cls.__name__}")
+            given = set(data)
+            raise ContractError(
+                f"Wrong fields for {cls.__name__}: "
+                f"unexpected={sorted(given - model_fields, key=repr)} "
+                f"missing={sorted(model_fields - optional_fields - given, key=repr)}"
+            )
         try:
             _json_value(data)
             hints = _hints_for(cls)

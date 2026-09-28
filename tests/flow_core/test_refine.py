@@ -479,3 +479,49 @@ def test_refinement_spec_rejects_bad_budgets():
         RefinementSpec.from_data(
             {"symbolic_angr": 1, "solver_timeout_ms": 5000, "schema_version": 1}
         )
+
+
+def test_refinement_spec_wrong_fields_names_unexpected_and_missing():
+    with pytest.raises(
+        ContractError,
+        match=r"unexpected=\['symbolic_path'\] missing=\[\]",
+    ):
+        RefinementSpec.from_data(
+            {
+                "solver_timeout_ms": 5000,
+                "schema_version": 1,
+                "symbolic_path": True,
+            }
+        )
+    with pytest.raises(
+        ContractError,
+        match=r"unexpected=\[\] missing=\['schema_version'\]",
+    ):
+        RefinementSpec.from_data({"solver_timeout_ms": 5000})
+
+
+def test_refine_path_tool_description_states_exact_refinement_keys():
+    """The MCP description must match the enforced exact-key contract.
+
+    Parsed statically: api_flow needs the IDA runtime, but its shipped
+    docstring text is verifiable without importing it.
+    """
+
+    import ast
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[2]
+    module = ast.parse((root / "src/ida_pro_mcp/ida_mcp/api_flow.py").read_text())
+    target = next(
+        node
+        for node in ast.walk(module)
+        if isinstance(node, ast.FunctionDef)
+        and node.name == "flow_refine_path_proof"
+    )
+    description = ast.get_docstring(target) or ""
+    assert "solver_timeout_ms" in description
+    assert "schema_version" in description
+    assert "symbolic_angr" in description
+    assert "loop_bound" in description
+    assert "required" in description and "optional" in description
+    assert "no other keys" in description

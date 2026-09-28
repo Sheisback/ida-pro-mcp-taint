@@ -2418,7 +2418,9 @@ def test_check_path_requires_explicit_selector_version_before_runtime(
         service, "context", lambda: pytest.fail("invalid selector reached runtime")
     )
     result = module.flow_check_path("graph", {"bindings": {}, "blocks": [0]}, "key")
-    assert result["error"]["code"] == "Wrong fields for PathSelector"
+    assert result["error"]["code"] == (
+        "Wrong fields for PathSelector: unexpected=[] missing=['schema_version']"
+    )
 
 
 def test_symbolic_configuration_is_not_engine_readiness(flow, monkeypatch):
