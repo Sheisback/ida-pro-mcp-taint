@@ -35,6 +35,12 @@ ARG_MARKER_NATIVE_KINDS = (
     "typed_pointer_argument_argloc",
 )
 
+EXIT_MARKER_AVOID_SKIP_OPCODES = (
+    "m_exit",
+    "m_ret",
+    "m_noreturn",
+)
+
 
 @dataclass(frozen=True)
 class AngrContext:
@@ -138,6 +144,30 @@ def _is_exact_marker_block(block) -> bool:
     return all(first < second for first, second in zip(ordinals, ordinals[1:]))
 
 
+def _is_avoid_skippable_exit_block(block) -> bool:
+    """True only for a synthetic addressless function-terminal marker block.
+
+    The extractor closes a trailing ``BLT_STOP`` block with synthetic
+    ``m_exit``/``m_ret``/``m_noreturn`` instructions and no successors or
+    native provenance. Such a block cannot rejoin the prefix, so leaving it
+    out of the global avoid set cannot steer a state back onto the terminal
+    find: exploration down that branch terminates instead. Empty terminals
+    stay refusals because they mark unresolved control flow, not a proven
+    function exit.
+    """
+    if tuple(getattr(block, "successors", ()) or ()) != ():
+        return False
+    instructions = getattr(block, "instructions", ())
+    if not instructions:
+        return False
+    return all(
+        getattr(item, "opcode", None) in EXIT_MARKER_AVOID_SKIP_OPCODES
+        and getattr(item, "synthetic", None) is True
+        and tuple(getattr(item, "source_eas", ()) or ()) == ()
+        for item in instructions
+    )
+
+
 def resolve_block_addresses(blocks, index, entry=None):
     """Native entry addresses of one snapshot block for angr queries.
 
@@ -194,13 +224,17 @@ def build_prefix_query(
     reaches the terminal find through the ordered stages. Find targets are
     the final block's microcode entry addresses (the native entry itself for
     an entry-only path); every off-prefix successor along the way becomes an
-    avoid address for all stages. Reject repeats, non-edges, re-entry and
-    ambiguous native translations. Missing addresses, unexpected argument
-    markers, an invalid native identity or a non-X64 environment also
-    refuse, so the caller degrades honestly instead of asking a different
-    question than the selector names. Only an entry block consisting solely
-    of exact typed-argument markers is transparent; every other addressless
-    block still fails explicitly.
+    avoid address for all stages, except synthetic addressless
+    function-terminal markers (m_exit/m_ret/m_noreturn with no successors),
+    which cannot rejoin the prefix and are left out of the avoid set.
+    Reject repeats, non-edges, re-entry and ambiguous native translations.
+    Missing addresses, unexpected argument markers, an invalid native
+    identity or a non-X64 environment also refuse, so the caller degrades
+    honestly instead of asking a different question than the selector
+    names. Only an entry block consisting solely of exact typed-argument
+    markers is transparent, and only synthetic terminal markers are
+    skipped from avoid; every other addressless block still fails
+    explicitly, including a path that itself ends at an exit marker.
     """
     environment = graph.snapshot.identity.environment
     if not (
@@ -289,6 +323,8 @@ def build_prefix_query(
     for position in range(len(path) - 1):
         for successor in blocks[path[position]].successors:
             if successor not in path:
+                if _is_avoid_skippable_exit_block(blocks[successor]):
+                    continue
                 avoid_addresses.extend(
                     resolve_block_addresses(blocks, successor, entry)
                 )

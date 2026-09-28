@@ -827,6 +827,137 @@ def test_avoid_overlapping_native_entry_refused():
     with pytest.raises(ContractError, match="angr_find_avoid_overlap"):
         build_prefix_query(graph, PathSelector(path_bindings(graph), (0, 1, 2)),
                            _context(), timeout_ms=5000)
+
+
+def _branch_to_terminal_graph(terminal_instructions):
+    """Entry-marker path (0, 1, 2) forking at 1 to addressless terminal 3."""
+    from dataclasses import replace
+
+    from test_ssa import snapshot
+
+    addressed = sparse_addressed(
+        (
+            Block(0, (), (arg_marker(0, 0),)),
+            _real_block(1, (0,)),
+            _real_block(2, (1,)),
+            Block(3, (1,), terminal_instructions),
+        )
+    )
+    blocks = tuple(
+        replace(
+            block,
+            instructions=tuple(
+                replace(instruction, source_eas=())
+                for instruction in block.instructions
+            ),
+        )
+        if block.index == 3
+        else block
+        for block in addressed.function.blocks
+    )
+    return build_ssa(
+        snapshot(blocks, function_id=f"function-entry:{NATIVE_ENTRY_EA}")
+    ).graph
+
+
+def _typed_return_operand():
+    return Operand(
+        "storage",
+        32,
+        storage=StorageLocation("microregister", "microregister", 0, 32),
+        role="left",
+        native_kind="typed_return_argloc",
+        synthetic=True,
+    )
+
+
+@pytest.mark.parametrize("opcode", ["m_exit", "m_ret", "m_noreturn"])
+def test_avoid_skips_synthetic_exit_terminal(opcode):
+    graph = _branch_to_terminal_graph(
+        (Instruction(0, opcode, (), (), True),)
+    )
+    assert graph.snapshot.function.blocks[1].successors == (2, 3)
+    built = build_prefix_query(
+        graph, PathSelector(path_bindings(graph), (0, 1, 2)),
+        _context(), timeout_ms=5000,
+    )
+    assert built.find_eas == (BASE_EA + 1,)
+    assert built.avoid_eas == ()
+
+
+def test_avoid_skips_extractor_shaped_synthetic_return():
+    graph = _branch_to_terminal_graph(
+        (Instruction(0, "m_ret", (_typed_return_operand(),), (), True),)
+    )
+    built = build_prefix_query(
+        graph, PathSelector(path_bindings(graph), (0, 1, 2)),
+        _context(), timeout_ms=5000,
+    )
+    assert built.find_eas == (BASE_EA + 1,)
+    assert built.avoid_eas == ()
+
+
+def test_avoid_keeps_addressed_native_return():
+    graph = build_ssa(
+        sparse_addressed(
+            (
+                Block(0, (), (arg_marker(0, 0),)),
+                _real_block(1, (0,)),
+                _real_block(2, (1,)),
+                Block(3, (1,), (ins(0, "m_ret", reg(bits=8)),)),
+            ),
+        )
+    ).graph
+    built = build_prefix_query(
+        graph, PathSelector(path_bindings(graph), (0, 1, 2)),
+        _context(), timeout_ms=5000,
+    )
+    assert built.find_eas == (BASE_EA + 1,)
+    assert built.avoid_eas == (BASE_EA + 2,)
+
+
+def test_path_ending_at_exit_marker_still_refused():
+    graph = _branch_to_terminal_graph(
+        (Instruction(0, "m_exit", (), (), True),)
+    )
+    with pytest.raises(ContractError, match="angr_missing_block_addresses"):
+        build_prefix_query(
+            graph, PathSelector(path_bindings(graph), (0, 1, 3)),
+            _context(), timeout_ms=5000,
+        )
+
+
+def test_avoid_empty_terminal_still_refused():
+    graph = _branch_to_terminal_graph(())
+    with pytest.raises(ContractError, match="angr_missing_block_addresses"):
+        build_prefix_query(
+            graph, PathSelector(path_bindings(graph), (0, 1, 2)),
+            _context(), timeout_ms=5000,
+        )
+
+
+def test_avoid_addressless_non_exit_terminal_still_refused():
+    graph = _branch_to_terminal_graph(
+        (ins(0, "m_mov", reg(bits=8), dest=reg(8, role="destination")),)
+    )
+    with pytest.raises(ContractError, match="angr_missing_block_addresses"):
+        build_prefix_query(
+            graph, PathSelector(path_bindings(graph), (0, 1, 2)),
+            _context(), timeout_ms=5000,
+        )
+
+
+def test_avoid_non_synthetic_exit_terminal_still_refused():
+    graph = _branch_to_terminal_graph(
+        (Instruction(0, "m_exit", (), (), False),)
+    )
+    with pytest.raises(ContractError, match="angr_missing_block_addresses"):
+        build_prefix_query(
+            graph, PathSelector(path_bindings(graph), (0, 1, 2)),
+            _context(), timeout_ms=5000,
+        )
+
+
 def _addr_blocks(spec):
     from types import SimpleNamespace
 
