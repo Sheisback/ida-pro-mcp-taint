@@ -958,6 +958,125 @@ def test_avoid_non_synthetic_exit_terminal_still_refused():
         )
 
 
+def _fused_block(index, predecessors, own_ea, nested_eas, *, nested_kind="direct"):
+    """First instruction fusing one own origin with nested data provenance."""
+    if nested_kind == "direct":
+        nested = Operand(
+            "constant", 8, constant=1,
+            source_eas=tuple(sorted(set(nested_eas))),
+        )
+    elif nested_kind == "nested":
+        nested = Operand(
+            "expression",
+            8,
+            operation="fused",
+            children=tuple(
+                Operand("constant", 8, constant=1, source_eas=(ea,))
+                for ea in nested_eas
+            ),
+        )
+    elif nested_kind == "call":
+        from ida_pro_mcp.flow_core.contracts import CallInfo, LocationSet
+
+        nested = Operand(
+            "callinfo",
+            None,
+            call=CallInfo(
+                None,
+                0,
+                tuple(
+                    Operand("constant", 8, constant=1, source_eas=(ea,))
+                    for ea in nested_eas
+                ),
+                (),
+                None,
+                LocationSet(),
+                LocationSet(),
+                0,
+                True,
+            ),
+        )
+    else:
+        raise AssertionError(nested_kind)
+    first = Instruction(
+        0,
+        "m_xdu",
+        (nested, reg(8, role="destination")),
+        tuple(sorted({own_ea, *nested_eas})),
+        False,
+    )
+    return Block(index, predecessors, (first,))
+
+
+@pytest.mark.parametrize("nested_kind", ["direct", "nested", "call"])
+def test_resolve_fused_first_instruction_uses_own_origin(nested_kind):
+    block = _fused_block(
+        0, (), 0x2000, (0x1000, 0x1004), nested_kind=nested_kind
+    )
+    assert resolve_block_addresses({0: block}, 0) == (0x2000,)
+
+
+def test_resolve_without_own_origin_still_refused():
+    block = _fused_block(0, (), 0x1000, (0x1000, 0x1004))
+    with pytest.raises(ContractError, match="angr_ambiguous_block_addresses"):
+        resolve_block_addresses({0: block}, 0)
+
+
+def _fused_sibling_graph(own_ea, nested_eas):
+    """Entry-marker path (0, 1, 2) forking at 1 to fused sibling 3."""
+    from test_ssa import snapshot
+
+    addressed = sparse_addressed(
+        (
+            Block(0, (), (arg_marker(0, 0),)),
+            _real_block(1, (0,)),
+            _real_block(2, (1,)),
+            _real_block(3, (1,)),
+        )
+    )
+    blocks = tuple(
+        _fused_block(3, (1,), own_ea, nested_eas)
+        if block.index == 3
+        else block
+        for block in addressed.function.blocks
+    )
+    return build_ssa(
+        snapshot(blocks, function_id=f"function-entry:{NATIVE_ENTRY_EA}")
+    ).graph
+
+
+def test_prefix_fused_avoid_sibling_builds_with_own_avoid():
+    own, nested = BASE_EA + 100, BASE_EA + 101
+    graph = _fused_sibling_graph(own, (nested,))
+    assert graph.snapshot.function.blocks[1].successors == (2, 3)
+    built = build_prefix_query(
+        graph, PathSelector(path_bindings(graph), (0, 1, 2)),
+        _context(), timeout_ms=5000,
+    )
+    assert built.find_eas == (BASE_EA + 1,)
+    assert built.avoid_eas == (own,)
+
+
+def test_prefix_fused_terminal_finds_own_origin():
+    own, nested = BASE_EA + 100, BASE_EA + 101
+    graph = _fused_sibling_graph(own, (nested,))
+    built = build_prefix_query(
+        graph, PathSelector(path_bindings(graph), (0, 1, 3)),
+        _context(), timeout_ms=5000,
+    )
+    assert built.find_eas == (own,)
+    assert built.avoid_eas == (BASE_EA + 1,)
+
+
+def test_prefix_avoid_without_own_origin_still_refused():
+    graph = _fused_sibling_graph(BASE_EA + 100, (BASE_EA + 100, BASE_EA + 101))
+    with pytest.raises(ContractError, match="angr_ambiguous_block_addresses"):
+        build_prefix_query(
+            graph, PathSelector(path_bindings(graph), (0, 1, 2)),
+            _context(), timeout_ms=5000,
+        )
+
+
 def _addr_blocks(spec):
     from types import SimpleNamespace
 

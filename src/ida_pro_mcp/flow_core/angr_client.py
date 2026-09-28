@@ -168,6 +168,24 @@ def _is_avoid_skippable_exit_block(block) -> bool:
     )
 
 
+def _operand_provenance(operand) -> set[int]:
+    """Native origins nested under one operand, mirroring the extractor.
+
+    The extractor unions ``ins.ea`` with this same recursive operand
+    provenance, so subtracting it recovers the instruction's own origin
+    whenever that origin is distinct from its data provenance.
+    """
+    eas = set(getattr(operand, "source_eas", ()) or ())
+    children = list(getattr(operand, "children", ()) or ())
+    call = getattr(operand, "call", None)
+    if call is not None:
+        children += list(getattr(call, "arguments", ()) or ())
+        children += list(getattr(call, "return_operands", ()) or ())
+    for child in children:
+        eas |= _operand_provenance(child)
+    return eas
+
+
 def resolve_block_addresses(blocks, index, entry=None):
     """Native entry addresses of one snapshot block for angr queries.
 
@@ -176,6 +194,10 @@ def resolve_block_addresses(blocks, index, entry=None):
     where its linear successor chain starts; a fork in that chain is
     ambiguous, so it refuses instead of guessing an address. An entry
     block of exact typed-argument markers is transparent the same way.
+    A fused first instruction may carry data provenance from neighboring
+    native instructions next to its own origin; when exactly one origin
+    is not explained by its operand subtrees, that own origin is the
+    entry. A first instruction with no single own origin stays refused.
     """
     seen = set()
     current = index
@@ -199,7 +221,17 @@ def resolve_block_addresses(blocks, index, entry=None):
                     "angr_missing_block_addresses",
                 )
                 addresses = tuple(instructions[0].source_eas)
-                require(len(addresses) == 1, "angr_ambiguous_block_addresses")
+                if len(addresses) != 1:
+                    nested: set[int] = set()
+                    for sub in getattr(instructions[0], "operands", ()) or ():
+                        nested |= _operand_provenance(sub)
+                    addresses = tuple(
+                        ea for ea in addresses if ea not in nested
+                    )
+                    require(
+                        len(addresses) == 1,
+                        "angr_ambiguous_block_addresses",
+                    )
                 return addresses
         successors = blocks[current].successors
         require(len(successors) == 1, "angr_missing_block_addresses")
@@ -227,9 +259,11 @@ def build_prefix_query(
     avoid address for all stages, except synthetic addressless
     function-terminal markers (m_exit/m_ret/m_noreturn with no successors),
     which cannot rejoin the prefix and are left out of the avoid set.
-    Reject repeats, non-edges, re-entry and ambiguous native translations.
-    Missing addresses, unexpected argument markers, an invalid native
-    identity or a non-X64 environment also refuse, so the caller degrades
+    Reject repeats, non-edges, re-entry and genuinely ambiguous native
+    translations (a first instruction with no single own origin once
+    nested operand provenance is subtracted). Missing addresses,
+    unexpected argument markers, an invalid native identity or a non-X64
+    environment also refuse, so the caller degrades
     honestly instead of asking a different question than the selector
     names. Only an entry block consisting solely of exact typed-argument
     markers is transparent, and only synthetic terminal markers are
