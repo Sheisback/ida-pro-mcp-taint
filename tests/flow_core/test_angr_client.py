@@ -533,7 +533,7 @@ def test_empty_tail_must_not_alias_an_already_visited_native_block():
                            _context(), timeout_ms=5000)
 
 
-def test_ambiguous_native_entry_addresses_are_rejected():
+def test_multi_address_native_entry_builds():
     from dataclasses import replace
     from test_ssa import snapshot
 
@@ -545,9 +545,34 @@ def test_ambiguous_native_entry_addresses_are_rejected():
         snapshot((first, blocks[1]),
                  function_id=f"function-entry:{NATIVE_ENTRY_EA}")
     ).graph
-    with pytest.raises(ContractError, match="angr_ambiguous_block_addresses"):
-        build_prefix_query(graph, PathSelector(path_bindings(graph), (0, 1)),
-                           _context(), timeout_ms=5000)
+    built = build_prefix_query(graph, PathSelector(path_bindings(graph), (0, 1)),
+                               _context(), timeout_ms=5000)
+    assert built.find_eas == (0x500001,)
+    assert built.waypoint_eas == ()
+    assert built.avoid_eas == ()
+
+
+def test_multi_address_first_instruction_builds_grouped_waypoint():
+    from dataclasses import replace
+    from test_ssa import snapshot
+
+    blocks = _prefix_graph(((), (0,), (1,))).snapshot.function.blocks
+    middle = replace(
+        blocks[1],
+        instructions=(
+            replace(blocks[1].instructions[0],
+                    source_eas=(BASE_EA + 1, BASE_EA + 0x101)),
+        ),
+    )
+    graph = build_ssa(
+        snapshot((blocks[0], middle, blocks[2]),
+                 function_id=f"function-entry:{NATIVE_ENTRY_EA}")
+    ).graph
+    built = build_prefix_query(graph, PathSelector(path_bindings(graph), (0, 1, 2)),
+                               _context(), timeout_ms=5000)
+    assert built.find_eas == (BASE_EA + 2,)
+    assert built.waypoint_eas == ((BASE_EA + 1, BASE_EA + 0x101),)
+    assert built.avoid_eas == ()
 
 
 def test_linear_prefix_remains_encodable():
@@ -1016,9 +1041,9 @@ def test_resolve_fused_first_instruction_uses_own_origin(nested_kind):
     assert resolve_block_addresses({0: block}, 0) == (0x2000,)
 
 
-def test_resolve_without_own_origin_still_refused():
+def test_resolve_without_any_remaining_origin_reports_missing():
     block = _fused_block(0, (), 0x1000, (0x1000, 0x1004))
-    with pytest.raises(ContractError, match="angr_ambiguous_block_addresses"):
+    with pytest.raises(ContractError, match="angr_missing_block_addresses"):
         resolve_block_addresses({0: block}, 0)
 
 
@@ -1068,9 +1093,9 @@ def test_prefix_fused_terminal_finds_own_origin():
     assert built.avoid_eas == (BASE_EA + 1,)
 
 
-def test_prefix_avoid_without_own_origin_still_refused():
+def test_prefix_avoid_without_any_remaining_origin_reports_missing():
     graph = _fused_sibling_graph(BASE_EA + 100, (BASE_EA + 100, BASE_EA + 101))
-    with pytest.raises(ContractError, match="angr_ambiguous_block_addresses"):
+    with pytest.raises(ContractError, match="angr_missing_block_addresses"):
         build_prefix_query(
             graph, PathSelector(path_bindings(graph), (0, 1, 2)),
             _context(), timeout_ms=5000,
@@ -1102,15 +1127,17 @@ def test_resolve_block_addresses_empty_linear_glue_borrows_successor():
     assert resolve_block_addresses(blocks, 0) == (0x1010,)
 
 
-def test_resolve_block_addresses_refuses_fork_loop_and_ambiguity():
+def test_resolve_block_addresses_refuses_fork_loop_and_missing():
     with pytest.raises(ContractError, match="angr_missing_block_addresses"):
         resolve_block_addresses(_addr_blocks({0: (None, [1, 2])}), 0)
     with pytest.raises(ContractError, match="angr_missing_block_addresses"):
         resolve_block_addresses(_addr_blocks({0: (None, [0])}), 0)
     with pytest.raises(ContractError, match="angr_missing_block_addresses"):
         resolve_block_addresses(_addr_blocks({0: ([], [1]), 1: ([0x10], [])}), 0)
-    with pytest.raises(ContractError, match="angr_ambiguous_block_addresses"):
-        resolve_block_addresses(_addr_blocks({0: ([0x10, 0x20], [])}), 0)
+
+
+def test_resolve_block_addresses_multi_entry_returns_group():
+    assert resolve_block_addresses(_addr_blocks({0: ([0x10, 0x20], [])}), 0) == (0x10, 0x20)
 
 
 def test_prefix_ignores_overlap_in_blocks_disjoint_from_path_and_avoid():
