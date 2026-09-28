@@ -195,9 +195,11 @@ def resolve_block_addresses(blocks, index, entry=None):
     ambiguous, so it refuses instead of guessing an address. An entry
     block of exact typed-argument markers is transparent the same way.
     A fused first instruction may carry data provenance from neighboring
-    native instructions next to its own origin; when exactly one origin
-    is not explained by its operand subtrees, that own origin is the
-    entry. A first instruction with no single own origin stays refused.
+    native instructions next to its own origin; addresses explained by
+    its operand subtrees are stripped, and every remaining address is
+    returned as one waypoint group (the runner explores any-of within a
+    group, ordered across groups). A first instruction with no remaining
+    origin stays refused.
     """
     seen = set()
     current = index
@@ -226,11 +228,13 @@ def resolve_block_addresses(blocks, index, entry=None):
                     for sub in getattr(instructions[0], "operands", ()) or ():
                         nested |= _operand_provenance(sub)
                     addresses = tuple(
-                        ea for ea in addresses if ea not in nested
+                        dict.fromkeys(
+                            ea for ea in addresses if ea not in nested
+                        )
                     )
                     require(
-                        len(addresses) == 1,
-                        "angr_ambiguous_block_addresses",
+                        len(addresses) >= 1,
+                        "angr_missing_block_addresses",
                     )
                 return addresses
         successors = blocks[current].successors
@@ -358,29 +362,28 @@ def build_prefix_query(
     selected_addresses: set[int] = set()
     resolved: dict[int, tuple[int, ...]] = {}
     previous_index = None
-    previous_address = None
     for index in path:
         resolved[index] = resolve_block_addresses(blocks, index, entry)
-        address = resolved[index][0]
-        if address in selected_addresses:
-            # Only forward, consecutive transparent glue can share a native
-            # entry: an empty block or an exact marker-only entry block. An
-            # empty tail pointing back at real code is a new visit, not
-            # the already-satisfied global find condition at function entry.
-            require(
-                previous_index is not None
-                and address == previous_address
-                and (
-                    not blocks[previous_index].instructions
-                    or (
-                        previous_index == entry
-                        and _is_exact_marker_block(blocks[entry])
-                    )
-                ),
-                "angr_prefix_address_reentry",
-            )
-        selected_addresses.add(address)
-        previous_index, previous_address = index, address
+        for address in resolved[index]:
+            if address in selected_addresses:
+                # Only forward, consecutive transparent glue can share a native
+                # entry: an empty block or an exact marker-only entry block. An
+                # empty tail pointing back at real code is a new visit, not
+                # the already-satisfied global find condition at function entry.
+                require(
+                    previous_index is not None
+                    and address in resolved[previous_index]
+                    and (
+                        not blocks[previous_index].instructions
+                        or (
+                            previous_index == entry
+                            and _is_exact_marker_block(blocks[entry])
+                        )
+                    ),
+                    "angr_prefix_address_reentry",
+                )
+            selected_addresses.add(address)
+        previous_index = index
     if len(path) == 1:
         find = (native_entry,)
     else:
