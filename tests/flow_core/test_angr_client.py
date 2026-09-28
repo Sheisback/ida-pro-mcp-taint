@@ -1111,3 +1111,36 @@ def test_resolve_block_addresses_refuses_fork_loop_and_ambiguity():
         resolve_block_addresses(_addr_blocks({0: ([], [1]), 1: ([0x10], [])}), 0)
     with pytest.raises(ContractError, match="angr_ambiguous_block_addresses"):
         resolve_block_addresses(_addr_blocks({0: ([0x10, 0x20], [])}), 0)
+
+
+def test_prefix_ignores_overlap_in_blocks_disjoint_from_path_and_avoid():
+    from dataclasses import replace
+
+    from test_ssa import snapshot
+
+    addressed = sparse_addressed(tuple(
+        _real_block(index, incoming)
+        for index, incoming in enumerate(
+            ((), (0,), (1,), (0,), (3,), (3,)))
+    )).function.blocks
+    shared = BASE_EA + 100
+    blocks = tuple(
+        replace(block, instructions=tuple(
+            replace(instruction, source_eas=(shared,))
+            for instruction in block.instructions
+        ))
+        if block.index in (4, 5)
+        else block
+        for block in addressed
+    )
+    graph = build_ssa(
+        snapshot(blocks, function_id=f"function-entry:{NATIVE_ENTRY_EA}")
+    ).graph
+    assert graph.snapshot.function.blocks[0].successors == (1, 3)
+    built = build_prefix_query(
+        graph, PathSelector(path_bindings(graph), (0, 1, 2)),
+        _context(), timeout_ms=5000,
+    )
+    assert built.find_eas == (BASE_EA + 2,)
+    assert built.waypoint_eas == ((BASE_EA + 1,),)
+    assert built.avoid_eas == (BASE_EA + 3,)

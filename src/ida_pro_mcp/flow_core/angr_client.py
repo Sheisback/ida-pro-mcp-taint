@@ -238,6 +238,33 @@ def resolve_block_addresses(blocks, index, entry=None):
         current = successors[0]
 
 
+def _resolution_chain(blocks, index, entry=None):
+    """Blocks one address resolution may read, without refusing.
+
+    Mirrors the transparency walk in resolve_block_addresses (empty glue
+    plus the exact-marker entry case) but stops instead of raising; the
+    real resolution still reports fork/loop/missing failures itself.
+    """
+    chain = []
+    seen = set()
+    current = index
+    while current not in seen and current in blocks:
+        seen.add(current)
+        chain.append(current)
+        instructions = blocks[current].instructions
+        if instructions and not (
+            entry is not None
+            and current == index == entry
+            and _is_exact_marker_block(blocks[entry])
+        ):
+            break
+        successors = blocks[current].successors
+        if len(successors) != 1:
+            break
+        current = successors[0]
+    return chain
+
+
 def build_prefix_query(
     graph,
     selector,
@@ -302,11 +329,23 @@ def build_prefix_query(
                 "angr_unexpected_argument_marker",
             )
 
-    # Distinct native blocks must not share instruction provenance. Empty
-    # linear glue may resolve to its successor, but real overlapping blocks
-    # cannot be represented faithfully by a global address find/avoid set.
+    # Only blocks the query consumes must have disjoint provenance: the
+    # path plus the non-skipped off-path avoid successors, each with the
+    # transparent closure resolve_block_addresses reads. Overlap elsewhere
+    # cannot reach a find/avoid address, so it must not reject the query.
+    relevant: set[int] = set()
+    for index in path:
+        relevant.update(_resolution_chain(blocks, index, entry))
+    for position in range(len(path) - 1):
+        for successor in blocks[path[position]].successors:
+            if successor not in path:
+                if _is_avoid_skippable_exit_block(blocks[successor]):
+                    continue
+                relevant.update(_resolution_chain(blocks, successor, entry))
     address_owners: dict[int, int] = {}
     for block in blocks.values():
+        if block.index not in relevant:
+            continue
         for instruction in block.instructions:
             for address in instruction.source_eas:
                 require(
