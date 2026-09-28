@@ -19,6 +19,8 @@ experimental static SSA, memory/provenance, and taint-flow tools.
 | Flow public API and IDA adapters | `src/ida_pro_mcp/ida_mcp/api_flow.py`, `src/ida_pro_mcp/ida_mcp/flow/` |
 | SDK-independent flow core | `src/ida_pro_mcp/flow_core/` |
 | Flow profile and operator guidance | `profiles/flow-readonly.txt`, `docs/flow-operator.md`, `docs/flow-compatibility.md` |
+| Driver triage tools and stages | `src/ida_pro_mcp/ida_mcp/api_driver.py`, `src/ida_pro_mcp/ida_mcp/driver/`, `src/ida_pro_mcp/flow_core/driver_triage.py` |
+| Driver profile and operator guidance | `profiles/driver-readonly.txt`, `docs/driver-triage.md` |
 
 Base API modules: `api_core.py` handles IDB metadata/functions/strings/imports;
 `api_analysis.py` handles decompilation, disassembly, xrefs, paths, and search;

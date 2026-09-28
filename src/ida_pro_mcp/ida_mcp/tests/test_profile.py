@@ -152,7 +152,7 @@ def test_bundled_profiles_reference_known_tools():
     # repo-root/profiles relative to src/ida_pro_mcp/ida_mcp/tests/test_profile.py
     here = Path(__file__).resolve()
     root = here.parents[4]
-    for name in ("readonly.txt", "triage.txt"):
+    for name in ("readonly.txt", "triage.txt", "driver-readonly.txt"):
         path = root / "profiles" / name
         if not path.exists():
             continue  # running from installed package without repo layout

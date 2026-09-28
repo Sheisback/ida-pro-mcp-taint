@@ -1,0 +1,29 @@
+# Read-only Windows driver-triage profile for ida-pro-mcp
+#
+# Exposes the driver_* triage tools plus the minimal read-only navigation set
+# needed to review their leads. No renaming, commenting, typing, patching,
+# debugger, or Python-execution tools.
+#
+# Use with: idalib-mcp --profile profiles/driver-readonly.txt <driver.sys>
+# Use a disposable working copy; MCP call tracing may write the working IDB.
+
+# --- Driver triage (read-only) ---
+driver_survey
+driver_decode_ioctls
+driver_find_ioctls
+driver_find_devices
+driver_audit_acl
+driver_find_pooltags
+driver_flag_functions
+driver_audit_exports
+driver_trace_calls
+driver_triage_leads
+
+# --- Minimal read-only navigation for reviewing leads ---
+server_health
+lookup_funcs
+list_funcs
+decompile
+disasm
+xrefs_to
+get_string

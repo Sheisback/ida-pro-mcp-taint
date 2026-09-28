@@ -442,6 +442,37 @@ than this implementation workflow. Its absence is not a passing release result;
 see the [compatibility matrix](docs/flow-compatibility.md) for exact profile
 evidence and support boundaries.
 
+## Windows Driver Triage (This Fork)
+
+This fork adds read-only `driver_*` MCP tools for Windows kernel-driver
+triage: framework/dispatcher survey, IOCTL decoding and discovery, device
+and pool-tag evidence, risky-routine flagging, export audit, call-chain
+tracing, and eleven heuristic review leads. They are **triage leads**, not
+vulnerability verdicts; see the [driver-triage guide](docs/driver-triage.md)
+for scope, honesty rules, and the clean-room origin note.
+
+From this repository root, start a headless MCP server with the restricted
+driver profile:
+
+```sh
+uv run idalib-mcp --stdio --profile profiles/driver-readonly.txt
+```
+
+Point it at a disposable driver copy via `idb_open`, then start with
+`driver_survey` and follow the leads. The tools never mutate the IDB, but
+MCP call tracing can still mark a working copy dirty, so keep originals
+untouched.
+
+- `driver_survey()`: PE/driver check, DriverEntry, framework, dispatchers.
+- `driver_decode_ioctls(codes)`: Decode IOCTL(s) with plausibility and score.
+- `driver_find_ioctls(...)`: Discover handled IOCTLs with severity.
+- `driver_find_devices()`: Device paths and symbolic-link evidence.
+- `driver_audit_acl()`: Default-ACL and SDDL review leads.
+- `driver_find_pooltags(...)`: Pool tags from allocator call sites.
+- `driver_flag_functions(...)`: Risky-routine matches with xrefs.
+- `driver_audit_exports()`: Exports with no internal callers.
+- `driver_trace_calls(...)`: Bounded dispatcher-to-sink paths.
+- `driver_triage_leads(...)`: Eleven heuristic leads for manual review.
 
 ## MCP Resources
 
