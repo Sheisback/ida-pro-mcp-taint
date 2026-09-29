@@ -1,7 +1,6 @@
 name: flow-release
 on:
-  push:
-    tags: ['v*']
+  # Automatic tag runs disabled by operator request; trigger manually if needed.
   workflow_dispatch:
     inputs:
       release_sha:

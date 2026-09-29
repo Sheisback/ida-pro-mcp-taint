@@ -612,7 +612,9 @@ def test_cross_snapshot_evidence_and_memory_rejected():
 
 def test_fork_ci_surface_does_not_require_licensed_runner():
     workflow = (ROOT / ".github/workflows/flow-core-tests.yml").read_text()
-    assert "  pull_request:" in workflow
+    # Operator-disabled automatic runs: manual dispatch only, still license-free.
+    assert "  workflow_dispatch:" in workflow
+    assert "  pull_request:" not in workflow and "  push:" not in workflow
     assert "pull_request_target" not in workflow and "secrets." not in workflow
     assert "tests/flow_core" in workflow and "check_wheel.py" in workflow
     assert "uvx ruff@" in workflow and "uv run ruff check" not in workflow
