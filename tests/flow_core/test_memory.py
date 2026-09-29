@@ -873,6 +873,12 @@ def test_actual_memory_receipts_independent_observations_and_fresh_hashes(
         assert {o["kind"] for o in expected["objects"]} == {"stack"}
 
 
+def test_build_manifest_records_no_local_absolute_paths():
+    text = (ROOT / "tests/flow_fixtures/manifests/memory/build.json").read_text()
+    for leaked in ("/Users/", "/home/", "/private/", "/tmp/"):
+        assert leaked not in text
+
+
 def test_actual_memory_builds_source_and_debug_companions_are_pinned():
     import hashlib
 

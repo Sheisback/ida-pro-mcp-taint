@@ -136,6 +136,12 @@ def test_oracle_preserves_effect_context_and_unknown_boundaries():
     }
 
 
+def test_build_manifest_records_no_local_absolute_paths():
+    text = (MANIFESTS / "build.json").read_text()
+    for leaked in ("/Users/", "/home/", "/private/", "/tmp/"):
+        assert leaked not in text
+
+
 def test_build_only_manifests_pin_two_reproducible_architectures():
     assert {path.name for path in MANIFESTS.iterdir()} == {
         "build.json",

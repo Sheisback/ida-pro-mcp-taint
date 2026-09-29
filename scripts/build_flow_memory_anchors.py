@@ -14,6 +14,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def normalized(command, output):
+    # Recorded commands must not leak the local checkout path.
+    return [
+        part.replace(str(output), "$OUTPUT").replace(str(ROOT), "$CHECKOUT")
+        for part in command
+    ]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("output", type=Path)
@@ -121,15 +129,9 @@ def main():
                 },
                 "compiler": compiler,
                 "sdk_version": sdk_version,
-                "command": [
-                    x.replace(str(output.parent), "$OUTPUT") for x in link_command
-                ],
-                "compile_command": [
-                    x.replace(str(output.parent), "$OUTPUT") for x in compile_command
-                ],
-                "link_command": [
-                    x.replace(str(output.parent), "$OUTPUT") for x in link_command
-                ],
+                "command": normalized(link_command, output.parent),
+                "compile_command": normalized(compile_command, output.parent),
+                "link_command": normalized(link_command, output.parent),
                 "dsym_command": [
                     "dsymutil",
                     "--oso-prepend-path",

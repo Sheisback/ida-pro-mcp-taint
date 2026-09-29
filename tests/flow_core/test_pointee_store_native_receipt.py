@@ -28,6 +28,12 @@ def one(items, kind):
     return selected[0]
 
 
+def test_receipt_records_no_local_absolute_paths():
+    text = RECEIPT.read_text()
+    for leaked in ("/Users/", "/home/", "/private/", "/tmp/"):
+        assert leaked not in text
+
+
 def test_recorded_native_inputs_and_implementation_are_current(receipt):
     assert receipt["schema_version"] == "flow-pointee-store-probe/1"
     assert receipt["passed"] is True

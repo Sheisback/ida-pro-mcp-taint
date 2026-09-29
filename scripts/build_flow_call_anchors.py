@@ -44,7 +44,11 @@ def sha256(path):
 
 
 def normalized(command, output):
-    return [part.replace(str(output), "$OUTPUT") for part in command]
+    # Recorded commands must not leak the local checkout path.
+    return [
+        part.replace(str(output), "$OUTPUT").replace(str(ROOT), "$CHECKOUT")
+        for part in command
+    ]
 
 
 def build_once(arch, output, environment):

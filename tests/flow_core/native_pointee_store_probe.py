@@ -210,7 +210,7 @@ def main():
         "sdk_version": subprocess.check_output(
             ["xcrun", "--show-sdk-version"], text=True
         ).strip(),
-        "work_directory": str(work),
+        "work_directory": "disposable",
         "runs": [],
         "assumptions": [
             "current IDB/dSYM types are analyst assumptions",
@@ -243,7 +243,12 @@ def main():
                 "format": "FMT-MACHO",
                 "binary_sha256": sha(built),
                 "dwarf_sha256": sha(dwarf),
-                "compiler_flags": flags,
+                "compiler_flags": [
+                    # The build uses the real checkout path; the receipt
+                    # records only the portable mapping form.
+                    flag.replace(str(ROOT), "$CHECKOUT")
+                    for flag in flags
+                ],
                 "functions": [],
             }
             report["runs"].append(row)
