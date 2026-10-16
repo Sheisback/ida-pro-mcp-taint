@@ -51,6 +51,7 @@ def test_exact_direct_callee_is_bounded_and_never_reviewed(flow, monkeypatch):
         check=lambda: checks.append(True),
         deadline=None,
         cancel=NS(is_set=lambda: False),
+        note_extract_stage=lambda stage: None,
     )
     snapshots, closure = service.extract_local_direct_callees(
         context, root, {"profile": {}, "registry": object()}
@@ -77,7 +78,12 @@ def test_foreign_or_nonexact_callee_stays_a_boundary(flow, monkeypatch):
         snapshot=snap,
         calls=(NS(call=NS(callee_ea=base + 0x200), instruction_ea=base + 0x150),),
     )
-    context = NS(check=lambda: None, deadline=None, cancel=NS(is_set=lambda: False))
+    context = NS(
+        check=lambda: None,
+        deadline=None,
+        cancel=NS(is_set=lambda: False),
+        note_extract_stage=lambda stage: None,
+    )
     monkeypatch.setitem(
         sys.modules, "ida_funcs", NS(get_func=lambda ea: NS(start_ea=ea + 1))
     )
@@ -142,7 +148,12 @@ def test_finite_indirect_extracts_every_exact_candidate_or_keeps_unknown(flow, m
         "extract_snapshot",
         lambda ea, **_kw: extracted.append(ea) or NS(snapshot=source),
     )
-    ctx = NS(check=lambda: None, deadline=None, cancel=NS(is_set=lambda: False))
+    ctx = NS(
+        check=lambda: None,
+        deadline=None,
+        cancel=NS(is_set=lambda: False),
+        note_extract_stage=lambda stage: None,
+    )
     snapshots, closure = service.extract_local_direct_callees(
         ctx, root, {"profile": {}, "registry": object()}
     )

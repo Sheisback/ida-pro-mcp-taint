@@ -15,6 +15,8 @@ def extract_local_direct_callees(ctx, root: extractor.ExtractedFunction, info):
     """Read exact direct or completely finite indirect local function entries."""
     import ida_funcs
 
+    ctx.note_extract_stage("derived_closure")
+
     result = {
         "mode": "derived_static_unreviewed",
         "max_depth": 1,

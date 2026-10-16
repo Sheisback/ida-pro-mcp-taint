@@ -28,6 +28,7 @@ from ida_pro_mcp.flow_core.profile_registry import (
     REGISTRY_DIGEST,
     ProfileRegistry,
 )
+from ida_pro_mcp.flow_core.runtime import JobCancelled, JobDeadline
 from ida_pro_mcp.flow_core.serialization import ContractError, Model, digest
 from ida_pro_mcp.flow_core.states import ByteRange, StorageLocation, require
 
@@ -234,11 +235,15 @@ def extract_snapshot(
     deadline=None,
     cancelled=lambda: False,
     registry: ProfileRegistry = REGISTRY,
+    report_stage=lambda stage: None,
 ):
     """Main-thread SDK scope returning immutable, roundtrippable pure Snapshot.
 
     Deadlines poll before/after generation and during serialization; native
     generation is not forcibly preempted. Unsupported inputs remain diagnostic.
+    Cooperative cancel and deadline surface as the job signals so the runtime
+    terminal state matches the runtime-boundary check. report_stage receives
+    the allowlisted sub-stage name as extraction proceeds.
     """
     import ida_pro
 
@@ -251,9 +256,13 @@ def extract_snapshot(
     import ida_kernwin
     import ida_nalt
 
+    report_stage("preflight")
+
     def check():
-        if cancelled() or (deadline is not None and time.monotonic() >= deadline):
-            raise InterruptedError("Cooperative extraction cancellation")
+        if cancelled():
+            raise JobCancelled()
+        if deadline is not None and time.monotonic() >= deadline:
+            raise JobDeadline()
 
     check()
     if not namespace.strip() or not function_key.strip():
@@ -289,6 +298,7 @@ def extract_snapshot(
     if not hx.init_hexrays_plugin():
         raise RuntimeError("Hex-Rays initialization unavailable")
     failure = hx.hexrays_failure_t()
+    report_stage("gen_microcode")
     mba = hx.gen_microcode(
         hx.mba_ranges_t(function),
         failure,
@@ -303,6 +313,7 @@ def extract_snapshot(
     if mba.maturity != hx.MMAT_CALLS:
         raise ContractError("Unexpected native maturity")
     check()
+    report_stage("microcode_walk")
     diagnostics = [
         Diagnostic(
             "native_origins_incomplete",
@@ -343,7 +354,9 @@ def extract_snapshot(
         details = ida_typeinf.func_type_data_t()
         return details if tif.get_func_details(details) else None
 
+    report_stage("typed_argloc")
     type_details = typed_function_details()
+    report_stage("microcode_walk")
 
     def mapped_register(location, size):
         if not (0 < size <= 8 and location.is_reg1()):
@@ -678,7 +691,9 @@ def extract_snapshot(
             rows.append(instruction(ins, len(rows), index))
             ins = ins.next
         if index == 0:
+            report_stage("typed_argloc")
             rows.extend(typed_argument_markers(len(rows)))
+            report_stage("microcode_walk")
         if (
             index == mba.qty - 1
             and block.type == hx.BLT_STOP
@@ -688,7 +703,9 @@ def extract_snapshot(
             # MMAT_CALLS has no native m_ret here. A verified IDB type can
             # identify a scalar return location; a typed non-return stays an
             # unresolved terminal rather than masquerading as normal Exit.
+            report_stage("typed_argloc")
             returned = typed_return_operand()
+            report_stage("microcode_walk")
             noreturn = type_details is not None and type_details.is_noret()
             if noreturn:
                 opcode = "m_noreturn"
@@ -733,9 +750,11 @@ def extract_snapshot(
         profile["format_id"],
         profile["platform_tag"],
     )
+    report_stage("input_digest")
     binary = hashlib.sha256(
         Path(ida_nalt.get_input_file_path()).read_bytes()
     ).hexdigest()
+    report_stage("snapshot_serialize")
     snapshot = make_snapshot(
         pure,
         env,

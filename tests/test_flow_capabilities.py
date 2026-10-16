@@ -747,7 +747,9 @@ def test_runtime_extraction_rechecks_profile_and_passes_ephemeral_registry(
         "summary_digest": service.reviewed_catalog(info).catalog_digest,
     }
     context = types.SimpleNamespace(
-        deadline=None, cancel=types.SimpleNamespace(is_set=lambda: False)
+        deadline=None,
+        cancel=types.SimpleNamespace(is_set=lambda: False),
+        note_extract_stage=lambda stage: None,
     )
     extracted, returned = service._extract(context, request)
     assert extracted is not None and returned is request
@@ -825,7 +827,9 @@ def test_runtime_extraction_rehydrates_explicit_selection(flow, monkeypatch):
         "routing": info["routing"],
     }
     context = types.SimpleNamespace(
-        deadline=None, cancel=types.SimpleNamespace(is_set=lambda: False)
+        deadline=None,
+        cancel=types.SimpleNamespace(is_set=lambda: False),
+        note_extract_stage=lambda stage: None,
     )
     service._extract(context, request)
     assert len(derived) == 1 and derived[0][0] is context

@@ -140,7 +140,27 @@ paths (implicit analysis, store proofs, pointee binding, explanation)
 replay with default windows and fail closed on tuned snapshots; keep
 defaults when those paths must run, or reassemble first for graph reads.
 Job `progress` carries `phase_times_ms` (`setup_ms`, `extract_ms`,
-`analyze_ms`, plus `failed_phase` on failure) for timeout triage.
+`analyze_ms`), plus `failed_phase` on failure, for timeout triage.
+
+On failed, cancelled, or interrupted jobs, best-effort progress also records
+the last allowlisted `extract_stage` and `extract_elapsed_ms` (time since
+extraction started). Stages distinguish `preflight`, `gen_microcode`,
+`microcode_walk`, `typed_argloc`, `input_digest`, `snapshot_serialize`,
+`callee_closure`, and `derived_closure`. A later analysis failure may retain
+the last extraction stage; use `error.phase` to identify the failing phase.
+Progress is diagnostic, not a completion or support verdict.
+
+Cooperative extractor cancellation terminates as `cancelled`; its deadline
+terminates as `interrupted` with `deadline_exceeded`. Native microcode
+generation is not forcibly preempted. Other failures remain `failed`, with
+static reasons such as `ida_tool_timeout`, `ida_request_cancelled`,
+`ida_pump_busy`, `sdk_shape_mismatch`, `input_digest_unavailable`,
+`snapshot_serialization_failed`, or `derived_closure_failed`. Recognized
+exception subclasses retain their family's classification. Unclassified
+failures remain `internal_error`; a reason identifies a failure category,
+not proof of its underlying cause. Error/progress diagnostics persist only
+allowlisted type/reason names, never arbitrary exception messages/class names,
+host paths, or native EAs.
 
 ### Explicit pointee byte sources (experimental)
 

@@ -57,37 +57,136 @@ _RUNTIME_REASONS = {
     "IDA image-base API unavailable": "image_base_unavailable",
 }
 
+_EXTRACT_STAGES = frozenset(
+    {
+        "preflight",
+        "gen_microcode",
+        "microcode_walk",
+        "typed_argloc",
+        "input_digest",
+        "snapshot_serialize",
+        "callee_closure",
+        "derived_closure",
+    }
+)
+_SNAPSHOT_STAGES = frozenset({"snapshot_serialize"})
+_CLOSURE_STAGES = frozenset({"callee_closure", "derived_closure"})
+_INPUT_DIGEST_STAGES = frozenset({"input_digest"})
 
-def _failure_error(exc: BaseException, phase: str) -> dict[str, str]:
+# IDA-layer exception identities as (module, qualname) pairs. Matched by MRO
+# walk so this layer needs no ida_mcp import and subclassing still classifies.
+# Identities only select static allowlisted reasons; they are never serialized.
+_IDA_TIMEOUT_NAMES = frozenset({("ida_pro_mcp.ida_mcp.sync", "IDASyncError")})
+_IDA_CANCELLED_NAMES = frozenset(
+    {
+        ("ida_pro_mcp.ida_mcp.zeromcp.jsonrpc", "RequestCancelledError"),
+        ("ida_pro_mcp.ida_mcp.sync", "CancelledError"),
+    }
+)
+_IDA_PUMP_BUSY_NAMES = frozenset(
+    {
+        ("ida_pro_mcp.ida_mcp.mainthread", "PumpBusyError"),
+        ("ida_pro_mcp.ida_mcp.sync", "IDAError"),
+        ("ida_pro_mcp.ida_mcp.zeromcp.mcp", "McpToolError"),
+    }
+)
+_TOOL_TIMEOUT_PREFIX = "Tool timed out after "
+_PUMP_BUSY_MARK = "main thread is busy"
+
+
+def _stage_default_reason(stage):
+    if stage in _SNAPSHOT_STAGES:
+        return "snapshot_serialization_failed"
+    if stage in _CLOSURE_STAGES:
+        return "derived_closure_failed"
+    return None
+
+
+def _failure_error(
+    exc: BaseException, phase: str, *, stage=None
+) -> dict[str, str]:
     """Only static allowlisted fields cross the durable job boundary.
 
     Neither arbitrary exception messages, class names, native EAs, nor host
     paths are serialized. An unclassified failure stays explicitly internal.
+    Classification is isinstance-based: subclasses keep their family's typed
+    reason instead of collapsing to internal_error. The extract stage only
+    refines extract-phase failures; allowlisted reasons always win over it.
     """
     phase = phase if phase in {"setup", "extract", "analyze", "commit"} else "unknown"
+    if type(stage) is not str or stage not in _EXTRACT_STAGES or phase != "extract":
+        stage = None
     message = exc.args[0] if len(exc.args) == 1 and type(exc.args[0]) is str else None
-    if type(exc) is ContractError:
-        kind = "ContractError"
-        reason = _CONTRACT_REASONS.get(message or "", "contract_rejected")
-    elif type(exc) is PersistenceError:
+    names = {(cls.__module__, cls.__qualname__) for cls in type(exc).__mro__}
+    if names & _IDA_CANCELLED_NAMES:
+        kind = "InternalError"
+        reason = "ida_request_cancelled"
+    elif names & _IDA_TIMEOUT_NAMES:
+        kind = "InternalError"
+        reason = (
+            "ida_tool_timeout"
+            if message is not None and message.startswith(_TOOL_TIMEOUT_PREFIX)
+            else "internal_error"
+        )
+    elif names & _IDA_PUMP_BUSY_NAMES:
+        kind = "InternalError"
+        reason = (
+            "ida_pump_busy"
+            if ("ida_pro_mcp.ida_mcp.mainthread", "PumpBusyError") in names
+            or (message is not None and _PUMP_BUSY_MARK in message)
+            else "internal_error"
+        )
+        if reason == "ida_pump_busy" and isinstance(exc, RuntimeError):
+            kind = "RuntimeError"
+    elif isinstance(exc, PersistenceError):
         kind = "PersistenceError"
         reason = _PERSISTENCE_REASONS.get(message or "", "storage_boundary")
-    elif type(exc) is RuntimeError:
-        kind = "RuntimeError"
-        reason = (
-            "microcode_generation_failed"
-            if message is not None and message.startswith("gen_microcode failed:")
-            else _RUNTIME_REASONS.get(message or "", "runtime_boundary")
-        )
-    elif type(exc) is ValueError:
-        kind = "ValueError"
-        reason = "invalid_handler_value"
-    elif type(exc) is TimeoutError:
+    elif isinstance(exc, ContractError):
+        kind = "ContractError"
+        reason = _CONTRACT_REASONS.get(message or "")
+        if reason is None:
+            reason = _stage_default_reason(stage)
+            if reason is None:
+                reason = (
+                    "contract_subclass"
+                    if type(exc) is not ContractError
+                    else "contract_rejected"
+                )
+    elif isinstance(exc, TimeoutError):
         kind = "TimeoutError"
         reason = "handler_timeout"
+    elif isinstance(exc, InterruptedError):
+        kind = "InternalError"
+        reason = "extraction_cancelled"
+    elif isinstance(exc, RuntimeError):
+        kind = "RuntimeError"
+        if message is not None and message.startswith("gen_microcode failed:"):
+            reason = "microcode_generation_failed"
+        else:
+            reason = _RUNTIME_REASONS.get(message or "")
+            if reason is None:
+                reason = _stage_default_reason(stage) or "runtime_boundary"
+    elif isinstance(exc, ValueError):
+        staged = _stage_default_reason(stage)
+        kind = "ValueError"
+        reason = staged if staged is not None else "invalid_handler_value"
+    elif isinstance(exc, OSError):
+        kind = "InternalError"
+        if stage in _INPUT_DIGEST_STAGES:
+            reason = "input_digest_unavailable"
+        else:
+            reason = _stage_default_reason(stage) or "internal_error"
+    elif (
+        isinstance(exc, (AttributeError, TypeError, LookupError))
+        and stage is not None
+        and stage not in _SNAPSHOT_STAGES
+        and stage not in _CLOSURE_STAGES
+    ):
+        kind = "InternalError"
+        reason = "sdk_shape_mismatch"
     else:
         kind = "InternalError"
-        reason = "internal_error"
+        reason = _stage_default_reason(stage) or "internal_error"
     return {
         "code": "handler_failed",
         "phase": phase,
@@ -112,10 +211,16 @@ class JobContext:
         self.clock = clock
         self._report = report
         self.budget = MappingProxyType({})
+        self._extract_stage = None
 
     def report(self, progress, checkpoint=None):
         self.check()
         return self._report(progress, checkpoint)
+
+    def note_extract_stage(self, stage):
+        # Instrumentation only: never raises, never blocks. The runtime
+        # validates against the stage allowlist before recording or routing.
+        self._extract_stage = stage
 
     def check(self):
         if self.cancel.is_set():
@@ -314,6 +419,7 @@ class Runtime:
         phase = "setup"
         spans: dict[str, int] = {}
         mark = self.clock()
+        extract_start = None
         context = JobContext(
             cancel,
             deadline,
@@ -333,10 +439,21 @@ class Runtime:
             # Best-effort diagnostics: never block terminal completion on
             # a contended store.
             try:
+                progress = {
+                    "phase_times_ms": dict(spans),
+                    "failed_phase": phase,
+                }
+                stage = getattr(context, "_extract_stage", None)
+                if type(stage) is str and stage in _EXTRACT_STAGES:
+                    progress["extract_stage"] = stage
+                if extract_start is not None:
+                    progress["extract_elapsed_ms"] = int(
+                        round((self.clock() - extract_start) * 1000)
+                    )
                 self.store.checkpoint_job(
                     identifier,
                     self.owner,
-                    {"phase_times_ms": dict(spans), "failed_phase": phase},
+                    progress,
                     _busy_timeout_ms=0,
                 )
             except PersistenceError:
@@ -354,6 +471,7 @@ class Runtime:
                 deadline=time.time() + max(0, deadline - self.clock()),
             )
             phase = "extract"
+            extract_start = self.clock()
             record("setup_ms")
             extracted = handler.extract(context, row["input"])
             context.check()
@@ -399,10 +517,13 @@ class Runtime:
             )
         except BaseException as exc:
             publish_spans()
+            stage = getattr(context, "_extract_stage", None)
+            if type(stage) is not str or stage not in _EXTRACT_STAGES:
+                stage = None
             self._finish(
                 identifier,
                 "failed",
-                _failure_error(exc, phase),
+                _failure_error(exc, phase, stage=stage),
             )
         finally:
             done.set()

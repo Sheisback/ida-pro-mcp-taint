@@ -154,7 +154,10 @@ def test_public_runtime_composes_reviewed_calls_and_retains_remainders(
         summary_digest=catalog.catalog_digest,
     )
     ctx = SimpleNamespace(
-        deadline=None, cancel=SimpleNamespace(is_set=lambda: False), check=lambda: None
+        deadline=None,
+        cancel=SimpleNamespace(is_set=lambda: False),
+        check=lambda: None,
+        note_extract_stage=lambda stage: None,
     )
     result = service._analyze(ctx, service._extract(ctx, request))
     raw = artifacts[result["call_composition_artifact"]]
@@ -231,7 +234,10 @@ def test_callee_closure_fails_closed_at_budgets_and_changed_body(
         hexrays=identity.environment.hexrays_build,
     )
     ctx = SimpleNamespace(
-        deadline=None, cancel=SimpleNamespace(is_set=lambda: False), check=lambda: None
+        deadline=None,
+        cancel=SimpleNamespace(is_set=lambda: False),
+        check=lambda: None,
+        note_extract_stage=lambda stage: None,
     )
     kwargs = {}
     if limit == "depth":
@@ -325,7 +331,9 @@ def test_closure_cancellation_prevents_callee_extraction(flow, monkeypatch):
     def cancelled():
         raise InterruptedError("cancelled")
 
-    ctx = SimpleNamespace(check=cancelled)
+    ctx = SimpleNamespace(
+        check=cancelled, note_extract_stage=lambda stage: None
+    )
     with pytest.raises(InterruptedError, match="cancelled"):
         service.extract_callee_closure(ctx, root, info)
     assert visited == []
@@ -902,7 +910,10 @@ def test_snapshot_result_echoes_refine_selector_inputs(flow, monkeypatch, arch):
         summary_digest=catalog.catalog_digest,
     )
     ctx = SimpleNamespace(
-        deadline=None, cancel=SimpleNamespace(is_set=lambda: False), check=lambda: None
+        deadline=None,
+        cancel=SimpleNamespace(is_set=lambda: False),
+        check=lambda: None,
+        note_extract_stage=lambda stage: None,
     )
     result = service._analyze(ctx, service._extract(ctx, request))
     snap = artifacts[result["snapshot_artifact"]]

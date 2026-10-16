@@ -52,6 +52,7 @@ def extract_callee_closure(
     """
     if max_depth < 0 or max_functions < 1:
         raise ContractError("Invalid callee closure budget")
+    ctx.note_extract_stage("callee_closure")
     fixture = runtime_fixture(info)
     result = {
         "max_depth": max_depth,

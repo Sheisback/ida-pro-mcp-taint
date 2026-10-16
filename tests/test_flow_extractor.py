@@ -27,6 +27,7 @@ from ida_pro_mcp.flow_core.summaries import (
     SummaryIdentity,
 )
 from ida_pro_mcp.flow_core.states import StorageLocation
+from ida_pro_mcp.flow_core.runtime import JobCancelled, JobDeadline
 
 ROOT = Path(__file__).resolve().parents[1]
 PATH = ROOT / "src/ida_pro_mcp/ida_mcp/flow/extractor.py"
@@ -273,7 +274,7 @@ def test_unknown_operands_remain_opaque_and_no_width_is_invented(monkeypatch, tm
         "unsupported_operand",
     }
     assert Snapshot.from_json(canonical_json(result)) == result
-    with pytest.raises(InterruptedError):
+    with pytest.raises(JobCancelled):
         adapter.extract_snapshot(
             0x100,
             namespace="owner",
@@ -1354,3 +1355,41 @@ def test_negative_pe_receipt_and_build_provenance():
         adapter.anchor_profile(
             read("p0_inventory.json"), "X64-LE", "darwin-x86_64-sysv-derived", []
         )
+
+
+def test_cooperative_deadline_raises_job_deadline(monkeypatch, tmp_path):
+    profile = fake_sdk(monkeypatch, tmp_path)
+    with pytest.raises(JobDeadline):
+        adapter.extract_snapshot(
+            0x100,
+            namespace="owner",
+            function_key="fixture-0",
+            profile=profile,
+            deadline=0.0,
+        )
+
+
+def test_extract_reports_ordered_stage_sequence(monkeypatch, tmp_path):
+    profile = fake_sdk(monkeypatch, tmp_path)
+    stages = []
+    adapter.extract_snapshot(
+        0x100,
+        namespace="owner",
+        function_key="fixture-0",
+        profile=profile,
+        report_stage=stages.append,
+    )
+    expected = (
+        "preflight",
+        "gen_microcode",
+        "microcode_walk",
+        "input_digest",
+        "snapshot_serialize",
+    )
+    assert stages[0] == "preflight"
+    assert stages[-1] == "snapshot_serialize"
+    for stage in expected:
+        assert stage in stages
+    assert [stages.index(stage) for stage in expected] == sorted(
+        stages.index(stage) for stage in expected
+    )

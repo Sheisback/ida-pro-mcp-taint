@@ -355,6 +355,7 @@ def _extract(ctx, request):
             cancelled=ctx.cancel.is_set,
             include_calls=True,
             registry=before["registry"],
+            report_stage=ctx.note_extract_stage,
         ),
     )
     if request.get("wire_version") == "flow-wire/2":
