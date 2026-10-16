@@ -32,13 +32,13 @@ included in the Python wheel.
 
 ```sh
 set -eu
-FLOW_REF=e0202f6469d382a5798f136429a991da9d946c01
+FLOW_REF=67394b16105e5e6fb1c3804343897d2b2a77f01d
 PROFILE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/ida-pro-mcp-taint"
 mkdir -p "$PROFILE_DIR"
 curl -fsSL \
   "https://raw.githubusercontent.com/Sheisback/ida-pro-mcp-taint/$FLOW_REF/profiles/flow-readonly.txt" \
   -o "$PROFILE_DIR/flow-readonly.txt"
-printf 'e742a5dfb343be1cd3fc2aa52ea111c08738ea120a82827ed7766b59a66e86f3  %s\n' \
+printf '1eeeff49240983023a3c8b2f340ea3830d3c5493bdf9113ce871ef04f7313b21  %s\n' \
   "$PROFILE_DIR/flow-readonly.txt" | shasum -a 256 -c -
 
 codex mcp add ida-pro-mcp-taint -- \
@@ -48,10 +48,13 @@ codex mcp list
 ```
 
 This pin includes pointee/Store evidence, lossless graph export, the angr
-sidecar, and the reviewed refinement/wire fixes. The matching profile exposes
+sidecar, the reviewed refinement/wire fixes, and typed extraction-failure and
+cancellation diagnostics. The matching profile exposes
 these tools; an older profile can hide tools even when the package is newer.
-The local verification record is [the review-fix report](flow-review-fixes-2026-09-26.ko.txt),
-not a public release certification.
+The earlier refinement/wire verification is [the review-fix report](flow-review-fixes-2026-09-26.ko.txt).
+The extraction-failure update has SDK-free regressions and regenerated licensed
+IDA 9.3 receipts, including the [public API smoke](../tests/flow_fixtures/manifests/public_api_smoke.json).
+These are scoped development checks, not public release certification.
 
 The opt-in angr path tier (`flow_refine_path_proof` with `symbolic_angr`)
 runs in a sidecar under a separately configured interpreter
