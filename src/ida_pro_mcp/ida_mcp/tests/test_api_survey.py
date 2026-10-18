@@ -25,7 +25,41 @@ from ..api_survey import survey_binary
 def test_survey_binary_returns_required_keys():
     """survey_binary returns all required top-level keys."""
     result = survey_binary()
-    assert_has_keys(result, "metadata", "statistics", "segments", "entrypoints")
+    assert_has_keys(result, "metadata", "statistics", "segments", "entrypoints", "pagination")
+
+
+@test()
+def test_survey_binary_pages_large_collections_without_losing_totals():
+    """Survey collection pages remain resumable instead of relying on output truncation."""
+    first = survey_binary(detail_level="standard", offset=0, count=1)
+    pagination = first["pagination"]
+    assert_has_keys(pagination, "offset", "count", "next_offset", "collections")
+    assert pagination["offset"] == 0
+    assert pagination["count"] == 1
+    assert len(first["segments"]) <= 1
+    assert len(first["entrypoints"]) <= 1
+    assert sum(len(items) for items in first["imports_by_category"].values()) <= 1
+    assert len(first["call_graph_summary"]["root_functions"]) <= 1
+    for name, state in pagination["collections"].items():
+        assert_has_keys(state, "total", "returned", "next_offset")
+        assert state["returned"] <= 1
+        assert state["total"] >= state["returned"]
+        if state["next_offset"] is not None:
+            assert state["next_offset"] == 1
+    if pagination["next_offset"] is not None:
+        second = survey_binary(detail_level="standard", offset=pagination["next_offset"], count=1)
+        assert second["pagination"]["offset"] == 1
+
+
+@test()
+def test_survey_binary_rejects_invalid_page_requests():
+    """One response envelope is bounded without imposing an aggregate analysis-page limit."""
+    for offset, count in [(-1, 1), (0, 0), (0, 101)]:
+        try:
+            survey_binary(offset=offset, count=count)
+        except ValueError:
+            continue
+        raise AssertionError(f"invalid survey page accepted: offset={offset}, count={count}")
 
 
 @test()

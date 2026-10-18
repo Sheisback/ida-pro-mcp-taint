@@ -84,6 +84,19 @@ class SurveyCallGraphSummary(TypedDict):
     leaf_functions_count: int
 
 
+class SurveyPageState(TypedDict):
+    total: int
+    returned: int
+    next_offset: int | None
+
+
+class SurveyPagination(TypedDict):
+    offset: int
+    count: int
+    next_offset: int | None
+    collections: dict[str, SurveyPageState]
+
+
 class SurveyBinaryResult(TypedDict, total=False):
     metadata: SurveyMetadata
     statistics: SurveyStatistics
@@ -93,6 +106,7 @@ class SurveyBinaryResult(TypedDict, total=False):
     interesting_functions: list[SurveyInterestingFunction]
     imports_by_category: SurveyImportsByCategory
     call_graph_summary: SurveyCallGraphSummary
+    pagination: SurveyPagination
     _note: str
 
 # Max functions to iterate for xref counting on large binaries.
@@ -103,6 +117,11 @@ _MAX_STRING_ITER = 5_000
 
 # Max xrefs to materialize per string.
 _MAX_XREFS_PER_STRING = 200
+
+# One survey response is a discovery page, not an analysis-progress bound.
+# Callers may continue with the returned next_offset until it is None.
+_SURVEY_PAGE_DEFAULT_ITEMS = 25
+_SURVEY_PAGE_MAX_ITEMS = 100
 
 # Import category rules: keyword -> category name.
 # Order matters: first match wins.
@@ -316,7 +335,9 @@ def _build_interesting_functions(func_eas: list[int], truncated: bool) -> list[d
     return result
 
 
-def _build_imports_by_category() -> dict[str, list[dict]]:
+def _build_imports_by_category(
+    offset: int, count: int
+) -> tuple[dict[str, list[dict]], int]:
     import ida_nalt
 
     categories: dict[str, list[dict]] = {
@@ -328,6 +349,7 @@ def _build_imports_by_category() -> dict[str, list[dict]]:
         "other": [],
     }
 
+    imports: list[tuple[int, str, str]] = []
     nimps = ida_nalt.get_import_module_qty()
     for i in range(nimps):
         module_name = ida_nalt.get_import_module_name(i) or "<unnamed>"
@@ -341,18 +363,22 @@ def _build_imports_by_category() -> dict[str, list[dict]]:
 
         ida_nalt.enum_import_names(i, imp_cb)
 
-        for ea, name in collected:
-            cat = _classify_import(name)
-            categories[cat].append({
-                "addr": hex(ea),
-                "name": name,
-                "module": module_name,
-            })
+        imports.extend((ea, name, module_name) for ea, name in collected)
 
-    return categories
+    for ea, name, module_name in imports[offset : offset + count]:
+        cat = _classify_import(name)
+        categories[cat].append({
+            "addr": hex(ea),
+            "name": name,
+            "module": module_name,
+        })
+
+    return categories, len(imports)
 
 
-def _build_call_graph_summary(func_eas: list[int]) -> dict:
+def _build_call_graph_summary(
+    func_eas: list[int], offset: int, count: int
+) -> tuple[dict, int]:
     import idaapi
     import idautils
 
@@ -386,8 +412,32 @@ def _build_call_graph_summary(func_eas: list[int]) -> dict:
     return {
         "total_edges": total_edges,
         "max_depth_estimate": None,  # would require full DFS; omitted for performance
-        "root_functions": root_functions[:100],  # cap to avoid massive output
+        "root_functions": root_functions[offset : offset + count],
         "leaf_functions_count": leaf_count,
+    }, len(root_functions)
+
+
+def _validate_survey_page(offset: int, count: int) -> None:
+    if isinstance(offset, bool) or not isinstance(offset, int) or offset < 0:
+        raise ValueError("survey offset must be a non-negative integer")
+    if (
+        isinstance(count, bool)
+        or not isinstance(count, int)
+        or count < 1
+        or count > _SURVEY_PAGE_MAX_ITEMS
+    ):
+        raise ValueError(
+            f"survey count must be between 1 and {_SURVEY_PAGE_MAX_ITEMS}"
+        )
+
+
+def _page_state(total: int, offset: int, count: int) -> SurveyPageState:
+    returned = max(0, min(count, total - offset))
+    next_offset = offset + returned if offset + returned < total else None
+    return {
+        "total": total,
+        "returned": returned,
+        "next_offset": next_offset,
     }
 
 
@@ -397,6 +447,11 @@ def _build_call_graph_summary(func_eas: list[int]) -> dict:
 @tool_timeout(120.0)
 def survey_binary(
     detail_level: Annotated[str, "Detail level: 'standard' or 'minimal'"] = "standard",
+    offset: Annotated[int, "Shared collection-page offset (default: 0)"] = 0,
+    count: Annotated[
+        int,
+        "Rows per collection page; continue with pagination.next_offset",
+    ] = _SURVEY_PAGE_DEFAULT_ITEMS,
 ) -> SurveyBinaryResult:
     """Get a compact overview of the binary in one call. Returns file metadata,
     segment layout, entry points, statistics, top 15 strings and functions ranked
@@ -406,6 +461,8 @@ def survey_binary(
     separately for triage — this returns all of that. Use detail_level='minimal'
     for binaries with >10k functions."""
     import idautils
+
+    _validate_survey_page(offset, count)
 
     minimal = detail_level == "minimal"
 
@@ -420,20 +477,41 @@ def survey_binary(
     strings = _get_strings_cache()
     segments = _build_segments()
 
+    entrypoints = _build_entrypoints()
+    collection_states: dict[str, SurveyPageState] = {
+        "segments": _page_state(len(segments), offset, count),
+        "entrypoints": _page_state(len(entrypoints), offset, count),
+    }
     result: dict = {
         "metadata": _build_metadata(),
         "statistics": _build_statistics(
             all_func_eas, len(strings), len(segments)
         ),
-        "segments": segments,
-        "entrypoints": _build_entrypoints(),
+        "segments": segments[offset : offset + count],
+        "entrypoints": entrypoints[offset : offset + count],
     }
 
     if not minimal:
         result["interesting_strings"] = _build_interesting_strings()
         result["interesting_functions"] = _build_interesting_functions(func_eas, truncated)
-        result["imports_by_category"] = _build_imports_by_category()
-        result["call_graph_summary"] = _build_call_graph_summary(func_eas)
+        imports_by_category, import_total = _build_imports_by_category(offset, count)
+        call_graph_summary, root_total = _build_call_graph_summary(func_eas, offset, count)
+        result["imports_by_category"] = imports_by_category
+        result["call_graph_summary"] = call_graph_summary
+        collection_states["imports"] = _page_state(import_total, offset, count)
+        collection_states["root_functions"] = _page_state(root_total, offset, count)
+
+    next_offsets = [
+        state["next_offset"]
+        for state in collection_states.values()
+        if state["next_offset"] is not None
+    ]
+    result["pagination"] = {
+        "offset": offset,
+        "count": count,
+        "next_offset": max(next_offsets) if next_offsets else None,
+        "collections": collection_states,
+    }
 
     if truncated:
         result["_note"] = (
