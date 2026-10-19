@@ -205,11 +205,15 @@ class Handler:
 
 
 class JobContext:
-    def __init__(self, cancel, deadline, clock, report):
+    def __init__(self, cancel, deadline, clock, report, runtime=None):
         self.cancel = cancel
         self.deadline = deadline
         self.clock = clock
         self._report = report
+        # The Runtime that admitted this job is its durable Store authority.
+        # Worker callbacks must reuse it instead of re-entering the global
+        # database-switch admission gate from parallel analyze threads.
+        self.runtime = runtime
         self.budget = MappingProxyType({})
         self._extract_stage = None
 
@@ -427,6 +431,7 @@ class Runtime:
             lambda progress, checkpoint: self.store.checkpoint_job(
                 identifier, self.owner, progress, checkpoint
             ),
+            self,
         )
 
         def record(span):

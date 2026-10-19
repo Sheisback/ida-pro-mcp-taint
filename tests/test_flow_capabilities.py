@@ -497,6 +497,28 @@ def test_create_publishes_selection_only_after_runtime_admission(flow, monkeypat
     assert events == ["persist", "submit"]
 
 
+def test_job_bound_runtime_does_not_reenter_database_admission(flow, monkeypatch):
+    module, _ = flow
+    service = module._service()
+    fingerprint = "sha256-v1:" + "a" * 64
+    scope_digest = "sha256-v1:" + "b" * 64
+    bound = types.SimpleNamespace(
+        store=types.SimpleNamespace(
+            scope=types.SimpleNamespace(scope_digest=scope_digest)
+        )
+    )
+    monkeypatch.setattr(service, "_fingerprint", lambda _info: fingerprint)
+    monkeypatch.setattr(
+        service,
+        "get_runtime",
+        lambda _info: (_ for _ in ()).throw(
+            AssertionError("job analysis re-entered database admission")
+        ),
+    )
+    request = {"fingerprint": fingerprint, "scope_digest": scope_digest}
+    assert service._request_runtime(request, {"test": True}, runtime=bound) is bound
+
+
 def test_durable_selection_restores_after_restart_and_fences_foreign_database(
     flow, monkeypatch, tmp_path
 ):

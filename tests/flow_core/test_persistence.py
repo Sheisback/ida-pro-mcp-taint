@@ -711,6 +711,30 @@ def test_runtime_failure_null_result_budget_and_owner_lease(tmp_path):
     store.close()
 
 
+def test_parallel_jobs_receive_the_exact_runtime_that_owns_their_store(tmp_path):
+    store, _, _ = setup(tmp_path)
+    barrier = threading.Barrier(5)
+
+    def analyze(ctx, value):
+        barrier.wait(timeout=5)
+        assert ctx.runtime is runtime
+        artifact = ctx.runtime.store.put_artifact("analysis", {"value": value})
+        return {"artifact": artifact}
+
+    runtime = Runtime(
+        store, {"bound": Handler(lambda ctx, value: value, analyze)}
+    )
+    jobs = [runtime.submit("bound", index, f"bound-{index}") for index in range(5)]
+    assert all(runtime.wait(job) for job in jobs)
+    assert [store.job(job)["state"] for job in jobs] == ["complete"] * 5
+    assert [
+        store.artifact(store.job(job)["result"]["artifact"])["value"]
+        for job in jobs
+    ] == list(range(5))
+    runtime.shutdown()
+    store.close()
+
+
 def test_runtime_failure_reasons_are_phase_bound_allowlisted_and_path_free(tmp_path):
     store, graph_value, _ = setup(tmp_path)
 

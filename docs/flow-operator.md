@@ -302,6 +302,10 @@ failure, stale context, or SSA budget). Unclassified failures say
 Exception messages, native EAs, and host paths are never copied into the
 durable error envelope. A failed extraction may have no node/evidence ID to
 cite—do not invent one or reinterpret the job failure as a clean taint fact.
+Parallel jobs admitted for the same database reuse their already-bound Runtime
+and serialize Store publication internally. `database_admission_busy` is a
+submission/database-switch outcome; it must not reappear as an analyze-phase
+`storage_boundary` merely because another admitted job is publishing artifacts.
 
 For typed functions, a normal scalar `Return` is synthesized only from an
 exact IDB return argloc. IDA 9.3 may name an x86_64 one-byte location AL/DIL

@@ -414,6 +414,14 @@ busy state still uses valid leases so an expired callback cannot keep a worker
 alive indefinitely. Closing is signaled by an Event without waiting for the
 admission lock; error paths release the fence.
 
+An admitted job's `JobContext` also pins the exact owning `Runtime` and Store.
+Analyze callbacks reuse that authority instead of calling the global runtime
+factory again. This keeps the admission lock a database-switch/submission fence,
+not a per-artifact write lock: parallel snapshot jobs serialize their durable
+writes through the Store RLock without spuriously failing one another as
+`database_admission_busy`/`handler_failed`. The in-flight job count still blocks
+database replacement until every bound callback has stopped.
+
 Lock order is admission → short registry/runtime locks → Store RLock → SQLite.
 Runtime.submit does not hold its runtime mutex during SQLite publication. Store
 operations never call back into admission/runtime locks. Nonblocking shutdown

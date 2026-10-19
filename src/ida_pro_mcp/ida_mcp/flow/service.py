@@ -499,7 +499,8 @@ def _analyze(ctx, extracted):
     ctx.check()
     info = _context_for_request(request, synchronized=True)
     require(_fingerprint(info) == request["fingerprint"], "stale_database")
-    current = get_runtime(info)
+    bound_runtime = getattr(ctx, "runtime", None)
+    current = bound_runtime if bound_runtime is not None else get_runtime(info)
     catalog = reviewed_catalog(info)
     require(current.store.scope.fingerprint == request["fingerprint"], "stale_database")
     require(
@@ -833,15 +834,22 @@ def _analyze(ctx, extracted):
     return response
 
 
-def _request_runtime(request, info=None):
+def _request_runtime(request, info=None, *, runtime=None):
     info = info or _context_for_request(request, synchronized=True)
     require(_fingerprint(info) == request["fingerprint"], "stale_database")
-    current = get_runtime(info)
+    current = runtime if runtime is not None else get_runtime(info)
     require(
         current.store.scope.scope_digest == request["scope_digest"],
         "stale_context",
     )
     return current
+
+
+def _job_runtime(ctx, request):
+    bound = getattr(ctx, "runtime", None)
+    if bound is None:
+        return _request_runtime(request)
+    return _request_runtime(request, runtime=bound)
 
 
 @idasync
@@ -892,7 +900,7 @@ def _analyze_implicit(ctx, extracted):
         program, seeds, policy, memory_model=memory_model, checkpoint=ctx.check
     )
     ctx.check()
-    current = _request_runtime(request)
+    current = _job_runtime(ctx, request)
     plan_artifact = current.store.put_artifact("analysis", memory_model.plan.to_data())
     result_artifact = current.store.put_artifact(
         "analysis", memory_model.result.to_data()
@@ -1011,7 +1019,7 @@ def _analyze_store_proof(ctx, extracted):
             target["target_ea"],
         )
     ctx.check()
-    current = _request_runtime(request)
+    current = _job_runtime(ctx, request)
     artifact = {
         "schema_version": "flow-store-evidence/1",
         "source_artifact": request["ssa_artifact"],
@@ -1077,7 +1085,7 @@ def _analyze_path_proof(ctx, extracted):
     query, result = prove_path(graph, selector, cancelled=ctx.cancel.is_set)
     validate_proof_result(query, result)
     ctx.check()
-    current = _request_runtime(request)
+    current = _job_runtime(ctx, request)
     artifact = {
         "schema_version": "flow-path-proof-artifact/1",
         "source_artifact": request["graph_artifact"],
