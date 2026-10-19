@@ -1,5 +1,6 @@
 """Strict adapter boundaries and actual two-anchor extraction receipts."""
 
+import hashlib
 import importlib.util
 import json
 import re
@@ -217,7 +218,9 @@ def fake_sdk(monkeypatch, tmp_path):
         "ida_idaapi": NS(BADADDR=-1),
         "ida_kernwin": NS(get_kernel_version=lambda: "test"),
         "ida_nalt": NS(
-            get_input_file_path=lambda: str(binary), get_imagebase=lambda: 0
+            get_input_file_path=lambda: str(binary),
+            get_imagebase=lambda: 0,
+            retrieve_input_file_sha256=lambda: hashlib.sha256(binary.read_bytes()).digest(),
         ),
     }
     for name, module in modules.items():
@@ -228,6 +231,22 @@ def fake_sdk(monkeypatch, tmp_path):
         "darwin-x86_64-sysv-derived",
         read("build.json"),
     )
+
+
+def test_extraction_uses_ida_stored_input_digest_when_original_path_is_unavailable(
+    monkeypatch, tmp_path
+):
+    profile = fake_sdk(monkeypatch, tmp_path)
+    expected = hashlib.sha256(b"not executed").hexdigest()
+    sys.modules["ida_nalt"].get_input_file_path = lambda: str(
+        tmp_path / "removed-original.bin"
+    )
+
+    result = adapter.extract_snapshot(
+        0x100, namespace="owner", function_key="fixture-stored-digest", profile=profile
+    )
+
+    assert result.identity.binary_digest == "sha256-v1:" + expected
 
 
 def direct_call_sdk(monkeypatch, tmp_path, *, argument=7):

@@ -3,11 +3,9 @@
 Only extract_snapshot calls IDA. The remaining contracts/helpers are pure Python.
 """
 
-import hashlib
 import json
 import time
 from dataclasses import dataclass, replace
-from pathlib import Path
 from collections.abc import Callable
 from typing import Literal, cast
 
@@ -751,9 +749,12 @@ def extract_snapshot(
         profile["platform_tag"],
     )
     report_stage("input_digest")
-    binary = hashlib.sha256(
-        Path(ida_nalt.get_input_file_path()).read_bytes()
-    ).hexdigest()
+    try:
+        input_digest = bytes(ida_nalt.retrieve_input_file_sha256())
+    except Exception as exc:
+        raise ContractError("input_digest_unavailable") from exc
+    require(len(input_digest) == 32, "input_digest_unavailable")
+    binary = input_digest.hex()
     report_stage("snapshot_serialize")
     snapshot = make_snapshot(
         pure,

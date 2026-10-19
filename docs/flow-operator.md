@@ -105,6 +105,13 @@ treat a target reachable only through ineligible blocks or a revisit as
 refinement-unavailable. Validation semantics are unchanged: mismatched
 bindings, non-successor transitions, or repeats still fail closed.
 
+Snapshot binary identity comes from IDA's stored input SHA-256, not by
+reopening `ida_nalt.get_input_file_path()`. This keeps an owned `.i64`
+relocatable after a private workspace is atomically renamed while preserving
+the exact loader-recorded input digest. A missing or non-32-byte stored digest
+fails as `input_digest_unavailable`; it is never replaced with the database
+file hash or a guessed path.
+
 For an analyst-designated external input such as a driver request buffer,
 first verify the transfer method, buffer pointer, length check, and the
 microcode `Load` that reads the specific byte or field. Page

@@ -35,7 +35,7 @@
     "src/ida_pro_mcp/flow_core/persistence.py": "0382daf4f40b3413f5b70594fafc1d7694d1839ff526e70a57f82e93f4b9bf0d",
     "src/ida_pro_mcp/flow_core/pointee.py": "26c016a40432c5af75432e7e58461825b319b4d9f74b0e6b424f95287aac344e",
     "src/ida_pro_mcp/flow_core/profile_registry.py": "7f358be2a4dfcf4122f6b9b309409d593e3b58a48daedb9587e5d29870c40e28",
-    "src/ida_pro_mcp/flow_core/profile_routing.py": "d0e3d9ecaa66dd6e6a0ffef24e2053edb556e5c6bb581038d8d19aa202d92368",
+    "src/ida_pro_mcp/flow_core/profile_routing.py": "09b47a52acfc62e73952b37e05d16a8d2ef59eda09126d01aaa442fb50a4e8ad",
     "src/ida_pro_mcp/flow_core/profile_semantic_receipts.py": "d7c9899c3947a19bbae5fd3c99b261765e7b8a472e9729871360e723bd5c13ae",
     "src/ida_pro_mcp/flow_core/profile_semantics.py": "d32c1bb1ba3432094ce9f59bde26c3b0d9fce70fa6dfb5f7da7950a763087a7d",
     "src/ida_pro_mcp/flow_core/proof.py": "f6b0de3f3f712f686e38d9745f906edbfb5c4dae6423cb7812b950d467c8c0b4",
@@ -59,7 +59,7 @@
     "src/ida_pro_mcp/ida_mcp/flow/__init__.py": "e2ad972c65cc8799c94393f9784d2dfbed1afed393d43d7e999cf18562241f46",
     "src/ida_pro_mcp/ida_mcp/flow/call_state.py": "a0f70c1283c0aae1d88292225fd2a0a058e0781d741d39f156d1229a214f3c22",
     "src/ida_pro_mcp/ida_mcp/flow/derived_runtime.py": "8ec4794c7f7db46b115529538d17af12edad87fe8009e667c12bc21905ad8795",
-    "src/ida_pro_mcp/ida_mcp/flow/extractor.py": "f15706222b09e4c5497d8c91a37e85a802fc8701e004d8b72eb5805d9b5e58c3",
+    "src/ida_pro_mcp/ida_mcp/flow/extractor.py": "3ede271ec04ecf1e60a4ab7fcb7550c53d03f532ca2f03a1f5b450968285a0a6",
     "src/ida_pro_mcp/ida_mcp/flow/p0_probe.py": "abfbf92cf84b960ab6af71235d51fffa88005ee9eeee13412b8f7354c4d3b3e3",
     "src/ida_pro_mcp/ida_mcp/flow/profile_routing.py": "6d9931e3c48033a90bb5d47aac1bd5534041c4ef18e9c4261f57e5105c1136ff",
     "src/ida_pro_mcp/ida_mcp/flow/reviewed_runtime.py": "285e1b68edd253fb750bae0f16056e6d12c3fe101d8714eb1d92e653725eec38",
@@ -77,22 +77,22 @@
       "binary_sha256": "e98ee1f96dead5f8988573b9e8ce2e1466f30f8d5881af4b71a66b7b6e73436a",
       "job": {
         "schema_version": "flow-job/1",
-        "id": "job_91f8d4d6dad4417b8ae614f113b4f4b9",
+        "id": "job_59d989ac75b141c48cd7f9ad265d4b95",
         "state": "complete",
         "revision": 4,
         "progress": {
           "phase_times_ms": {
-            "analyze_ms": 48,
-            "extract_ms": 32,
-            "setup_ms": 10
+            "analyze_ms": 49,
+            "extract_ms": 27,
+            "setup_ms": 18
           }
         },
         "budget": {},
         "error": null,
         "result": {
           "analysis": "complete_in_scope",
-          "base_graph_artifact": "artifact_1eb742a5f51c46e7b9ef2c7e402917bf",
-          "call_composition_artifact": "artifact_179d0c6f064047ae84d5895f3c2a969b",
+          "base_graph_artifact": "artifact_71e69efd0ab44397a35b5e010bc553c0",
+          "call_composition_artifact": "artifact_5038be08f1fa463a85c82d2fcbe97151",
           "call_composition_count": 0,
           "callee_closure": {
             "boundaries": [],
@@ -111,48 +111,48 @@
           "entry_registers": [
             {
               "bit_offset": 64,
-              "node_id": "node-v1:101e9d459c6d0b7d1cece68af27041c45527f4f2a50b20168a3462398377ac3f",
+              "node_id": "node-v1:7bdf9d6ba2fa12631624dc98ad9804d55e333b0b0e255827dabdd64a8684b835",
               "reason": null,
               "register": "rax",
               "width_bits": 64
             },
             {
               "bit_offset": 128,
-              "node_id": "node-v1:589e7a98d730d5500ef2218beab4f09d78cfed8c1bb4a4da4d1f8e4688522abb",
+              "node_id": "node-v1:30a9f8233d121968cae87b2c4548222d356701efc89ad43da15b72d99b0d076e",
               "reason": "no_exact_alias",
               "register": null,
               "width_bits": 320
             },
             {
               "bit_offset": 448,
-              "node_id": "node-v1:c0cbebf295832fbb3e2eaadf4ecaa40750a4ab276155e72f5c3fe9c51a856c83",
+              "node_id": "node-v1:49341f2dc3da6ad45a0b78e896e9e017800c08dbab04b6d44e0c3be18c6783bb",
               "reason": null,
               "register": "rdi",
               "width_bits": 64
             },
             {
               "bit_offset": 512,
-              "node_id": "node-v1:cdaf003590432509a4813c5696cff7facf32638c20bb4c275c2fae05fb32fa1e",
+              "node_id": "node-v1:21f0be2bc16511240125b0ea8a86b396d7cf3d9077ea16f3f468da66e3ae37b8",
               "reason": "no_exact_alias",
               "register": null,
               "width_bits": 1536
             },
             {
               "bit_offset": 2048,
-              "node_id": "node-v1:fa60dc25ed27df72a34c815e4805ca7d5ccf57d151e8bacf5a5593dbc7ebd4e1",
+              "node_id": "node-v1:b35b583c6102c8e7b7ea36ec3e120887734755f7238018a64011122b55aa6ca4",
               "reason": null,
               "register": "ds",
               "width_bits": 16
             }
           ],
-          "graph_artifact": "artifact_527ddccc0fbd4a3aba0ed0f35f5fc669",
-          "graph_digest": "sha256-v1:be53cff2077d62504a88b92e341e7c53b757ef06b8f29bc4143b58d331c48601",
+          "graph_artifact": "artifact_31d596ce38a24709939bee9977bd09b3",
+          "graph_digest": "sha256-v1:5f0a4f6b9ecaf5c9ff27e41c9007074603bd90fca3a7c9a159cc789bb3a59c59",
           "maturity": "MMAT_CALLS",
           "memory_diagnostics": [],
-          "memory_plan_artifact": "artifact_f841a7c4f4054b6abd5b6e3d5a51b89f",
-          "memory_result_artifact": "artifact_2c3151b7cf4145028de87d04fd49d6d0",
+          "memory_plan_artifact": "artifact_97fd89923f1349628732479b388f8609",
+          "memory_result_artifact": "artifact_0f9440168e5243ecb1a56ea7c1698ce0",
           "profile": "X64-LE",
-          "profile_digest": "sha256-v1:679dcb2b09dec1650d2a7b3d81546a9ffa0a1af2ef41b48e618caaae628340d3",
+          "profile_digest": "sha256-v1:920e517d95f92e235697e8a97579dcce01bc30a6a216a3f6b4027f92c2822174",
           "refine_blocks": {
             "blocks": [
               {
@@ -181,16 +181,16 @@
             "entry": 0
           },
           "rule_digest": "sha256-v1:d8ab490fec53f884af8f3a670b9fe752ce44017f30c58e63a2bfac2dc3b7f863",
-          "snapshot_artifact": "artifact_70128d8af67a4f7480c1d7e403642653",
-          "snapshot_id": "snapshot-v1:cc1ae8e0ac62d61b62654aec726eb99797b50754a51893cbc52646353dd0a9be",
-          "ssa_artifact": "artifact_aa4bd73099ed411386cdcce0935e3685",
+          "snapshot_artifact": "artifact_31be23aa3fbd4825a3452d33955f73bb",
+          "snapshot_id": "snapshot-v1:684d696719c6fab04d7a1d9a0da9ec8be544d1cfbbf1baa538f40d48b6c22097",
+          "ssa_artifact": "artifact_60e041887fa44906b39da500b71d21d0",
           "summary_digest": "sha256-v1:79f01e4de0cc97f8807a0447d2a2b0c8e72e4c93a5062efbc31db393b08abcfc",
           "summary_limitations": [
             "Reviewed summaries cover only the packaged owned fixtures, with fresh full-identity callee validation; arbitrary libraries remain unresolved.",
             "Incomplete indirect, external, recursive, and context-limited calls retain unresolved effects; complete local finite targets have derived scalar returns only."
           ],
           "target_executed": false,
-          "window_chain_artifact": "artifact_5acec7cc36a64fbca16d7757379adfff",
+          "window_chain_artifact": "artifact_148b1f7ce54c4e17adbc93593e57d741",
           "window_slice_count": 1
         }
       },
@@ -212,7 +212,7 @@
         },
         {
           "tool": "flow_get_job",
-          "response_chars": 176,
+          "response_chars": 177,
           "error": null
         },
         {
@@ -242,22 +242,22 @@
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 6250,
+          "response_chars": 5911,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 5474,
+          "response_chars": 4892,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 5886,
+          "response_chars": 6685,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 3662,
+          "response_chars": 3784,
           "error": null
         },
         {
@@ -267,22 +267,22 @@
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 6332,
+          "response_chars": 5993,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5556,
+          "response_chars": 4974,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5968,
+          "response_chars": 6767,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 6087,
+          "response_chars": 5925,
           "error": null
         },
         {
@@ -292,32 +292,32 @@
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5652,
+          "response_chars": 5655,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 4904,
+          "response_chars": 5185,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 4664,
+          "response_chars": 4279,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 4295,
+          "response_chars": 4024,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 4354,
+          "response_chars": 4679,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 2720,
+          "response_chars": 3051,
           "error": null
         },
         {
@@ -328,11 +328,6 @@
         {
           "tool": "flow_create_implicit_analysis",
           "response_chars": 104,
-          "error": null
-        },
-        {
-          "tool": "flow_get_job",
-          "response_chars": 177,
           "error": null
         },
         {
@@ -352,7 +347,446 @@
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 2599,
+          "response_chars": 3011,
+          "error": null
+        },
+        {
+          "tool": "flow_check_path",
+          "response_chars": 104,
+          "error": null
+        },
+        {
+          "tool": "flow_get_job",
+          "response_chars": 177,
+          "error": null
+        },
+        {
+          "tool": "flow_get_job",
+          "response_chars": 506,
+          "error": null
+        },
+        {
+          "tool": "flow_check_path",
+          "response_chars": 3103,
+          "error": null
+        },
+        {
+          "tool": "flow_trace_forward",
+          "response_chars": 1204,
+          "error": null
+        },
+        {
+          "tool": "flow_trace_forward",
+          "response_chars": 1204,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 561,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 561,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 74,
+          "error": {
+            "code": "revision_conflict"
+          }
+        },
+        {
+          "tool": "flow_trace_backward",
+          "response_chars": 1205,
+          "error": null
+        },
+        {
+          "tool": "flow_trace_backward",
+          "response_chars": 1205,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 560,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 560,
+          "error": null
+        },
+        {
+          "tool": "flow_continue_trace",
+          "response_chars": 74,
+          "error": {
+            "code": "revision_conflict"
+          }
+        },
+        {
+          "tool": "flow_trace_backward",
+          "response_chars": 1205,
+          "error": null
+        },
+        {
+          "tool": "flow_cancel_trace",
+          "response_chars": 304,
+          "error": null
+        },
+        {
+          "tool": "flow_get_job",
+          "response_chars": 3152,
+          "error": null
+        }
+      ],
+      "tools": [
+        "server_health",
+        "lookup_funcs",
+        "list_funcs",
+        "flow_get_capabilities",
+        "flow_create_snapshot",
+        "flow_get_job",
+        "flow_cancel_job",
+        "flow_create_implicit_analysis",
+        "flow_get_pointee_evidence",
+        "flow_check_store",
+        "flow_check_path",
+        "flow_refine_path_proof",
+        "flow_refine_memory_proof",
+        "flow_get_function_ssa",
+        "flow_get_cfg",
+        "flow_get_graph",
+        "flow_reassemble_graph",
+        "flow_get_graph_digest_bytes",
+        "flow_get_evidence",
+        "flow_get_implicit_analysis",
+        "flow_explain_implicit_analysis",
+        "flow_get_memory_analysis",
+        "flow_get_derived_call_evidence",
+        "flow_get_call_compositions",
+        "flow_trace_forward",
+        "flow_trace_backward",
+        "flow_continue_trace",
+        "flow_cancel_trace",
+        "idb_open",
+        "idb_list"
+      ],
+      "adoption_detach_preserved_job": true,
+      "flow_build_id": "flow-build-sha256-v1:ee4c90651cba6975125c40173d040f20383364024427a2d49bf468ded4c6d87a",
+      "readonly_direct_call_denied": true,
+      "memory_source_selected_exact_access": true,
+      "analyst_route_not_runtime_support": true,
+      "memory_dependency": {
+        "interval": {
+          "start": 0,
+          "end": 1
+        },
+        "precision": "exact",
+        "object_id": "object-v1:08fa3001dbc58df461f976bf69f6243fd8f5f4b99a4c89f3cbcf7eaae7ee2aa3",
+        "rule_id": "byte-reaching-store-v1",
+        "evidence_ids": [
+          "evidence-v1:075184b25e03584a5c381f78f81362cee12f0c36abca8b3d15b4ff267a61783d",
+          "evidence-v1:0b0e786df6250dcb0a455206d7796bd066551601ebeb09eba7aba325b74fa813",
+          "evidence-v1:a069dd2b6e67d97b9ec065fe8c301bd9abbfb5eb2b47d10b64b9209efb380106"
+        ],
+        "derivation_evidence": {
+          "evidence_id": "evidence-v1:075184b25e03584a5c381f78f81362cee12f0c36abca8b3d15b4ff267a61783d",
+          "snapshot_id": "snapshot-v1:684d696719c6fab04d7a1d9a0da9ec8be544d1cfbbf1baa538f40d48b6c22097",
+          "rule_id": "byte-reaching-store-v1",
+          "sites": [],
+          "source_eas": [],
+          "synthetic": true,
+          "origins": [
+            "node-v1:b27762a59dfb99b3dc806d216b131587496b3c47b82a2a5649bb418d0fedcb53",
+            "node-v1:ed4fdc7410f707476e831a93651dcb41130b41a6a81690c4713530e6e326ac5b"
+          ],
+          "assumptions": [
+            "automatic object identity is structural and conservative; no ABI argument numbering",
+            "experimental Mach-O flat user-space address model; no TLS or MMIO semantics"
+          ],
+          "memory_object_id": "object-v1:08fa3001dbc58df461f976bf69f6243fd8f5f4b99a4c89f3cbcf7eaae7ee2aa3"
+        }
+      },
+      "input_preserved": true,
+      "target_executed": false
+    },
+    {
+      "profile": "A64-LE",
+      "abi_id": "darwin-aarch64",
+      "routing_mode": "analyst_selected",
+      "binary_sha256": "fe9acefb7f883e942ebf836ae36b411b3ae110d20ff5dc442d9539334ef0c1cf",
+      "job": {
+        "schema_version": "flow-job/1",
+        "id": "job_efdafb9237e740758afc599df3e11f0c",
+        "state": "complete",
+        "revision": 4,
+        "progress": {
+          "phase_times_ms": {
+            "analyze_ms": 69,
+            "extract_ms": 35,
+            "setup_ms": 16
+          }
+        },
+        "budget": {},
+        "error": null,
+        "result": {
+          "analysis": "complete_in_scope",
+          "base_graph_artifact": "artifact_7f334ebb75414d9a9fbd2574e63bb3de",
+          "call_composition_artifact": "artifact_e5f3224d11de47fbb0f46931567496aa",
+          "call_composition_count": 0,
+          "callee_closure": {
+            "boundaries": [],
+            "max_depth": 1,
+            "max_functions": 8,
+            "mode": "derived_static_unreviewed",
+            "visited_rvas": [
+              936
+            ]
+          },
+          "derived_call_evidence": [],
+          "derived_call_memory_evidence": [],
+          "derived_call_memory_writes": [],
+          "derived_call_returns": [],
+          "entry_register_status": "resolved",
+          "entry_registers": [
+            {
+              "bit_offset": 64,
+              "node_id": "node-v1:4a6b41c7f8d41e5df5ae8e591dd1973950caad64fae92a0727f9abbee1adc87a",
+              "reason": null,
+              "register": "x0",
+              "width_bits": 64
+            },
+            {
+              "bit_offset": 128,
+              "node_id": "node-v1:28ccfdde26b7ec35be90c640b71430dbe644bd7120ca4a0bb6a68aeb37285619",
+              "reason": "no_exact_alias",
+              "register": null,
+              "width_bits": 6656
+            },
+            {
+              "bit_offset": 6784,
+              "node_id": "node-v1:b733c64adb02779dc2d5a5d44389861688968c58af951551cdcae912d2fd26f0",
+              "reason": "no_exact_alias",
+              "register": null,
+              "width_bits": 16
+            }
+          ],
+          "graph_artifact": "artifact_b9e18b024eef4bc1a86259dcbc0429b9",
+          "graph_digest": "sha256-v1:a9d4d72f230faf39d24c78f6a0fb132b85ff60dff34f7beec040b5d1c50b4835",
+          "maturity": "MMAT_CALLS",
+          "memory_diagnostics": [],
+          "memory_plan_artifact": "artifact_09fc439d03874040857a3b9967ea5e4d",
+          "memory_result_artifact": "artifact_fff5a03522064c618df81553f497572d",
+          "profile": "A64-LE",
+          "profile_digest": "sha256-v1:527b6e905a10859805471e7a29070013b0da9022ee231a1510af5f95b0b44eff",
+          "refine_blocks": {
+            "blocks": [
+              {
+                "angr": true,
+                "ea": null,
+                "index": 0,
+                "successors": [
+                  1
+                ]
+              },
+              {
+                "angr": true,
+                "ea": "0x1000003b8",
+                "index": 1,
+                "successors": [
+                  2
+                ]
+              },
+              {
+                "angr": false,
+                "ea": null,
+                "index": 2,
+                "successors": []
+              }
+            ],
+            "entry": 0
+          },
+          "rule_digest": "sha256-v1:d8ab490fec53f884af8f3a670b9fe752ce44017f30c58e63a2bfac2dc3b7f863",
+          "snapshot_artifact": "artifact_d2fb8d174760406f822f563f61450cdf",
+          "snapshot_id": "snapshot-v1:5a5de491957243b490aad3aba48474b13277c7917133cb16d1dd127a07703ea1",
+          "ssa_artifact": "artifact_ce71265896ed402283f3edb8f4700fc9",
+          "summary_digest": "sha256-v1:79f01e4de0cc97f8807a0447d2a2b0c8e72e4c93a5062efbc31db393b08abcfc",
+          "summary_limitations": [
+            "Reviewed summaries cover only the packaged owned fixtures, with fresh full-identity callee validation; arbitrary libraries remain unresolved.",
+            "Incomplete indirect, external, recursive, and context-limited calls retain unresolved effects; complete local finite targets have derived scalar returns only."
+          ],
+          "target_executed": false,
+          "window_chain_artifact": "artifact_7da5eb695faa463da1fd9dd38a65ee4d",
+          "window_slice_count": 1
+        }
+      },
+      "nodes": 18,
+      "edges": 7,
+      "cfg_blocks": 3,
+      "evidence": 16,
+      "native_evidence": 11,
+      "calls": [
+        {
+          "tool": "flow_get_capabilities",
+          "response_chars": 3398,
+          "error": null
+        },
+        {
+          "tool": "flow_create_snapshot",
+          "response_chars": 104,
+          "error": null
+        },
+        {
+          "tool": "flow_get_job",
+          "response_chars": 85,
+          "error": {
+            "code": "wrong_database_or_unknown_id"
+          }
+        },
+        {
+          "tool": "flow_get_job",
+          "response_chars": 176,
+          "error": null
+        },
+        {
+          "tool": "flow_get_job",
+          "response_chars": 2829,
+          "error": null
+        },
+        {
+          "tool": "flow_get_capabilities",
+          "response_chars": 4752,
+          "error": null
+        },
+        {
+          "tool": "flow_create_snapshot",
+          "response_chars": 104,
+          "error": null
+        },
+        {
+          "tool": "flow_cancel_job",
+          "response_chars": 2829,
+          "error": null
+        },
+        {
+          "tool": "flow_get_call_compositions",
+          "response_chars": 430,
+          "error": null
+        },
+        {
+          "tool": "flow_get_function_ssa",
+          "response_chars": 5084,
+          "error": null
+        },
+        {
+          "tool": "flow_get_function_ssa",
+          "response_chars": 6196,
+          "error": null
+        },
+        {
+          "tool": "flow_get_function_ssa",
+          "response_chars": 5499,
+          "error": null
+        },
+        {
+          "tool": "flow_get_function_ssa",
+          "response_chars": 4777,
+          "error": null
+        },
+        {
+          "tool": "flow_get_cfg",
+          "response_chars": 2220,
+          "error": null
+        },
+        {
+          "tool": "flow_get_graph",
+          "response_chars": 5166,
+          "error": null
+        },
+        {
+          "tool": "flow_get_graph",
+          "response_chars": 6278,
+          "error": null
+        },
+        {
+          "tool": "flow_get_graph",
+          "response_chars": 5581,
+          "error": null
+        },
+        {
+          "tool": "flow_get_graph",
+          "response_chars": 6252,
+          "error": null
+        },
+        {
+          "tool": "flow_get_graph",
+          "response_chars": 5638,
+          "error": null
+        },
+        {
+          "tool": "flow_get_graph",
+          "response_chars": 5346,
+          "error": null
+        },
+        {
+          "tool": "flow_get_graph",
+          "response_chars": 5352,
+          "error": null
+        },
+        {
+          "tool": "flow_get_graph",
+          "response_chars": 4496,
+          "error": null
+        },
+        {
+          "tool": "flow_get_evidence",
+          "response_chars": 4724,
+          "error": null
+        },
+        {
+          "tool": "flow_get_evidence",
+          "response_chars": 4076,
+          "error": null
+        },
+        {
+          "tool": "flow_get_evidence",
+          "response_chars": 4030,
+          "error": null
+        },
+        {
+          "tool": "flow_get_evidence",
+          "response_chars": 2625,
+          "error": null
+        },
+        {
+          "tool": "flow_trace_backward",
+          "response_chars": 4775,
+          "error": null
+        },
+        {
+          "tool": "flow_create_implicit_analysis",
+          "response_chars": 104,
+          "error": null
+        },
+        {
+          "tool": "flow_get_job",
+          "response_chars": 177,
+          "error": null
+        },
+        {
+          "tool": "flow_get_job",
+          "response_chars": 443,
+          "error": null
+        },
+        {
+          "tool": "flow_get_implicit_analysis",
+          "response_chars": 5424,
+          "error": null
+        },
+        {
+          "tool": "flow_get_graph",
+          "response_chars": 2627,
           "error": null
         },
         {
@@ -387,450 +821,6 @@
         },
         {
           "tool": "flow_continue_trace",
-          "response_chars": 561,
-          "error": null
-        },
-        {
-          "tool": "flow_continue_trace",
-          "response_chars": 561,
-          "error": null
-        },
-        {
-          "tool": "flow_continue_trace",
-          "response_chars": 74,
-          "error": {
-            "code": "revision_conflict"
-          }
-        },
-        {
-          "tool": "flow_trace_backward",
-          "response_chars": 1205,
-          "error": null
-        },
-        {
-          "tool": "flow_trace_backward",
-          "response_chars": 1205,
-          "error": null
-        },
-        {
-          "tool": "flow_continue_trace",
-          "response_chars": 560,
-          "error": null
-        },
-        {
-          "tool": "flow_continue_trace",
-          "response_chars": 560,
-          "error": null
-        },
-        {
-          "tool": "flow_continue_trace",
-          "response_chars": 74,
-          "error": {
-            "code": "revision_conflict"
-          }
-        },
-        {
-          "tool": "flow_trace_backward",
-          "response_chars": 1205,
-          "error": null
-        },
-        {
-          "tool": "flow_cancel_trace",
-          "response_chars": 304,
-          "error": null
-        },
-        {
-          "tool": "flow_get_job",
-          "response_chars": 3152,
-          "error": null
-        }
-      ],
-      "tools": [
-        "server_health",
-        "lookup_funcs",
-        "list_funcs",
-        "flow_get_capabilities",
-        "flow_create_snapshot",
-        "flow_get_job",
-        "flow_cancel_job",
-        "flow_create_implicit_analysis",
-        "flow_get_pointee_evidence",
-        "flow_check_store",
-        "flow_check_path",
-        "flow_refine_path_proof",
-        "flow_refine_memory_proof",
-        "flow_get_function_ssa",
-        "flow_get_cfg",
-        "flow_get_graph",
-        "flow_reassemble_graph",
-        "flow_get_graph_digest_bytes",
-        "flow_get_evidence",
-        "flow_get_implicit_analysis",
-        "flow_explain_implicit_analysis",
-        "flow_get_memory_analysis",
-        "flow_get_derived_call_evidence",
-        "flow_get_call_compositions",
-        "flow_trace_forward",
-        "flow_trace_backward",
-        "flow_continue_trace",
-        "flow_cancel_trace",
-        "idb_open",
-        "idb_list"
-      ],
-      "adoption_detach_preserved_job": true,
-      "flow_build_id": "flow-build-sha256-v1:d64ae5968353eab82abd893d6298f0b472da49f2e5ee7abe6ab35999eb016a7f",
-      "readonly_direct_call_denied": true,
-      "memory_source_selected_exact_access": true,
-      "analyst_route_not_runtime_support": true,
-      "memory_dependency": {
-        "interval": {
-          "start": 0,
-          "end": 1
-        },
-        "precision": "exact",
-        "object_id": "object-v1:1b6f2ebcd8dad9b4581a877dce04df37f9e070e701e26dcd44caedd1064a7431",
-        "rule_id": "byte-reaching-store-v1",
-        "evidence_ids": [
-          "evidence-v1:01f4a89438c89d27f9a2d0361641f6adb92acbffd36c312dc71ab759824b9133",
-          "evidence-v1:19e054b808ff59bd4fbb6c205723fadc573249c0378f730b21d1cbb1323bfa9d",
-          "evidence-v1:b57d0898bc317887cbccfad79209bb1a68618b5abdfef4e669b4c48f9b844da3"
-        ],
-        "derivation_evidence": {
-          "evidence_id": "evidence-v1:01f4a89438c89d27f9a2d0361641f6adb92acbffd36c312dc71ab759824b9133",
-          "snapshot_id": "snapshot-v1:cc1ae8e0ac62d61b62654aec726eb99797b50754a51893cbc52646353dd0a9be",
-          "rule_id": "byte-reaching-store-v1",
-          "sites": [],
-          "source_eas": [],
-          "synthetic": true,
-          "origins": [
-            "node-v1:50cc5c109e898845f82ec003bc291b5137567337ca7c84d261bc9063e688cc40",
-            "node-v1:50eff6165532292a999b72ca91dbbaa0b1516d812dd88df1cede3aa83bf00d7b"
-          ],
-          "assumptions": [
-            "automatic object identity is structural and conservative; no ABI argument numbering",
-            "experimental Mach-O flat user-space address model; no TLS or MMIO semantics"
-          ],
-          "memory_object_id": "object-v1:1b6f2ebcd8dad9b4581a877dce04df37f9e070e701e26dcd44caedd1064a7431"
-        }
-      },
-      "input_preserved": true,
-      "target_executed": false
-    },
-    {
-      "profile": "A64-LE",
-      "abi_id": "darwin-aarch64",
-      "routing_mode": "analyst_selected",
-      "binary_sha256": "fe9acefb7f883e942ebf836ae36b411b3ae110d20ff5dc442d9539334ef0c1cf",
-      "job": {
-        "schema_version": "flow-job/1",
-        "id": "job_33199fc64838415888ab1470142cc111",
-        "state": "complete",
-        "revision": 4,
-        "progress": {
-          "phase_times_ms": {
-            "analyze_ms": 139,
-            "extract_ms": 40,
-            "setup_ms": 13
-          }
-        },
-        "budget": {},
-        "error": null,
-        "result": {
-          "analysis": "complete_in_scope",
-          "base_graph_artifact": "artifact_4c2f0cabae894939b91954ed2be3bfd0",
-          "call_composition_artifact": "artifact_daa565a8f6bf47c284d2a5a1100bb4a3",
-          "call_composition_count": 0,
-          "callee_closure": {
-            "boundaries": [],
-            "max_depth": 1,
-            "max_functions": 8,
-            "mode": "derived_static_unreviewed",
-            "visited_rvas": [
-              936
-            ]
-          },
-          "derived_call_evidence": [],
-          "derived_call_memory_evidence": [],
-          "derived_call_memory_writes": [],
-          "derived_call_returns": [],
-          "entry_register_status": "resolved",
-          "entry_registers": [
-            {
-              "bit_offset": 64,
-              "node_id": "node-v1:3f831eed43599572e3b5de526235134a4c4a30072da92a3661e6a92e39067608",
-              "reason": null,
-              "register": "x0",
-              "width_bits": 64
-            },
-            {
-              "bit_offset": 128,
-              "node_id": "node-v1:714c5730a20e3648023aa3cbe295e4872ef457043f3a433fdc3c354a336d776b",
-              "reason": "no_exact_alias",
-              "register": null,
-              "width_bits": 6656
-            },
-            {
-              "bit_offset": 6784,
-              "node_id": "node-v1:8889169a1659a016b44d1fdb3b601c6bbee0a4d633019e0f70ca908ff7bf2599",
-              "reason": "no_exact_alias",
-              "register": null,
-              "width_bits": 16
-            }
-          ],
-          "graph_artifact": "artifact_96583f9e1a464ca09de732a4e8524e35",
-          "graph_digest": "sha256-v1:275e605157eba5913d18110b0cc99a8ea455659f92889dcbf64a3579edb04411",
-          "maturity": "MMAT_CALLS",
-          "memory_diagnostics": [],
-          "memory_plan_artifact": "artifact_b36b9fc238154fe3929be5d633d0e9cc",
-          "memory_result_artifact": "artifact_d72374d1b3a244ef92b1e0245ab52cf2",
-          "profile": "A64-LE",
-          "profile_digest": "sha256-v1:c9d4a57108c04cac3faff29cfcf983098c62ec4c027496e60ca5ea28a964b003",
-          "refine_blocks": {
-            "blocks": [
-              {
-                "angr": true,
-                "ea": null,
-                "index": 0,
-                "successors": [
-                  1
-                ]
-              },
-              {
-                "angr": true,
-                "ea": "0x1000003b8",
-                "index": 1,
-                "successors": [
-                  2
-                ]
-              },
-              {
-                "angr": false,
-                "ea": null,
-                "index": 2,
-                "successors": []
-              }
-            ],
-            "entry": 0
-          },
-          "rule_digest": "sha256-v1:d8ab490fec53f884af8f3a670b9fe752ce44017f30c58e63a2bfac2dc3b7f863",
-          "snapshot_artifact": "artifact_05dee06fe4bb44b582a1d327f70f4a30",
-          "snapshot_id": "snapshot-v1:2b767b5fe4738355ce6f18d4b637d20d7e8da0987b46a562549615c26955d06a",
-          "ssa_artifact": "artifact_f631a3dfda69406fb30786c7963431d7",
-          "summary_digest": "sha256-v1:79f01e4de0cc97f8807a0447d2a2b0c8e72e4c93a5062efbc31db393b08abcfc",
-          "summary_limitations": [
-            "Reviewed summaries cover only the packaged owned fixtures, with fresh full-identity callee validation; arbitrary libraries remain unresolved.",
-            "Incomplete indirect, external, recursive, and context-limited calls retain unresolved effects; complete local finite targets have derived scalar returns only."
-          ],
-          "target_executed": false,
-          "window_chain_artifact": "artifact_965b51a3345b471a92d4e7c23e06c953",
-          "window_slice_count": 1
-        }
-      },
-      "nodes": 18,
-      "edges": 7,
-      "cfg_blocks": 3,
-      "evidence": 16,
-      "native_evidence": 11,
-      "calls": [
-        {
-          "tool": "flow_get_capabilities",
-          "response_chars": 3398,
-          "error": null
-        },
-        {
-          "tool": "flow_create_snapshot",
-          "response_chars": 104,
-          "error": null
-        },
-        {
-          "tool": "flow_get_job",
-          "response_chars": 85,
-          "error": {
-            "code": "wrong_database_or_unknown_id"
-          }
-        },
-        {
-          "tool": "flow_get_job",
-          "response_chars": 176,
-          "error": null
-        },
-        {
-          "tool": "flow_get_job",
-          "response_chars": 176,
-          "error": null
-        },
-        {
-          "tool": "flow_get_job",
-          "response_chars": 2830,
-          "error": null
-        },
-        {
-          "tool": "flow_get_capabilities",
-          "response_chars": 4752,
-          "error": null
-        },
-        {
-          "tool": "flow_create_snapshot",
-          "response_chars": 104,
-          "error": null
-        },
-        {
-          "tool": "flow_cancel_job",
-          "response_chars": 2830,
-          "error": null
-        },
-        {
-          "tool": "flow_get_call_compositions",
-          "response_chars": 430,
-          "error": null
-        },
-        {
-          "tool": "flow_get_function_ssa",
-          "response_chars": 6592,
-          "error": null
-        },
-        {
-          "tool": "flow_get_function_ssa",
-          "response_chars": 5565,
-          "error": null
-        },
-        {
-          "tool": "flow_get_function_ssa",
-          "response_chars": 4996,
-          "error": null
-        },
-        {
-          "tool": "flow_get_function_ssa",
-          "response_chars": 4403,
-          "error": null
-        },
-        {
-          "tool": "flow_get_cfg",
-          "response_chars": 2220,
-          "error": null
-        },
-        {
-          "tool": "flow_get_graph",
-          "response_chars": 6674,
-          "error": null
-        },
-        {
-          "tool": "flow_get_graph",
-          "response_chars": 5647,
-          "error": null
-        },
-        {
-          "tool": "flow_get_graph",
-          "response_chars": 5078,
-          "error": null
-        },
-        {
-          "tool": "flow_get_graph",
-          "response_chars": 5878,
-          "error": null
-        },
-        {
-          "tool": "flow_get_graph",
-          "response_chars": 5638,
-          "error": null
-        },
-        {
-          "tool": "flow_get_graph",
-          "response_chars": 5637,
-          "error": null
-        },
-        {
-          "tool": "flow_get_graph",
-          "response_chars": 5352,
-          "error": null
-        },
-        {
-          "tool": "flow_get_graph",
-          "response_chars": 4205,
-          "error": null
-        },
-        {
-          "tool": "flow_get_evidence",
-          "response_chars": 4455,
-          "error": null
-        },
-        {
-          "tool": "flow_get_evidence",
-          "response_chars": 4672,
-          "error": null
-        },
-        {
-          "tool": "flow_get_evidence",
-          "response_chars": 4017,
-          "error": null
-        },
-        {
-          "tool": "flow_get_evidence",
-          "response_chars": 2311,
-          "error": null
-        },
-        {
-          "tool": "flow_trace_backward",
-          "response_chars": 2667,
-          "error": null
-        },
-        {
-          "tool": "flow_create_implicit_analysis",
-          "response_chars": 104,
-          "error": null
-        },
-        {
-          "tool": "flow_get_job",
-          "response_chars": 177,
-          "error": null
-        },
-        {
-          "tool": "flow_get_job",
-          "response_chars": 443,
-          "error": null
-        },
-        {
-          "tool": "flow_get_implicit_analysis",
-          "response_chars": 5424,
-          "error": null
-        },
-        {
-          "tool": "flow_get_graph",
-          "response_chars": 2551,
-          "error": null
-        },
-        {
-          "tool": "flow_check_path",
-          "response_chars": 104,
-          "error": null
-        },
-        {
-          "tool": "flow_get_job",
-          "response_chars": 176,
-          "error": null
-        },
-        {
-          "tool": "flow_get_job",
-          "response_chars": 506,
-          "error": null
-        },
-        {
-          "tool": "flow_check_path",
-          "response_chars": 3103,
-          "error": null
-        },
-        {
-          "tool": "flow_trace_forward",
-          "response_chars": 1204,
-          "error": null
-        },
-        {
-          "tool": "flow_trace_forward",
-          "response_chars": 1204,
-          "error": null
-        },
-        {
-          "tool": "flow_continue_trace",
           "response_chars": 1205,
           "error": null
         },
@@ -1038,7 +1028,7 @@
         },
         {
           "tool": "flow_get_job",
-          "response_chars": 2830,
+          "response_chars": 2829,
           "error": null
         }
       ],
@@ -1075,39 +1065,39 @@
         "idb_list"
       ],
       "adoption_detach_preserved_job": true,
-      "flow_build_id": "flow-build-sha256-v1:d64ae5968353eab82abd893d6298f0b472da49f2e5ee7abe6ab35999eb016a7f",
+      "flow_build_id": "flow-build-sha256-v1:ee4c90651cba6975125c40173d040f20383364024427a2d49bf468ded4c6d87a",
       "readonly_direct_call_denied": true,
       "memory_source_selected_exact_access": true,
       "analyst_route_not_runtime_support": true,
       "memory_dependency": {
         "interval": {
-          "start": 0,
-          "end": 1
+          "start": 7,
+          "end": 8
         },
         "precision": "exact",
-        "object_id": "object-v1:7fcc46a29ba884016d7a03ea00d1d88de020cb4c36af1768db0263dc501ae1ac",
+        "object_id": "object-v1:9da0c2d57cffb054f636d37ddd24dba1bf221daecc20642e843720e26fd3db08",
         "rule_id": "byte-reaching-store-v1",
         "evidence_ids": [
-          "evidence-v1:556966dc564228d21c1bfba6bc406692fd90a54f3decf9f7792b5fd2220a3f68",
-          "evidence-v1:6d6772e1d135081d3fa72e8c2e931c773d8926bbb9f9ab634527c374fc5885a2",
-          "evidence-v1:b15f973854443e6d60ee7fcc9e582cc7a6003919eb14aec4d2e2fb10725e38f5"
+          "evidence-v1:6e0d02cb22626f7d3f5fcc64144a05766d3d9a6403f8d61022abce9c9a29ce08",
+          "evidence-v1:8e70253cf18f11b20fe5bd2bfc1ce89908baa1773d433e605179ddd199e3b720",
+          "evidence-v1:d996d226356343680af4639e5961a201369927d17747116bc30d660bb92d8ccc"
         ],
         "derivation_evidence": {
-          "evidence_id": "evidence-v1:556966dc564228d21c1bfba6bc406692fd90a54f3decf9f7792b5fd2220a3f68",
-          "snapshot_id": "snapshot-v1:2b767b5fe4738355ce6f18d4b637d20d7e8da0987b46a562549615c26955d06a",
+          "evidence_id": "evidence-v1:d996d226356343680af4639e5961a201369927d17747116bc30d660bb92d8ccc",
+          "snapshot_id": "snapshot-v1:5a5de491957243b490aad3aba48474b13277c7917133cb16d1dd127a07703ea1",
           "rule_id": "byte-reaching-store-v1",
           "sites": [],
           "source_eas": [],
           "synthetic": true,
           "origins": [
-            "node-v1:2eea16428f7dc5ce6d2041e7d54ccd4073bcc83a79c61ca8547870c329421a89",
-            "node-v1:d515cb740101d94668e96c045f15733f6f1234617d586d9f36526fd2a41d4104"
+            "node-v1:539dce3df30ad84baa398b516fd9402cb964fe03ead385c8b42aac8cebac891a",
+            "node-v1:e52d67f181509c91b65d0583c3ebc78651403de5bad976fd61999bfb30466e1c"
           ],
           "assumptions": [
             "automatic object identity is structural and conservative; no ABI argument numbering",
             "experimental Mach-O flat user-space address model; no TLS or MMIO semantics"
           ],
-          "memory_object_id": "object-v1:7fcc46a29ba884016d7a03ea00d1d88de020cb4c36af1768db0263dc501ae1ac"
+          "memory_object_id": "object-v1:9da0c2d57cffb054f636d37ddd24dba1bf221daecc20642e843720e26fd3db08"
         }
       },
       "input_preserved": true,
