@@ -135,6 +135,54 @@ def test_artifact_cursor_binding_and_nonascii_bound():
         artifact_page("a", "evidence", [{"text": "한" * 10000}], {})
 
 
+def test_invalid_start_page_limit_rejects_before_graph_reassembly(tmp_path, monkeypatch):
+    store, program, sid, gid = setup(tmp_path)
+    try:
+        query = Queries(store)
+
+        def graph_must_not_run(*_args, **_kwargs):
+            raise AssertionError("invalid trace input reached graph reassembly")
+
+        monkeypatch.setattr(query, "graph", graph_must_not_run)
+        with pytest.raises(PersistenceError, match="invalid_page_limit"):
+            query.start(
+                sid,
+                gid,
+                {"kind": "value", "node_id": program.entry_storage[0].node_id},
+                "forward",
+                "invalid-limit",
+                limit=201,
+            )
+    finally:
+        store.close()
+
+
+def test_start_reuses_the_validated_graph_for_its_first_page(tmp_path, monkeypatch):
+    store, program, sid, gid = setup(tmp_path)
+    try:
+        query = Queries(store)
+        original = query.graph
+        calls = 0
+
+        def counted_graph(artifact):
+            nonlocal calls
+            calls += 1
+            return original(artifact)
+
+        monkeypatch.setattr(query, "graph", counted_graph)
+        query.start(
+            sid,
+            gid,
+            {"kind": "value", "node_id": program.entry_storage[0].node_id},
+            "forward",
+            "single-graph-load",
+            limit=1,
+        )
+        assert calls == 1
+    finally:
+        store.close()
+
+
 @pytest.mark.parametrize("direction", ["forward", "backward"])
 def test_high_degree_trace_externalizes_edges_without_losing_reachability(
     tmp_path, direction

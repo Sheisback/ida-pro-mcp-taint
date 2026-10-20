@@ -20,6 +20,10 @@ from .serialization import (
 )
 
 DEFAULT_EDGES = ("memory_data_dependency", "phi_input", "value_dependency")
+PAGE_LIMIT_MIN = 1
+PAGE_LIMIT_MAX = 200
+TRACE_BUDGET_MIN = 1
+TRACE_BUDGET_MAX = 100000
 
 
 def wire_safe_node_item(item: dict) -> dict:
@@ -47,7 +51,10 @@ def bounded(response, *, v2=False):
 
 def artifact_page(artifact_id, section, items, metadata, cursor=None, limit=50):
     """Stateless cursor includes offset AND immutable content/filter identity."""
-    require(type(limit) is int and 1 <= limit <= 200, "invalid_page_limit")
+    require(
+        type(limit) is int and PAGE_LIMIT_MIN <= limit <= PAGE_LIMIT_MAX,
+        "invalid_page_limit",
+    )
     identity_data = {"artifact": artifact_id, "section": section, "items": items}
     v2 = type(metadata) is dict and (
         metadata.get("wire_version") == "flow-wire/2"
@@ -164,7 +171,15 @@ class Queries:
         budget=10000,
         limit=50,
     ):
-        require(type(budget) is int and 1 <= budget <= 100000, "invalid_trace_budget")
+        require(
+            type(budget) is int
+            and TRACE_BUDGET_MIN <= budget <= TRACE_BUDGET_MAX,
+            "invalid_trace_budget",
+        )
+        require(
+            type(limit) is int and PAGE_LIMIT_MIN <= limit <= PAGE_LIMIT_MAX,
+            "invalid_page_limit",
+        )
         require(
             type(edge_kinds) in (list, tuple)
             and all(type(kind) is str for kind in edge_kinds),
@@ -229,6 +244,7 @@ class Queries:
             ),
             limit=limit,
             public_tool="flow_trace_" + direction,
+            _graph=graph,
         )
 
     def continue_trace(
@@ -241,8 +257,12 @@ class Queries:
         limit=50,
         cancel=False,
         public_tool=None,
+        _graph=None,
     ):
-        require(type(limit) is int and 1 <= limit <= 200, "invalid_page_limit")
+        require(
+            type(limit) is int and PAGE_LIMIT_MIN <= limit <= PAGE_LIMIT_MAX,
+            "invalid_page_limit",
+        )
         require(cursor == trace_cursor(identifier, revision), "invalid_cursor")
         row = self.store.trace(identifier)
         state, spec = row["state"], row["spec"]
@@ -288,7 +308,7 @@ class Queries:
                 replace(state, status="cancelled"),
                 operation=public_tool,
             )
-        graph = self.graph(spec.graph_artifact)
+        graph = _graph if _graph is not None else self.graph(spec.graph_artifact)
         nodes = {node.node_id: node for node in graph.nodes}
         adjacency = {nid: [] for nid in nodes}
         for edge in graph.edges:

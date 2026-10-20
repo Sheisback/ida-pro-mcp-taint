@@ -3,7 +3,7 @@
 import functools
 import os
 import platform
-from typing import Any, Literal, NotRequired, TypedDict, cast
+from typing import Annotated, Any, Literal, NotRequired, TypedDict, cast
 
 import ida_hexrays
 import ida_ida
@@ -12,6 +12,12 @@ import ida_loader
 import ida_nalt
 
 from ida_pro_mcp.flow_core.build_identity import BUILD_ID, BUILD_SCOPE
+from ida_pro_mcp.flow_core.query import (
+    PAGE_LIMIT_MAX,
+    PAGE_LIMIT_MIN,
+    TRACE_BUDGET_MAX,
+    TRACE_BUDGET_MIN,
+)
 from .flow.profile_routing import observe_open_database
 from .rpc import tool
 from .sync import idasync
@@ -937,8 +943,22 @@ def flow_trace_forward(
     source: FlowSourceSpec,
     request_key: str,
     edge_kinds: list[str] | None = None,
-    budget: int = 10000,
-    limit: int = 50,
+    budget: Annotated[
+        int,
+        {
+            "description": "Maximum durable trace nodes across all pages",
+            "minimum": TRACE_BUDGET_MIN,
+            "maximum": TRACE_BUDGET_MAX,
+        },
+    ] = 10000,
+    limit: Annotated[
+        int,
+        {
+            "description": "Maximum nodes in this page",
+            "minimum": PAGE_LIMIT_MIN,
+            "maximum": PAGE_LIMIT_MAX,
+        },
+    ] = 50,
 ) -> FlowTracePage | FlowError:
     """Forward typed value and byte-memory dependency reachability, not path proof.
 
@@ -967,8 +987,22 @@ def flow_trace_backward(
     source: FlowSourceSpec,
     request_key: str,
     edge_kinds: list[str] | None = None,
-    budget: int = 10000,
-    limit: int = 50,
+    budget: Annotated[
+        int,
+        {
+            "description": "Maximum durable trace nodes across all pages",
+            "minimum": TRACE_BUDGET_MIN,
+            "maximum": TRACE_BUDGET_MAX,
+        },
+    ] = 10000,
+    limit: Annotated[
+        int,
+        {
+            "description": "Maximum nodes in this page",
+            "minimum": PAGE_LIMIT_MIN,
+            "maximum": PAGE_LIMIT_MAX,
+        },
+    ] = 50,
 ) -> FlowTracePage | FlowError:
     """Backward structural dependency reachability with explicit Unknown boundaries."""
     return _service().trace(
@@ -992,7 +1026,14 @@ def flow_continue_trace(
     expected_revision: FlowWireInt,
     cursor: str,
     request_key: str,
-    limit: int = 50,
+    limit: Annotated[
+        int,
+        {
+            "description": "Maximum nodes in this page",
+            "minimum": PAGE_LIMIT_MIN,
+            "maximum": PAGE_LIMIT_MAX,
+        },
+    ] = 50,
 ) -> FlowTracePage | FlowError:
     """Atomically continue/replay a durable trace page; stale revisions conflict."""
     return _service().continue_trace(

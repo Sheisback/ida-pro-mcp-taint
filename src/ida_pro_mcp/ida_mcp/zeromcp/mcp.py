@@ -1287,12 +1287,18 @@ class McpServer:
             return {}
 
         origin = get_origin(py_type)
-        # Annotated[T, "description"]
+        # Annotated[T, "description"] or a reviewed scalar-schema fragment.
         if origin is Annotated:
             args = get_args(py_type)
+            metadata = args[-1]
+            if isinstance(metadata, dict):
+                allowed = {"description", "minimum", "maximum"}
+                if not set(metadata).issubset(allowed):
+                    raise TypeError("Annotated JSON-schema metadata is unsupported")
+                return {**self._type_to_json_schema(args[0]), **metadata}
             return {
                 **self._type_to_json_schema(args[0]),
-                "description": str(args[-1]),
+                "description": str(metadata),
             }
 
         # NotRequired[T]

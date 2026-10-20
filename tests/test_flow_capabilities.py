@@ -1068,13 +1068,21 @@ def test_exact_tool_schema_and_no_supervisor_database_on_workers(flow):
     assert "pointer value" in by_name["flow_get_function_ssa"]["description"]
     assert "unknown_provenance" in by_name["flow_get_implicit_analysis"]["description"]
     for name in ("flow_trace_forward", "flow_trace_backward"):
-        source = by_name[name]["inputSchema"]["properties"]["source"]
+        properties = by_name[name]["inputSchema"]["properties"]
+        source = properties["source"]
         variants = source["anyOf"]
         assert {variant["properties"]["kind"]["enum"][0] for variant in variants} == {
             "value",
             "memory",
         }
         assert all(variant["additionalProperties"] is False for variant in variants)
+        assert properties["limit"]["minimum"] == 1
+        assert properties["limit"]["maximum"] == 200
+        assert properties["budget"]["minimum"] == 1
+        assert properties["budget"]["maximum"] == 100000
+    continuation_limit = by_name["flow_continue_trace"]["inputSchema"]["properties"]["limit"]
+    assert continuation_limit["minimum"] == 1
+    assert continuation_limit["maximum"] == 200
     implicit = by_name["flow_create_implicit_analysis"]["inputSchema"]
     seed = implicit["properties"]["seeds"]["items"]
     assert len(seed["anyOf"]) == 3
