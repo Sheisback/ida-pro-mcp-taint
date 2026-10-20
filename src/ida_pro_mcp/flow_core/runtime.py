@@ -219,7 +219,9 @@ class JobContext:
 
     def report(self, progress, checkpoint=None):
         self.check()
-        return self._report(progress, checkpoint)
+        revision, deadline = self._report(progress, checkpoint)
+        self.deadline = deadline
+        return revision
 
     def note_extract_stage(self, stage):
         # Instrumentation only: never raises, never blocks. The runtime
@@ -318,6 +320,7 @@ class Runtime:
                             cancel,
                             done,
                             deadline,
+                            timeout,
                         ),
                         daemon=True,
                         name="flow-" + identifier,
@@ -419,7 +422,30 @@ class Runtime:
         self._check_finish_failure(identifier)
         return self.store.job(identifier)
 
-    def _run(self, identifier, handler, cancel, done, deadline):
+    def _checkpoint(self, identifier, progress, checkpoint, timeout):
+        renewed_deadline = self.clock() + timeout
+        with self._lock:
+            job = self._jobs.get(identifier)
+            if job is None or identifier in self._retired or job[2].is_set():
+                raise JobDeadline()
+            thread, cancel, done, _ = job
+            if cancel.is_set() or self._closing_event.is_set():
+                raise JobCancelled()
+            # Publish the in-process renewal before Store I/O so the idle/busy
+            # observer cannot retire a job while its Host progress checkpoint
+            # is being committed. Store failure still raises into the handler
+            # and the ordinary terminal path records the failure.
+            self._jobs[identifier] = (thread, cancel, done, renewed_deadline)
+        revision = self.store.checkpoint_job(
+            identifier,
+            self.owner,
+            progress,
+            checkpoint,
+            deadline=time.time() + timeout,
+        )
+        return revision, renewed_deadline
+
+    def _run(self, identifier, handler, cancel, done, deadline, timeout):
         phase = "setup"
         spans: dict[str, int] = {}
         mark = self.clock()
@@ -428,8 +454,11 @@ class Runtime:
             cancel,
             deadline,
             self.clock,
-            lambda progress, checkpoint: self.store.checkpoint_job(
-                identifier, self.owner, progress, checkpoint
+            lambda progress, checkpoint: self._checkpoint(
+                identifier,
+                progress,
+                checkpoint,
+                timeout,
             ),
             self,
         )

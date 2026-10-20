@@ -547,10 +547,23 @@ def _recover_spilled_entry_pointers(plan, result, objects, pointers, checkpoint=
     )
 
 
-def _analyze_plan(plan, policy, *, value_seeds=(), bit_seeds=(), checkpoint=None):
+def _analyze_plan(
+    plan,
+    policy,
+    *,
+    value_seeds=(),
+    bit_seeds=(),
+    checkpoint=None,
+    progress=None,
+):
     objects, pointers = _objects_and_pointers(plan)
     provisional = analyze_memory(
-        plan, objects, pointers, policy=policy, checkpoint=checkpoint
+        plan,
+        objects,
+        pointers,
+        policy=policy,
+        checkpoint=checkpoint,
+        progress=progress,
     )
     recovered_objects, recovered_pointers = _recover_spilled_entry_pointers(
         plan, provisional, objects, pointers, checkpoint
@@ -570,6 +583,7 @@ def _analyze_plan(plan, policy, *, value_seeds=(), bit_seeds=(), checkpoint=None
         bit_seeds=bit_seeds,
         policy=policy,
         checkpoint=checkpoint,
+        progress=progress,
     )
     if recovered_objects != objects or recovered_pointers != pointers:
         confirmed_objects, confirmed_pointers = _recover_spilled_entry_pointers(
@@ -595,6 +609,7 @@ def _analyze_plan(plan, policy, *, value_seeds=(), bit_seeds=(), checkpoint=None
                     bit_seeds=bit_seeds,
                     policy=policy,
                     checkpoint=checkpoint,
+                    progress=progress,
                 ),
             )
     return recovered_objects, recovered_pointers, result
@@ -619,6 +634,7 @@ def build_memory_graph(
         DerivedMemoryWriteEffect | DerivedGlobalWriteEffect, ...
     ] = (),
     checkpoint: Callable[[], None] | None = None,
+    progress: Callable[[dict], None] | None = None,
     window_steps: int | None = None,
     window_max_dependencies: int | None = None,
 ) -> MemoryGraphAnalysis:
@@ -633,6 +649,7 @@ def build_memory_graph(
     return build_memory_graph_from_program(
         base_program,
         checkpoint=checkpoint,
+        progress=progress,
         window_steps=window_steps,
         window_max_dependencies=window_max_dependencies,
     )
@@ -642,6 +659,7 @@ def build_memory_graph_from_program(
     base_program: SSAProgram,
     *,
     checkpoint=None,
+    progress=None,
     window_steps: int | None = None,
     window_max_dependencies: int | None = None,
 ) -> MemoryGraphAnalysis:
@@ -680,6 +698,7 @@ def build_memory_graph_from_program(
         plan,
         _windowed_policy(flat_assumption, window_steps, window_max_dependencies),
         checkpoint=checkpoint,
+        progress=progress,
     )
     accesses = {access.node_id: access for access in result.accesses}
     steps = {step.node_id: step for step in plan.steps}

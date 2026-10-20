@@ -352,6 +352,17 @@ retry_of link—never arbitrary computation resumption or terminal state reset.
 Progress, budgets, errors and the last safe checkpoint are persisted. JSON null
 is a valid committed job result, distinct from not supplying a result.
 
+The execution deadline is a renewable progress lease, not a cap on total
+analysis duration. A trusted handler's `ctx.report()` atomically persists its
+progress/checkpoint, advances the durable deadline by the same Host-owned lease
+interval, and updates the in-process deadline observed by cancellation and idle
+lifecycle checks. Jobs that cannot reach another safe progress boundary inside
+one lease still become `interrupted/lease_expired`; repeated reporting without
+Host computation is not exposed to callers because handlers come only from the
+immutable registry. Process restart still interrupts nonterminal jobs and safe
+retry remains a new job—lease renewal does not claim cross-process computation
+resumption.
+
 The executor accepts an immutable host registry of callables. Requests choose a
 registered name and JSON input, not a command or module path. Host handlers must
 validate their own DTOs/model context; SDK extraction handlers must be wrapped

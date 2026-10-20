@@ -331,9 +331,11 @@ class _Engine:
         bit_seeds,
         policy,
         checkpoint,
+        progress,
     ):
         self.plan, self.policy = plan, policy
         self.checkpoint = checkpoint
+        self.progress = progress
         self.graph = plan.program.graph
         self.nodes = {n.node_id: n for n in self.graph.nodes}
         self.objects = {o.object_id: o for o in objects}
@@ -1272,7 +1274,7 @@ class _Engine:
             self.bit_mask_changed = False
             self._coarse_memo.clear()
             iterations += 1
-            for window in self.windows:
+            for window_index, window in enumerate(self.windows):
                 for b in window:
                     if b.block == self.entry:
                         state = self.initial.copy()
@@ -1312,6 +1314,14 @@ class _Engine:
                         if old != joined:
                             self.outputs[b.block] = joined
                             changed = True
+                if self.progress is not None:
+                    self.progress(
+                        {
+                            "iteration": iterations,
+                            "window_count": len(self.windows),
+                            "window_index": window_index,
+                        }
+                    )
             changed = changed or self.bit_mask_changed
         frontier = set()
         if changed or len(self.facts) != len(self.nodes):
@@ -1346,6 +1356,7 @@ def analyze_memory(
     *,
     bit_seeds: tuple[BitSeed, ...] = (),
     checkpoint: Callable[[], None] | None = None,
+    progress: Callable[[dict], None] | None = None,
 ) -> MemoryResult:
     if checkpoint is not None:
         checkpoint()
@@ -1470,6 +1481,7 @@ def analyze_memory(
         bit_seeds,
         policy,
         checkpoint,
+        progress,
     )
     iterations, frontier = engine.run()
     source_description: dict[str, object] = {

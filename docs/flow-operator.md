@@ -148,6 +148,14 @@ replay with default windows and fail closed on tuned snapshots; keep
 defaults when those paths must run, or reassemble first for graph reads.
 Job `progress` carries `phase_times_ms` (`setup_ms`, `extract_ms`,
 `analyze_ms`), plus `failed_phase` on failure, for timeout triage.
+Snapshot memory analysis also publishes a durable `memory_window` progress
+record after every completed whole-block window. Each such record renews the
+existing 240-second job lease, so total analysis duration is not capped while
+the analysis continues to cross safe window boundaries. A window that produces
+no safe progress for the full lease still ends as `interrupted/lease_expired`;
+that remains scoped Unknown rather than a clean or partial success. This is
+same-process progress continuation, not arbitrary checkpoint replay: worker
+restart still interrupts the job and an explicit retry receives a new job ID.
 
 On failed, cancelled, or interrupted jobs, best-effort progress also records
 the last allowlisted `extract_stage` and `extract_elapsed_ms` (time since

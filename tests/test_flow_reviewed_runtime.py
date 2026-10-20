@@ -153,13 +153,16 @@ def test_public_runtime_composes_reviewed_calls_and_retains_remainders(
         fingerprint=service._fingerprint(info),
         summary_digest=catalog.catalog_digest,
     )
+    reports = []
     ctx = SimpleNamespace(
         deadline=None,
         cancel=SimpleNamespace(is_set=lambda: False),
         check=lambda: None,
+        report=lambda progress, checkpoint=None: reports.append(progress),
         note_extract_stage=lambda stage: None,
     )
     result = service._analyze(ctx, service._extract(ctx, request))
+    assert reports and all(item["stage"] == "memory_window" for item in reports)
     raw = artifacts[result["call_composition_artifact"]]
     items, metadata = service._interprocedural_page(raw)
     found = {
@@ -237,6 +240,7 @@ def test_callee_closure_fails_closed_at_budgets_and_changed_body(
         deadline=None,
         cancel=SimpleNamespace(is_set=lambda: False),
         check=lambda: None,
+        report=lambda progress, checkpoint=None: None,
         note_extract_stage=lambda stage: None,
     )
     kwargs = {}
@@ -913,6 +917,7 @@ def test_snapshot_result_echoes_refine_selector_inputs(flow, monkeypatch, arch):
         deadline=None,
         cancel=SimpleNamespace(is_set=lambda: False),
         check=lambda: None,
+        report=lambda progress, checkpoint=None: None,
         note_extract_stage=lambda stage: None,
     )
     result = service._analyze(ctx, service._extract(ctx, request))

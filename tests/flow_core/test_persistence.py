@@ -484,6 +484,35 @@ def test_long_job_busy_lease_expiry_and_bounded_shutdown(tmp_path):
     store.close()
 
 
+def test_progress_renews_the_job_lease_without_bounding_total_work(tmp_path):
+    store, _, _ = setup(tmp_path)
+    now = [0.0]
+    progressed = threading.Event()
+    release = threading.Event()
+
+    def work(ctx, value):
+        now[0] = 9.0
+        ctx.report({"phase": "analyze", "window_index": 0})
+        progressed.set()
+        assert release.wait(5)
+        ctx.check()
+        return value
+
+    runtime = Runtime(store, {"pure": Handler(lambda ctx, value: value, work)},
+                      clock=lambda: now[0])
+    job = runtime.submit("pure", {"answer": 42}, "renewing", timeout=10)
+    assert progressed.wait(5)
+    now[0] = 11.0
+    assert runtime.active_job_count == 1
+    assert store.job(job)["state"] == "analyzing"
+    release.set()
+    assert runtime.wait(job)
+    assert store.job(job)["state"] == "complete"
+    assert store.job(job)["result"] == {"answer": 42}
+    runtime.shutdown()
+    store.close()
+
+
 def test_cooperative_cancel_and_no_late_completion(tmp_path):
     store, g, _ = setup(tmp_path)
     entered = threading.Event()

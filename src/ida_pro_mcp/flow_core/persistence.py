@@ -734,9 +734,23 @@ class Store:
 
     @_scope_operation
     def checkpoint_job(
-        self, identifier, owner, progress, checkpoint=None, *, _busy_timeout_ms=5000
+        self,
+        identifier,
+        owner,
+        progress,
+        checkpoint=None,
+        *,
+        deadline=None,
+        _busy_timeout_ms=5000,
     ):
         require(type(progress) is dict, "invalid_job_progress")
+        if deadline is not None:
+            require(
+                type(deadline) in (int, float)
+                and math.isfinite(deadline)
+                and deadline > 0,
+                "invalid_deadline",
+            )
         with self._transaction(busy_timeout_ms=_busy_timeout_ms) as conn:
             row = self._row(conn, "jobs", identifier)
             require(
@@ -748,8 +762,13 @@ class Store:
             if checkpoint is not None:
                 last = self._blob(conn, checkpoint)
             conn.execute(
-                "UPDATE jobs SET progress=?,last_commit=?,revision=revision+1 WHERE id=?",
-                (canonical_json(progress), last, identifier),
+                "UPDATE jobs SET progress=?,last_commit=?,deadline=?,revision=revision+1 WHERE id=?",
+                (
+                    canonical_json(progress),
+                    last,
+                    deadline if deadline is not None else row["deadline"],
+                    identifier,
+                ),
             )
             return row["revision"] + 1
 

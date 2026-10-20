@@ -277,6 +277,25 @@ def test_window_sizes_agree_when_budgets_hold(window_steps):
     assert result.facts == baseline.facts
 
 
+def test_each_completed_memory_window_reports_renewable_progress():
+    plan = fanout_plan(24, 24)
+    objects, pointers = fanout_objects(plan)
+    reports = []
+    policy = replace(FLAT, window_steps=8, window_max_dependencies=10**6)
+    result = analyze_memory(plan, objects, pointers, policy=policy,
+                            progress=reports.append)
+    windows, _ = window_of(plan, policy.window_steps)
+
+    assert result.status == "complete_in_scope"
+    assert reports
+    assert {item["window_count"] for item in reports} == {len(windows)}
+    assert reports[-1] == {
+        "iteration": result.iterations,
+        "window_count": len(windows),
+        "window_index": len(windows) - 1,
+    }
+
+
 @pytest.mark.parametrize("window_steps", [1, 64, 1000000])
 def test_windowed_graph_build_matches_batch(window_steps):
     plan = fanout_plan(24, 24)

@@ -638,11 +638,27 @@ def _analyze(ctx, extracted):
         request.get("window_steps", DEFAULT_WINDOW_STEPS),
         request.get("window_max_dependencies", DEFAULT_WINDOW_MAX_DEPENDENCIES),
     )
+    progress_sequence = 0
+
+    def report_memory_window(progress):
+        nonlocal progress_sequence
+        progress_sequence += 1
+        ctx.report(
+            {
+                "phase": "analyze",
+                "stage": "memory_window",
+                "sequence": progress_sequence,
+                **progress,
+            }
+        )
+
     memory = build_memory_graph(
         snapshot,
         derived_returns=derived_returns,
         derived_indirect_returns=derived_indirect_returns,
         derived_memory_writes=derived_memory_writes,
+        checkpoint=ctx.check,
+        progress=report_memory_window,
         window_steps=window_steps,
         window_max_dependencies=window_max_dependencies,
     )
