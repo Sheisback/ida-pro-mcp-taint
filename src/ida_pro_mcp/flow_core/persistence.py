@@ -24,7 +24,7 @@ from .runtime_contracts import (
 from .serialization import ContractError, canonical_json, digest, to_wire_v2
 
 _MISSING = object()
-PAGE_TARGET_CHARS = 16000
+PAGE_TARGET_CHARS = 32000
 PAGE_HARD_CHARS = 39999
 
 

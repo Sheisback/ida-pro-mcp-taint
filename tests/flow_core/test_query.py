@@ -7,7 +7,7 @@ import pytest
 
 from ida_pro_mcp.flow_core import digest
 from ida_pro_mcp.flow_core.contracts import Edge, Graph, Node, NodeKey
-from ida_pro_mcp.flow_core.persistence import PersistenceError, Store
+from ida_pro_mcp.flow_core.persistence import PAGE_HARD_CHARS, PersistenceError, Store
 from ida_pro_mcp.flow_core.query import Queries, artifact_page, wire_safe_node_item
 from ida_pro_mcp.flow_core.ssa import build_ssa
 from test_memory import load as memory_load
@@ -133,6 +133,36 @@ def test_artifact_cursor_binding_and_nonascii_bound():
         artifact_page("b", "evidence", items, {}, page["next_cursor"])
     with pytest.raises(PersistenceError, match="item_too_large"):
         artifact_page("a", "evidence", [{"text": "한" * 10000}], {})
+
+
+def test_graph_pages_use_the_safe_wire_window_for_realistic_edges():
+    items = [
+        {
+            "type": "edge",
+            "edge_id": f"edge-v1:{index:064x}",
+            "source": f"node-v1:{index:064x}",
+            "target": f"node-v1:{index + 1:064x}",
+            "kind": "memory_data_dependency",
+            "evidence_ids": [
+                f"evidence-v1:{index + offset:064x}" for offset in range(3)
+            ],
+            "detail": "x" * 300,
+        }
+        for index in range(200)
+    ]
+    metadata = {
+        "snapshot_id": f"snapshot-v1:{'a' * 64}",
+        "graph_digest": f"sha256-v1:{'b' * 64}",
+        "diagnostics": [],
+        "limitations": ["x" * 200],
+        "environment": {"abi": "windows-x64"},
+    }
+
+    page = artifact_page("artifact_a", "graph", items, metadata, limit=200)
+
+    assert len(page["items"]) >= 34
+    assert len(json.dumps(page)) <= PAGE_HARD_CHARS
+    assert page["next_cursor"] is not None
 
 
 def test_invalid_start_page_limit_rejects_before_graph_reassembly(tmp_path, monkeypatch):

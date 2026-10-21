@@ -14,6 +14,7 @@ import ida_pro_mcp.flow_core.persistence as persistence_module
 from ida_pro_mcp.flow_core.contracts import Node, NodeKey, ValueSource
 from ida_pro_mcp.flow_core.persistence import (
     PAGE_HARD_CHARS,
+    PAGE_TARGET_CHARS,
     PersistenceError,
     Store,
 )
@@ -624,13 +625,17 @@ def test_cancelled_trace_retains_frontier_and_terminal_replay(tmp_path):
 
 def test_page_target_limit_rejects_without_advancing(tmp_path):
     store, g, tid = setup(tmp_path)
+    split_item_chars = PAGE_TARGET_CHARS // 2 + 512
     with pytest.raises(PersistenceError, match="page_target_exceeded"):
         store.commit_page(
-            tid, 0, "large-batch", {}, ["x" * 9000, "y" * 9000], next_state(g)
+            tid, 0, "large-batch", {},
+            ["x" * split_item_chars, "y" * split_item_chars], next_state(g)
         )
     assert store.trace(tid)["revision"] == 0
-    single = store.commit_page(tid, 0, "single", {}, ["x" * 20000], next_state(g))
-    assert len(json.dumps(single)) < 40000
+    single = store.commit_page(
+        tid, 0, "single", {}, ["x" * (PAGE_TARGET_CHARS + 1000)], next_state(g)
+    )
+    assert len(json.dumps(single)) <= PAGE_HARD_CHARS
     store.close()
 
 
