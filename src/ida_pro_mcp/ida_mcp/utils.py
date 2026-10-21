@@ -248,6 +248,7 @@ class AnalyzeBatchQuery(TypedDict):
     include_basic_blocks: NotRequired[Annotated[bool, "Include basic blocks"]]
     include_proto: NotRequired[Annotated[bool, "Include prototype"]]
     max_disasm_insns: NotRequired[Annotated[int, "Max disasm instructions"]]
+    max_xrefs: NotRequired[Annotated[int, "Max xrefs per direction (0=none)"]]
     max_callers: NotRequired[Annotated[int, "Max callers"]]
     max_callees: NotRequired[Annotated[int, "Max callees"]]
     max_strings: NotRequired[Annotated[int, "Max strings"]]

@@ -1219,6 +1219,8 @@ def analyze_batch(
             max_disasm_insns = _clamp_int(
                 query.get("max_disasm_insns", 300), 300, 0, 50_000
             )
+            parsed_max_xrefs = _parse_optional_int(query.get("max_xrefs"), "max_xrefs")
+            max_xrefs = 200 if parsed_max_xrefs is None else max(0, parsed_max_xrefs)
             max_callers = _clamp_int(query.get("max_callers", 100), 100, 0, 5000)
             max_callees = _clamp_int(query.get("max_callees", 100), 100, 0, 5000)
             max_strings = _clamp_int(query.get("max_strings", 100), 100, 0, 5000)
@@ -1272,8 +1274,8 @@ def analyze_batch(
                 xrefs = get_all_xrefs(fn.start_ea)
                 xrefs_to = list(xrefs.get("to", []))
                 xrefs_from = list(xrefs.get("from", []))
-                xrefs_to, xto_trunc = _limit_items(xrefs_to, 200)
-                xrefs_from, xfrom_trunc = _limit_items(xrefs_from, 200)
+                xrefs_to, xto_trunc = _limit_items(xrefs_to, max_xrefs)
+                xrefs_from, xfrom_trunc = _limit_items(xrefs_from, max_xrefs)
                 analysis["xrefs"] = {
                     "to": xrefs_to,
                     "from": xrefs_from,

@@ -930,3 +930,29 @@ def test_analyze_batch():
             "constant_count",
             "basic_block_count",
         )
+
+
+@test(binary="crackme03.elf")
+def test_analyze_batch_max_xrefs():
+    """analyze_batch accepts an explicit xref projection size."""
+    result = analyze_batch(
+        {
+            "addr": "check_pw",
+            "include_decompile": False,
+            "include_disasm": False,
+            "include_xrefs": True,
+            "max_xrefs": 0,
+            "include_callers": False,
+            "include_callees": False,
+            "include_strings": False,
+            "include_constants": False,
+            "include_basic_blocks": False,
+            "include_proto": False,
+        }
+    )
+    assert_is_list(result, min_length=1)
+    xrefs = result[0]["analysis"]["xrefs"]
+    assert xrefs["to_count"] > 0
+    assert xrefs["to"] == []
+    assert xrefs["to_truncated"] is True
+    assert xrefs["from"] == []
