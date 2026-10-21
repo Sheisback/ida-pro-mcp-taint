@@ -422,11 +422,12 @@ effects remain `partial`/`unknown`. See the [operator guide](docs/flow-operator.
 for its exact request shape, large-trace `edges_externalized` handling, and
 limitations.
 
-Trace tool schemas publish the same durable budget and page bounds enforced by
-the query owner (`budget` 1..100000, `limit` 1..200). Invalid scalar bounds are
-rejected before a graph artifact is decoded or reassembled. A valid first page
-reuses the graph already loaded to validate its source, so large window-chain
-graphs are not reconstructed twice before returning the first continuation.
+Every flow paging schema publishes the same page bound enforced by the query
+owner (`limit` 1..200); trace schemas additionally publish their durable
+`budget` bound (1..100000). Invalid scalar bounds are rejected before a graph
+artifact is decoded or reassembled. A valid first trace page reuses the graph
+already loaded to validate its source, so large window-chain graphs are not
+reconstructed twice before returning the first continuation.
 
 Analysis never executes the target, but MCP call tracing and IDA close/save
 policies can change a **working** IDB. Use a disposable database copy when the

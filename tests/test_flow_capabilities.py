@@ -1063,6 +1063,34 @@ def test_exact_tool_schema_and_no_supervisor_database_on_workers(flow):
             "anyOf" in tool["outputSchema"] or tool["name"] == "flow_get_capabilities"
         )
     by_name = {tool["name"]: tool for tool in tools}
+    page_limited = {
+        name
+        for name, tool in by_name.items()
+        if "limit" in tool["inputSchema"].get("properties", {})
+    }
+    assert page_limited == {
+        "flow_check_path",
+        "flow_check_store",
+        "flow_continue_trace",
+        "flow_explain_implicit_analysis",
+        "flow_get_call_compositions",
+        "flow_get_cfg",
+        "flow_get_derived_call_evidence",
+        "flow_get_evidence",
+        "flow_get_function_ssa",
+        "flow_get_graph",
+        "flow_get_implicit_analysis",
+        "flow_get_memory_analysis",
+        "flow_get_pointee_evidence",
+        "flow_refine_memory_proof",
+        "flow_refine_path_proof",
+        "flow_trace_backward",
+        "flow_trace_forward",
+    }
+    for name in page_limited:
+        limit = by_name[name]["inputSchema"]["properties"]["limit"]
+        assert limit["minimum"] == 1
+        assert limit["maximum"] == 200
     assert "Load" in by_name["flow_create_implicit_analysis"]["description"]
     assert "pointee" in by_name["flow_create_implicit_analysis"]["description"]
     assert "pointer value" in by_name["flow_get_function_ssa"]["description"]

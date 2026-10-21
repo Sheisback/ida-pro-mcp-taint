@@ -2,7 +2,7 @@
   "schema_version": "flow-public-smoke/1",
   "target_executed": false,
   "implementation_sha256": {
-    "src/ida_pro_mcp/ida_mcp/api_flow.py": "8b6513a630247701cf1d735b4eac39a1890d4e47b0bf28627279935b3569953c",
+    "src/ida_pro_mcp/ida_mcp/api_flow.py": "2effe663c03cf1d4da4a8c6b893805f33cfce0705a6b5ab31e4497538e953b01",
     "src/ida_pro_mcp/ida_mcp/zeromcp/mcp.py": "f1982374a858bdbe9eed3e304fb45300771a2d517269bff4313f0dbdee638837",
     "src/ida_pro_mcp/ida_mcp.py": "5a1c25460646a2577af58f3ee3e4c3069b2182ff0217883416f1d0d138c54e67",
     "src/ida_pro_mcp/idalib_server.py": "ef8376541d608fbee81c027cec9ae9676024d9777e29fc072ea7b3dc4b99e35d",
@@ -77,22 +77,22 @@
       "binary_sha256": "e98ee1f96dead5f8988573b9e8ce2e1466f30f8d5881af4b71a66b7b6e73436a",
       "job": {
         "schema_version": "flow-job/1",
-        "id": "job_280f4d5697f547beb96ee7eaa6cf3ca9",
+        "id": "job_124d3692a7fa4c9c890ace28638766c5",
         "state": "complete",
         "revision": 6,
         "progress": {
           "phase_times_ms": {
-            "analyze_ms": 51,
-            "extract_ms": 30,
-            "setup_ms": 16
+            "analyze_ms": 52,
+            "extract_ms": 29,
+            "setup_ms": 15
           }
         },
         "budget": {},
         "error": null,
         "result": {
           "analysis": "complete_in_scope",
-          "base_graph_artifact": "artifact_93608c611a67413ab8daaa7759cc60cd",
-          "call_composition_artifact": "artifact_bb3f98738a464a05a8097dbc0fb84a35",
+          "base_graph_artifact": "artifact_f95eb22509414e01b40d778cbb80891a",
+          "call_composition_artifact": "artifact_e6a92893a0884155ba5a0ac4bb847b81",
           "call_composition_count": 0,
           "callee_closure": {
             "boundaries": [],
@@ -111,46 +111,46 @@
           "entry_registers": [
             {
               "bit_offset": 64,
-              "node_id": "node-v1:29d307d3431ca5026481718211a51e439fce206b43eca09b57a9007116376c97",
+              "node_id": "node-v1:34a9a7a6669fe89e3b0b7f99708976d0b79edfa2a5e8e94c349c03661ceb1bf0",
               "reason": null,
               "register": "rax",
               "width_bits": 64
             },
             {
               "bit_offset": 128,
-              "node_id": "node-v1:8b0effdd2293f5dc4bd25b6992148c5cef9fc0985d1adef4313d0fb4cddbc33a",
+              "node_id": "node-v1:7155f85af267f1df40df6d7153ca21a190781bb87f2ccc6ec74fffeea36c731b",
               "reason": "no_exact_alias",
               "register": null,
               "width_bits": 320
             },
             {
               "bit_offset": 448,
-              "node_id": "node-v1:76d06586a8b3db6eed95ba9118670bda0a0a2c42822318f32f5fb8f4eca7eec7",
+              "node_id": "node-v1:dab3626cf76f8f5c48e1fc5de4476dd40c2d0d260e79b49cdc9c655ae2d291d6",
               "reason": null,
               "register": "rdi",
               "width_bits": 64
             },
             {
               "bit_offset": 512,
-              "node_id": "node-v1:728021c5c40eedfe7d13f94d2c0e36cbb6ae9b350ab55c15bf2bfb6633a07ac3",
+              "node_id": "node-v1:43aae7ebedd3efccd4b4a606491d050f91065833642fe929f01f850db7832d0b",
               "reason": "no_exact_alias",
               "register": null,
               "width_bits": 1536
             },
             {
               "bit_offset": 2048,
-              "node_id": "node-v1:9a4ac3f4da098896e81dece19ffc0735ae99151e07ae556f120037e66abbc553",
+              "node_id": "node-v1:36b689ecb43b62bc1e6630352c73b88f56378cb2ef4fab6ca8c1c7287ecbf9c6",
               "reason": null,
               "register": "ds",
               "width_bits": 16
             }
           ],
-          "graph_artifact": "artifact_4a2e062ea6e04bb094a1c6d6aa4b6945",
-          "graph_digest": "sha256-v1:f5e1cd69f8d1df6e5df6da208456d2b9743a6f52eeb3e68260d9154cc062c1e0",
+          "graph_artifact": "artifact_07582c5e8efd4bfdb4f9d6c97b7b3837",
+          "graph_digest": "sha256-v1:835c9e6f1fb6fefbdc7c20cbfc5d3b5fc41d22e870f9ce0431778d6e161af145",
           "maturity": "MMAT_CALLS",
           "memory_diagnostics": [],
-          "memory_plan_artifact": "artifact_1ae0de7a475a4309b7a53d415060173c",
-          "memory_result_artifact": "artifact_6774d6ee36cc4d478db12cc5cbba4810",
+          "memory_plan_artifact": "artifact_e907449628014b078d692e9cad345862",
+          "memory_result_artifact": "artifact_057fc89c4f184799a3a3b5fad6c25b16",
           "profile": "X64-LE",
           "profile_digest": "sha256-v1:920e517d95f92e235697e8a97579dcce01bc30a6a216a3f6b4027f92c2822174",
           "refine_blocks": {
@@ -181,16 +181,16 @@
             "entry": 0
           },
           "rule_digest": "sha256-v1:d8ab490fec53f884af8f3a670b9fe752ce44017f30c58e63a2bfac2dc3b7f863",
-          "snapshot_artifact": "artifact_e67fb0394aa84c96acad868d45195386",
-          "snapshot_id": "snapshot-v1:5d55e5f6a99cf81908e575a1d2138409b69caad47c128a8051eb47d6ff715c23",
-          "ssa_artifact": "artifact_345e2337bbfe4451b46c445030690362",
+          "snapshot_artifact": "artifact_b4683e7716ba4fa298c97036e33e2230",
+          "snapshot_id": "snapshot-v1:311f806a86ea0fe6bfda8d327fc7704b207b5cebd8c6f787a77fef2f012dc45e",
+          "ssa_artifact": "artifact_79b3448242584c439fcda4a575dc34f7",
           "summary_digest": "sha256-v1:79f01e4de0cc97f8807a0447d2a2b0c8e72e4c93a5062efbc31db393b08abcfc",
           "summary_limitations": [
             "Reviewed summaries cover only the packaged owned fixtures, with fresh full-identity callee validation; arbitrary libraries remain unresolved.",
             "Incomplete indirect, external, recursive, and context-limited calls retain unresolved effects; complete local finite targets have derived scalar returns only."
           ],
           "target_executed": false,
-          "window_chain_artifact": "artifact_a3b6e269d5524632803ee0f56da43fee",
+          "window_chain_artifact": "artifact_2c5b10840f4d43a292021e6e10a57935",
           "window_slice_count": 1
         }
       },
@@ -242,22 +242,22 @@
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 6471,
+          "response_chars": 5471,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 5487,
+          "response_chars": 6057,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 5463,
+          "response_chars": 5524,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 3851,
+          "response_chars": 4220,
           "error": null
         },
         {
@@ -267,62 +267,62 @@
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 6553,
+          "response_chars": 5553,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5569,
+          "response_chars": 6139,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5545,
+          "response_chars": 5606,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 6272,
+          "response_chars": 6645,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5656,
+          "response_chars": 5369,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5655,
+          "response_chars": 5935,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 4904,
+          "response_chars": 4907,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 4670,
+          "response_chars": 4285,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 4268,
+          "response_chars": 4671,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 4353,
+          "response_chars": 4338,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 2742,
+          "response_chars": 2739,
           "error": null
         },
         {
           "tool": "flow_trace_backward",
-          "response_chars": 7822,
+          "response_chars": 2667,
           "error": null
         },
         {
@@ -337,11 +337,6 @@
         },
         {
           "tool": "flow_get_job",
-          "response_chars": 176,
-          "error": null
-        },
-        {
-          "tool": "flow_get_job",
           "response_chars": 443,
           "error": null
         },
@@ -352,7 +347,7 @@
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 3156,
+          "response_chars": 2576,
           "error": null
         },
         {
@@ -478,39 +473,39 @@
         "idb_list"
       ],
       "adoption_detach_preserved_job": true,
-      "flow_build_id": "flow-build-sha256-v1:a9210986e37588e1670d1e12cabad8f940e513d5d287251d5bcad62a2845f92f",
+      "flow_build_id": "flow-build-sha256-v1:dfc4b6cef08c7e1a22a70a051916888a31fbcd6e6575cae74cd57bd0a4e22736",
       "readonly_direct_call_denied": true,
       "memory_source_selected_exact_access": true,
       "analyst_route_not_runtime_support": true,
       "memory_dependency": {
         "interval": {
-          "start": 7,
-          "end": 8
+          "start": 0,
+          "end": 1
         },
         "precision": "exact",
-        "object_id": "object-v1:012e57cf412d5ff54e5d1a7a8ddbd3dc6312ee3690e9c33f3858765b88c0f7c2",
+        "object_id": "object-v1:febbba69b53f0ed87a759d8f5d4eaeff37905a1946fed1ec5812a70d5be41dcf",
         "rule_id": "byte-reaching-store-v1",
         "evidence_ids": [
-          "evidence-v1:231523d5c2a80aed0f1b5cbf7a536ec8f54848dbbaeb7e47fff76f06308d2035",
-          "evidence-v1:2c64294b2f172dc92ca80c8d8b1571c097548d59f95fca85511b4459a3c4188d",
-          "evidence-v1:7d8e18d125905672e1dfef805ad051fa77e4e28b33dcf7e6fd2e0d8be3be8281"
+          "evidence-v1:48c71f159adab3ef6e16e52348b77a5410756bb4e73c39732b4409a7ad9c73a0",
+          "evidence-v1:4b6cf424fbf86cf84a71ce54818dc0c97a4c8959046223ad55f74d48da87ecf9",
+          "evidence-v1:5a4f77d93b1970ae03536b877eeaf378f919bd8685ad6fb61c246d50297e94d8"
         ],
         "derivation_evidence": {
-          "evidence_id": "evidence-v1:7d8e18d125905672e1dfef805ad051fa77e4e28b33dcf7e6fd2e0d8be3be8281",
-          "snapshot_id": "snapshot-v1:5d55e5f6a99cf81908e575a1d2138409b69caad47c128a8051eb47d6ff715c23",
+          "evidence_id": "evidence-v1:4b6cf424fbf86cf84a71ce54818dc0c97a4c8959046223ad55f74d48da87ecf9",
+          "snapshot_id": "snapshot-v1:311f806a86ea0fe6bfda8d327fc7704b207b5cebd8c6f787a77fef2f012dc45e",
           "rule_id": "byte-reaching-store-v1",
           "sites": [],
           "source_eas": [],
           "synthetic": true,
           "origins": [
-            "node-v1:014b9f62d2226d73853cc3c2b1f6f4b72c103c7b775f7677fbf9b4c81f602826",
-            "node-v1:07fa585ba99a290b5b2f0dec4da7f166983b1bb9c5bc3fa5e28a75d6f91d21a9"
+            "node-v1:b482e9e0d0841cf7bca98a2dc545e4f162c47a039b99bcad59e016ff320e359d",
+            "node-v1:f29f6dd9d66c476467e1aca0ebf275cfb8421c9e75aeb0bd05f660a8387ada10"
           ],
           "assumptions": [
             "automatic object identity is structural and conservative; no ABI argument numbering",
             "experimental Mach-O flat user-space address model; no TLS or MMIO semantics"
           ],
-          "memory_object_id": "object-v1:012e57cf412d5ff54e5d1a7a8ddbd3dc6312ee3690e9c33f3858765b88c0f7c2"
+          "memory_object_id": "object-v1:febbba69b53f0ed87a759d8f5d4eaeff37905a1946fed1ec5812a70d5be41dcf"
         }
       },
       "input_preserved": true,
@@ -523,22 +518,22 @@
       "binary_sha256": "fe9acefb7f883e942ebf836ae36b411b3ae110d20ff5dc442d9539334ef0c1cf",
       "job": {
         "schema_version": "flow-job/1",
-        "id": "job_7554dce6f91f4916b3c5804f3eca3845",
+        "id": "job_dc8b88a87ca144568c12dfd5882dc9c1",
         "state": "complete",
         "revision": 6,
         "progress": {
           "phase_times_ms": {
-            "analyze_ms": 67,
-            "extract_ms": 37,
-            "setup_ms": 16
+            "analyze_ms": 69,
+            "extract_ms": 40,
+            "setup_ms": 10
           }
         },
         "budget": {},
         "error": null,
         "result": {
           "analysis": "complete_in_scope",
-          "base_graph_artifact": "artifact_1cf48bc74f444510ad290f395e59ea26",
-          "call_composition_artifact": "artifact_dbca0732f1704ac4be259cb7c0820b28",
+          "base_graph_artifact": "artifact_6476bff995d54560855b6e3db42db328",
+          "call_composition_artifact": "artifact_9b3ee68fb8034beb9cb2338945def176",
           "call_composition_count": 0,
           "callee_closure": {
             "boundaries": [],
@@ -557,32 +552,32 @@
           "entry_registers": [
             {
               "bit_offset": 64,
-              "node_id": "node-v1:617bb33a036174e85dbf9cc1acf1e3d22f0dd6bee4b935aae12f4d65cfa94636",
+              "node_id": "node-v1:e07d7844afc53fa7fb4489f42e7790cebf21e27a40f21efc1c9d9911475ed05f",
               "reason": null,
               "register": "x0",
               "width_bits": 64
             },
             {
               "bit_offset": 128,
-              "node_id": "node-v1:ab88b4dc321b2e4574f6a2b3ee4709bde8a69a59c117fdc6784e43b15df8f9d0",
+              "node_id": "node-v1:948a011a5bdda875dbd64d4cfda7b52fbed2385823b49fec3ac4b2ec8ebae5b7",
               "reason": "no_exact_alias",
               "register": null,
               "width_bits": 6656
             },
             {
               "bit_offset": 6784,
-              "node_id": "node-v1:36e3c34f71c5732e1f44ac63825dd150029d6017ba3fdb9982f1f00205b03465",
+              "node_id": "node-v1:4506c87a66b16685cad3e55f157f720cd8b4c695bdaacdd6984f6b958c68fa02",
               "reason": "no_exact_alias",
               "register": null,
               "width_bits": 16
             }
           ],
-          "graph_artifact": "artifact_6277ec4e11f24d3880ba4cb2b929e129",
-          "graph_digest": "sha256-v1:14d7c0c2a50ef64219641b8d043d020fd6c7a9f89057104b9dddf574fddc7111",
+          "graph_artifact": "artifact_b198382be6e34dc6a464ebea955e6d3e",
+          "graph_digest": "sha256-v1:02c14f9892026825bbeb1f1cf7e9c6c167ce59cbad93761153d799bb0f47ef57",
           "maturity": "MMAT_CALLS",
           "memory_diagnostics": [],
-          "memory_plan_artifact": "artifact_570b8ec020124a93ab9a6c5acdb05810",
-          "memory_result_artifact": "artifact_b130b4e7595f4fbb9e53434751364cd5",
+          "memory_plan_artifact": "artifact_21912228e4c14dce946a11a0e9f6f3a6",
+          "memory_result_artifact": "artifact_c22b65c9cfa64a16bb288e8a633708e8",
           "profile": "A64-LE",
           "profile_digest": "sha256-v1:527b6e905a10859805471e7a29070013b0da9022ee231a1510af5f95b0b44eff",
           "refine_blocks": {
@@ -613,16 +608,16 @@
             "entry": 0
           },
           "rule_digest": "sha256-v1:d8ab490fec53f884af8f3a670b9fe752ce44017f30c58e63a2bfac2dc3b7f863",
-          "snapshot_artifact": "artifact_750a6cec762c42949a104df50a65c9be",
-          "snapshot_id": "snapshot-v1:764612f3c6146c1535f2ab1b0d3521142f0befbdd7beaece2df622481f9e7899",
-          "ssa_artifact": "artifact_ce2f7ba6e3244113add0d5069c93a373",
+          "snapshot_artifact": "artifact_ed60e30c18d74975b9f50a8d340b89f3",
+          "snapshot_id": "snapshot-v1:6deffe20b72e0c9b4a6eed9447a39f749c8f076e59e48cf71337e870513cf699",
+          "ssa_artifact": "artifact_4e673b76a2d94511ab5a52079a5ee830",
           "summary_digest": "sha256-v1:79f01e4de0cc97f8807a0447d2a2b0c8e72e4c93a5062efbc31db393b08abcfc",
           "summary_limitations": [
             "Reviewed summaries cover only the packaged owned fixtures, with fresh full-identity callee validation; arbitrary libraries remain unresolved.",
             "Incomplete indirect, external, recursive, and context-limited calls retain unresolved effects; complete local finite targets have derived scalar returns only."
           ],
           "target_executed": false,
-          "window_chain_artifact": "artifact_74e2e6974d2141d7823578de1fe5f417",
+          "window_chain_artifact": "artifact_8dc47e8c92be488c9d8b4b4502a1a5e1",
           "window_slice_count": 1
         }
       },
@@ -681,22 +676,22 @@
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 6485,
+          "response_chars": 6781,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 5533,
+          "response_chars": 5504,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 4989,
+          "response_chars": 5424,
           "error": null
         },
         {
           "tool": "flow_get_function_ssa",
-          "response_chars": 4549,
+          "response_chars": 3847,
           "error": null
         },
         {
@@ -706,62 +701,62 @@
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 6567,
+          "response_chars": 6863,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5615,
+          "response_chars": 5586,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5071,
+          "response_chars": 5506,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 6030,
+          "response_chars": 5606,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5917,
+          "response_chars": 5350,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5348,
+          "response_chars": 5352,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 5638,
+          "response_chars": 5925,
           "error": null
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 3923,
+          "response_chars": 3921,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 4286,
+          "response_chars": 4308,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 4097,
+          "response_chars": 4159,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 4731,
+          "response_chars": 4363,
           "error": null
         },
         {
           "tool": "flow_get_evidence",
-          "response_chars": 2341,
+          "response_chars": 2625,
           "error": null
         },
         {
@@ -796,7 +791,7 @@
         },
         {
           "tool": "flow_get_graph",
-          "response_chars": 2548,
+          "response_chars": 2627,
           "error": null
         },
         {
@@ -806,7 +801,7 @@
         },
         {
           "tool": "flow_get_job",
-          "response_chars": 177,
+          "response_chars": 176,
           "error": null
         },
         {
@@ -960,12 +955,12 @@
         },
         {
           "tool": "flow_continue_trace",
-          "response_chars": 1205,
+          "response_chars": 552,
           "error": null
         },
         {
           "tool": "flow_continue_trace",
-          "response_chars": 1205,
+          "response_chars": 552,
           "error": null
         },
         {
@@ -977,12 +972,12 @@
         },
         {
           "tool": "flow_continue_trace",
-          "response_chars": 552,
+          "response_chars": 1205,
           "error": null
         },
         {
           "tool": "flow_continue_trace",
-          "response_chars": 552,
+          "response_chars": 1205,
           "error": null
         },
         {
@@ -1075,7 +1070,7 @@
         "idb_list"
       ],
       "adoption_detach_preserved_job": true,
-      "flow_build_id": "flow-build-sha256-v1:a9210986e37588e1670d1e12cabad8f940e513d5d287251d5bcad62a2845f92f",
+      "flow_build_id": "flow-build-sha256-v1:dfc4b6cef08c7e1a22a70a051916888a31fbcd6e6575cae74cd57bd0a4e22736",
       "readonly_direct_call_denied": true,
       "memory_source_selected_exact_access": true,
       "analyst_route_not_runtime_support": true,
@@ -1085,29 +1080,29 @@
           "end": 1
         },
         "precision": "exact",
-        "object_id": "object-v1:be3ef91209970f63fa45b326d33c2413fff508b5c085f7132926e58f8d03b7bd",
+        "object_id": "object-v1:ecd897162ab4b761348776b71a248a992396aafbafac2b82084521075da5ef9d",
         "rule_id": "byte-reaching-store-v1",
         "evidence_ids": [
-          "evidence-v1:0372dd0bc9fca26881c6fc5e49df2330f5a389f519d320b555f5073f48cde9b7",
-          "evidence-v1:205bcf9432955dd379efa9153082e467fa529f9c0fca53e4400f9fc67a1dde18",
-          "evidence-v1:ad346aaf207954abbe614f15f84581024640836fc39f6235064a22a0d3274866"
+          "evidence-v1:0dfa6a737a859913c5c8012f44c9eee3cf240634594a5efcc80bd16cf137d471",
+          "evidence-v1:10fa5ebdc13852cf18a562fc94425ad1d97cac4464fa694f1b2a2267b0d8a0a8",
+          "evidence-v1:b8d63f1bced0fa1fdcb1ed2169b4e9f585addabcc93626c176ab082af621c3c9"
         ],
         "derivation_evidence": {
-          "evidence_id": "evidence-v1:0372dd0bc9fca26881c6fc5e49df2330f5a389f519d320b555f5073f48cde9b7",
-          "snapshot_id": "snapshot-v1:764612f3c6146c1535f2ab1b0d3521142f0befbdd7beaece2df622481f9e7899",
+          "evidence_id": "evidence-v1:0dfa6a737a859913c5c8012f44c9eee3cf240634594a5efcc80bd16cf137d471",
+          "snapshot_id": "snapshot-v1:6deffe20b72e0c9b4a6eed9447a39f749c8f076e59e48cf71337e870513cf699",
           "rule_id": "byte-reaching-store-v1",
           "sites": [],
           "source_eas": [],
           "synthetic": true,
           "origins": [
-            "node-v1:5509164e14bba771232b5a56138bc2672d68faa537076ea570b2a14267e14383",
-            "node-v1:fd07a52458fe8a380b12d3f1b32c7bac71241486576335aa1ffede789751b9e8"
+            "node-v1:26d46e5dac783bf04ea487fa56d6dfcc482b2e0cb6e86e6d8d9f0f73a7c93a32",
+            "node-v1:337eb137e1226132d7ed2b7b2f6232fe39253bf220817848d3a98df31ad8bd40"
           ],
           "assumptions": [
             "automatic object identity is structural and conservative; no ABI argument numbering",
             "experimental Mach-O flat user-space address model; no TLS or MMIO semantics"
           ],
-          "memory_object_id": "object-v1:be3ef91209970f63fa45b326d33c2413fff508b5c085f7132926e58f8d03b7bd"
+          "memory_object_id": "object-v1:ecd897162ab4b761348776b71a248a992396aafbafac2b82084521075da5ef9d"
         }
       },
       "input_preserved": true,

@@ -75,6 +75,14 @@ class FlowJobSubmission(TypedDict):
 
 FlowTaggedInt = TypedDict("FlowTaggedInt", {"$int": str})
 FlowWireInt = int | FlowTaggedInt
+FlowPageLimit = Annotated[
+    int,
+    {
+        "description": "Maximum records in this page",
+        "minimum": PAGE_LIMIT_MIN,
+        "maximum": PAGE_LIMIT_MAX,
+    },
+]
 
 
 class FlowJob(TypedDict):
@@ -538,7 +546,7 @@ def flow_create_implicit_analysis(
 @tool
 @_flow_api
 def flow_get_pointee_evidence(
-    artifact_id: str, cursor: str | None = None, limit: int = 50
+    artifact_id: str, cursor: str | None = None, limit: FlowPageLimit = 50
 ) -> FlowArtifactPage | FlowError:
     """Replay and page a pointee source certificate, including analyst assumptions."""
     return _service().analysis_page(artifact_id, "pointee", cursor, limit)
@@ -556,7 +564,7 @@ def flow_check_store(
     member_path: list[str | int] | None = None,
     artifact_id: str | None = None,
     cursor: str | None = None,
-    limit: int = 50,
+    limit: FlowPageLimit = 50,
 ) -> FlowJobSubmission | FlowArtifactPage | FlowError:
     """Prove a pointer-width Store(base+offset, function-entry), or page its evidence.
 
@@ -617,7 +625,7 @@ def flow_check_path(
     request_key: str | None = None,
     artifact_id: str | None = None,
     cursor: str | None = None,
-    limit: int = 50,
+    limit: FlowPageLimit = 50,
 ) -> FlowJobSubmission | FlowArtifactPage | FlowError:
     """Submit a program-derived CFG-prefix proof OR page its immutable evidence.
 
@@ -662,7 +670,7 @@ def flow_refine_path_proof(
     proof_artifact: str | None = None,
     artifact_id: str | None = None,
     cursor: str | None = None,
-    limit: int = 50,
+    limit: FlowPageLimit = 50,
 ) -> FlowJobSubmission | FlowArtifactPage | FlowError:
     """Refine a v1 path proof with the opt-in angr tier, OR page the result.
 
@@ -718,7 +726,7 @@ def flow_refine_memory_proof(
     request_key: str | None = None,
     artifact_id: str | None = None,
     cursor: str | None = None,
-    limit: int = 50,
+    limit: FlowPageLimit = 50,
 ) -> FlowJobSubmission | FlowArtifactPage | FlowError:
     """Replay a v1 memory pair verdict, OR page a recorded replay.
 
@@ -777,7 +785,7 @@ def flow_refine_memory_proof(
 @tool
 @_flow_api
 def flow_get_function_ssa(
-    artifact_id: str, cursor: str | None = None, limit: int = 50
+    artifact_id: str, cursor: str | None = None, limit: FlowPageLimit = 50
 ) -> FlowArtifactPage | FlowError:
     """Page SSA nodes and exposed logical memory references from a completed job.
 
@@ -790,7 +798,7 @@ def flow_get_function_ssa(
 @tool
 @_flow_api
 def flow_get_cfg(
-    artifact_id: str, cursor: str | None = None, limit: int = 50
+    artifact_id: str, cursor: str | None = None, limit: FlowPageLimit = 50
 ) -> FlowArtifactPage | FlowError:
     """Page recovered CFG dominance records from the completed job's ssa_artifact."""
     return _service().page(artifact_id, "cfg", cursor, limit)
@@ -799,7 +807,7 @@ def flow_get_cfg(
 @tool
 @_flow_api
 def flow_get_graph(
-    artifact_id: str, cursor: str | None = None, limit: int = 50
+    artifact_id: str, cursor: str | None = None, limit: FlowPageLimit = 50
 ) -> FlowArtifactPage | FlowError:
     """Page immutable typed nodes and edges from the job's graph_artifact."""
     return _service().page(artifact_id, "graph", cursor, limit)
@@ -840,7 +848,7 @@ def flow_get_evidence(
     artifact_id: str,
     evidence_ids: list[str] | None = None,
     cursor: str | None = None,
-    limit: int = 50,
+    limit: FlowPageLimit = 50,
 ) -> FlowArtifactPage | FlowError:
     """Page graph evidence; unknown requested IDs are explicitly marked missing."""
     return _service().page(artifact_id, "evidence", cursor, limit, evidence_ids)
@@ -849,7 +857,7 @@ def flow_get_evidence(
 @tool
 @_flow_api
 def flow_get_implicit_analysis(
-    artifact_id: str, cursor: str | None = None, limit: int = 50
+    artifact_id: str, cursor: str | None = None, limit: FlowPageLimit = 50
 ) -> FlowArtifactPage | FlowError:
     """Page per-node labels, control relations, and unresolved frontier.
 
@@ -865,7 +873,7 @@ def flow_explain_implicit_analysis(
     artifact_id: str,
     observation_node_id: str,
     cursor: str | None = None,
-    limit: int = 50,
+    limit: FlowPageLimit = 50,
     max_nodes: int = 2048,
     max_causes: int = 256,
 ) -> FlowArtifactPage | FlowError:
@@ -890,7 +898,7 @@ def flow_explain_implicit_analysis(
 @tool
 @_flow_api
 def flow_get_memory_analysis(
-    artifact_id: str, cursor: str | None = None, limit: int = 50
+    artifact_id: str, cursor: str | None = None, limit: FlowPageLimit = 50
 ) -> FlowArtifactPage | FlowError:
     """Page owned byte-memory accesses, candidate ranges, facts and reasons.
 
@@ -906,7 +914,7 @@ def flow_get_memory_analysis(
 @tool
 @_flow_api
 def flow_get_derived_call_evidence(
-    artifact_id: str, cursor: str | None = None, limit: int = 50
+    artifact_id: str, cursor: str | None = None, limit: FlowPageLimit = 50
 ) -> FlowArtifactPage | FlowError:
     """Page a bound unreviewed return or single-write certificate.
 
@@ -920,7 +928,7 @@ def flow_get_derived_call_evidence(
 
 @_flow_api
 def _flow_get_path_proof(
-    artifact_id: str, cursor: str | None = None, limit: int = 50
+    artifact_id: str, cursor: str | None = None, limit: FlowPageLimit = 50
 ) -> FlowArtifactPage | FlowError:
     """Page a bounded proof result with exact/overapprox/incomplete distinctions."""
     return _service().analysis_page(artifact_id, "path_proof", cursor, limit)
@@ -929,7 +937,7 @@ def _flow_get_path_proof(
 @tool
 @_flow_api
 def flow_get_call_compositions(
-    artifact_id: str, cursor: str | None = None, limit: int = 50
+    artifact_id: str, cursor: str | None = None, limit: FlowPageLimit = 50
 ) -> FlowArtifactPage | FlowError:
     """Page bounded call bindings/compositions, including unknown remainders."""
     return _service().analysis_page(artifact_id, "interprocedural", cursor, limit)
