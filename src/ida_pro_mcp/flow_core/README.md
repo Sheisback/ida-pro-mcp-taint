@@ -357,7 +357,10 @@ analysis duration. A trusted handler's `ctx.report()` atomically persists its
 progress/checkpoint, advances the durable deadline by the same Host-owned lease
 interval, and updates the in-process deadline observed by cancellation and idle
 lifecycle checks. Jobs that cannot reach another safe progress boundary inside
-one lease still become `interrupted/lease_expired`; repeated reporting without
+one lease still become `interrupted/lease_expired`. Both the worker busy probe
+and an exact public job-status read enforce that same lease; status polling
+cannot keep a stalled `analyzing` row alive or depend on an unrelated idle
+callback happening to run. Repeated reporting without
 Host computation is not exposed to callers because handlers come only from the
 immutable registry. Process restart still interrupts nonterminal jobs and safe
 retry remains a new job—lease renewal does not claim cross-process computation

@@ -412,12 +412,44 @@ class Runtime:
         if failure is not None:
             raise PersistenceError(failure)
 
+    def _expire_jobs(self, identifier=None):
+        now = self.clock()
+        expired = []
+        with self._lock:
+            jobs = (
+                ((identifier, self._jobs.get(identifier)),)
+                if identifier is not None
+                else tuple(self._jobs.items())
+            )
+            for job_id, job in jobs:
+                if job is None:
+                    continue
+                _, cancel, done, deadline = job
+                if done.is_set() or job_id in self._retired or now < deadline:
+                    continue
+                cancel.set()
+                self._retired.add(job_id)
+                expired.append(job_id)
+        for job_id in expired:
+            self._finish(
+                job_id,
+                "interrupted",
+                {"code": "lease_expired"},
+                nonblocking=True,
+            )
+        return tuple(expired)
+
     def status(self, identifier):
         """Reconcile terminal intent, then return the authoritative stored row.
 
         Storage failures propagate; a finished thread alone is not evidence of a
         durable terminal state. Pending contention never fabricates completion.
         """
+        # Public status polling is a lifecycle observation path, not merely a
+        # metadata read. Enforce the exact job's renewable progress lease here
+        # so a stalled handler cannot remain analyzing forever when no separate
+        # busy-probe callback happens to run.
+        self._expire_jobs(identifier)
         self._recover_finishes(identifier)
         self._check_finish_failure(identifier)
         return self.store.job(identifier)
@@ -594,24 +626,12 @@ class Runtime:
     @property
     def active_job_count(self):
         self._recover_finishes()
-        now = self.clock()
-        expired = []
+        self._expire_jobs()
         with self._lock:
-            active = 0
-            for identifier, (_, cancel, done, deadline) in self._jobs.items():
-                if done.is_set() or identifier in self._retired:
-                    continue
-                if now >= deadline:
-                    cancel.set()
-                    self._retired.add(identifier)
-                    expired.append(identifier)
-                else:
-                    active += 1
-        for identifier in expired:
-            self._finish(
-                identifier, "interrupted", {"code": "lease_expired"}, nonblocking=True
+            return sum(
+                not done.is_set() and identifier not in self._retired
+                for identifier, (_, _, done, _) in self._jobs.items()
             )
-        return active
 
     def begin_close(self):
         # Closing and thread publication share this short mutex. No Store I/O

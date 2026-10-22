@@ -514,6 +514,38 @@ def test_progress_renews_the_job_lease_without_bounding_total_work(tmp_path):
     store.close()
 
 
+def test_status_poll_expires_one_stalled_job_without_a_busy_probe(tmp_path):
+    store, _, _ = setup(tmp_path)
+    now = [0.0]
+    entered = threading.Event()
+    release = threading.Event()
+
+    def stalled(ctx, value):
+        entered.set()
+        assert release.wait(5)
+        return value
+
+    runtime = Runtime(
+        store,
+        {"pure": Handler(lambda ctx, value: value, stalled)},
+        clock=lambda: now[0],
+    )
+    job = runtime.submit("pure", {"answer": 42}, "status-expiry", timeout=10)
+    assert entered.wait(5)
+    now[0] = 11.0
+
+    row = runtime.status(job)
+    assert row["state"] == "interrupted"
+    assert row["error"] == {"code": "lease_expired"}
+    assert runtime.inflight_job_count == 1
+
+    release.set()
+    assert runtime.wait(job)
+    assert store.job(job)["state"] == "interrupted"
+    runtime.shutdown()
+    store.close()
+
+
 def test_cooperative_cancel_and_no_late_completion(tmp_path):
     store, g, _ = setup(tmp_path)
     entered = threading.Event()
