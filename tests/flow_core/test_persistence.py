@@ -2015,6 +2015,80 @@ def test_runtime_finish_retries_transient_store_busy(tmp_path, monkeypatch):
     store.close()
 
 
+def test_large_artifact_materialization_does_not_block_job_status(
+    tmp_path, monkeypatch
+):
+    store, _, _ = setup(tmp_path)
+    job = store.create_job("pure", {}, "status-during-artifact-materialization")
+    artifact = {"payload": "A" * 1024}
+    entered = threading.Event()
+    release = threading.Event()
+    failures = []
+    original = persistence_module.canonical_json
+
+    def paused_canonical_json(value):
+        if value is artifact:
+            entered.set()
+            if not release.wait(5):
+                raise RuntimeError("artifact materialization gate timed out")
+        return original(value)
+
+    def publish():
+        try:
+            store.put_artifact("analysis", artifact)
+        except BaseException as exc:  # pragma: no cover - asserted below
+            failures.append(exc)
+
+    monkeypatch.setattr(persistence_module, "canonical_json", paused_canonical_json)
+    thread = threading.Thread(target=publish)
+    thread.start()
+    try:
+        assert entered.wait(5)
+        assert store.job(job, _busy_timeout_ms=0)["state"] == "queued"
+    finally:
+        release.set()
+        thread.join(5)
+        store.close()
+    assert not thread.is_alive()
+    assert failures == []
+
+
+def test_close_during_artifact_materialization_discards_unpublished_blob(
+    tmp_path, monkeypatch
+):
+    store, _, _ = setup(tmp_path)
+    artifact = {"payload": "B" * 1024}
+    before = {path.name for path in store.blobs.path.iterdir()}
+    entered = threading.Event()
+    release = threading.Event()
+    errors = []
+    original = persistence_module.canonical_json
+
+    def paused_canonical_json(value):
+        if value is artifact:
+            entered.set()
+            if not release.wait(5):
+                raise RuntimeError("artifact close gate timed out")
+        return original(value)
+
+    def publish():
+        try:
+            store.put_artifact("analysis", artifact)
+        except PersistenceError as exc:
+            errors.append(str(exc))
+
+    monkeypatch.setattr(persistence_module, "canonical_json", paused_canonical_json)
+    thread = threading.Thread(target=publish)
+    thread.start()
+    assert entered.wait(5)
+    store.close()
+    release.set()
+    thread.join(5)
+    assert not thread.is_alive()
+    assert errors == ["store_closed"]
+    assert {path.name for path in store.blobs.path.iterdir()} == before
+
+
 @pytest.mark.parametrize(
     "code", ["stale_context", "wrong_database_owner", "store_closed", "sqlite_failure"]
 )

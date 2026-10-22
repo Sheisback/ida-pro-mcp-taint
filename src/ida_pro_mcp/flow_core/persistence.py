@@ -101,14 +101,17 @@ class BlobStore:
         )
         return self.path / (key.split(":")[1] + ".json")
 
-    def put(self, value):
+    def prepare(self, value):
+        """Materialize and verify one immutable blob before metadata locking.
+
+        Large flow graphs can take much longer than the public status busy
+        timeout to serialize, fsync, and read back.  The temporary file is not
+        authoritative and is deliberately created before the Store transaction;
+        only ``publish`` makes it visible by content digest.
+        """
         self._check()
         raw = canonical_json(value).encode("utf-8")
         key = "sha256-v1:" + hashlib.sha256(raw).hexdigest()
-        final = self._path(key)
-        if final.exists() or final.is_symlink():
-            self.read(key)
-            return key, len(raw)
         temporary = self.path / (".tmp-" + uuid.uuid4().hex + ".json")
         fd = os.open(
             temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600
@@ -119,7 +122,46 @@ class BlobStore:
                 stream.flush()
                 os.fsync(stream.fileno())
             require(temporary.read_bytes() == raw, "blob_write_mismatch")
+            identity = _file_check(temporary)
+            require(identity.st_size == len(raw), "blob_write_mismatch")
             self._check()
+            return key, len(raw), temporary, identity.st_dev, identity.st_ino
+        except BaseException:
+            if temporary.exists():
+                temporary.unlink()
+            raise
+
+    def publish(self, prepared):
+        require(
+            type(prepared) is tuple
+            and len(prepared) == 5
+            and type(prepared[0]) is str
+            and type(prepared[1]) is int
+            and isinstance(prepared[2], Path)
+            and type(prepared[3]) is int
+            and type(prepared[4]) is int,
+            "invalid_prepared_blob",
+        )
+        key, length, temporary, device, inode = prepared
+        require(length >= 0, "invalid_prepared_blob")
+        require(temporary.parent == self.path, "invalid_prepared_blob")
+        current = _file_check(temporary)
+        require(
+            current.st_dev == device
+            and current.st_ino == inode
+            and current.st_size == length,
+            "replaced_blob_file",
+        )
+        self._check()
+        final = self._path(key)
+        if final.exists() or final.is_symlink():
+            existing = self.read(key)
+            require(
+                len(canonical_json(existing).encode("utf-8")) == length,
+                "blob_length_conflict",
+            )
+            return key, length
+        try:
             # The SQLite writer transaction serializes publication/recovery.
             require(
                 not final.exists() and not final.is_symlink(),
@@ -133,11 +175,34 @@ class BlobStore:
                 os.fsync(directory_fd)
             finally:
                 os.close(directory_fd)
-            self.read(key)
-            return key, len(raw)
-        finally:
-            if temporary.exists():
+            # ``prepare`` verified the exact inode before this atomic rename.
+            # Recheck its public identity and length without rereading a
+            # potentially hundreds-of-megabytes canonical payload while the
+            # metadata transaction is locked.
+            published = _file_check(final)
+            require(published.st_size == length, "blob_write_mismatch")
+            return key, length
+        except BaseException:
+            if final.exists() and not temporary.exists():
+                # An exception after atomic publication leaves an orphan that
+                # normal recovery can verify/remove; never unlink a visible
+                # content-addressed file outside Store recovery authority.
+                pass
+            raise
+
+    @staticmethod
+    def discard(prepared):
+        if type(prepared) is tuple and len(prepared) == 5:
+            temporary = prepared[2]
+            if isinstance(temporary, Path) and temporary.exists():
                 temporary.unlink()
+
+    def put(self, value):
+        prepared = self.prepare(value)
+        try:
+            return self.publish(prepared)
+        finally:
+            self.discard(prepared)
 
     def read(self, key):
         self._check()
@@ -187,6 +252,15 @@ def _scope_operation(method):
     return guarded
 
 
+def _scope_lifecycle_operation(method):
+    @wraps(method)
+    def guarded(self, *args, **kwargs):
+        with self._scope_lock:
+            return method(self, *args, **kwargs)
+
+    return guarded
+
+
 class Store:
     """One authenticated owner namespace; recovery is an explicit runtime action.
 
@@ -226,6 +300,11 @@ class Store:
         self.closed = False
         self._lease = None
         self._lock = threading.RLock()
+        # Artifact materialization may run without the metadata lock so status
+        # stays observable. This separate lifecycle-order lock keeps a later
+        # invalidation on the same Store behind that publication; peer Store
+        # handles still race through SQLite and the durable scope digest.
+        self._scope_lock = threading.RLock()
         self.blobs = BlobStore(self.root / "blobs")
         self.db = self.root / "metadata.sqlite"
         try:
@@ -453,6 +532,10 @@ class Store:
 
     def _blob(self, conn, value):
         key, length = self.blobs.put(value)
+        return self._register_blob(conn, key, length)
+
+    @staticmethod
+    def _register_blob(conn, key, length):
         conn.execute("INSERT OR IGNORE INTO blobs VALUES (?,?)", (key, length))
         require(
             conn.execute("SELECT length FROM blobs WHERE digest=?", (key,)).fetchone()[
@@ -511,7 +594,7 @@ class Store:
             )
         )
 
-    @_scope_operation
+    @_scope_lifecycle_operation
     def put_artifact(self, kind, value):
         require(
             kind in {"snapshot", "graph", "analysis", "evidence"},
@@ -547,21 +630,28 @@ class Store:
             )
             require(self._artifact_scope_matches(actual), "graph_scope_mismatch")
             value = graph.to_data()
-        with self._transaction() as conn:
-            blob = self._blob(conn, value)
-            identifier = _token("artifact")
-            conn.execute(
-                "INSERT INTO artifacts(id,namespace,scope_digest,scope,kind,blob) VALUES (?,?,?,?,?,?)",
-                (
-                    identifier,
-                    self.scope.namespace,
-                    self.scope.scope_digest,
-                    canonical_json(self.scope),
-                    kind,
-                    blob,
-                ),
-            )
-            return identifier
+        require(not self.closed, "store_closed")
+        prepared = self.blobs.prepare(value)
+        try:
+            require(not self.closed, "store_closed")
+            with self._transaction() as conn:
+                key, length = self.blobs.publish(prepared)
+                blob = self._register_blob(conn, key, length)
+                identifier = _token("artifact")
+                conn.execute(
+                    "INSERT INTO artifacts(id,namespace,scope_digest,scope,kind,blob) VALUES (?,?,?,?,?,?)",
+                    (
+                        identifier,
+                        self.scope.namespace,
+                        self.scope.scope_digest,
+                        canonical_json(self.scope),
+                        kind,
+                        blob,
+                    ),
+                )
+                return identifier
+        finally:
+            self.blobs.discard(prepared)
 
     @_scope_operation
     def artifact(self, identifier):
@@ -957,6 +1047,7 @@ class Store:
             _fault("after_commit")
         return response
 
+    @_scope_lifecycle_operation
     @_scope_operation
     def invalidate_context(self, new_scope: RuntimeScope):
         require(

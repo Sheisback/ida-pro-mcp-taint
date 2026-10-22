@@ -443,6 +443,18 @@ metadata attempts also use nonblocking Store-lock acquisition. Repeated barrier
 tests exercise both same-handle serialization and peer-handle database fencing
 for artifacts, graphs, jobs, traces, pages and idempotent request replay.
 
+Large immutable artifacts are canonicalized, written, fsynced and byte-verified
+as private temporary blobs before taking the Store metadata lock. The short
+locked phase atomically publishes the verified inode and registers its digest in
+the same SQLite transaction as the artifact row. A separate same-Store scope
+lifecycle lock preserves publication-before-invalidation order without blocking
+job status reads; a peer Store still wins only through the durable scope digest.
+Close during preparation discards the unpublished temporary blob. A crash after
+publication but before metadata commit can leave only an orphan, which the
+existing verified recovery owns. This keeps multi-hundred-megabyte graph/SSA
+materialization from turning ordinary status reads into `store_busy` while
+preserving immutable digest, owner-lease and rollback semantics.
+
 Runtime mutexes now protect only in-memory tuples/events and thread publication.
 `cancel()` signals its event first, releases the mutex, then returns the actual
 Store cancellation outcome (or propagates its failure). Expiry collection and
