@@ -5,7 +5,7 @@ import os
 import threading
 import time
 import traceback
-from typing import Any, Callable, get_type_hints, get_origin, get_args, Union, TypedDict, TypeAlias, NotRequired, is_typeddict
+from typing import Any, Callable, get_type_hints, get_origin, get_args, Literal, Union, TypedDict, TypeAlias, NotRequired, is_typeddict
 from types import UnionType
 
 JsonRpcId: TypeAlias = str | int | float | None
@@ -103,6 +103,19 @@ class JsonRpcException(Exception):
 class RequestCancelledError(Exception):
     """Base class for request cancellation errors (LSP error code -32800)."""
     pass
+
+
+def _matches_literal(value: Any, annotation: Any) -> bool:
+    """Match a Literal without conflating equal values of different JSON types."""
+    return any(
+        type(value) is type(expected) and value == expected
+        for expected in get_args(annotation)
+    )
+
+
+def _literal_description(annotation: Any) -> str:
+    return " | ".join(repr(value) for value in get_args(annotation))
+
 
 class JsonRpcRegistry:
     def __init__(self):
@@ -275,10 +288,26 @@ class JsonRpcRegistry:
 
                 # Handle None/null
                 if value is None:
-                    if expected_type is not type(None):
-                        # Check if None is allowed in a Union
-                        if not (origin in (Union, UnionType) and type(None) in args):
-                            raise JsonRpcException(-32602, f"Invalid params: {param_name} cannot be null")
+                    literal_allows_none = (
+                        origin is Literal and _matches_literal(None, expected_type)
+                    )
+                    union_allows_none = origin in (Union, UnionType) and any(
+                        arg_type is type(None)
+                        or (
+                            get_origin(arg_type) is Literal
+                            and _matches_literal(None, arg_type)
+                        )
+                        for arg_type in args
+                    )
+                    if (
+                        expected_type is not type(None)
+                        and not literal_allows_none
+                        and not union_allows_none
+                    ):
+                        raise JsonRpcException(
+                            -32602,
+                            f"Invalid params: {param_name} cannot be null",
+                        )
                     validated_params[param_name] = None
                     continue
 
@@ -307,6 +336,12 @@ class JsonRpcRegistry:
                             continue
 
                         arg_origin = get_origin(arg_type)
+                        if arg_origin is Literal:
+                            if _matches_literal(value, arg_type):
+                                type_matched = True
+                                break
+                            continue
+
                         check_type = arg_origin if arg_origin is not None else arg_type
 
                         # TypedDict cannot be used with isinstance - check for dict instead
@@ -326,6 +361,17 @@ class JsonRpcRegistry:
                             param_name,
                             type(value).__name__
                         ))
+                    validated_params[param_name] = value
+                    continue
+
+                # Literal is a value constraint, not a runtime class.
+                if origin is Literal:
+                    if not _matches_literal(value, expected_type):
+                        raise JsonRpcException(
+                            -32602,
+                            f"Invalid params: {param_name} expected "
+                            f"{_literal_description(expected_type)}, got {value!r}",
+                        )
                     validated_params[param_name] = value
                     continue
 
