@@ -8,7 +8,7 @@ import sys
 import pathlib
 import time
 import unittest
-from typing import Annotated, TypedDict
+from typing import Annotated, Literal, TypedDict
 import threading
 
 from jsonschema import Draft202012Validator
@@ -49,6 +49,24 @@ def _make_server() -> McpServer:
     def add(a: Annotated[int, "left"], b: Annotated[int, "right"]) -> int:
         """Add two ints."""
         return a + b
+
+    @srv.tool
+    def flow_get_graph_dispatch(
+        artifact_id: str,
+        item_type: Literal["node", "edge"] | None = None,
+        source_ea: int | None = None,
+    ) -> dict:
+        """Representative flow_get_graph dispatcher contract."""
+        return {
+            "artifact_id": artifact_id,
+            "item_type": item_type,
+            "source_ea": source_ea,
+        }
+
+    @srv.tool
+    def literal_direct(kind: Literal["node", "edge"], ordinal: Literal[1]) -> dict:
+        """Exercise a non-union Literal and strict bool/int identity."""
+        return {"kind": kind, "ordinal": ordinal}
 
     @srv.tool
     def export_data(fmt: Annotated[str, "format"] = "json") -> _JsonR | _HdrR:
@@ -198,6 +216,62 @@ class HttpE2EToolsDiscoveryTests(unittest.TestCase):
             "tools/call", params={"name": "add", "arguments": {"a": 2, "b": 3}}
         )
         Draft202012Validator(schema).validate(body["result"]["structuredContent"])
+
+    def test_tools_call_accepts_optional_literal_flow_filter(self):
+        _, _, body = self.harness.post_jsonrpc(
+            "tools/call",
+            params={
+                "name": "flow_get_graph_dispatch",
+                "arguments": {
+                    "artifact_id": "artifact_graph",
+                    "item_type": "node",
+                    "source_ea": 0x140019671,
+                },
+            },
+        )
+        result = body["result"]
+        self.assertFalse(result.get("isError"), result)
+        self.assertEqual(result["structuredContent"]["item_type"], "node")
+        self.assertEqual(result["structuredContent"]["source_ea"], 0x140019671)
+
+    def test_tools_call_accepts_direct_literal(self):
+        _, _, body = self.harness.post_jsonrpc(
+            "tools/call",
+            params={
+                "name": "literal_direct",
+                "arguments": {"kind": "edge", "ordinal": 1},
+            },
+        )
+        self.assertFalse(body["result"].get("isError"), body)
+
+    def test_tools_call_rejects_invalid_literal_as_invalid_params(self):
+        _, _, body = self.harness.post_jsonrpc(
+            "tools/call",
+            params={
+                "name": "flow_get_graph_dispatch",
+                "arguments": {
+                    "artifact_id": "artifact_graph",
+                    "item_type": "evidence",
+                },
+            },
+        )
+        result = body["result"]
+        self.assertTrue(result.get("isError"), result)
+        message = result["content"][0]["text"]
+        self.assertIn("Invalid params", message)
+        self.assertNotIn("typing.Literal cannot be used with isinstance", message)
+
+    def test_tools_call_does_not_match_bool_to_integer_literal(self):
+        _, _, body = self.harness.post_jsonrpc(
+            "tools/call",
+            params={
+                "name": "literal_direct",
+                "arguments": {"kind": "node", "ordinal": True},
+            },
+        )
+        result = body["result"]
+        self.assertTrue(result.get("isError"), result)
+        self.assertIn("Invalid params", result["content"][0]["text"])
 
 
 class HttpE2EPromptsAndResourcesTests(unittest.TestCase):
