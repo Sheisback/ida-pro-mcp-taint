@@ -289,6 +289,18 @@ def test_public_graph_page_supports_indexed_node_and_edge_selection(export_graph
     assert node_page["next_cursor"] is None
     assert selected.node_id in {item["node_id"] for item in node_page["items"]}
     assert all(item["type"] == "node" for item in node_page["items"])
+    assert module.flow_get_graph(
+        artifact,
+        limit=200,
+        item_type="node",
+        node_kind=selected.kind,
+        source_ea={"$int": str(source_ea)},
+    ) == node_page
+    assert module.flow_get_graph(
+        artifact,
+        item_type="node",
+        source_ea={"$int": str(1 << 53)},
+    )["error"]["code"] == "unsafe_integer_for_wire_v1"
 
     edge = graph.edges[0]
     edge_page = module.flow_get_graph(

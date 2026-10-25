@@ -592,6 +592,10 @@ exact `source_ea`, and optional `node_kind`/`operation`; page only that filtered
 result. Entry arguments already named by the completed job's `entry_registers`
 map need no graph search. Cursors bind the artifact, graph digest and every
 filter, so a cursor cannot be replayed under a different query.
+For a v1 graph, a JavaScript-safe EA may be supplied as either an ordinary JSON
+integer or its canonical `{"$int":"…"}` form; both normalize to the same cursor
+identity. A v1 tagged value above the safe range is rejected. V2 graph filters
+still require the canonical tag and never accept a bare payload integer.
 
 When one node has too many selected relations for a bounded response, its
 trace item has `edges_externalized` **instead of** an inline `edges` list. The

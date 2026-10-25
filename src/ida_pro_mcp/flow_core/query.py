@@ -299,15 +299,16 @@ class Queries:
         index = self._trace_index(artifact_id)
         if selected["source_ea"] is not None:
             tagged = type(selected["source_ea"]) is dict
-            require(
-                tagged == index.snapshot_id.startswith("snapshot-v2:"),
-                "mixed_wire_versions",
-            )
             source = (
                 from_wire_v2(selected["source_ea"])
                 if tagged
                 else selected["source_ea"]
             )
+            require(type(source) is int, "invalid_graph_filter")
+            if index.snapshot_id.startswith("snapshot-v2:"):
+                require(tagged, "mixed_wire_versions")
+            else:
+                require(source <= JS_SAFE_INTEGER, "unsafe_integer_for_wire_v1")
             bitness = index.snapshot["identity"]["environment"]["bitness"]
             selected["source_ea"] = validate_ea(source, bitness)
         identity_filter = {

@@ -359,6 +359,9 @@ Do not enumerate the complete graph to choose a source. For example, after
 independently confirming that a `Load` reads byte 5 of an input buffer, seed
 that **Load's** `node_id`—not the pointer's `InputValue`:
 
+V1 filters normalize an ordinary JavaScript-safe `source_ea` and its canonical
+`{"$int":"…"}` spelling identically; v2 filters require the tagged spelling.
+
 ```text
 flow_create_implicit_analysis(
     ssa_artifact="<snapshot result.ssa_artifact>",
