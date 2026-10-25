@@ -478,11 +478,12 @@ and snapshot identities. Consult the operator guide for the current tool set
 rather than the initial G010 inventory.
 
 The query owner also owns the trace-wide budget and per-page range used by the
-public tool schema. Both are validated before graph IO; the first committed page
-receives the already validated graph instead of decoding/reassembling the same
-artifact a second time. Pagination and durable continuation semantics are
-unchanged, and these per-object/page bounds do not cap the number of continuation
-pages or total analytical work.
+public tool schema. Both are validated before graph IO. Snapshot publication
+streams nodes, edges, native-EA bindings and evidence into one private immutable
+query index; graph/evidence pages and traces share it without reconstructing the
+complete artifact. Exact node/endpoint filters use the same cursor-bound index.
+Pagination and durable continuation semantics are unchanged, and these
+per-object/page bounds do not cap continuation pages or total analytical work.
 
 `flow_get_capabilities` reports route-specific availability and uncertainty;
 `supported_profiles` is not universally empty and is not a blanket architecture

@@ -138,12 +138,19 @@ def test_public_runtime_composes_reviewed_calls_and_retains_remainders(
     scope = service._runtime_scope(info, "runtime-owner")
     artifacts = {}
 
-    def put(kind, value):
+    def put(kind, value, **options):
         key = f"{kind}-{len(artifacts)}"
         artifacts[key] = value.to_data() if hasattr(value, "to_data") else value
-        return key
+        return (key, digest(artifacts[key])) if options.get("_return_blob") else key
 
-    engine = SimpleNamespace(store=SimpleNamespace(scope=scope, put_artifact=put))
+    def index(_artifact, _graph, **options):
+        options["progress"]({"section": "nodes", "processed": 1})
+
+    engine = SimpleNamespace(
+        store=SimpleNamespace(
+            scope=scope, put_artifact=put, ensure_trace_index=index
+        )
+    )
     monkeypatch.setattr(service, "get_runtime", lambda *_: engine)
     request = dict(
         ea=selected["baseline"]["function_ea"],
@@ -162,7 +169,11 @@ def test_public_runtime_composes_reviewed_calls_and_retains_remainders(
         note_extract_stage=lambda stage: None,
     )
     result = service._analyze(ctx, service._extract(ctx, request))
-    assert reports and all(item["stage"] == "memory_window" for item in reports)
+    assert reports
+    assert {item["stage"] for item in reports} == {"memory_window", "graph_index"}
+    assert [item["sequence"] for item in reports] == list(
+        range(1, len(reports) + 1)
+    )
     raw = artifacts[result["call_composition_artifact"]]
     items, metadata = service._interprocedural_page(raw)
     found = {
@@ -898,12 +909,18 @@ def test_snapshot_result_echoes_refine_selector_inputs(flow, monkeypatch, arch):
     scope = service._runtime_scope(info, "runtime-owner")
     artifacts = {}
 
-    def put(kind, value):
+    def put(kind, value, **options):
         key = f"{kind}-{len(artifacts)}"
         artifacts[key] = value.to_data() if hasattr(value, "to_data") else value
-        return key
+        return (key, digest(artifacts[key])) if options.get("_return_blob") else key
 
-    engine = SimpleNamespace(store=SimpleNamespace(scope=scope, put_artifact=put))
+    engine = SimpleNamespace(
+        store=SimpleNamespace(
+            scope=scope,
+            put_artifact=put,
+            ensure_trace_index=lambda *_args, **_options: None,
+        )
+    )
     monkeypatch.setattr(service, "get_runtime", lambda *_: engine)
     request = dict(
         ea=selected["baseline"]["function_ea"],

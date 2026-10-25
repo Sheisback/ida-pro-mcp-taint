@@ -564,6 +564,22 @@ def test_trace_index_payload_corruption_fails_closed(tmp_path):
         store.close()
 
 
+def test_indexed_evidence_corruption_fails_closed(tmp_path):
+    store, _, _, graph_artifact = setup(tmp_path)
+    try:
+        first = Queries(store).page_evidence(graph_artifact, limit=1)
+        assert first["items"]
+        [index_path] = store.trace_indexes.glob("trace-*.sqlite")
+        with sqlite3.connect(index_path) as connection:
+            connection.execute(
+                "UPDATE evidence_items SET payload_json='{}' WHERE ordinal=0"
+            )
+        with pytest.raises(ContractError, match="trace_index_evidence_changed"):
+            Queries(store).page_evidence(graph_artifact, limit=1)
+    finally:
+        store.close()
+
+
 def test_trace_index_hardlink_and_replacement_fail_closed(tmp_path):
     store, program, sid, gid = setup(tmp_path)
     try:
@@ -683,6 +699,44 @@ def test_trace_index_build_failure_publishes_no_partial_authority(tmp_path, monk
             "index-build-retry",
         )
         assert page["trace_id"].startswith("trace_")
+    finally:
+        store.close()
+
+
+def test_graph_index_build_cancellation_is_retryable_and_reports_progress(tmp_path):
+    store, program, _, graph_artifact = setup(tmp_path)
+    checks = 0
+    progress = []
+
+    def cancel_during_build():
+        nonlocal checks
+        checks += 1
+        if checks == 2:
+            raise RuntimeError("injected graph index cancellation")
+
+    try:
+        with pytest.raises(RuntimeError, match="injected graph index cancellation"):
+            store.ensure_trace_index(
+                graph_artifact,
+                program.graph,
+                checkpoint=cancel_during_build,
+                progress=progress.append,
+            )
+        assert list(store.trace_indexes.glob("trace-*.sqlite")) == []
+        assert list(store.trace_indexes.glob(".*.tmp")) == []
+
+        index = store.ensure_trace_index(
+            graph_artifact,
+            program.graph,
+            checkpoint=lambda: None,
+            progress=progress.append,
+        )
+        assert index.node_count == len(program.graph.nodes)
+        assert {item["section"] for item in progress} >= {
+            "nodes",
+            "edges",
+            "evidence",
+        }
     finally:
         store.close()
 

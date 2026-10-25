@@ -77,7 +77,6 @@ from ida_pro_mcp.flow_core.proof import (
 from ida_pro_mcp.flow_core.query import (
     Queries,
     artifact_page,
-    evidence_chunks,
     wire_safe_node_item,
 )
 from ida_pro_mcp.flow_core.angr_client import (
@@ -652,6 +651,18 @@ def _analyze(ctx, extracted):
             }
         )
 
+    def report_graph_index(progress):
+        nonlocal progress_sequence
+        progress_sequence += 1
+        ctx.report(
+            {
+                "phase": "analyze",
+                "stage": "graph_index",
+                "sequence": progress_sequence,
+                **progress,
+            }
+        )
+
     memory = build_memory_graph(
         snapshot,
         derived_returns=derived_returns,
@@ -667,7 +678,21 @@ def _analyze(ctx, extracted):
     entry_registers = _resolve_entry_registers(program.entry_storage, reg_info)
     calls = compose_program_calls(function, program, catalog, callees, ctx.check)
     sid = current.store.put_artifact("snapshot", snapshot)
-    gid = current.store.put_artifact("graph", memory.graph)
+    gid, graph_blob_digest = current.store.put_artifact(
+        "graph", memory.graph, _return_blob=True
+    )
+    current.store.ensure_trace_index(
+        gid,
+        memory.graph,
+        checkpoint=ctx.check,
+        progress=report_graph_index,
+        graph_blob_digest=graph_blob_digest,
+        graph_digest=(
+            graph_blob_digest
+            if memory.graph.snapshot.snapshot_id.startswith("snapshot-v1:")
+            else memory.graph.graph_digest
+        ),
+    )
     base_graph = strip_memory_derivations(memory.graph)
     base_id = current.store.put_artifact("graph", base_graph)
     window_chain = build_window_slices(
@@ -1619,86 +1644,58 @@ def graph_digest_bytes(artifact_id: str, cursor: str | None = None) -> dict:
     return response
 
 
-def page(artifact_id, section, cursor=None, limit=50, evidence_ids=None):
+def page(
+    artifact_id,
+    section,
+    cursor=None,
+    limit=50,
+    evidence_ids=None,
+    graph_filter=None,
+):
     engine = get_runtime()
-    raw = engine.store.artifact(artifact_id)
-    argument_bindings = []
-    if section in {"ssa", "cfg"}:
-        program = cast(SSAProgram, SSAProgram.from_data(raw))
-        graph = program.graph
-        argument_bindings = _argument_bindings(program)
-        items = (
-            [
-                {"node_id": node.node_id, **node.to_data()}
-                if graph.snapshot.snapshot_id.startswith("snapshot-v2:")
-                else wire_safe_node_item({"node_id": node.node_id, **node.to_data()})
-                for node in graph.nodes
-            ]
-            if section == "ssa"
-            else [
-                {
-                    **block.to_data(),
-                    "predecessors": list(
-                        graph.snapshot.function.blocks[block.block].predecessors
-                    ),
-                    "successors": list(
-                        graph.snapshot.function.blocks[block.block].successors
-                    ),
-                }
-                for block in program.dominance.blocks
-            ]
+    if section == "graph":
+        require(evidence_ids is None, "invalid_graph_filter")
+        return Queries(engine.store).page_graph(
+            artifact_id,
+            cursor=cursor,
+            limit=limit,
+            **(graph_filter or {}),
         )
-    else:
-        graph = cast(Graph, Queries(engine.store).graph(artifact_id))
-        identity_version = (
-            2 if graph.snapshot.snapshot_id.startswith("snapshot-v2:") else 1
-        )
-        if section == "graph":
-            items = [
-                {"type": "node", "node_id": n.node_id, **n.to_data()}
-                if identity_version == 2
-                else wire_safe_node_item(
-                    {"type": "node", "node_id": n.node_id, **n.to_data()}
-                )
-                for n in graph.nodes
-            ] + [
-                {"type": "edge", "edge_id": e.edge_id, **e.to_data()}
-                for e in graph.edges
-            ]
-        else:
-            require(
-                evidence_ids is None
-                or (
-                    type(evidence_ids) is list
-                    and len(evidence_ids) <= 100
-                    and all(
-                        type(item) is str
-                        and re.fullmatch(
-                            rf"evidence-v{identity_version}:[0-9a-f]{{64}}", item
-                        )
-                        is not None
-                        for item in evidence_ids
-                    )
-                ),
-                "invalid_evidence_ids",
-            )
-            selected = set(evidence_ids) if evidence_ids is not None else None
-            available = {e.evidence_id: e for e in graph.evidence}
-            items = [
-                {"evidence_id": eid, **available[eid].to_data()}
-                if eid in available
-                else {"evidence_id": eid, "missing": True}
-                for eid in sorted(selected if selected is not None else available)
-            ]
+    require(graph_filter is None, "invalid_graph_filter")
     if section == "evidence":
-        items = evidence_chunks(
-            items,
-            wire_version=(
-                "flow-wire/2"
-                if graph.snapshot.snapshot_id.startswith("snapshot-v2:")
-                else "flow-wire/1"
-            ),
+        return Queries(engine.store).page_evidence(
+            artifact_id,
+            cursor=cursor,
+            limit=limit,
+            evidence_ids=evidence_ids,
         )
+    require(evidence_ids is None, "invalid_artifact_section")
+    require(section in {"ssa", "cfg"}, "invalid_artifact_section")
+    raw = engine.store.artifact(artifact_id)
+    program = cast(SSAProgram, SSAProgram.from_data(raw))
+    graph = program.graph
+    argument_bindings = _argument_bindings(program)
+    items = (
+        [
+            {"node_id": node.node_id, **node.to_data()}
+            if graph.snapshot.snapshot_id.startswith("snapshot-v2:")
+            else wire_safe_node_item({"node_id": node.node_id, **node.to_data()})
+            for node in graph.nodes
+        ]
+        if section == "ssa"
+        else [
+            {
+                **block.to_data(),
+                "predecessors": list(
+                    graph.snapshot.function.blocks[block.block].predecessors
+                ),
+                "successors": list(
+                    graph.snapshot.function.blocks[block.block].successors
+                ),
+            }
+            for block in program.dominance.blocks
+        ]
+    )
     require(
         isinstance(graph.snapshot, Snapshot),
         "public_runtime_requires_normal_snapshot",
@@ -2621,10 +2618,12 @@ def trace(
     limit,
 ):
     queries = Queries(get_runtime().store)
-    graph = queries.graph(graph_artifact)
-    if graph.snapshot.snapshot_id.startswith("snapshot-v2:"):
+    index = queries._trace_index(graph_artifact)
+    if index.snapshot_id.startswith("snapshot-v2:"):
         source = from_wire_v2(source)
-        validate_model_wire_v2(source, graph.snapshot.identity.environment.bitness)
+        validate_model_wire_v2(
+            source, index.snapshot["identity"]["environment"]["bitness"]
+        )
     else:
         ensure_wire_v1_safe(source)
     return queries.start(
@@ -2636,6 +2635,7 @@ def trace(
         edge_kinds=edge_kinds,
         budget=budget,
         limit=limit,
+        _index=index,
     )
 
 

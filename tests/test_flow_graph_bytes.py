@@ -150,6 +150,14 @@ def test_v2_graph_export_has_lossless_large_ea_and_matching_digest(
     assert page["metadata"]["environment"]["bitness"] == {"$int": "64"}
     assert page["next_cursor"] is not None
     assert module.flow_get_graph(artifact, page["next_cursor"], 1)["items"]
+    filtered = module.flow_get_graph(
+        artifact,
+        item_type="node",
+        source_ea={"$int": str(large_ea)},
+        limit=200,
+    )
+    assert filtered["items"]
+    assert all(item["type"] == "node" for item in filtered["items"])
     ssa_artifact = store.put_artifact("analysis", build_ssa(snapshot).to_data())
     assert (
         module.flow_get_function_ssa(ssa_artifact, limit=1)["metadata"]["wire_version"]
@@ -183,7 +191,11 @@ def test_v2_graph_export_has_lossless_large_ea_and_matching_digest(
     assert trace["revision"] == {"$int": "1"}
     assert trace["snapshot_id"] == snapshot.snapshot_id
     next_trace = module.flow_continue_trace(
-        trace["trace_id"], trace["revision"], trace["cursor"], "v2-trace-next", 1
+        trace["trace_id"],
+        trace["revision"],
+        trace["cursor"],
+        "v2-trace-next",
+        limit=1,
     )
     assert "revision" in next_trace, next_trace
     assert next_trace["revision"] == {"$int": "2"}, next_trace
@@ -292,6 +304,31 @@ def test_public_graph_page_supports_indexed_node_and_edge_selection(export_graph
         item["source"] == edge.source and item["kind"] == edge.kind
         for item in edge_page["items"]
     )
+
+
+def test_public_evidence_pages_reuse_graph_index_without_graph_reparse(
+    export_graph, monkeypatch
+):
+    module, store, graph, artifact, job = export_graph
+    publish(store, job, artifact)
+    first = module.flow_get_evidence(artifact, limit=1)
+    assert first["items"] and first["next_cursor"] is not None
+    read = store.artifact
+
+    def no_graph_reparse(identifier):
+        if identifier == artifact:
+            raise AssertionError("evidence continuation reparsed the complete graph")
+        return read(identifier)
+
+    monkeypatch.setattr(store, "artifact", no_graph_reparse)
+    second = module.flow_get_evidence(
+        artifact, cursor=first["next_cursor"], limit=1
+    )
+    assert second["items"]
+    selected = module.flow_get_evidence(
+        artifact, evidence_ids=[graph.evidence[0].evidence_id], limit=1
+    )
+    assert selected["items"][0]["evidence_id"] == graph.evidence[0].evidence_id
 
 
 def test_graph_bytes_publication_and_database_gate(export_graph, tmp_path):

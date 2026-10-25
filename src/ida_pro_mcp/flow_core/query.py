@@ -7,23 +7,42 @@ Cursors bind the immutable artifact/filter or the durable trace revision.
 from collections import deque
 from dataclasses import replace
 import json
+import re
+from typing import get_args
 
-from .contracts import Graph, MemorySource, ValueSource
+from .contracts import (
+    EdgeKind,
+    Graph,
+    MemorySource,
+    Node,
+    NodeKind,
+    Snapshot,
+    ValueSource,
+)
 from .memory_graph import reassemble_graph, verify_window_slices
+from .graph_index import evidence_chunks as _evidence_chunks
 from .persistence import PAGE_HARD_CHARS, PAGE_TARGET_CHARS, PersistenceError, require
 from .runtime_contracts import TraceSpec, TraceState
 from .serialization import (
     JS_SAFE_INTEGER,
     digest,
-    canonical_json,
-    canonical_json_v2,
+    from_wire_v2,
     to_wire_v2,
+    validate_ea,
 )
+from .states import check_id
 
 DEFAULT_EDGES = ("memory_data_dependency", "phi_input", "value_dependency")
 PAGE_LIMIT_MIN = 1
 PAGE_LIMIT_MAX = 200
 TRACE_BUDGET_MIN = 1
+evidence_chunks = _evidence_chunks
+NODE_KINDS = frozenset(get_args(NodeKind))
+EDGE_KINDS = frozenset(get_args(EdgeKind))
+GRAPH_PAGE_LIMITATIONS = (
+    "This page is intra-function value and byte-range reachability; use the dedicated implicit, bounded-proof, and call-composition artifacts for those distinct semantics.",
+    "Supported-anchor memory edges assume successful flat user-space accesses; TLS/MMIO and null/fault feasibility are unresolved.",
+)
 
 
 def wire_safe_node_item(item: dict) -> dict:
@@ -106,12 +125,331 @@ def artifact_page(artifact_id, section, items, metadata, cursor=None, limit=50):
     return bounded(response, v2=v2)
 
 
+def _graph_page_filter(
+    *,
+    item_type=None,
+    node_id=None,
+    node_kind=None,
+    operation=None,
+    source_ea=None,
+    source_node_id=None,
+    target_node_id=None,
+    edge_kinds=None,
+):
+    require(item_type in {None, "node", "edge"}, "invalid_graph_filter")
+    node_filter = any(
+        value is not None for value in (node_id, node_kind, operation, source_ea)
+    )
+    edge_filter = any(
+        value is not None
+        for value in (source_node_id, target_node_id, edge_kinds)
+    )
+    require(not (node_filter and edge_filter), "invalid_graph_filter")
+    require(not node_filter or item_type in {None, "node"}, "invalid_graph_filter")
+    require(not edge_filter or item_type in {None, "edge"}, "invalid_graph_filter")
+    if node_filter and item_type is None:
+        item_type = "node"
+    if edge_filter and item_type is None:
+        item_type = "edge"
+    for value in (node_id, source_node_id, target_node_id):
+        require(value is None or type(value) is str, "invalid_graph_filter")
+        if value is not None:
+            check_id(value, "node")
+    require(
+        node_kind is None or node_kind in NODE_KINDS,
+        "invalid_graph_filter",
+    )
+    require(
+        operation is None or (type(operation) is str and bool(operation)),
+        "invalid_graph_filter",
+    )
+    require(
+        source_ea is None or type(source_ea) in {int, dict},
+        "invalid_graph_filter",
+    )
+    require(
+        edge_kinds is None
+        or (
+            type(edge_kinds) in {list, tuple}
+            and bool(edge_kinds)
+            and all(type(kind) is str and kind in EDGE_KINDS for kind in edge_kinds)
+        ),
+        "invalid_graph_filter",
+    )
+    return {
+        "item_type": item_type,
+        "node_id": node_id,
+        "node_kind": node_kind,
+        "operation": operation,
+        "source_ea": source_ea,
+        "source_node_id": source_node_id,
+        "target_node_id": target_node_id,
+        "edge_kinds": tuple(sorted(set(edge_kinds or ()))),
+    }
+
+
+def _graph_page_metadata(index):
+    snapshot = Snapshot.from_data(index.snapshot)
+    require(
+        isinstance(snapshot, Snapshot),
+        "public_runtime_requires_normal_snapshot",
+    )
+    metadata = {
+        "snapshot_id": snapshot.snapshot_id,
+        "graph_digest": index.graph_digest,
+        "axes": index.axes.to_data(),
+        "maturity": snapshot.identity.maturity,
+        "profile_digest": snapshot.identity.profile_digest,
+        "rule_digest": snapshot.identity.rule_digest,
+        "summary_digest": snapshot.identity.summary_digest,
+        "environment": snapshot.identity.environment.to_data(),
+        "diagnostics": [item.to_data() for item in snapshot.function.diagnostics],
+        "argument_bindings": [],
+        "memory_dependency_count": index.memory_dependency_count,
+        "opaque_memory_dependency_count": index.opaque_memory_dependency_count,
+        "limitations": list(GRAPH_PAGE_LIMITATIONS),
+    }
+    if snapshot.snapshot_id.startswith("snapshot-v2:"):
+        metadata["wire_version"] = "flow-wire/2"
+    return metadata
+
+
+def _graph_page_cursor(identity, position):
+    kind, ordinal = position
+    return f"{kind}:{ordinal}/" + digest(
+        {"identity": identity, "kind": kind, "ordinal": ordinal}
+    )
+
+
+def _parse_graph_page_cursor(cursor, identity):
+    if cursor is None:
+        return None
+    require(type(cursor) is str, "invalid_cursor")
+    try:
+        position, token = cursor.split("/", 1)
+        kind, ordinal_text = position.split(":", 1)
+        ordinal = int(ordinal_text)
+    except (TypeError, ValueError):
+        raise PersistenceError("invalid_cursor") from None
+    require(
+        kind in {"node", "edge"}
+        and ordinal >= 0
+        and cursor == _graph_page_cursor(identity, (kind, ordinal)),
+        "invalid_cursor",
+    )
+    return kind, ordinal
+
+
+def _evidence_page_cursor(identity, ordinal):
+    return f"{ordinal}/" + digest({"identity": identity, "ordinal": ordinal})
+
+
+def _parse_evidence_page_cursor(cursor, identity):
+    if cursor is None:
+        return None
+    require(type(cursor) is str, "invalid_cursor")
+    try:
+        ordinal_text, token = cursor.split("/", 1)
+        ordinal = int(ordinal_text)
+    except (TypeError, ValueError):
+        raise PersistenceError("invalid_cursor") from None
+    require(
+        ordinal >= 0 and cursor == _evidence_page_cursor(identity, ordinal),
+        "invalid_cursor",
+    )
+    return ordinal
+
+
 class Queries:
     def __init__(self, store):
         self.store = store
 
     def graph(self, artifact_id):
         return Graph.from_data(self.store.artifact(artifact_id))
+
+    def page_graph(
+        self,
+        artifact_id,
+        cursor=None,
+        limit=50,
+        *,
+        item_type=None,
+        node_id=None,
+        node_kind=None,
+        operation=None,
+        source_ea=None,
+        source_node_id=None,
+        target_node_id=None,
+        edge_kinds=None,
+    ):
+        require(
+            type(limit) is int and PAGE_LIMIT_MIN <= limit <= PAGE_LIMIT_MAX,
+            "invalid_page_limit",
+        )
+        selected = _graph_page_filter(
+            item_type=item_type,
+            node_id=node_id,
+            node_kind=node_kind,
+            operation=operation,
+            source_ea=source_ea,
+            source_node_id=source_node_id,
+            target_node_id=target_node_id,
+            edge_kinds=edge_kinds,
+        )
+        index = self._trace_index(artifact_id)
+        if selected["source_ea"] is not None:
+            tagged = type(selected["source_ea"]) is dict
+            require(
+                tagged == index.snapshot_id.startswith("snapshot-v2:"),
+                "mixed_wire_versions",
+            )
+            source = (
+                from_wire_v2(selected["source_ea"])
+                if tagged
+                else selected["source_ea"]
+            )
+            bitness = index.snapshot["identity"]["environment"]["bitness"]
+            selected["source_ea"] = validate_ea(source, bitness)
+        identity_filter = {
+            **selected,
+            "edge_kinds": list(selected["edge_kinds"]),
+            **(
+                {"source_ea": {"$int": str(selected["source_ea"])}}
+                if selected["source_ea"] is not None
+                else {}
+            ),
+        }
+        identity = digest(
+            {
+                "artifact": artifact_id,
+                "section": "graph",
+                "graph_digest": index.graph_digest,
+                "filter": identity_filter,
+                "index_version": index.index_version,
+            }
+        )
+        after = _parse_graph_page_cursor(cursor, identity)
+        indexed = index.page_items(after=after, limit=limit + 1, **selected)
+        has_more = len(indexed) > limit
+        response = {
+            "schema_version": "flow-page/1",
+            "artifact_id": artifact_id,
+            "section": "graph",
+            "metadata": _graph_page_metadata(index),
+            "items": [],
+            "next_cursor": None,
+        }
+        last_position = None
+        v2 = index.snapshot_id.startswith("snapshot-v2:")
+        for kind, ordinal, value in indexed[:limit]:
+            item = (
+                {"type": "node", "node_id": value.node_id, **value.to_data()}
+                if isinstance(value, Node)
+                else {"type": "edge", "edge_id": value.edge_id, **value.to_data()}
+            )
+            if not v2 and isinstance(value, Node):
+                item = wire_safe_node_item(item)
+            candidate = {**response, "items": response["items"] + [item]}
+            position = (kind, ordinal)
+            candidate["next_cursor"] = (
+                _graph_page_cursor(identity, position)
+                if has_more or len(response["items"]) + 1 < len(indexed)
+                else None
+            )
+            sized = to_wire_v2(candidate) if v2 else candidate
+            if response["items"] and len(json.dumps(sized)) > PAGE_TARGET_CHARS:
+                has_more = True
+                break
+            bounded(candidate, v2=v2)
+            response = candidate
+            last_position = position
+        if has_more and last_position is not None:
+            response["next_cursor"] = _graph_page_cursor(identity, last_position)
+        return bounded(response, v2=v2)
+
+    def page_evidence(
+        self,
+        artifact_id,
+        cursor=None,
+        limit=50,
+        *,
+        evidence_ids=None,
+    ):
+        require(
+            type(limit) is int and PAGE_LIMIT_MIN <= limit <= PAGE_LIMIT_MAX,
+            "invalid_page_limit",
+        )
+        require(
+            evidence_ids is None
+            or (
+                type(evidence_ids) is list
+                and len(evidence_ids) <= 100
+                and all(type(item) is str for item in evidence_ids)
+            ),
+            "invalid_evidence_ids",
+        )
+        index = self._trace_index(artifact_id)
+        identity_version = 2 if index.snapshot_id.startswith("snapshot-v2:") else 1
+        require(
+            evidence_ids is None
+            or all(
+                    re.fullmatch(
+                        rf"evidence-v{identity_version}:[0-9a-f]{{64}}", item
+                    )
+                    is not None
+                    for item in evidence_ids
+            ),
+            "invalid_evidence_ids",
+        )
+        metadata = _graph_page_metadata(index)
+        if evidence_ids is not None:
+            selected = tuple(sorted(set(evidence_ids)))
+            return artifact_page(
+                artifact_id,
+                "evidence",
+                index.selected_evidence_items(selected),
+                metadata,
+                cursor,
+                limit,
+            )
+        identity = digest(
+            {
+                "artifact": artifact_id,
+                "section": "evidence",
+                "graph_digest": index.graph_digest,
+                "index_version": index.index_version,
+            }
+        )
+        after = _parse_evidence_page_cursor(cursor, identity)
+        indexed = index.page_evidence_items(after_ordinal=after, limit=limit + 1)
+        has_more = len(indexed) > limit
+        response = {
+            "schema_version": "flow-page/1",
+            "artifact_id": artifact_id,
+            "section": "evidence",
+            "metadata": metadata,
+            "items": [],
+            "next_cursor": None,
+        }
+        last_ordinal = None
+        v2 = identity_version == 2
+        for ordinal, item in indexed[:limit]:
+            candidate = {**response, "items": response["items"] + [item]}
+            candidate["next_cursor"] = (
+                _evidence_page_cursor(identity, ordinal)
+                if has_more or len(response["items"]) + 1 < len(indexed)
+                else None
+            )
+            sized = to_wire_v2(candidate) if v2 else candidate
+            if response["items"] and len(json.dumps(sized)) > PAGE_TARGET_CHARS:
+                has_more = True
+                break
+            bounded(candidate, v2=v2)
+            response = candidate
+            last_ordinal = ordinal
+        if has_more and last_ordinal is not None:
+            response["next_cursor"] = _evidence_page_cursor(identity, last_ordinal)
+        return bounded(response, v2=v2)
 
     def graph_from_chain(self, chain_artifact):
         """Verify a window chain and reassemble its enriched graph.
@@ -170,6 +508,7 @@ class Queries:
         edge_kinds=DEFAULT_EDGES,
         budget=None,
         limit=50,
+        _index=None,
     ):
         require(
             budget is None or (type(budget) is int and budget >= TRACE_BUDGET_MIN),
@@ -196,22 +535,19 @@ class Queries:
             ),
             "invalid_trace_source",
         )
-        graph = self.graph(graph_artifact)
-        index = self.store.ensure_trace_index(graph_artifact, graph)
-        source = {"snapshot_id": graph.snapshot.snapshot_id, **source}
+        index = _index if _index is not None else self._trace_index(graph_artifact)
+        source = {"snapshot_id": index.snapshot_id, **source}
         require(source.get("kind") in {"value", "memory"}, "invalid_trace_source")
         selected = (
             ValueSource if source["kind"] == "value" else MemorySource
         ).from_data(source)
-        graph.validate_source(selected)
         if isinstance(selected, ValueSource):
+            require(index.contains_all({selected.node_id}), "Dangling source node")
             start = (selected.node_id,)
         else:
             # Memory content traversal requires a graph with concrete byte-memory
             # relations. Scalar-only graphs fail validation; do not infer addresses.
-            start = tuple(
-                sorted(n.node_id for n in graph.nodes if n.memory == selected.reference)
-            )
+            start = index.memory_nodes(selected.reference)
             require(bool(start), "memory_source_has_no_graph_relation")
         spec = TraceSpec(
             snapshot_artifact,
@@ -442,29 +778,3 @@ class Queries:
                 raise
         graph = self.graph(graph_artifact)
         return self.store.ensure_trace_index(graph_artifact, graph)
-
-
-def evidence_chunks(items, *, wire_version="flow-wire/1"):
-    """Large evidence remains reconstructible JSON, never a text preview."""
-    chunks = []
-    for item in items:
-        v2 = wire_version == "flow-wire/2"
-        text = canonical_json_v2(item) if v2 else canonical_json(item)
-        size = len(json.dumps(to_wire_v2(item) if v2 else item))
-        if size < 8000:
-            chunks.append(item)
-            continue
-        for offset in range(0, len(text), 1000):
-            chunks.append(
-                {
-                    "evidence_id": item["evidence_id"],
-                    "encoding": "canonical-json-v2-text"
-                    if v2
-                    else "canonical-json-text",
-                    "offset": offset,
-                    "length": len(text[offset : offset + 1000]),
-                    "total_length": len(text),
-                    "text": text[offset : offset + 1000],
-                }
-            )
-    return chunks

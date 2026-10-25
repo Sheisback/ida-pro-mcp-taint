@@ -633,7 +633,11 @@ class Store:
         )
 
     @_scope_lifecycle_operation
-    def put_artifact(self, kind, value):
+    def put_artifact(self, kind, value, *, _return_blob=False):
+        require(
+            type(_return_blob) is bool and (not _return_blob or kind == "graph"),
+            "invalid_artifact_publication_mode",
+        )
         require(
             kind in {"snapshot", "graph", "analysis", "evidence"},
             "invalid_artifact_kind",
@@ -687,7 +691,7 @@ class Store:
                         blob,
                     ),
                 )
-                return identifier
+                return (identifier, blob) if _return_blob else identifier
         finally:
             self.blobs.discard(prepared)
 
@@ -946,13 +950,32 @@ class Store:
         except GraphIndexError as exc:
             raise PersistenceError(str(exc)) from exc
 
-    def ensure_trace_index(self, graph_artifact, graph):
+    def ensure_trace_index(
+        self,
+        graph_artifact,
+        graph,
+        *,
+        checkpoint=None,
+        progress=None,
+        graph_blob_digest=None,
+        graph_digest=None,
+    ):
         require(not self.closed, "store_closed")
         graph = graph if type(graph) is Graph else Graph.from_data(graph)
         with self._transaction() as conn:
             row = self._row(conn, "artifacts", graph_artifact)
             require(row["kind"] == "graph", "trace_requires_graph")
-            require(row["blob"] == digest(graph), "trace_index_graph_changed")
+            expected_blob = (
+                graph_blob_digest
+                if graph_blob_digest is not None
+                else digest(graph)
+            )
+            require(row["blob"] == expected_blob, "trace_index_graph_changed")
+            graph_digest = graph_digest or (
+                row["blob"]
+                if graph.snapshot.snapshot_id.startswith("snapshot-v1:")
+                else graph.graph_digest
+            )
         from .graph_index import GraphIndexError, ensure_graph_query_index
 
         try:
@@ -964,6 +987,9 @@ class Store:
                     namespace=self.scope.namespace,
                     owner_digest=self.owner_digest,
                     scope_digest=self.scope.scope_digest,
+                    checkpoint=checkpoint,
+                    progress=progress,
+                    graph_digest=graph_digest,
                 )
                 self._trace_index_cache[graph_artifact] = index
                 return index

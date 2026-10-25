@@ -157,6 +157,13 @@ that remains scoped Unknown rather than a clean or partial success. This is
 same-process progress continuation, not arbitrary checkpoint replay: worker
 restart still interrupts the job and an explicit retry receives a new job ID.
 
+After memory analysis, snapshot publication builds the immutable graph query
+index in streamed batches. `progress.stage=graph_index` reports the current
+`section` (`nodes`, `edges`, `node_source_eas`, or `evidence`) and monotonically
+increasing `processed` count. Each batch checks cancellation and renews the
+same job lease. This is processing granularity, not an analytical record limit;
+all graph records are indexed before the snapshot job completes.
+
 On failed, cancelled, or interrupted jobs, best-effort progress also records
 the last allowlisted `extract_stage` and `extract_elapsed_ms` (time since
 extraction started). Stages distinguish `preflight`, `gen_microcode`,
@@ -573,20 +580,28 @@ Unknown/partial. Resume that same durable trace with the exact revision/cursor
 and a positive `additional_budget`. Repeating a budget-exceeded continuation
 without an extension is rejected and creates no empty revision.
 
-The first trace atomically publishes a private graph query index. Later pages
-and post-crash continuations query that digest-bound index rather than parsing
-the complete graph artifact again. Index corruption, replacement, hard links,
-scope/owner drift and row-digest mismatch fail closed. The index is static
-analysis state only and never executes the target.
+Snapshot completion atomically publishes a private graph query index. Later
+graph/evidence pages and post-crash trace continuations query that digest-bound
+index rather than parsing the complete graph artifact again. Index corruption,
+replacement, hard links, scope/owner drift and row-digest mismatch fail closed.
+The index is static analysis state only and never executes the target.
+
+Do not page an entire graph merely to choose a trace source. For an
+instruction-anchored value call `flow_get_graph` with `item_type="node"`, its
+exact `source_ea`, and optional `node_kind`/`operation`; page only that filtered
+result. Entry arguments already named by the completed job's `entry_registers`
+map need no graph search. Cursors bind the artifact, graph digest and every
+filter, so a cursor cannot be replayed under a different query.
 
 When one node has too many selected relations for a bounded response, its
 trace item has `edges_externalized` **instead of** an inline `edges` list. The
 reference names the immutable `graph_artifact`/`graph_digest`, `node_id`,
-`direction`, `edge_kinds`, `edge_count`, and `edge_ids_digest`. Page that
-artifact with `flow_get_graph` until `next_cursor` is null. Keep edges of the
-listed kinds whose `source` matches `node_id` for forward traces or whose
-`target` matches it for backward traces; the count and digest bind the complete
-set. `edge_ids_digest` is the project's `sha256-v1` digest of canonical JSON
+`direction`, `edge_kinds`, `edge_count`, and `edge_ids_digest`. Call
+`flow_get_graph` with `item_type="edge"`, the returned `edge_kinds`, and
+`source_node_id=node_id` for a forward trace or `target_node_id=node_id` for a
+backward trace; page only that filtered result until `next_cursor` is null.
+The count and digest bind the complete set. `edge_ids_digest` is the project's
+`sha256-v1` digest of canonical JSON
 for the lexicographically sorted selected `edge_id` strings. This is output
 externalization only: traversal still visits every selected
 relation and preserves unresolved/opaque status. Do not treat absent inline

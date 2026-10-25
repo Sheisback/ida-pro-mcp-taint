@@ -2211,6 +2211,38 @@ def test_success_and_error_envelopes_match_advertised_schemas(flow):
         Draft202012Validator(schemas[name]).validate(error)
 
 
+def test_graph_tool_schema_exposes_only_exact_index_filters(flow):
+    _, server = flow
+    graph = next(
+        tool
+        for tool in server._mcp_tools_list()["tools"]
+        if tool["name"] == "flow_get_graph"
+    )
+    properties = graph["inputSchema"]["properties"]
+    assert {
+        "item_type",
+        "node_id",
+        "node_kind",
+        "operation",
+        "source_ea",
+        "source_node_id",
+        "target_node_id",
+        "edge_kinds",
+    } <= properties.keys()
+    assert set(properties["item_type"]["anyOf"][0]["enum"]) == {"node", "edge"}
+    assert set(properties["node_kind"]["anyOf"][0]["enum"]) >= {
+        "Load",
+        "Store",
+        "Call",
+        "Return",
+    }
+    assert set(properties["edge_kinds"]["anyOf"][0]["items"]["enum"]) >= {
+        "value_dependency",
+        "memory_data_dependency",
+        "control_dependency",
+    }
+
+
 def test_public_errors_are_structured_without_tracebacks(flow, monkeypatch):
     from ida_pro_mcp.flow_core.persistence import PersistenceError
 

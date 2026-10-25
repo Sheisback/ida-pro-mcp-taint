@@ -12,6 +12,7 @@ import ida_loader
 import ida_nalt
 
 from ida_pro_mcp.flow_core.build_identity import BUILD_ID, BUILD_SCOPE
+from ida_pro_mcp.flow_core.contracts import EdgeKind, NodeKind
 from ida_pro_mcp.flow_core.query import (
     PAGE_LIMIT_MAX,
     PAGE_LIMIT_MIN,
@@ -806,10 +807,35 @@ def flow_get_cfg(
 @tool
 @_flow_api
 def flow_get_graph(
-    artifact_id: str, cursor: str | None = None, limit: FlowPageLimit = 50
+    artifact_id: str,
+    cursor: str | None = None,
+    limit: FlowPageLimit = 50,
+    item_type: Literal["node", "edge"] | None = None,
+    node_id: str | None = None,
+    node_kind: NodeKind | None = None,
+    operation: str | None = None,
+    source_ea: FlowWireInt | None = None,
+    source_node_id: str | None = None,
+    target_node_id: str | None = None,
+    edge_kinds: list[EdgeKind] | None = None,
 ) -> FlowArtifactPage | FlowError:
-    """Page immutable typed nodes and edges from the job's graph_artifact."""
-    return _service().page(artifact_id, "graph", cursor, limit)
+    """Page indexed immutable nodes/edges; exact filters avoid whole-graph scans."""
+    return _service().page(
+        artifact_id,
+        "graph",
+        cursor,
+        limit,
+        graph_filter={
+            "item_type": item_type,
+            "node_id": node_id,
+            "node_kind": node_kind,
+            "operation": operation,
+            "source_ea": source_ea,
+            "source_node_id": source_node_id,
+            "target_node_id": target_node_id,
+            "edge_kinds": edge_kinds,
+        },
+    )
 
 
 @tool

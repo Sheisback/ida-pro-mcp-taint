@@ -338,7 +338,9 @@ flow_create_snapshot(function="sum_point", profile="X64-LE", abi="sysv-amd64",
 flow_get_job(job_id="<job_id>", database="<session.session_id>")
 # Poll until state is complete; take IDs from result, not from this example.
 flow_get_function_ssa(artifact_id="<result.ssa_artifact>", database="<session.session_id>")
-flow_get_graph(artifact_id="<result.graph_artifact>", database="<session.session_id>")
+flow_get_graph(artifact_id="<result.graph_artifact>", item_type="node",
+               source_ea=0x401000, node_kind="Load",
+               database="<session.session_id>")
 flow_get_memory_analysis(artifact_id="<result.memory_result_artifact>",
                          database="<session.session_id>")
 flow_get_evidence(artifact_id="<result.graph_artifact>",
@@ -350,10 +352,12 @@ flow_trace_backward(snapshot_artifact="<result.snapshot_artifact>",
 # Keep this session open for any further analysis below.
 ```
 
-To start **analyst-selected taint**, page `flow_get_function_ssa` and identify
-the SSA value actually read from the input. For example, after independently
-confirming that a `Load` reads byte 5 of an input buffer, seed that **Load's**
-`node_id`—not the pointer's `InputValue`:
+To start **analyst-selected taint**, use `flow_get_graph` with
+`item_type="node"`, the exact instruction `source_ea`, and (when known)
+`node_kind="Load"` to identify the SSA value actually read from the input.
+Do not enumerate the complete graph to choose a source. For example, after
+independently confirming that a `Load` reads byte 5 of an input buffer, seed
+that **Load's** `node_id`—not the pointer's `InputValue`:
 
 ```text
 flow_create_implicit_analysis(
@@ -430,10 +434,12 @@ page is Unknown/partial and resumes only when `flow_continue_trace` supplies a
 positive `additional_budget` for that exact revision and cursor. Invalid scalar
 values are rejected before a graph artifact is decoded.
 
-The first trace builds one private immutable SQLite node/edge index bound to the
-graph artifact, graph digest, runtime scope and owner. Continuations reuse that
-index, including after process restart, instead of decoding and rescanning the
-complete graph on every page. Index construction publishes atomically outside
+Snapshot completion builds one private immutable SQLite node/edge/evidence
+index directly from the in-memory graph, bound to the graph artifact, graph
+digest, runtime scope and owner. Filtered/full graph pages, evidence pages and
+trace continuations reuse that index, including after process restart, instead
+of decoding and rescanning the complete graph on every page. Index construction
+is cancellable, reports renewable progress, and publishes atomically outside
 the metadata transaction; per-row digests, file identity and SQLite integrity
 fail closed. Page history stores state deltas while the trace row retains the
 current durable state.
