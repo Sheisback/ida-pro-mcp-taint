@@ -1,6 +1,7 @@
 """Independent reachability, cursor, ownership and bounded wire-page contracts."""
 
 from dataclasses import replace
+import inspect
 import json
 
 import pytest
@@ -209,6 +210,115 @@ def test_start_reuses_the_validated_graph_for_its_first_page(tmp_path, monkeypat
             limit=1,
         )
         assert calls == 1
+    finally:
+        store.close()
+
+
+def test_default_trace_progress_is_unbounded(tmp_path):
+    store, program, sid, gid = setup(tmp_path)
+    try:
+        assert inspect.signature(Queries.start).parameters["budget"].default is None
+        page = Queries(store).start(
+            sid,
+            gid,
+            {"kind": "value", "node_id": program.entry_storage[0].node_id},
+            "forward",
+            "unbounded-default",
+            limit=1,
+        )
+        assert store.trace(page["trace_id"])["state"].budget_remaining is None
+        while page["status"] == "active":
+            page = Queries(store).continue_trace(
+                page["trace_id"],
+                page["revision"],
+                page["cursor"],
+                f"unbounded-{page['revision']}",
+                limit=1,
+            )
+        assert page["status"] == "frontier_exhausted"
+    finally:
+        store.close()
+
+
+def test_continuation_reuses_a_durable_graph_index_after_restart(tmp_path, monkeypatch):
+    root = tmp_path / "db"
+    store, program, sid, gid = setup(tmp_path)
+    page = Queries(store).start(
+        sid,
+        gid,
+        {"kind": "value", "node_id": program.entry_storage[0].node_id},
+        "forward",
+        "durable-index-start",
+        limit=1,
+    )
+    assert page["status"] == "active"
+    scope = store.scope
+    store.close()
+
+    reopened = Store(root, scope, OWNER)
+    try:
+        artifact = reopened.artifact
+
+        def no_graph_reparse(identifier):
+            if identifier == gid:
+                raise AssertionError("trace continuation reparsed the complete graph artifact")
+            return artifact(identifier)
+
+        monkeypatch.setattr(reopened, "artifact", no_graph_reparse)
+        while page["status"] == "active":
+            page = Queries(reopened).continue_trace(
+                page["trace_id"],
+                page["revision"],
+                page["cursor"],
+                f"durable-index-{page['revision']}",
+                limit=1,
+            )
+        assert page["status"] == "frontier_exhausted"
+    finally:
+        reopened.close()
+
+
+def test_explicit_finite_trace_budget_resumes_the_exact_trace(tmp_path):
+    store, program, sid, gid = setup(tmp_path)
+    try:
+        query = Queries(store)
+        page = query.start(
+            sid,
+            gid,
+            {"kind": "value", "node_id": program.entry_storage[0].node_id},
+            "forward",
+            "finite-start",
+            budget=1,
+            limit=1,
+        )
+        assert page["status"] == "budget_exceeded"
+        with pytest.raises(PersistenceError, match="trace_budget_extension_required"):
+            query.continue_trace(
+                page["trace_id"],
+                page["revision"],
+                page["cursor"],
+                "finite-no-extension",
+                limit=1,
+            )
+        assert store.trace(page["trace_id"])["state"].budget_remaining == 0
+
+        page = query.continue_trace(
+            page["trace_id"],
+            page["revision"],
+            page["cursor"],
+            "finite-extension",
+            limit=1,
+            additional_budget=32,
+        )
+        while page["status"] == "active":
+            page = query.continue_trace(
+                page["trace_id"],
+                page["revision"],
+                page["cursor"],
+                f"finite-resume-{page['revision']}",
+                limit=1,
+            )
+        assert page["status"] == "frontier_exhausted"
     finally:
         store.close()
 
