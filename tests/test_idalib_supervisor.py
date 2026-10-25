@@ -48,6 +48,31 @@ class _DeadProcess(_FakeProcess):
     returncode = 1
 
 
+def test_owned_worker_inherits_the_supervisor_process_group(monkeypatch, caplog):
+    caplog.set_level("INFO")
+    captured = {}
+
+    class _SpawnedProcess(_FakeProcess):
+        pid = 54321
+
+    def fake_popen(command, **options):
+        captured["command"] = command
+        captured["options"] = options
+        return _SpawnedProcess()
+
+    supervisor = supmod.IdalibSupervisor(supmod.McpServer("test"), max_workers=1)
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+    monkeypatch.setattr(supervisor, "_pick_port", lambda: 43123)
+    monkeypatch.setattr(supervisor, "_wait_worker_ready", lambda worker: None)
+
+    worker = supervisor._spawn_worker()
+
+    assert worker.owned is True
+    assert captured["options"]["start_new_session"] is False
+    assert captured["options"]["creationflags"] == 0
+    assert "Spawned owned idalib worker pid=54321 on 127.0.0.1:43123" in caplog.text
+
+
 class _FakeSupervisor(supmod.IdalibSupervisor):
     def __init__(self):
         super().__init__(supmod.McpServer("test"), max_workers=4)

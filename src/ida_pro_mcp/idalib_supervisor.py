@@ -270,14 +270,12 @@ class IdalibSupervisor:
             *self.worker_args,
         ]
         logger.info("Spawning idalib worker on 127.0.0.1:%d", port)
-        # Detach so the worker survives this supervisor's exit: on Windows
-        # spawn in a new process group; on Unix put it in its own session.
+        # This is an owned worker, so it must inherit the supervisor's process
+        # group. If graceful supervisor cleanup cannot run, the outer owner can
+        # still reclaim the complete process tree without leaving an IDA server
+        # orphan. Adopted workers are represented separately with owned=False.
         creationflags = 0
         start_new_session = False
-        if os.name == "nt":
-            creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
-        else:
-            start_new_session = True
         process = subprocess.Popen(
             cmd,
             stdin=subprocess.DEVNULL,
@@ -285,6 +283,11 @@ class IdalibSupervisor:
             stderr=subprocess.DEVNULL,
             creationflags=creationflags,
             start_new_session=start_new_session,
+        )
+        logger.info(
+            "Spawned owned idalib worker pid=%d on 127.0.0.1:%d",
+            process.pid,
+            port,
         )
         worker = WorkerSession(
             session_id=f"__worker_schema_{uuid.uuid4().hex[:8]}",
