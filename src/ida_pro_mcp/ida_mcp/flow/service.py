@@ -677,6 +677,7 @@ def _analyze(ctx, extracted):
     ctx.check()
     entry_registers = _resolve_entry_registers(program.entry_storage, reg_info)
     calls = compose_program_calls(function, program, catalog, callees, ctx.check)
+    semantic_graph_digest = memory.graph.graph_digest
     sid = current.store.put_artifact("snapshot", snapshot)
     gid, graph_blob_digest = current.store.put_artifact(
         "graph", memory.graph, _return_blob=True
@@ -690,7 +691,7 @@ def _analyze(ctx, extracted):
         graph_digest=(
             graph_blob_digest
             if memory.graph.snapshot.snapshot_id.startswith("snapshot-v1:")
-            else memory.graph.graph_digest
+            else semantic_graph_digest
         ),
     )
     base_graph = strip_memory_derivations(memory.graph)
@@ -714,7 +715,7 @@ def _analyze(ctx, extracted):
             snapshot.snapshot_id,
             gid,
             base_id,
-            memory.graph.graph_digest,
+            semantic_graph_digest,
             memory.result.window_steps or DEFAULT_WINDOW_STEPS,
             slice_ids,
             window_chain[-1]["slice_digest"] if window_chain else None,
@@ -821,6 +822,7 @@ def _analyze(ctx, extracted):
     response = {
         "snapshot_artifact": sid,
         "graph_artifact": gid,
+        "graph_blob_digest": graph_blob_digest,
         "base_graph_artifact": base_id,
         "window_chain_artifact": chain_id,
         "window_slice_count": len(window_chain),
@@ -837,7 +839,7 @@ def _analyze(ctx, extracted):
         ],
         "derived_call_memory_evidence": derived_memory_evidence,
         "snapshot_id": snapshot.snapshot_id,
-        "graph_digest": program.graph.graph_digest,
+        "graph_digest": semantic_graph_digest,
         "analysis": program.graph.axes.analysis,
         "entry_registers": entry_registers,
         "entry_register_status": reg_info.get("status", "unavailable"),
@@ -2435,10 +2437,13 @@ def reassemble_window_chain(chain_artifact):
     queries = Queries(get_runtime().store)
     graph = queries.graph_from_chain(chain_artifact)
     manifest = queries.store.artifact(chain_artifact)
-    identifier = queries.store.put_artifact("graph", graph)
+    identifier, graph_blob_digest = queries.store.put_artifact(
+        "graph", graph, _return_blob=True
+    )
     return {
         "schema_version": "flow-window-reassembly/1",
         "graph_artifact": identifier,
+        "graph_blob_digest": graph_blob_digest,
         "graph_digest": graph.graph_digest,
         "window_count": len(manifest["slices"]),
         "head_digest": manifest["head_digest"],

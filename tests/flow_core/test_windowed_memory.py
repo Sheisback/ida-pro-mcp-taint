@@ -555,6 +555,14 @@ def test_graph_from_chain_roundtrips_and_matches_direct_graph(tmp_path):
         reassembled = queries.graph_from_chain(chain_id)
         assert reassembled == bundle.graph
         assert path_bindings(reassembled) == path_bindings(bundle.graph)
+        original_id, original_blob = store.put_artifact(
+            "graph", bundle.graph, _return_blob=True
+        )
+        reassembled_id, reassembled_blob = store.put_artifact(
+            "graph", reassembled, _return_blob=True
+        )
+        assert original_id != reassembled_id
+        assert original_blob == reassembled_blob
     finally:
         store.close()
 

@@ -2628,6 +2628,7 @@ def test_reassemble_tool_threads_chain_artifact(flow, monkeypatch):
         return {
             "schema_version": "flow-window-reassembly/1",
             "graph_artifact": "artifact_graph",
+            "graph_blob_digest": "sha256-v1:" + "0" * 64,
             "graph_digest": "sha256-v1:abc",
             "window_count": 4,
             "head_digest": "sha256-v1:def",
@@ -2638,6 +2639,32 @@ def test_reassemble_tool_threads_chain_artifact(flow, monkeypatch):
     assert seen["chain"] == "artifact_chain"
     assert result["schema_version"] == "flow-window-reassembly/1"
     assert result["graph_artifact"] == "artifact_graph"
+    assert result["graph_blob_digest"] == "sha256-v1:" + "0" * 64
+
+
+def test_window_reassembly_returns_the_canonical_blob_commitment(flow, monkeypatch):
+    module, _ = flow
+    service = module._service()
+    graph = types.SimpleNamespace(graph_digest="sha256-v2:" + "a" * 64)
+
+    class Store:
+        def artifact(self, identifier):
+            assert identifier == "artifact_chain"
+            return {"slices": [{"artifact_id": "artifact_slice"}],
+                    "head_digest": "sha256-v1:" + "b" * 64}
+
+        def put_artifact(self, kind, value, *, _return_blob=False):
+            assert (kind, value, _return_blob) == ("graph", graph, True)
+            return "artifact_reassembled", "sha256-v1:" + "c" * 64
+
+    store = Store()
+    monkeypatch.setattr(service, "Queries", lambda actual: types.SimpleNamespace(
+        store=actual, graph_from_chain=lambda identifier: graph))
+    monkeypatch.setattr(service, "get_runtime", lambda: types.SimpleNamespace(store=store))
+    result = service.reassemble_window_chain("artifact_chain")
+    assert result["graph_artifact"] == "artifact_reassembled"
+    assert result["graph_blob_digest"] == "sha256-v1:" + "c" * 64
+    assert result["graph_digest"] == graph.graph_digest
 
 
 def test_snapshot_submit_uses_shared_job_timeout(flow, monkeypatch):

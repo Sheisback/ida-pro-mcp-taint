@@ -123,6 +123,7 @@ class FlowGraphBytesPage(TypedDict):
 class FlowWindowReassembly(TypedDict):
     schema_version: Literal["flow-window-reassembly/1"]
     graph_artifact: str
+    graph_blob_digest: str
     graph_digest: str
     window_count: int
     head_digest: str
