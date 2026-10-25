@@ -170,6 +170,128 @@ def test_graph_pages_use_the_safe_wire_window_for_realistic_edges():
     assert page["next_cursor"] is not None
 
 
+def test_graph_pages_reuse_the_durable_index_after_restart(tmp_path, monkeypatch):
+    root = tmp_path / "db"
+    store, program, _, graph_artifact = setup(tmp_path)
+    query = Queries(store)
+    first = query.page_graph(graph_artifact, limit=1)
+    expected = [
+        *(
+            {"type": "node", "node_id": node.node_id, **node.to_data()}
+            for node in program.graph.nodes
+        ),
+        *(
+            {"type": "edge", "edge_id": edge.edge_id, **edge.to_data()}
+            for edge in program.graph.edges
+        ),
+    ]
+    assert first["items"] == expected[:1]
+    assert first["next_cursor"] is not None
+    scope = store.scope
+    store.close()
+
+    reopened = Store(root, scope, OWNER)
+    try:
+        artifact = reopened.artifact
+
+        def no_graph_reparse(identifier):
+            if identifier == graph_artifact:
+                raise AssertionError("graph continuation reparsed the complete artifact")
+            return artifact(identifier)
+
+        monkeypatch.setattr(reopened, "artifact", no_graph_reparse)
+        items = list(first["items"])
+        cursor = first["next_cursor"]
+        while cursor is not None:
+            page = Queries(reopened).page_graph(
+                graph_artifact, cursor=cursor, limit=1
+            )
+            items.extend(page["items"])
+            cursor = page["next_cursor"]
+        assert items == expected
+    finally:
+        reopened.close()
+
+
+def test_graph_pages_filter_nodes_by_native_ea_and_edges_by_endpoint(tmp_path):
+    program = build_ssa(
+        linear(
+            (
+                replace(
+                    ins(
+                        0,
+                        "m_add",
+                        reg(),
+                        const(2, role="right"),
+                        reg(8, role="destination"),
+                    ),
+                    source_eas=(0x140001000,),
+                ),
+                replace(ins(1, "m_ret", reg(8)), source_eas=(0x140001004,)),
+            )
+        )
+    )
+    store = Store(
+        tmp_path / "db",
+        replace(scope_of(program.graph.snapshot), fingerprint=digest("filtered graph")),
+        OWNER,
+    )
+    graph_artifact = store.put_artifact("graph", program.graph)
+    try:
+        evidence = {item.evidence_id: item for item in program.graph.evidence}
+        selected = next(
+            node
+            for node in program.graph.nodes
+            if any(evidence[item].source_eas for item in node.evidence_ids)
+        )
+        source_ea = next(
+            ea
+            for item in selected.evidence_ids
+            for ea in evidence[item].source_eas
+        )
+        node_page = Queries(store).page_graph(
+            graph_artifact,
+            item_type="node",
+            node_kind=selected.kind,
+            source_ea=source_ea,
+            limit=200,
+        )
+        assert node_page["next_cursor"] is None
+        assert node_page["items"]
+        assert all(item["type"] == "node" for item in node_page["items"])
+        assert all(item["kind"] == selected.kind for item in node_page["items"])
+        assert selected.node_id in {item["node_id"] for item in node_page["items"]}
+
+        selected_edge = program.graph.edges[0]
+        edge_page = Queries(store).page_graph(
+            graph_artifact,
+            item_type="edge",
+            source_node_id=selected_edge.source,
+            edge_kinds=[selected_edge.kind],
+            limit=200,
+        )
+        assert edge_page["next_cursor"] is None
+        assert edge_page["items"]
+        assert all(item["type"] == "edge" for item in edge_page["items"])
+        assert all(
+            item["source"] == selected_edge.source
+            and item["kind"] == selected_edge.kind
+            for item in edge_page["items"]
+        )
+
+        with pytest.raises(PersistenceError, match="invalid_cursor"):
+            Queries(store).page_graph(
+                graph_artifact,
+                cursor=Queries(store).page_graph(
+                    graph_artifact, item_type="node", limit=1
+                )["next_cursor"],
+                item_type="edge",
+                limit=1,
+            )
+    finally:
+        store.close()
+
+
 def test_invalid_start_page_limit_rejects_before_graph_reassembly(tmp_path, monkeypatch):
     store, program, sid, gid = setup(tmp_path)
     try:

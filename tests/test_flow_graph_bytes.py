@@ -254,6 +254,46 @@ def test_graph_bytes_reassembly_and_consumer_tamper_detection(
         verify(other)
 
 
+def test_public_graph_page_supports_indexed_node_and_edge_selection(export_graph):
+    module, store, graph, artifact, job = export_graph
+    publish(store, job, artifact)
+    evidence = {item.evidence_id: item for item in graph.evidence}
+    selected = next(
+        node
+        for node in graph.nodes
+        if any(evidence[item].source_eas for item in node.evidence_ids)
+    )
+    source_ea = next(
+        ea for item in selected.evidence_ids for ea in evidence[item].source_eas
+    )
+
+    node_page = module.flow_get_graph(
+        artifact,
+        limit=200,
+        item_type="node",
+        node_kind=selected.kind,
+        source_ea=source_ea,
+    )
+    assert node_page["next_cursor"] is None
+    assert selected.node_id in {item["node_id"] for item in node_page["items"]}
+    assert all(item["type"] == "node" for item in node_page["items"])
+
+    edge = graph.edges[0]
+    edge_page = module.flow_get_graph(
+        artifact,
+        limit=200,
+        item_type="edge",
+        source_node_id=edge.source,
+        edge_kinds=[edge.kind],
+    )
+    assert edge_page["next_cursor"] is None
+    assert edge.edge_id in {item["edge_id"] for item in edge_page["items"]}
+    assert all(
+        item["source"] == edge.source and item["kind"] == edge.kind
+        for item in edge_page["items"]
+    )
+
+
 def test_graph_bytes_publication_and_database_gate(export_graph, tmp_path):
     module, store, graph, artifact, job = export_graph
     assert (
