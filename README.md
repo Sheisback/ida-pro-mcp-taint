@@ -422,12 +422,21 @@ effects remain `partial`/`unknown`. See the [operator guide](docs/flow-operator.
 for its exact request shape, large-trace `edges_externalized` handling, and
 limitations.
 
-Every flow paging schema publishes the same page bound enforced by the query
-owner (`limit` 1..200); trace schemas additionally publish their durable
-`budget` bound (1..100000). Invalid scalar bounds are rejected before a graph
-artifact is decoded or reassembled. A valid first trace page reuses the graph
-already loaded to validate its source, so large window-chain graphs are not
-reconstructed twice before returning the first continuation.
+Every flow paging schema publishes the same response-page envelope enforced by
+the query owner (`limit` 1..200). Trace progress is unbounded by default and
+continues until the frontier is exhausted. Tests or an explicit operator may
+start a trace with a positive finite `budget`; a resulting `budget_exceeded`
+page is Unknown/partial and resumes only when `flow_continue_trace` supplies a
+positive `additional_budget` for that exact revision and cursor. Invalid scalar
+values are rejected before a graph artifact is decoded.
+
+The first trace builds one private immutable SQLite node/edge index bound to the
+graph artifact, graph digest, runtime scope and owner. Continuations reuse that
+index, including after process restart, instead of decoding and rescanning the
+complete graph on every page. Index construction publishes atomically outside
+the metadata transaction; per-row digests, file identity and SQLite integrity
+fail closed. Page history stores state deltas while the trace row retains the
+current durable state.
 
 Analysis never executes the target, but MCP call tracing and IDA close/save
 policies can change a **working** IDB. Use a disposable database copy when the

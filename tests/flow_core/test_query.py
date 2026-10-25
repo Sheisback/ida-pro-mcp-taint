@@ -1,8 +1,11 @@
 """Independent reachability, cursor, ownership and bounded wire-page contracts."""
 
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 import inspect
 import json
+import sqlite3
+import threading
 
 import pytest
 
@@ -10,6 +13,7 @@ from ida_pro_mcp.flow_core import digest
 from ida_pro_mcp.flow_core.contracts import Edge, Graph, Node, NodeKey
 from ida_pro_mcp.flow_core.persistence import PAGE_HARD_CHARS, PersistenceError, Store
 from ida_pro_mcp.flow_core.query import Queries, artifact_page, wire_safe_node_item
+from ida_pro_mcp.flow_core.serialization import ContractError
 from ida_pro_mcp.flow_core.ssa import build_ssa
 from test_memory import load as memory_load
 from test_memory import plan as memory_plan
@@ -240,6 +244,67 @@ def test_default_trace_progress_is_unbounded(tmp_path):
         store.close()
 
 
+def test_default_trace_crosses_the_retired_ten_thousand_node_ceiling(tmp_path):
+    store, program, sid, _ = setup(tmp_path)
+    try:
+        base = program.graph
+        evidence_id = base.evidence[0].evidence_id
+        nodes = tuple(
+            Node(
+                NodeKey(
+                    base.snapshot.snapshot_id,
+                    base.snapshot.function.function_id,
+                    synthetic=f"unbounded-trace-{index:05d}",
+                ),
+                "InputValue",
+                8,
+                (evidence_id,),
+            )
+            for index in range(10_025)
+        )
+        edges = tuple(
+            Edge(
+                nodes[index].node_id,
+                nodes[index + 1].node_id,
+                "value_dependency",
+                (evidence_id,),
+                base.axes,
+            )
+            for index in range(len(nodes) - 1)
+        )
+        graph = Graph(
+            base.snapshot,
+            tuple(sorted(nodes, key=lambda node: node.node_id)),
+            tuple(sorted(edges, key=lambda edge: edge.edge_id)),
+            base.evidence,
+            base.axes,
+        )
+        gid = store.put_artifact("graph", graph)
+        query = Queries(store)
+        page = query.start(
+            sid,
+            gid,
+            {"kind": "value", "node_id": nodes[0].node_id},
+            "forward",
+            "past-retired-budget",
+            limit=200,
+        )
+        emitted = len(page["items"])
+        while page["status"] == "active":
+            page = query.continue_trace(
+                page["trace_id"],
+                page["revision"],
+                page["cursor"],
+                f"past-retired-budget-{page['revision']}",
+                limit=200,
+            )
+            emitted += len(page["items"])
+        assert page["status"] == "frontier_exhausted"
+        assert emitted == len(nodes) > 10_000
+    finally:
+        store.close()
+
+
 def test_continuation_reuses_a_durable_graph_index_after_restart(tmp_path, monkeypatch):
     root = tmp_path / "db"
     store, program, sid, gid = setup(tmp_path)
@@ -302,14 +367,22 @@ def test_explicit_finite_trace_budget_resumes_the_exact_trace(tmp_path):
             )
         assert store.trace(page["trace_id"])["state"].budget_remaining == 0
 
-        page = query.continue_trace(
+        extension_args = (
             page["trace_id"],
             page["revision"],
             page["cursor"],
             "finite-extension",
-            limit=1,
-            additional_budget=32,
         )
+        page = query.continue_trace(
+            *extension_args, limit=1, additional_budget=32
+        )
+        assert query.continue_trace(
+            *extension_args, limit=1, additional_budget=32
+        ) == page
+        with pytest.raises(PersistenceError, match="idempotency_conflict"):
+            query.continue_trace(
+                *extension_args, limit=1, additional_budget=31
+            )
         while page["status"] == "active":
             page = query.continue_trace(
                 page["trace_id"],
@@ -319,6 +392,175 @@ def test_explicit_finite_trace_budget_resumes_the_exact_trace(tmp_path):
                 limit=1,
             )
         assert page["status"] == "frontier_exhausted"
+    finally:
+        store.close()
+
+
+def test_trace_index_payload_corruption_fails_closed(tmp_path):
+    store, program, sid, gid = setup(tmp_path)
+    try:
+        page = Queries(store).start(
+            sid,
+            gid,
+            {"kind": "value", "node_id": program.entry_storage[0].node_id},
+            "forward",
+            "index-corruption-start",
+            limit=1,
+        )
+        state = store.trace(page["trace_id"])["state"]
+        assert page["status"] == "active" and state.frontier
+        [index_path] = store.trace_indexes.glob("trace-*.sqlite")
+        with sqlite3.connect(index_path) as connection:
+            connection.execute(
+                "UPDATE nodes SET payload_json='{}' WHERE node_id=?",
+                (state.frontier[0],),
+            )
+        with pytest.raises(ContractError, match="trace_index_node_changed"):
+            Queries(store).continue_trace(
+                page["trace_id"],
+                page["revision"],
+                page["cursor"],
+                "index-corruption-next",
+                limit=1,
+            )
+        with sqlite3.connect(index_path) as connection:
+            connection.execute(
+                "UPDATE nodes SET payload_json='private-sentinel-not-json' WHERE node_id=?",
+                (state.frontier[0],),
+            )
+        with pytest.raises(ContractError) as raised:
+            Queries(store).continue_trace(
+                page["trace_id"],
+                page["revision"],
+                page["cursor"],
+                "index-malformed-next",
+                limit=1,
+            )
+        assert str(raised.value) == "trace_index_node_changed"
+        assert "private-sentinel" not in str(raised.value)
+    finally:
+        store.close()
+
+
+def test_trace_index_hardlink_and_replacement_fail_closed(tmp_path):
+    store, program, sid, gid = setup(tmp_path)
+    try:
+        page = Queries(store).start(
+            sid,
+            gid,
+            {"kind": "value", "node_id": program.entry_storage[0].node_id},
+            "forward",
+            "index-identity-start",
+            limit=1,
+        )
+        [index_path] = store.trace_indexes.glob("trace-*.sqlite")
+        hardlink = tmp_path / "index-hardlink.sqlite"
+        hardlink.hardlink_to(index_path)
+        with pytest.raises(PersistenceError, match="insecure_trace_index"):
+            Queries(store).continue_trace(
+                page["trace_id"], page["revision"], page["cursor"],
+                "index-hardlink-next", limit=1,
+            )
+        hardlink.unlink()
+
+        original = index_path.with_suffix(".original")
+        index_path.rename(original)
+        index_path.write_bytes(original.read_bytes())
+        index_path.chmod(0o600)
+        with pytest.raises(PersistenceError, match="trace_index_replaced"):
+            Queries(store).continue_trace(
+                page["trace_id"], page["revision"], page["cursor"],
+                "index-replaced-next", limit=1,
+            )
+    finally:
+        store.close()
+
+
+def test_trace_index_build_does_not_hold_the_metadata_store_lock(tmp_path, monkeypatch):
+    store, program, sid, gid = setup(tmp_path)
+    entered = threading.Event()
+    release = threading.Event()
+    from ida_pro_mcp.flow_core import graph_index
+
+    canonical = graph_index.canonical_json
+
+    def blocked(value):
+        if isinstance(value, Node) and not entered.is_set():
+            entered.set()
+            assert release.wait(5)
+        return canonical(value)
+
+    monkeypatch.setattr(graph_index, "canonical_json", blocked)
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        build = executor.submit(
+            Queries(store).start,
+            sid,
+            gid,
+            {"kind": "value", "node_id": program.entry_storage[0].node_id},
+            "forward",
+            "nonblocking-index-build",
+        )
+        assert entered.wait(2)
+        read = executor.submit(store.artifact, sid)
+        assert read.result(timeout=1)["snapshot_id"] == program.graph.snapshot.snapshot_id
+        release.set()
+        assert build.result(timeout=5)["trace_id"].startswith("trace_")
+    store.close()
+
+
+def test_concurrent_traces_publish_one_graph_index(tmp_path):
+    store, program, sid, gid = setup(tmp_path)
+
+    def start(key):
+        return Queries(store).start(
+            sid,
+            gid,
+            {"kind": "value", "node_id": program.entry_storage[0].node_id},
+            "forward",
+            key,
+            limit=1,
+        )
+
+    try:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            pages = list(executor.map(start, ("concurrent-index-a", "concurrent-index-b")))
+        assert len({page["trace_id"] for page in pages}) == 2
+        assert len(list(store.trace_indexes.glob("trace-*.sqlite"))) == 1
+    finally:
+        store.close()
+
+
+def test_trace_index_build_failure_publishes_no_partial_authority(tmp_path, monkeypatch):
+    store, program, sid, gid = setup(tmp_path)
+    from ida_pro_mcp.flow_core import graph_index
+
+    sync_file = graph_index._sync_file
+
+    def fail_sync(_path):
+        raise OSError("injected index fsync failure")
+
+    monkeypatch.setattr(graph_index, "_sync_file", fail_sync)
+    try:
+        with pytest.raises(OSError, match="injected index fsync failure"):
+            Queries(store).start(
+                sid,
+                gid,
+                {"kind": "value", "node_id": program.entry_storage[0].node_id},
+                "forward",
+                "index-build-failure",
+            )
+        assert list(store.trace_indexes.glob("trace-*.sqlite")) == []
+        assert list(store.trace_indexes.glob(".*.tmp")) == []
+
+        monkeypatch.setattr(graph_index, "_sync_file", sync_file)
+        page = Queries(store).start(
+            sid,
+            gid,
+            {"kind": "value", "node_id": program.entry_storage[0].node_id},
+            "forward",
+            "index-build-retry",
+        )
+        assert page["trace_id"].startswith("trace_")
     finally:
         store.close()
 

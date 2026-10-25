@@ -621,6 +621,43 @@ def test_trace_contract_rejects_other_snapshot_and_dangling_frontier(tmp_path):
         store.close()
 
 
+def test_trace_pages_store_deltas_and_reclaim_superseded_current_state(tmp_path):
+    store, graph_value, trace_id = setup(tmp_path)
+    try:
+        first = store.trace(trace_id)
+        next_value = next_state(graph_value)
+        store.commit_page(trace_id, 0, "delta-page", {}, [], next_value)
+        with store._transaction() as connection:
+            [row] = connection.execute(
+                "SELECT state_blob FROM pages WHERE trace_id=?", (trace_id,)
+            ).fetchall()
+        delta = store.blobs.read(row["state_blob"])
+        assert delta["schema_version"] == "flow-trace-state-delta/1"
+        assert delta["from_state_sha256"] == digest(first["state"])
+        assert delta["to_state_sha256"] == digest(next_value)
+        assert store.trace(trace_id)["state"] == next_value
+        assert store.recover_blobs() == ()
+    finally:
+        store.close()
+
+
+def test_trace_state_cache_never_hides_current_blob_mutation(tmp_path):
+    store, _, trace_id = setup(tmp_path)
+    try:
+        row = store.trace(trace_id)
+        path = store.blobs._path(row["state_blob"])
+        original = path.read_bytes()
+        path.write_bytes(b"{}")
+        path.chmod(0o600)
+        with pytest.raises(PersistenceError, match="corrupt_blob"):
+            store.trace(trace_id)
+        path.write_bytes(original)
+        path.chmod(0o600)
+        assert store.trace(trace_id)["state"] == row["state"]
+    finally:
+        store.close()
+
+
 def test_same_key_concurrent_continue_replays_identical_page(tmp_path):
     store, g, tid = setup(tmp_path)
     barrier = threading.Barrier(3)

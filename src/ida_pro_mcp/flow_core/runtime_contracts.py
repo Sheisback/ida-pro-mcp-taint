@@ -101,7 +101,7 @@ class TraceState(Model):
     emitted: tuple[str, ...] = ()
     pending: tuple[str, ...] = ()
     unresolved: tuple[str, ...] = ()
-    budget_remaining: int = 10000
+    budget_remaining: int | None = None
     status: Literal["active", "frontier_exhausted", "budget_exceeded", "cancelled"] = (
         "active"
     )
@@ -125,9 +125,43 @@ class TraceState(Model):
         require(
             set(self.emitted) <= set(self.visited), "Emitted IDs must have been visited"
         )
-        require(self.budget_remaining >= 0, "Negative trace budget")
+        require(
+            self.budget_remaining is None or self.budget_remaining >= 0,
+            "Negative trace budget",
+        )
         require(
             self.status != "frontier_exhausted"
             or (not self.frontier and not self.pending),
             "Unfinished trace marked exhausted",
         )
+
+    @classmethod
+    def _from_validated_progress(
+        cls,
+        *,
+        frontier: tuple[str, ...],
+        visited: tuple[str, ...],
+        emitted: tuple[str, ...],
+        pending: tuple[str, ...],
+        unresolved: tuple[str, ...],
+        budget_remaining: int | None,
+        status: Literal["active", "frontier_exhausted", "budget_exceeded", "cancelled"],
+    ) -> "TraceState":
+        """Construct one query-owned delta after index validation.
+
+        This is deliberately private. Persistence independently checks graph
+        membership and monotonic progress before committing the object.
+        """
+        value = object.__new__(cls)
+        for name, item in (
+            ("frontier", frontier),
+            ("visited", visited),
+            ("emitted", emitted),
+            ("pending", pending),
+            ("unresolved", unresolved),
+            ("budget_remaining", budget_remaining),
+            ("status", status),
+            ("schema_version", 1),
+        ):
+            object.__setattr__(value, name, item)
+        return value

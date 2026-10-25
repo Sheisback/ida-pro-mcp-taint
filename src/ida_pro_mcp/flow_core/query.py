@@ -4,6 +4,7 @@ Traversal is reachability, not seeded taint, path feasibility, or a safety verdi
 Cursors bind the immutable artifact/filter or the durable trace revision.
 """
 
+from collections import deque
 from dataclasses import replace
 import json
 
@@ -23,7 +24,6 @@ DEFAULT_EDGES = ("memory_data_dependency", "phi_input", "value_dependency")
 PAGE_LIMIT_MIN = 1
 PAGE_LIMIT_MAX = 200
 TRACE_BUDGET_MIN = 1
-TRACE_BUDGET_MAX = 100000
 
 
 def wire_safe_node_item(item: dict) -> dict:
@@ -168,12 +168,11 @@ class Queries:
         request_key,
         *,
         edge_kinds=DEFAULT_EDGES,
-        budget=10000,
+        budget=None,
         limit=50,
     ):
         require(
-            type(budget) is int
-            and TRACE_BUDGET_MIN <= budget <= TRACE_BUDGET_MAX,
+            budget is None or (type(budget) is int and budget >= TRACE_BUDGET_MIN),
             "invalid_trace_budget",
         )
         require(
@@ -198,6 +197,7 @@ class Queries:
             "invalid_trace_source",
         )
         graph = self.graph(graph_artifact)
+        index = self.store.ensure_trace_index(graph_artifact, graph)
         source = {"snapshot_id": graph.snapshot.snapshot_id, **source}
         require(source.get("kind") in {"value", "memory"}, "invalid_trace_source")
         selected = (
@@ -244,7 +244,7 @@ class Queries:
             ),
             limit=limit,
             public_tool="flow_trace_" + direction,
-            _graph=graph,
+            _index=index,
         )
 
     def continue_trace(
@@ -256,17 +256,32 @@ class Queries:
         *,
         limit=50,
         cancel=False,
+        additional_budget=None,
         public_tool=None,
-        _graph=None,
+        _index=None,
     ):
         require(
             type(limit) is int and PAGE_LIMIT_MIN <= limit <= PAGE_LIMIT_MAX,
             "invalid_page_limit",
         )
         require(cursor == trace_cursor(identifier, revision), "invalid_cursor")
+        require(
+            additional_budget is None
+            or (type(additional_budget) is int and additional_budget >= TRACE_BUDGET_MIN),
+            "invalid_trace_budget",
+        )
         row = self.store.trace(identifier)
         state, spec = row["state"], row["spec"]
-        request = {"limit": limit, "cursor": cursor, "cancel": cancel}
+        request = {
+            "limit": limit,
+            "cursor": cursor,
+            "cancel": cancel,
+            **(
+                {}
+                if additional_budget is None
+                else {"additional_budget": additional_budget}
+            ),
+        }
         public_tool = public_tool or (
             "flow_cancel_trace" if cancel else "flow_continue_trace"
         )
@@ -308,79 +323,91 @@ class Queries:
                 replace(state, status="cancelled"),
                 operation=public_tool,
             )
-        graph = _graph if _graph is not None else self.graph(spec.graph_artifact)
-        nodes = {node.node_id: node for node in graph.nodes}
-        adjacency = {nid: [] for nid in nodes}
-        for edge in graph.edges:
-            if edge.kind in spec.edge_kinds:
-                a, b = (
-                    (edge.source, edge.target)
-                    if spec.direction == "forward"
-                    else (edge.target, edge.source)
-                )
-                adjacency[a].append((b, edge))
+        if state.status == "budget_exceeded":
+            require(
+                additional_budget is not None,
+                "trace_budget_extension_required",
+            )
+        else:
+            require(additional_budget is None, "trace_budget_extension_not_required")
+        index = _index if _index is not None else self._trace_index(spec.graph_artifact)
         queue, seen, emitted = (
-            list(state.frontier),
+            deque(state.frontier),
             set(state.visited),
             set(state.emitted),
         )
-        unresolved, remaining, items = set(state.unresolved), state.budget_remaining, []
-        while queue and remaining and len(items) < limit:
-            nid = queue[0]
-            if nid in seen:
-                queue.pop(0)
-                continue
-            node = nodes[nid]
-            relations = sorted(
-                adjacency[nid], key=lambda pair: (pair[0], pair[1].edge_id)
-            )
-            item = {
-                "node_id": nid,
-                "kind": node.kind,
-                "edges": [
-                    {"edge_id": edge.edge_id, **edge.to_data()} for _, edge in relations
-                ],
-                "evidence_ids": list(node.evidence_ids),
-                "analysis": graph.axes.analysis,
-            }
-            # Reserve envelope/cursor overhead before committing anything.
-            size = len(json.dumps(items + [item])) + 1500
-            if items and size > PAGE_TARGET_CHARS:
-                break
-            if size > PAGE_HARD_CHARS:
-                # An indivisible high-degree node must not silently lose edges.
-                # The immutable graph can be paged separately to reconstruct
-                # the exact selected adjacency while traversal still visits all
-                # relations below.
-                item.pop("edges")
-                item["edges_externalized"] = {
-                    "graph_artifact": spec.graph_artifact,
-                    "graph_digest": graph.graph_digest,
-                    "node_id": nid,
-                    "direction": spec.direction,
-                    "edge_kinds": list(spec.edge_kinds),
-                    "edge_count": len(relations),
-                    "edge_ids_digest": digest(
-                        sorted(edge.edge_id for _, edge in relations)
-                    ),
-                    "retrieval_tool": "flow_get_graph",
-                }
-                size = len(json.dumps(items + [item])) + 1500
-            require(size <= PAGE_HARD_CHARS, "item_too_large")
-            queue.pop(0)
-            seen.add(nid)
-            emitted.add(nid)
-            remaining -= 1
-            items.append(item)
-            if node.kind in {"UnknownValue", "OpaqueEffect", "Call"} or any(
-                edge.kind == "memory_data_dependency"
-                and edge.axes.precision == "opaque"
-                for _, edge in relations
+        queued = set(queue)
+        unresolved = set(state.unresolved)
+        remaining = (
+            additional_budget
+            if state.status == "budget_exceeded"
+            else state.budget_remaining
+        )
+        items = []
+        with index.reader() as reader:
+            while (
+                queue
+                and (remaining is None or remaining > 0)
+                and len(items) < limit
             ):
-                unresolved.add(nid)
-            for target, _ in relations:
-                if target not in seen and target not in queue:
-                    queue.append(target)
+                nid = queue[0]
+                if nid in seen:
+                    queue.popleft()
+                    queued.discard(nid)
+                    continue
+                node = reader.node(nid)
+                relations = reader.relations(nid, spec.direction, spec.edge_kinds)
+                item = {
+                    "node_id": nid,
+                    "kind": node.kind,
+                    "edges": [
+                        {"edge_id": edge.edge_id, **edge.to_data()}
+                        for _, edge in relations
+                    ],
+                    "evidence_ids": list(node.evidence_ids),
+                    "analysis": index.axes.analysis,
+                }
+                # Reserve envelope/cursor overhead before committing anything.
+                size = len(json.dumps(items + [item])) + 1500
+                if items and size > PAGE_TARGET_CHARS:
+                    break
+                if size > PAGE_HARD_CHARS:
+                    # An indivisible high-degree node must not silently lose edges.
+                    # The immutable graph can be paged separately to reconstruct
+                    # the exact selected adjacency while traversal still visits all
+                    # relations below.
+                    item.pop("edges")
+                    item["edges_externalized"] = {
+                        "graph_artifact": spec.graph_artifact,
+                        "graph_digest": index.graph_digest,
+                        "node_id": nid,
+                        "direction": spec.direction,
+                        "edge_kinds": list(spec.edge_kinds),
+                        "edge_count": len(relations),
+                        "edge_ids_digest": digest(
+                            sorted(edge.edge_id for _, edge in relations)
+                        ),
+                        "retrieval_tool": "flow_get_graph",
+                    }
+                    size = len(json.dumps(items + [item])) + 1500
+                require(size <= PAGE_HARD_CHARS, "item_too_large")
+                queue.popleft()
+                queued.discard(nid)
+                seen.add(nid)
+                emitted.add(nid)
+                if remaining is not None:
+                    remaining -= 1
+                items.append(item)
+                if node.kind in {"UnknownValue", "OpaqueEffect", "Call"} or any(
+                    edge.kind == "memory_data_dependency"
+                    and edge.axes.precision == "opaque"
+                    for _, edge in relations
+                ):
+                    unresolved.add(nid)
+                for target, _ in relations:
+                    if target not in seen and target not in queued:
+                        queue.append(target)
+                        queued.add(target)
         status = (
             "frontier_exhausted"
             if not queue
@@ -388,14 +415,14 @@ class Queries:
             if remaining == 0
             else "active"
         )
-        next_state = TraceState(
-            tuple(queue),
-            tuple(sorted(seen)),
-            tuple(sorted(emitted)),
-            (),
-            tuple(sorted(unresolved)),
-            remaining,
-            status,
+        next_state = TraceState._from_validated_progress(
+            frontier=tuple(queue),
+            visited=tuple(sorted(seen)),
+            emitted=tuple(sorted(emitted)),
+            pending=(),
+            unresolved=tuple(sorted(unresolved)),
+            budget_remaining=remaining,
+            status=status,
         )
         return self.store.commit_page(
             identifier,
@@ -406,6 +433,15 @@ class Queries:
             next_state,
             operation=public_tool,
         )
+
+    def _trace_index(self, graph_artifact):
+        try:
+            return self.store.trace_index(graph_artifact)
+        except PersistenceError as exc:
+            if str(exc) != "trace_index_missing":
+                raise
+        graph = self.graph(graph_artifact)
+        return self.store.ensure_trace_index(graph_artifact, graph)
 
 
 def evidence_chunks(items, *, wire_version="flow-wire/1"):

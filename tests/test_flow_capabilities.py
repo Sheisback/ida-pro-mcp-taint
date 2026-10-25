@@ -1107,10 +1107,21 @@ def test_exact_tool_schema_and_no_supervisor_database_on_workers(flow):
         assert properties["limit"]["minimum"] == 1
         assert properties["limit"]["maximum"] == 200
         assert properties["budget"]["minimum"] == 1
-        assert properties["budget"]["maximum"] == 100000
+        assert properties["budget"]["default"] is None
+        assert "maximum" not in properties["budget"]
+        assert {variant["type"] for variant in properties["budget"]["anyOf"]} == {
+            "integer",
+            "null",
+        }
     continuation_limit = by_name["flow_continue_trace"]["inputSchema"]["properties"]["limit"]
     assert continuation_limit["minimum"] == 1
     assert continuation_limit["maximum"] == 200
+    continuation_budget = by_name["flow_continue_trace"]["inputSchema"]["properties"][
+        "additional_budget"
+    ]
+    assert continuation_budget["minimum"] == 1
+    assert continuation_budget["default"] is None
+    assert "maximum" not in continuation_budget
     implicit = by_name["flow_create_implicit_analysis"]["inputSchema"]
     seed = implicit["properties"]["seeds"]["items"]
     assert len(seed["anyOf"]) == 3

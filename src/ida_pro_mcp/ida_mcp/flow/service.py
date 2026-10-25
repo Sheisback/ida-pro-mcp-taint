@@ -2639,15 +2639,24 @@ def trace(
     )
 
 
-def continue_trace(trace_id, revision, cursor, request_key, limit=50, cancel=False):
+def continue_trace(
+    trace_id,
+    revision,
+    cursor,
+    request_key,
+    limit=50,
+    cancel=False,
+    additional_budget=None,
+):
     queries = Queries(get_runtime().store)
     row = queries.store.trace(trace_id)
-    graph = queries.graph(row["spec"].graph_artifact)
-    if graph.snapshot.snapshot_id.startswith("snapshot-v2:"):
+    index = queries._trace_index(row["spec"].graph_artifact)
+    if index.snapshot_id.startswith("snapshot-v2:"):
         revision = from_wire_v2(revision)
         validate_model_wire_v2({"revision": revision}, 64)
     else:
         require(type(revision) is int, "mixed_wire_versions")
     return queries.continue_trace(
-        trace_id, revision, cursor, request_key, limit=limit, cancel=cancel
+        trace_id, revision, cursor, request_key, limit=limit, cancel=cancel,
+        additional_budget=additional_budget, _index=index,
     )

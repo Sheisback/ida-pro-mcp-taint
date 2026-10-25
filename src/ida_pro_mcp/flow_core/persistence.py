@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from functools import wraps
 import hashlib
 import json
+import logging
 import math
 import os
 from pathlib import Path
@@ -26,6 +27,7 @@ from .serialization import ContractError, canonical_json, digest, to_wire_v2
 _MISSING = object()
 PAGE_TARGET_CHARS = 32000
 PAGE_HARD_CHARS = 39999
+logger = logging.getLogger(__name__)
 
 
 class PersistenceError(ContractError):
@@ -39,6 +41,31 @@ def require(value, code):
 
 def _token(prefix):
     return prefix + "_" + uuid.uuid4().hex
+
+
+def _trace_state_delta(previous, current):
+    def added(name):
+        return sorted(set(getattr(current, name)) - set(getattr(previous, name)))
+
+    def removed(name):
+        return sorted(set(getattr(previous, name)) - set(getattr(current, name)))
+
+    return {
+        "schema_version": "flow-trace-state-delta/1",
+        "from_state_sha256": digest(previous),
+        "to_state_sha256": digest(current),
+        "frontier_added": added("frontier"),
+        "frontier_removed": removed("frontier"),
+        "visited_added": added("visited"),
+        "emitted_added": added("emitted"),
+        "pending_added": added("pending"),
+        "pending_removed": removed("pending"),
+        "unresolved_added": added("unresolved"),
+        "budget_before": previous.budget_remaining,
+        "budget_after": current.budget_remaining,
+        "status_before": previous.status,
+        "status_after": current.status,
+    }
 
 
 def _file_check(path):
@@ -305,7 +332,13 @@ class Store:
         # invalidation on the same Store behind that publication; peer Store
         # handles still race through SQLite and the durable scope digest.
         self._scope_lock = threading.RLock()
+        self._trace_index_lock = threading.RLock()
+        self._trace_index_cache = {}
+        self._trace_state_cache = {}
         self.blobs = BlobStore(self.root / "blobs")
+        self.trace_indexes, self.trace_indexes_identity = _directory(
+            self.root / "trace-indexes", True
+        )
         self.db = self.root / "metadata.sqlite"
         try:
             fd = os.open(
@@ -472,6 +505,11 @@ class Store:
         require(self.marker.read_bytes() == self.marker_bytes, "invalid_store_marker")
         # The primary database is mandatory; SQLite's WAL/SHM sidecars are not.
         _file_check(self.db)
+        _, trace_indexes_identity = _directory(self.trace_indexes)
+        require(
+            trace_indexes_identity == self.trace_indexes_identity,
+            "replaced_trace_index_directory",
+        )
         for path in (Path(str(self.db) + "-wal"), Path(str(self.db) + "-shm")):
             if path.exists() or path.is_symlink():
                 try:
@@ -879,17 +917,83 @@ class Store:
         require(row["kind"] == "graph", "trace_requires_graph")
         return Graph.from_data(self.blobs.read(row["blob"]))
 
-    def _validate_trace_state(self, graph, state):
-        node_ids = {n.node_id for n in graph.nodes}
-        require(
-            set(
-                state.frontier
-                + state.visited
-                + state.emitted
-                + state.pending
-                + state.unresolved
+    def _trace_index_from_conn(self, conn, graph_artifact):
+        row = self._row(conn, "artifacts", graph_artifact)
+        require(row["kind"] == "graph", "trace_requires_graph")
+        from .graph_index import GraphIndexError, open_graph_query_index
+
+        cached = self._trace_index_cache.get(graph_artifact)
+        if cached is not None:
+            # Revalidate the exact file identity without rescanning the immutable
+            # index. Row payload digests remain checked when each node/edge is read.
+            try:
+                with cached.connect():
+                    pass
+                return cached
+            except GraphIndexError as exc:
+                raise PersistenceError(str(exc)) from exc
+
+        try:
+            index = open_graph_query_index(
+                self.trace_indexes,
+                graph_artifact,
+                namespace=self.scope.namespace,
+                owner_digest=self.owner_digest,
+                scope_digest=self.scope.scope_digest,
             )
-            <= node_ids,
+            self._trace_index_cache[graph_artifact] = index
+            return index
+        except GraphIndexError as exc:
+            raise PersistenceError(str(exc)) from exc
+
+    def ensure_trace_index(self, graph_artifact, graph):
+        require(not self.closed, "store_closed")
+        graph = graph if type(graph) is Graph else Graph.from_data(graph)
+        with self._transaction() as conn:
+            row = self._row(conn, "artifacts", graph_artifact)
+            require(row["kind"] == "graph", "trace_requires_graph")
+            require(row["blob"] == digest(graph), "trace_index_graph_changed")
+        from .graph_index import GraphIndexError, ensure_graph_query_index
+
+        try:
+            with self._trace_index_lock:
+                index = ensure_graph_query_index(
+                    self.trace_indexes,
+                    graph_artifact,
+                    graph,
+                    namespace=self.scope.namespace,
+                    owner_digest=self.owner_digest,
+                    scope_digest=self.scope.scope_digest,
+                )
+                self._trace_index_cache[graph_artifact] = index
+                return index
+        except GraphIndexError as exc:
+            raise PersistenceError(str(exc)) from exc
+
+    @_scope_operation
+    def trace_index(self, graph_artifact):
+        with self._transaction() as conn:
+            return self._trace_index_from_conn(conn, graph_artifact)
+
+    @staticmethod
+    def _validate_trace_state(index, state, previous=None):
+        node_ids = set(
+            state.frontier
+            + state.visited
+            + state.emitted
+            + state.pending
+            + state.unresolved
+        )
+        if previous is not None:
+            node_ids.difference_update(
+                previous.frontier
+                + previous.visited
+                + previous.emitted
+                + previous.pending
+                + previous.unresolved
+            )
+        require(
+            index.contains_all(node_ids),
             "dangling_trace_node",
         )
 
@@ -900,6 +1004,13 @@ class Store:
             "invalid_trace_contract",
         )
         require(digest(source) == spec.source_digest, "source_digest_mismatch")
+        try:
+            self.trace_index(spec.graph_artifact)
+        except PersistenceError as exc:
+            if str(exc) != "trace_index_missing":
+                raise
+            graph = Graph.from_data(self.artifact(spec.graph_artifact))
+            self.ensure_trace_index(spec.graph_artifact, graph)
         request = {
             "spec": spec.to_data(),
             "source": source,
@@ -909,9 +1020,12 @@ class Store:
         with self._transaction() as conn:
             snapshot = self._row(conn, "artifacts", spec.snapshot_artifact)
             require(snapshot["kind"] == "snapshot", "trace_requires_snapshot")
-            graph = self._trace_graph(conn, spec)
+            index = self._trace_index_from_conn(conn, spec.graph_artifact)
             stored_snapshot = Snapshot.from_data(self.blobs.read(snapshot["blob"]))
-            require(graph.snapshot == stored_snapshot, "trace_snapshot_mismatch")
+            require(
+                index.snapshot_id == stored_snapshot.snapshot_id,
+                "trace_snapshot_mismatch",
+            )
             require(
                 type(source) is dict and source.get("kind") in {"value", "memory"},
                 "invalid_trace_source",
@@ -921,8 +1035,16 @@ class Store:
                 if source["kind"] == "value"
                 else MemorySource.from_data(source)
             )
-            graph.validate_source(selected)
-            self._validate_trace_state(graph, state)
+            if selected.snapshot_id != index.snapshot_id:
+                raise ContractError("Cross-snapshot trace source")
+            if isinstance(selected, ValueSource):
+                require(index.contains_all({selected.node_id}), "invalid_trace_source")
+            else:
+                require(
+                    index.has_memory_reference(selected.reference),
+                    "memory_source_has_no_graph_relation",
+                )
+            self._validate_trace_state(index, state)
             rd, replay = self._request(conn, "create_trace", request_key, request)
             if replay is not None:
                 return replay["trace_id"]
@@ -951,10 +1073,38 @@ class Store:
     def trace(self, identifier):
         with self._transaction() as conn:
             row = dict(self._row(conn, "traces", identifier))
-            row["state"] = TraceState.from_data(self.blobs.read(row["state_blob"]))
+            row["state"] = self._read_trace_state(identifier, row)
             row["source"] = self.blobs.read(row["source_blob"])
             row["spec"] = TraceSpec.from_json(row["spec"])
-            return row
+        return row
+
+    def _trace_state_file_identity(self, state_blob):
+        info = _file_check(self.blobs._path(state_blob))
+        return (
+            info.st_dev,
+            info.st_ino,
+            info.st_size,
+            info.st_mtime_ns,
+        )
+
+    def _read_trace_state(self, identifier, row):
+        identity = self._trace_state_file_identity(row["state_blob"])
+        cached = self._trace_state_cache.get(identifier)
+        if (
+            cached is not None
+            and cached[0] == row["revision"]
+            and cached[1] == row["state_blob"]
+            and cached[2] == identity
+        ):
+            return cached[3]
+        state = TraceState.from_data(self.blobs.read(row["state_blob"]))
+        self._trace_state_cache[identifier] = (
+            row["revision"],
+            row["state_blob"],
+            identity,
+            state,
+        )
+        return state
 
     @_scope_operation
     def commit_page(
@@ -992,15 +1142,18 @@ class Store:
             "expected_revision": expected_revision,
             "request": request,
         }
+        cleanup_state_blob = None
         with self._transaction() as conn:
             row = self._row(conn, "traces", identifier)
             rd, replay = self._request(conn, operation, request_key, canonical_request)
             if replay is not None:
                 return replay
             require(row["revision"] == expected_revision, "revision_conflict")
-            old = TraceState.from_data(self.blobs.read(row["state_blob"]))
-            graph = self._trace_graph(conn, TraceSpec.from_json(row["spec"]))
-            self._validate_trace_state(graph, next_state)
+            old = self._read_trace_state(identifier, row)
+            index = self._trace_index_from_conn(
+                conn, TraceSpec.from_json(row["spec"]).graph_artifact
+            )
+            self._validate_trace_state(index, next_state, old)
             require(old.status in {"active", "budget_exceeded"}, "terminal_trace")
             require(
                 set(old.visited) <= set(next_state.visited)
@@ -1021,28 +1174,52 @@ class Store:
                 "pending_remaining": len(next_state.pending),
                 "unresolved_count": len(next_state.unresolved),
             }
-            v2 = graph.snapshot.snapshot_id.startswith("snapshot-v2:")
+            v2 = index.snapshot_id.startswith("snapshot-v2:")
             if v2:
                 response["wire_version"] = "flow-wire/2"
-                response["snapshot_id"] = graph.snapshot.snapshot_id
+                response["snapshot_id"] = index.snapshot_id
             serialized_chars = len(json.dumps(to_wire_v2(response) if v2 else response))
             require(serialized_chars <= PAGE_HARD_CHARS, "item_too_large")
             require(
                 len(items) <= 1 or serialized_chars <= PAGE_TARGET_CHARS,
                 "page_target_exceeded",
             )
+            previous_state_blob = row["state_blob"]
             state_blob = self._blob(conn, next_state)
+            page_state_blob = self._blob(conn, _trace_state_delta(old, next_state))
             response_blob = self._remember(conn, operation, request_key, rd, response)
             conn.execute(
                 "INSERT INTO pages VALUES (?,?,?,?)",
-                (identifier, revision, response_blob, state_blob),
+                (identifier, revision, response_blob, page_state_blob),
             )
             conn.execute(
                 "UPDATE traces SET revision=?,state_blob=? WHERE id=?",
                 (revision, state_blob, identifier),
             )
+            if (
+                previous_state_blob != state_blob
+                and not self._blob_is_referenced(conn, previous_state_blob)
+            ):
+                conn.execute(
+                    "DELETE FROM blobs WHERE digest=?", (previous_state_blob,)
+                )
+                cleanup_state_blob = previous_state_blob
             if _fault:
                 _fault("before_commit")
+        self._trace_state_cache[identifier] = (
+            revision,
+            state_blob,
+            self._trace_state_file_identity(state_blob),
+            next_state,
+        )
+        if cleanup_state_blob is not None:
+            try:
+                path = self.blobs._path(cleanup_state_blob)
+                _file_check(path)
+                path.unlink()
+                _sync_directory(self.blobs.path)
+            except (OSError, PersistenceError):
+                logger.warning("Deferred superseded trace-state blob cleanup")
         if _fault:
             _fault("after_commit")
         return response
@@ -1075,6 +1252,8 @@ class Store:
                     self.scope.namespace,
                 ),
             )
+        self._trace_state_cache.clear()
+        self._trace_index_cache.clear()
         return True
 
     def _references(self, conn):
@@ -1094,6 +1273,22 @@ class Store:
                     )
                 )
         return refs
+
+    @staticmethod
+    def _blob_is_referenced(conn, key):
+        for table, columns in (
+            ("artifacts", ("blob",)),
+            ("jobs", ("input_blob", "last_commit")),
+            ("traces", ("source_blob", "state_blob")),
+            ("requests", ("response_blob",)),
+            ("pages", ("response_blob", "state_blob")),
+        ):
+            for column in columns:
+                if conn.execute(
+                    f"SELECT 1 FROM {table} WHERE {column}=? LIMIT 1", (key,)
+                ).fetchone() is not None:
+                    return True
+        return False
 
     @_scope_operation
     def integrity_check(self):
@@ -1151,6 +1346,8 @@ class Store:
         # An in-flight transaction sees closed before commit and rolls back; its
         # final lock release also releases the lease after it has stopped writing.
         self.closed = True
+        self._trace_state_cache.clear()
+        self._trace_index_cache.clear()
         if self._lock.acquire(blocking=False):
             try:
                 self._release_lease()

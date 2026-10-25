@@ -28,6 +28,7 @@ def check(directory: Path):
                 "ida_pro_mcp/flow_core/analysis.py",
                 "ida_pro_mcp/flow_core/derived_calls.py",
                 "ida_pro_mcp/flow_core/explain.py",
+                "ida_pro_mcp/flow_core/graph_index.py",
                 "ida_pro_mcp/flow_core/implicit_cfg.py",
                 "ida_pro_mcp/flow_core/implicit_analysis.py",
                 "ida_pro_mcp/flow_core/memory.py",

@@ -565,6 +565,20 @@ not an automatic source-to-sink or vulnerability verdict. Continue an active
 trace with `flow_continue_trace(trace_id, expected_revision, cursor,
 request_key)` using the IDs from the previous page.
 
+Production trace progress has no default node ceiling. `limit` is only the
+1..200 response-page envelope. A positive finite `budget` is an explicit
+operator/test policy, not a suggested default; when it is exhausted the page
+returns `budget_exceeded` with its frontier intact and must remain
+Unknown/partial. Resume that same durable trace with the exact revision/cursor
+and a positive `additional_budget`. Repeating a budget-exceeded continuation
+without an extension is rejected and creates no empty revision.
+
+The first trace atomically publishes a private graph query index. Later pages
+and post-crash continuations query that digest-bound index rather than parsing
+the complete graph artifact again. Index corruption, replacement, hard links,
+scope/owner drift and row-digest mismatch fail closed. The index is static
+analysis state only and never executes the target.
+
 When one node has too many selected relations for a bounded response, its
 trace item has `edges_externalized` **instead of** an inline `edges` list. The
 reference names the immutable `graph_artifact`/`graph_digest`, `node_id`,

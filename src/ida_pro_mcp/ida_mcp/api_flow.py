@@ -15,7 +15,6 @@ from ida_pro_mcp.flow_core.build_identity import BUILD_ID, BUILD_SCOPE
 from ida_pro_mcp.flow_core.query import (
     PAGE_LIMIT_MAX,
     PAGE_LIMIT_MIN,
-    TRACE_BUDGET_MAX,
     TRACE_BUDGET_MIN,
 )
 from .flow.profile_routing import observe_open_database
@@ -952,13 +951,12 @@ def flow_trace_forward(
     request_key: str,
     edge_kinds: list[str] | None = None,
     budget: Annotated[
-        int,
+        int | None,
         {
-            "description": "Maximum durable trace nodes across all pages",
+            "description": "Optional explicit finite durable-node budget; null is unbounded",
             "minimum": TRACE_BUDGET_MIN,
-            "maximum": TRACE_BUDGET_MAX,
         },
-    ] = 10000,
+    ] = None,
     limit: Annotated[
         int,
         {
@@ -996,13 +994,12 @@ def flow_trace_backward(
     request_key: str,
     edge_kinds: list[str] | None = None,
     budget: Annotated[
-        int,
+        int | None,
         {
-            "description": "Maximum durable trace nodes across all pages",
+            "description": "Optional explicit finite durable-node budget; null is unbounded",
             "minimum": TRACE_BUDGET_MIN,
-            "maximum": TRACE_BUDGET_MAX,
         },
-    ] = 10000,
+    ] = None,
     limit: Annotated[
         int,
         {
@@ -1034,6 +1031,13 @@ def flow_continue_trace(
     expected_revision: FlowWireInt,
     cursor: str,
     request_key: str,
+    additional_budget: Annotated[
+        int | None,
+        {
+            "description": "Explicit finite extension for a budget-exceeded trace only",
+            "minimum": TRACE_BUDGET_MIN,
+        },
+    ] = None,
     limit: Annotated[
         int,
         {
@@ -1045,7 +1049,8 @@ def flow_continue_trace(
 ) -> FlowTracePage | FlowError:
     """Atomically continue/replay a durable trace page; stale revisions conflict."""
     return _service().continue_trace(
-        trace_id, expected_revision, cursor, request_key, limit
+        trace_id, expected_revision, cursor, request_key, limit,
+        additional_budget=additional_budget,
     )
 
 
