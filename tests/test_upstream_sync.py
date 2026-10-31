@@ -60,10 +60,10 @@ def test_rewritten_upstream_history_fails_closed(repo):
 def test_recorded_state_has_an_exact_official_upstream_and_integration(tmp_path):
     state = load_state()
     assert state["last_reviewed_upstream_commit"] == (
-        "fab3505ee2405ef4e87dcd370418ea7d661f5bdf"
+        "c133c3853faa111a9b00ee615c013b720d0c4acd"
     )
     assert state["fork_integration_commit"] == (
-        "e349bc0196aae48caec61c30a74784ce316d04d6"
+        "9cdf29a46b974137496805b02e6b3d62c0b83661"
     )
 
     bad = dict(state, upstream_url="https://example.invalid/other.git")
