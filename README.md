@@ -6,6 +6,16 @@
 > They require the reviewed **IDA 9.3** environment. The upstream marketplace
 > commands below do not install this fork.
 
+> [!IMPORTANT]
+> **The upstream project recommends using the
+> [Official Hex-Rays IDA MCP Server](https://github.com/HexRaysSA/ida-mcp)
+> instead for general IDA Pro MCP use.**
+>
+> See the [upstream announcement](https://hex-rays.com/blog/hex-rays-ida-mcp-server)
+> for more information. This fork remains available for its experimental
+> static `flow_*` and `driver_*` tools; they are not provided by the official
+> server and retain the support boundaries documented below.
+
 Simple [MCP Server](https://modelcontextprotocol.io/introduction) to allow vibe reversing in IDA Pro.
 
 https://github.com/user-attachments/assets/6ebeaa92-a9db-43fa-b756-eececce2aca0
