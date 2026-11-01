@@ -34,6 +34,7 @@ class DriverSurveyResult(TypedDict, total=False):
     import_count: int
     function_count: int
     limitations: list[str]
+    trigger_fact_producer: dict
 
 
 class DecodeIoctlsResult(TypedDict, total=False):
@@ -93,6 +94,10 @@ def _not_driver(ctx: DriverContext) -> dict:
 def driver_survey() -> DriverSurveyResult:
     """Survey a Windows driver binary without changing it. Reports PE status, DriverEntry, framework classification, and discovered dispatchers with evidence. Use this first to decide whether the deeper driver_* tools apply to the current database."""
     ctx = _fresh_context()
+    if ctx.driver_entry_ea is not None:
+        ctx.trigger_registration_producer = dispatch_stage.collect_trigger_registration_producer(ctx)
+        dispatch_stage.apply_trigger_registration_dispatchers(
+            ctx, ctx.trigger_registration_producer)
     entry = None
     if ctx.driver_entry_ea is not None:
         entry = {
@@ -111,6 +116,7 @@ def driver_survey() -> DriverSurveyResult:
         "import_count": sum(len(v) for v in ctx.imports_map.values()),
         "function_count": len(ctx.functions_map),
         "limitations": list(ctx.limitations),
+        "trigger_fact_producer": ctx.trigger_registration_producer or {},
     }
 
 
@@ -171,8 +177,12 @@ def driver_find_ioctls(
     if not ctx.is_pe or ctx.driver_entry_ea is None:
         return {"candidates": [], "next_offset": None, "stats": {}, **_not_driver(ctx)}
     ctx.trigger_registration_producer = dispatch_stage.collect_trigger_registration_producer(ctx)
+    dispatch_stage.apply_trigger_registration_dispatchers(ctx,
+        ctx.trigger_registration_producer)
     wanted = _resolve_eas(dispatchers)
-    dispatch_eas = wanted or [int(d["addr"], 16) for d in ctx.dispatchers]
+    proven_dispatchers = [int(item["rhs_target_ea"], 16)
+        for item in (ctx.trigger_registration_producer or {}).get("registrations", [])]
+    dispatch_eas = wanted or proven_dispatchers or [int(d["addr"], 16) for d in ctx.dispatchers]
     candidates, stats = ioctl_stage.scan_dispatchers(
         ctx, dispatch_eas, include_decompiler=include_decompiler
     )

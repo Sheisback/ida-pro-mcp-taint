@@ -31,6 +31,7 @@ from .context import (
 )
 from .selector_structure import (
     collect_driver_entry_registrations,
+    collect_helper_driver_registration,
     finalize_registration_scan,
     expression_nodes,
     lvar_definition_hazard,
@@ -89,6 +90,14 @@ def collect_trigger_registration_producer(ctx: DriverContext) -> dict:
 
         def documented_external_call(ea: int):
             return strip_import_name(func_name(ea)) in ctx.imports_map
+
+        helper_result = collect_helper_driver_registration(
+            cfunc, ctx.driver_entry_ea, ida_hexrays, ida_typeinf,
+            exact_function_entry, try_decompile,
+            device_control_index=core.IRP_MJ_DEVICE_CONTROL,
+            expected_pointer_width=8 if ctx.is_64bit else 4)
+        if helper_result is not None:
+            return finalize_registration_scan(helper_result, expired=expired())
 
         initial = collect_driver_entry_registrations(
             cfunc,
@@ -168,6 +177,31 @@ def collect_trigger_registration_producer(ctx: DriverContext) -> dict:
     except Exception:
         return {**base, "status": "partial",
             "reason_code": "driver_entry_registration_scan_failed"}
+
+
+def apply_trigger_registration_dispatchers(ctx: DriverContext, producer: dict) -> None:
+    """Replace heuristic device-control rows only from complete typed registration proof."""
+    registrations = producer.get("registrations", []) if isinstance(producer, dict) else []
+    if producer.get("status") != "complete" or not registrations:
+        return
+    proven = []
+    for registration in registrations:
+        if registration.get("major_function_index") != core.IRP_MJ_DEVICE_CONTROL:
+            continue
+        target = int(registration["rhs_target_ea"], 16)
+        proven.append({"addr": hex(target), "name": func_name(target),
+            "kind": "device_control",
+            "slot": hex(registration["derived_slot_offset_bytes"]),
+            "store_site": registration.get("assignment_ea")
+              or registration.get("bulk_store_ea"),
+            "store_function": func_name(int(registration.get("helper_ea")
+              or registration["driver_entry_ea"], 16)),
+            "confidence": "typed_registration",
+            "method": registration["schema_version"]})
+    if len(proven) != 1:
+        return
+    ctx.dispatchers = [item for item in ctx.dispatchers
+        if item.get("kind") != "device_control"] + proven
 
 
 def _inf_is_64() -> bool:

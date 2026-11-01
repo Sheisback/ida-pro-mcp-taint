@@ -597,6 +597,15 @@ def driver_trigger_abi_member_offsets(ptr_size: int) -> dict[str, tuple[int, int
     raise ValueError(f"unsupported pointer size: {ptr_size}")
 
 
+def driver_object_fast_io_dispatch_offset(ptr_size: int) -> int:
+    """Canonical public DRIVER_OBJECT.FastIoDispatch offset."""
+    if ptr_size == 8:
+        return 0x50
+    if ptr_size == 4:
+        return 0x28
+    raise ValueError(f"unsupported pointer size: {ptr_size}")
+
+
 # ---------------------------------------------------------------------------
 # Bounded call-graph search (pure; the IDA adapter builds the adjacency map)
 # ---------------------------------------------------------------------------

@@ -251,9 +251,10 @@ def expression_contains_lvar(expression, lvar_index: int, ida_hexrays) -> bool:
     pending = [expression]
     while pending:
         item = pending.pop()
-        if item is None or id(item) in seen:
+        identity = _ctree_node_identity(item)
+        if item is None or identity in seen:
             continue
-        seen.add(id(item))
+        seen.add(identity)
         try:
             if item.op == ida_hexrays.cot_var and int(item.v.idx) == lvar_index:
                 return True
@@ -268,13 +269,24 @@ def expression_contains_lvar(expression, lvar_index: int, ida_hexrays) -> bool:
     return False
 
 
+def _ctree_node_identity(item):
+    if item is None:
+        return None
+    target = getattr(item, "target", item)
+    try:
+        return ("swig", int(target.this))
+    except Exception:
+        return ("python", id(target))
+
+
 def expression_nodes(expression):
     seen, pending, output = set(), [expression], []
     while pending:
         item = pending.pop()
-        if item is None or id(item) in seen:
+        identity = _ctree_node_identity(item)
+        if item is None or identity in seen:
             continue
-        seen.add(id(item))
+        seen.add(identity)
         output.append(item)
         pending.extend(getattr(item, name, None) for name in ("x", "y", "z"))
         try:
@@ -294,9 +306,10 @@ def _expression_is_lvar_identity(expression, lvar_index: int, ida_hexrays) -> bo
 def _strip_representation_casts(expression, ida_hexrays):
     item, seen = expression, set()
     while item is not None and item.op == ida_hexrays.cot_cast:
-        if id(item) in seen:
+        identity = _ctree_node_identity(item)
+        if identity in seen:
             raise ValueError("cyclic cast expression")
-        seen.add(id(item))
+        seen.add(identity)
         item = item.x
     return item
 
@@ -313,9 +326,10 @@ def _expression_returns_lvar_alias(expression, lvar_index: int, ida_hexrays) -> 
     pending, seen = [expression], set()
     while pending:
         item = pending.pop()
-        if item is None or id(item) in seen:
+        identity = _ctree_node_identity(item)
+        if item is None or identity in seen:
             continue
-        seen.add(id(item))
+        seen.add(identity)
         item = _strip_representation_casts(item, ida_hexrays)
         if item is None:
             continue
@@ -348,9 +362,10 @@ def lvar_definition_hazard(expression, lvar_index: int, ida_hexrays,
             pending, seen = [expression], set()
             while pending:
                 item = pending.pop()
-                if item is None or id(item) in seen:
+                identity = _ctree_node_identity(item)
+                if item is None or identity in seen:
                     continue
-                seen.add(id(item))
+                seen.add(identity)
                 if item.op == ref_op and expression_contains_lvar(
                         item, lvar_index, ida_hexrays):
                     return "driver_object_address_escape_unsupported"
@@ -415,6 +430,409 @@ def _same_ctree_expression(left, right) -> bool:
 
 def call_is_proven_pre_registration(expression, allowed_calls) -> bool:
     return any(_same_ctree_expression(expression, item) for item in allowed_calls)
+
+
+def _direct_call_target(expression, ida_hexrays, resolve_function_entry):
+    item = _strip_representation_casts(expression, ida_hexrays)
+    if item is None or item.op != ida_hexrays.cot_call:
+        return None
+    callee = _strip_representation_casts(item.x, ida_hexrays)
+    if callee is None or callee.op != ida_hexrays.cot_obj:
+        return None
+    target = int(callee.obj_ea)
+    return (item, target) if resolve_function_entry(target) == target else None
+
+
+def _top_level_return_expression(statement, ida_hexrays):
+    if statement.op != ida_hexrays.cit_return:
+        return None
+    return getattr(getattr(statement, "creturn", None), "expr", None)
+
+
+def _major_function_array(expression, lvar_index: int, ida_hexrays, ida_typeinf,
+                          pointer_width: int):
+    item = _strip_representation_casts(expression, ida_hexrays)
+    if item is None or item.op != ida_hexrays.cot_memptr:
+        return None
+    base = item.x
+    if base.op != ida_hexrays.cot_var or int(base.v.idx) != lvar_index:
+        return None
+    parent_type = ida_typeinf.tinfo_t(base.type)
+    if (not parent_type.is_ptr() or parent_type.is_shifted_ptr()
+            or int(parent_type.get_size()) != pointer_width):
+        return None
+    parent_type = parent_type.get_pointed_object()
+    details = ida_typeinf.udt_type_data_t()
+    if not parent_type.is_udt() or not parent_type.get_udt_details(details):
+        return None
+    matches = [member for member in details
+        if member.begin() == int(item.m) * 8 and str(member.name) == "MajorFunction"]
+    if len(matches) != 1:
+        return None
+    member = matches[0]
+    member_type = ida_typeinf.tinfo_t(member.type)
+    array = ida_typeinf.array_type_data_t()
+    if (not member_type.is_array() or not member_type.get_array_details(array)
+            or int(member.begin()) // 8
+              != core.major_function_slot_offset(pointer_width, 0)
+            or int(array.nelems) != 28
+            or int(member_type.get_size()) != 28 * pointer_width):
+        return None
+    element = ida_typeinf.tinfo_t(array.elem_type)
+    if not element.is_ptr() or int(element.get_size()) != pointer_width:
+        return None
+    return member
+
+
+def _bulk_major_function_store(expression, lvar_index: int, ida_hexrays,
+                               ida_typeinf, resolve_function_entry,
+                               pointer_width: int):
+    item = _strip_representation_casts(expression, ida_hexrays)
+    if item is None or item.op != ida_hexrays.cot_call or len(item.a) != 3:
+        return None
+    callee = _strip_representation_casts(item.x, ida_hexrays)
+    expected_helper = "memset64" if pointer_width == 8 else "memset32"
+    if (callee.op != getattr(ida_hexrays, "cot_helper", None)
+            or str(getattr(callee, "helper", "")) != expected_helper):
+        return None
+    if (_major_function_array(item.a[0], lvar_index, ida_hexrays, ida_typeinf,
+            pointer_width) is None or _number_value(item.a[2]) != 28):
+        return None
+    handler_ea = _exact_handler_target(item.a[1], ida_hexrays,
+        resolve_function_entry, pointer_width)
+    return (item, handler_ea) if handler_ea is not None else None
+
+
+def _exact_handler_target(expression, ida_hexrays, resolve_function_entry,
+                          pointer_width: int):
+    handler = expression
+    seen = set()
+    while handler.op == ida_hexrays.cot_cast:
+        identity = _ctree_node_identity(handler)
+        if identity in seen:
+            return None
+        seen.add(identity)
+        try:
+            if int(handler.type.get_size()) != pointer_width:
+                return None
+        except Exception:
+            return None
+        handler = handler.x
+    if handler is None or handler.op != ida_hexrays.cot_obj:
+        return None
+    handler_ea = int(handler.obj_ea)
+    return handler_ea if resolve_function_entry(handler_ea) == handler_ea else None
+
+
+def _raw_argument_write_offset(expression, lvar_index: int, ida_hexrays,
+                               pointer_width: int):
+    if expression.op != ida_hexrays.cot_asg:
+        return None
+    if (expression_contains_lvar(expression.y, lvar_index, ida_hexrays)
+            or any(ida_hexrays.is_assignment(node.op)
+              or ida_hexrays.is_prepost(node.op)
+              or node.op == ida_hexrays.cot_call
+              for node in expression_nodes(expression.y))):
+        return None
+    left = _strip_representation_casts(expression.x, ida_hexrays)
+    if left is None or left.op != getattr(ida_hexrays, "cot_ptr", None):
+        return None
+    address = _strip_representation_casts(left.x, ida_hexrays)
+    if address is None or address.op != getattr(ida_hexrays, "cot_add", None):
+        return None
+    for base, offset in ((address.x, address.y), (address.y, address.x)):
+        if (base.op == ida_hexrays.cot_var and int(base.v.idx) == lvar_index
+                and offset.op == ida_hexrays.cot_num):
+            try:
+                width = int(expression.x.type.get_size())
+            except Exception:
+                width = pointer_width
+            return _number_value(offset), width
+    return None
+
+
+def _prove_nonoverlap_post_helper(cfunc, ida_hexrays, pointer_width: int):
+    try:
+        argidx = [int(value) for value in cfunc.argidx]
+        if not argidx:
+            return None
+        lvar_index = argidx[0]
+        lvar_type = cfunc.get_lvars()[lvar_index].type
+        lvar_type = lvar_type() if callable(lvar_type) else lvar_type
+        if int(lvar_type.get_size()) != pointer_width:
+            return None
+        matched = []
+        for statement in _top_level_statements(cfunc):
+            if statement.op == ida_hexrays.cit_return:
+                returned = _top_level_return_expression(statement, ida_hexrays)
+                if returned is not None and (expression_contains_lvar(
+                        returned, lvar_index, ida_hexrays)
+                        or any(ida_hexrays.is_assignment(node.op)
+                          or node.op == ida_hexrays.cot_call
+                          for node in expression_nodes(returned))):
+                    return None
+                continue
+            if statement.op != ida_hexrays.cit_expr:
+                return None
+            item = statement.cexpr
+            if any(node.op == ida_hexrays.cot_call for node in expression_nodes(item)):
+                return None
+            if not expression_contains_lvar(item, lvar_index, ida_hexrays):
+                continue
+            raw = _raw_argument_write_offset(item, lvar_index, ida_hexrays,
+                pointer_width)
+            if raw is None:
+                return None
+            matched.append((item, raw))
+        if len(matched) != 1:
+            return None
+        item, (offset, width) = matched[0]
+        if (offset != core.driver_object_fast_io_dispatch_offset(pointer_width)
+                or width != pointer_width):
+            return None
+        return {"kind": "canonical_fast_io_dispatch_write",
+            "write_ea": hex(int(item.ea)), "offset_bytes": offset,
+            "width_bytes": width}
+    except Exception:
+        return None
+
+
+def _major_function_write_index(expression, lvar_index: int, ida_hexrays,
+                                ida_typeinf, pointer_width: int):
+    try:
+        if not ida_hexrays.is_assignment(expression.op):
+            return None
+        left = expression.x
+        if left.op != ida_hexrays.cot_idx or left.x.op != ida_hexrays.cot_memptr:
+            return None
+        if _major_function_array(left.x, lvar_index, ida_hexrays, ida_typeinf,
+                pointer_width) is None:
+            return None
+        return _number_value(left.y) if left.y.op == ida_hexrays.cot_num else "dynamic"
+    except Exception:
+        return None
+
+
+def _helper_caller_binding(cfunc, driver_entry_ea: int, ida_hexrays,
+                           ida_typeinf, resolve_function_entry,
+                           expected_pointer_width: int):
+    if int(cfunc.entry_ea) != driver_entry_ea:
+        return None
+    args = [int(value) for value in cfunc.argidx]
+    if not args:
+        return None
+    lvar_index = args[0]
+    raw_type = cfunc.get_lvars()[lvar_index].type
+    raw_type = raw_type() if callable(raw_type) else raw_type
+    identity = _pointer_udt_identity(raw_type, ida_typeinf,
+        {"DRIVER_OBJECT", "_DRIVER_OBJECT"})
+    if identity is None or identity[2] != expected_pointer_width:
+        return None
+    calls = []
+    top_level = _top_level_statements(cfunc)
+    for index, statement in enumerate(top_level):
+        returned = _top_level_return_expression(statement, ida_hexrays)
+        if returned is None:
+            continue
+        direct = _direct_call_target(returned, ida_hexrays, resolve_function_entry)
+        if direct is not None and list(direct[0].a):
+            first_arg = direct[0].a[0]
+            if (first_arg.op == ida_hexrays.cot_var
+                    and int(first_arg.v.idx) == lvar_index):
+                calls.append((index, statement, direct))
+    if len(calls) != 1:
+        return None
+    selected_index, selected_statement, (selected, helper_ea) = calls[0]
+    for statement in top_level[:selected_index]:
+        if statement.op == ida_hexrays.cit_return:
+            return None
+        if statement.op not in {ida_hexrays.cit_expr, ida_hexrays.cit_if}:
+            return None
+    collected = _collect_cfunc_expressions(cfunc, ida_hexrays)
+    if collected is None:
+        return None
+    for instruction in collected[1]:
+        if instruction.op != ida_hexrays.cit_return \
+                or _same_ctree_expression(instruction, selected_statement):
+            continue
+        returned = _top_level_return_expression(instruction, ida_hexrays)
+        if returned is None or returned.op != ida_hexrays.cot_num:
+            return None
+        value = _number_value(returned)
+        if value is None or (value & 0x80000000) == 0:
+            return None
+    for item in collected[0]:
+        if _same_ctree_expression(item, selected):
+            continue
+        hazard = lvar_definition_hazard(item, lvar_index, ida_hexrays,
+            lambda _ea: False, after_registration=False)
+        if hazard is not None or unmodeled_lvar_derived_write(
+                item, lvar_index, ida_hexrays, ida_typeinf):
+            return None
+    return lvar_index, selected, helper_ea
+
+
+def collect_helper_driver_registration(caller_cfunc, driver_entry_ea: int,
+                                       ida_hexrays, ida_typeinf,
+                                       resolve_function_entry, decompile_function,
+                                       *, device_control_index: int,
+                                       expected_pointer_width: int):
+    """Prove one exact DriverEntry tail helper and canonical bulk slot initialization."""
+    base = {"contract_id": REGISTRATION_PRODUCER_CONTRACT_ID, "version": 1,
+        "driver_entry_ea": hex(driver_entry_ea), "registrations": []}
+    try:
+        caller = _helper_caller_binding(caller_cfunc, driver_entry_ea,
+            ida_hexrays, ida_typeinf, resolve_function_entry,
+            expected_pointer_width)
+        if caller is None:
+            return None
+        caller_lvar, caller_call, helper_ea = caller
+        helper = decompile_function(helper_ea)
+        if helper is None:
+            return {**base, "status": "partial",
+                "reason_code": "helper_registration_decompile_unavailable"}
+        helper_args = [int(value) for value in helper.argidx]
+        if not helper_args:
+            return {**base, "status": "partial",
+                "reason_code": "helper_registration_argument_unavailable"}
+        helper_lvar = helper_args[0]
+        helper_type = helper.get_lvars()[helper_lvar].type
+        helper_type = helper_type() if callable(helper_type) else helper_type
+        identity = _pointer_udt_identity(helper_type, ida_typeinf,
+            {"DRIVER_OBJECT", "_DRIVER_OBJECT"})
+        if identity is None or identity[2] != expected_pointer_width:
+            return {**base, "status": "unsupported",
+                "reason_code": "helper_registration_argument_unsupported"}
+        return _collect_helper_registration_body(base, helper, caller_lvar,
+            caller_call, helper_ea, helper_lvar, identity[1], ida_hexrays,
+            ida_typeinf, resolve_function_entry, decompile_function,
+            device_control_index, expected_pointer_width)
+    except Exception:
+        return {**base, "status": "partial",
+            "reason_code": "helper_registration_scan_failed"}
+
+
+def _collect_helper_registration_body(base, helper, caller_lvar, caller_call,
+                                      helper_ea, helper_lvar, pointee_name,
+                                      ida_hexrays, ida_typeinf,
+                                      resolve_function_entry, decompile_function,
+                                      device_control_index, pointer_width):
+    statements = _top_level_statements(helper)
+    bulk_rows = []
+    for index, statement in enumerate(statements):
+        if statement.op != ida_hexrays.cit_expr:
+            continue
+        bulk = _bulk_major_function_store(statement.cexpr, helper_lvar,
+            ida_hexrays, ida_typeinf, resolve_function_entry, pointer_width)
+        if bulk is not None:
+            bulk_rows.append((index, *bulk))
+    if len(bulk_rows) != 1:
+        return {**base, "status": "unsupported",
+            "reason_code": "helper_registration_bulk_store_unsupported"}
+    bulk_index, bulk_call, handler_ea = bulk_rows[0]
+    collected = _collect_cfunc_expressions(helper, ida_hexrays)
+    if collected is None:
+        return {**base, "status": "partial",
+            "reason_code": "helper_registration_scan_failed"}
+    success = []
+    all_success_returns = []
+    for instruction in collected[1]:
+        returned = _top_level_return_expression(instruction, ida_hexrays)
+        if (returned is not None and returned.op == ida_hexrays.cot_num
+                and _number_value(returned) == 0):
+            all_success_returns.append(instruction)
+    for index, statement in enumerate(statements[bulk_index + 1:], bulk_index + 1):
+        returned = _top_level_return_expression(statement, ida_hexrays)
+        if (returned is not None and returned.op == ida_hexrays.cot_num
+                and _number_value(returned) == 0):
+            success.append((index, returned))
+    if len(success) != 1 or len(all_success_returns) != 1:
+        return {**base, "status": "unsupported",
+            "reason_code": "helper_registration_success_path_unsupported"}
+    success_index, success_return = success[0]
+    prefix_calls = []
+    for statement in statements[:bulk_index]:
+        if statement.op != ida_hexrays.cit_expr:
+            return {**base, "status": "unsupported",
+                "reason_code": "helper_registration_prefix_control_unsupported"}
+        expression = statement.cexpr
+        hazard = lvar_definition_hazard(expression, helper_lvar, ida_hexrays,
+            lambda _ea: False, after_registration=False)
+        if (hazard is not None or unmodeled_lvar_derived_write(
+                    expression, helper_lvar, ida_hexrays, ida_typeinf)):
+            return {**base, "status": "unsupported",
+                "reason_code": "helper_registration_prefix_state_unsupported"}
+        for node in expression_nodes(expression):
+            if node.op != ida_hexrays.cot_call:
+                continue
+            args = list(node.a)
+            if any(expression_contains_lvar(arg, helper_lvar, ida_hexrays)
+                    for arg in args):
+                return {**base, "status": "unsupported",
+                    "reason_code": "helper_registration_prefix_call_unsupported"}
+    post_call_proofs = []
+    for statement in statements[bulk_index + 1:success_index]:
+        if statement.op != ida_hexrays.cit_expr:
+            return {**base, "status": "unsupported",
+                "reason_code": "helper_registration_post_store_control_unsupported"}
+        expression = statement.cexpr
+        slot_index = _major_function_write_index(expression, helper_lvar,
+            ida_hexrays, ida_typeinf, pointer_width)
+        if slot_index is not None:
+            if slot_index == "dynamic" or slot_index == device_control_index:
+                return {**base, "status": "unsupported",
+                        "reason_code": "helper_registration_competing_write_unsupported"}
+            if (_exact_handler_target(expression.y, ida_hexrays,
+                    resolve_function_entry, pointer_width) is None
+                    or any(node.op == ida_hexrays.cot_call
+                      for node in expression_nodes(expression.y))):
+                return {**base, "status": "unsupported",
+                    "reason_code": "helper_registration_override_value_unsupported"}
+            continue
+        direct = _direct_call_target(expression, ida_hexrays,
+            resolve_function_entry)
+        direct_args = list(direct[0].a) if direct is not None else []
+        carries_driver = [index for index, arg in enumerate(direct_args)
+            if expression_contains_lvar(arg, helper_lvar, ida_hexrays)]
+        if direct is not None and carries_driver:
+            if (carries_driver != [0] or direct_args[0].op != ida_hexrays.cot_var
+                    or int(direct_args[0].v.idx) != helper_lvar):
+                return {**base, "status": "unsupported",
+                    "reason_code": "helper_registration_post_call_unproven"}
+            callee = decompile_function(direct[1])
+            if callee is None:
+                return {**base, "status": "partial",
+                    "reason_code": "helper_post_call_decompile_unavailable"}
+            proof = _prove_nonoverlap_post_helper(callee, ida_hexrays, pointer_width)
+            if proof is None:
+                return {**base, "status": "unsupported",
+                    "reason_code": "helper_registration_post_call_unproven"}
+            post_call_proofs.append({"call_ea": hex(int(direct[0].ea)),
+                "callee_ea": hex(direct[1]), **proof})
+            continue
+        if expression_contains_lvar(expression, helper_lvar, ida_hexrays):
+            return {**base, "status": "unsupported",
+                "reason_code": "helper_registration_post_store_escape_unsupported"}
+    registration = {"schema_version": "driver-helper-registration-proof/1",
+        "driver_entry_ea": base["driver_entry_ea"],
+        "helper_call_ea": hex(int(caller_call.ea)), "helper_ea": hex(helper_ea),
+        "bulk_store_ea": hex(int(bulk_call.ea)),
+        "success_return_ea": hex(int(success_return.ea)),
+        "caller_base_lvar_index": caller_lvar,
+        "helper_base_lvar_index": helper_lvar, "base_argument_index": 0,
+        "base_type_kind": "plain_pointer_to_driver_object_udt",
+        "base_pointee_type_name": pointee_name, "member_name": "MajorFunction",
+        "member_offset_bytes": core.major_function_slot_offset(pointer_width, 0),
+        "major_function_index": device_control_index,
+        "pointer_width_bytes": pointer_width,
+        "target_architecture_bits": pointer_width * 8,
+        "derived_slot_offset_bytes": core.major_function_slot_offset(
+            pointer_width, device_control_index),
+        "bulk_element_count": 28, "rhs_target_ea": hex(handler_ea),
+        "top_level_success_path": True, "pre_bulk_call_eas": sorted(set(prefix_calls)),
+        "post_call_proofs": post_call_proofs}
+    return {**base, "status": "complete", "reason_code": None,
+        "registrations": [registration]}
 
 
 def _top_level_selector_index(cfunc, source_ea: int, root_kind: str,
@@ -909,11 +1327,19 @@ def build_ioctl_selector_fact(registration_producer: dict, candidate: dict, *,
     registration = matching[0]
     pointer_width = registration.get("pointer_width_bytes")
     member_offset = registration.get("member_offset_bytes")
-    if (registration.get("schema_version") != REGISTRATION_PROOF_SCHEMA
+    helper_registration = registration.get("schema_version") \
+        == "driver-helper-registration-proof/1"
+    base_lvar_index = (registration.get("helper_base_lvar_index")
+        if helper_registration else registration.get("base_lvar_index"))
+    assignment_key = "bulk_store_ea" if helper_registration else "assignment_ea"
+    top_level_success = (registration.get("top_level_success_path")
+        if helper_registration else registration.get("top_level_unconditional"))
+    if (registration.get("schema_version") not in {
+            REGISTRATION_PROOF_SCHEMA, "driver-helper-registration-proof/1"}
         or registration.get("driver_entry_ea")
           != registration_producer.get("driver_entry_ea")
         or registration.get("base_argument_index") != 0
-        or type(registration.get("base_lvar_index")) is not int
+        or type(base_lvar_index) is not int
         or registration.get("base_type_kind") != "plain_pointer_to_driver_object_udt"
         or registration.get("base_pointee_type_name") not in {"DRIVER_OBJECT", "_DRIVER_OBJECT"}
         or registration.get("member_name") != "MajorFunction"
@@ -924,10 +1350,17 @@ def build_ioctl_selector_fact(registration_producer: dict, candidate: dict, *,
         or type(member_offset) is not int or member_offset < 0
         or registration.get("derived_slot_offset_bytes")
           != member_offset + device_control_code * pointer_width
-        or registration.get("top_level_unconditional") is not True
+        or top_level_success is not True
+        or helper_registration and (registration.get("bulk_element_count") != 28
+          or not isinstance(registration.get("post_call_proofs"), list)
+          or any(item.get("kind") != "canonical_fast_io_dispatch_write"
+            or item.get("offset_bytes")
+              != core.driver_object_fast_io_dispatch_offset(pointer_width)
+            or item.get("width_bytes") != pointer_width
+            for item in registration["post_call_proofs"]))
         or not all(isinstance(registration.get(key), str)
           and registration[key].startswith("0x") for key in (
-            "driver_entry_ea", "assignment_ea", "rhs_target_ea"))):
+            "driver_entry_ea", assignment_key, "rhs_target_ea"))):
         return None
     code_int = candidate["code_int"]
     value_hex = f"0x{code_int:08x}"

@@ -77,13 +77,15 @@ class Type:
 
 class Expr:
     def __init__(self, op, typ=None, *, x=None, y=None, z=None, member=0, ea=0x1010,
-                 number=None, lvar_index=None, obj_ea=None, arguments=(), rendered=""):
+                 number=None, lvar_index=None, obj_ea=None, arguments=(), rendered="",
+                 helper=""):
         self.op, self.type, self.x, self.y, self.z = op, typ, x, y, z
         self.m, self.ea, self.obj_ea = member, ea, obj_ea
         self.n = type("Number", (), {"_value": number})() if number is not None else None
         self.v = type("Variable", (), {"idx": lvar_index})() if lvar_index is not None else None
         self.a = list(arguments)
         self.rendered = rendered
+        self.helper = helper
 
     def dstr(self):
         return self.rendered
@@ -100,6 +102,7 @@ class Hexrays:
     cot_comma, cot_tern = 33, 34
     cot_ptr, cot_add = 35, 36
     cot_land, cot_lor = 37, 38
+    cot_helper = 46
     cit_block, cit_expr, cit_return, cit_goto, cit_if = 20, 21, 22, 23, 24
     cit_switch, cit_for, cit_while, cit_do, cit_asm, cit_try, cit_throw = (
         39, 40, 41, 42, 43, 44, 45)
@@ -159,8 +162,10 @@ def expression(*, cast=False, leaf_name="IoControlCode", pointer_width=8, root=N
 
 
 class Statement:
-    def __init__(self, op, cexpr=None):
+    def __init__(self, op, cexpr=None, children=()):
         self.op, self.cexpr = op, cexpr
+        self.creturn = type("Return", (), {"expr": cexpr})() if op == Hexrays.cit_return else None
+        self.children = list(children)
 
 
 class Body:
@@ -236,6 +241,60 @@ def registration_scan(cfunc, unsupported_forms=()):
     )
 
 
+def helper_registration_fixture(pointer_width=8, *, bulk_count=28,
+                                override_index=None, post_offset=None):
+    direct = registration_cfunc(pointer_width=pointer_width)
+    pointer = direct.get_lvars()[3].type
+    template_member = direct.body.cblock[0].cexpr.x.x
+    member = Expr(Hexrays.cot_memptr, template_member.type,
+        x=Expr(Hexrays.cot_var, pointer, lvar_index=0), member=template_member.m)
+    function_pointer = direct.body.cblock[0].cexpr.type
+    caller_call = Expr(Hexrays.cot_call, Type(kind="scalar", name="NTSTATUS", size=4),
+        x=Expr(Hexrays.cot_obj, obj_ea=0x2000),
+        arguments=[Expr(Hexrays.cot_var, pointer, lvar_index=0)], ea=0x810)
+    caller = Cfunc([Statement(Hexrays.cit_return, caller_call)], pointer,
+        argidx=(0,), entry_ea=0x800)
+    bulk = Expr(Hexrays.cot_call, Type(kind="scalar", name="void"),
+        x=Expr(Hexrays.cot_helper,
+            helper="memset64" if pointer_width == 8 else "memset32"),
+        arguments=[member,
+            Expr(Hexrays.cot_cast, Type(kind="scalar", name="uintptr_t",
+                size=pointer_width), x=Expr(Hexrays.cot_obj,
+                    function_pointer, obj_ea=0x3000)),
+            Expr(Hexrays.cot_num, Type(kind="scalar", name="size_t",
+                size=pointer_width), number=bulk_count)], ea=0x2100)
+    statements = [Statement(Hexrays.cit_expr, bulk)]
+    if override_index is not None:
+        override = registration_cfunc(pointer_width=pointer_width,
+            index=override_index, rhs=0x3001).body.cblock[0]
+        override.cexpr.x.x.x.v.idx = 0
+        override.cexpr.ea = 0x2110
+        statements.append(override)
+    helpers = {}
+    if post_offset is not None:
+        post_call = Expr(Hexrays.cot_call, Type(kind="scalar", name="void"),
+            x=Expr(Hexrays.cot_obj, obj_ea=0x4000),
+            arguments=[Expr(Hexrays.cot_var, pointer, lvar_index=0)], ea=0x2120)
+        statements.append(Statement(Hexrays.cit_expr, post_call))
+        raw_type = Type(kind="scalar", name="uintptr_t", size=pointer_width)
+        raw_base = Expr(Hexrays.cot_var, raw_type, lvar_index=0)
+        address = Expr(Hexrays.cot_add, raw_type, x=raw_base,
+            y=Expr(Hexrays.cot_num, raw_type, number=post_offset))
+        left = Expr(Hexrays.cot_ptr,
+            Type(kind="pointer", name="PVOID", size=pointer_width), x=address)
+        write = Expr(Hexrays.cot_asg, left.type, x=left,
+            y=Expr(Hexrays.cot_obj, obj_ea=0x5000), ea=0x4010)
+        helpers[0x4000] = Cfunc([Statement(Hexrays.cit_expr, write)], raw_type,
+            argidx=(0,), entry_ea=0x4000)
+    statements.append(Statement(Hexrays.cit_return,
+        Expr(Hexrays.cot_num, Type(kind="scalar", name="NTSTATUS", size=4),
+            number=0, ea=0x21F0)))
+    helper = Cfunc(statements, pointer, argidx=(0,), entry_ea=0x2000)
+    helpers[0x2000] = helper
+    resolve = lambda ea: ea if ea in {0x2000, 0x3000, 0x3001, 0x4000} else None
+    return caller, helpers, resolve
+
+
 class FakeCtreeVisitor:
     def __init__(self, _flags):
         pass
@@ -253,11 +312,17 @@ class FakeCtreeVisitor:
             for argument in getattr(expression, "a", ()):
                 visit(argument)
 
-        for statement in body.cblock:
+        def visit_statement(statement):
             visit_insn = getattr(self, "visit_insn", None)
             if visit_insn is not None:
                 visit_insn(statement)
             visit(getattr(statement, "cexpr", None))
+            visit(getattr(getattr(statement, "creturn", None), "expr", None))
+            for child in getattr(statement, "children", ()):
+                visit_statement(child)
+
+        for statement in body.cblock:
+            visit_statement(statement)
         return 0
 
 
@@ -333,6 +398,277 @@ def selector_binding_expected(pointer_width=8, *, root_kind="local_assignment"):
 
 
 class StructuralSelectorTests(unittest.TestCase):
+    def test_helper_bulk_registration_proves_exact_mj14_on_x86_x64(self):
+        for pointer_width in (4, 8):
+            caller, helpers, resolve = helper_registration_fixture(
+                pointer_width, post_offset=(0x28 if pointer_width == 4 else 0x50))
+            result = selector_structure.collect_helper_driver_registration(
+                caller, 0x800, Hexrays, Typeinf, resolve, helpers.get,
+                device_control_index=0x0E, expected_pointer_width=pointer_width)
+            self.assertEqual(result["status"], "complete")
+            proof = result["registrations"][0]
+            self.assertEqual(proof["schema_version"],
+                "driver-helper-registration-proof/1")
+            self.assertEqual(proof["rhs_target_ea"], "0x3000")
+            self.assertEqual(proof["bulk_element_count"], 28)
+            self.assertEqual(proof["post_call_proofs"][0]["kind"],
+                "canonical_fast_io_dispatch_write")
+
+    def test_helper_registration_rejects_incomplete_bulk_competing_mj14_and_post_escape(self):
+        cases = [
+            (helper_registration_fixture(8, bulk_count=27),
+                "helper_registration_bulk_store_unsupported"),
+            (helper_registration_fixture(8, override_index=14),
+                "helper_registration_competing_write_unsupported"),
+            (helper_registration_fixture(8, post_offset=0x48),
+                "helper_registration_post_call_unproven"),
+        ]
+        for (caller, helpers, resolve), reason in cases:
+            result = selector_structure.collect_helper_driver_registration(
+                caller, 0x800, Hexrays, Typeinf, resolve, helpers.get,
+                device_control_index=0x0E, expected_pointer_width=8)
+            self.assertEqual(result["status"], "unsupported")
+            self.assertEqual(result["reason_code"], reason)
+
+    def test_helper_registration_rejects_multiple_calls_aliases_dynamic_and_conditional_forms(self):
+        caller, helpers, resolve = helper_registration_fixture(8)
+        caller.body.cblock.append(Statement(Hexrays.cit_return,
+            caller.body.cblock[0].creturn.expr))
+        self.assertIsNone(selector_structure.collect_helper_driver_registration(
+            caller, 0x800, Hexrays, Typeinf, resolve, helpers.get,
+            device_control_index=0x0E, expected_pointer_width=8))
+
+        caller, helpers, resolve = helper_registration_fixture(8)
+        pointer = caller.get_lvars()[0].type
+        alias = Expr(Hexrays.cot_asg, pointer,
+            x=Expr(Hexrays.cot_var, pointer, lvar_index=2),
+            y=Expr(Hexrays.cot_var, pointer, lvar_index=0), ea=0x805)
+        caller.body.cblock.insert(0, Statement(Hexrays.cit_expr, alias))
+        self.assertIsNone(selector_structure.collect_helper_driver_registration(
+            caller, 0x800, Hexrays, Typeinf, resolve, helpers.get,
+            device_control_index=0x0E, expected_pointer_width=8))
+
+        caller, helpers, resolve = helper_registration_fixture(8, override_index=13)
+        helper = helpers[0x2000]
+        helper.body.cblock[1].cexpr.x.y = Expr(Hexrays.cot_var,
+            Type(kind="scalar", name="int", size=4), lvar_index=2)
+        result = selector_structure.collect_helper_driver_registration(
+            caller, 0x800, Hexrays, Typeinf, resolve, helpers.get,
+            device_control_index=0x0E, expected_pointer_width=8)
+        self.assertEqual(result["reason_code"],
+            "helper_registration_competing_write_unsupported")
+
+        caller, helpers, resolve = helper_registration_fixture(8)
+        helper = helpers[0x2000]
+        helper.body.cblock[0].op = Hexrays.cit_if
+        result = selector_structure.collect_helper_driver_registration(
+            caller, 0x800, Hexrays, Typeinf, resolve, helpers.get,
+            device_control_index=0x0E, expected_pointer_width=8)
+        self.assertEqual(result["reason_code"],
+            "helper_registration_bulk_store_unsupported")
+
+        caller, helpers, resolve = helper_registration_fixture(8, override_index=13)
+        helper = helpers[0x2000]
+        pointer = helper.get_lvars()[0].type
+        helper.body.cblock[1].cexpr.y = Expr(Hexrays.cot_call,
+            helper.body.cblock[1].cexpr.type,
+            x=Expr(Hexrays.cot_obj, obj_ea=0x4000),
+            arguments=[Expr(Hexrays.cot_var, pointer, lvar_index=0)])
+        result = selector_structure.collect_helper_driver_registration(
+            caller, 0x800, Hexrays, Typeinf, resolve, helpers.get,
+            device_control_index=0x0E, expected_pointer_width=8)
+        self.assertEqual(result["reason_code"],
+            "helper_registration_override_value_unsupported")
+
+    def test_helper_registration_missing_decompile_is_partial_and_timeout_downgrades(self):
+        caller, _helpers, resolve = helper_registration_fixture(8)
+        result = selector_structure.collect_helper_driver_registration(
+            caller, 0x800, Hexrays, Typeinf, resolve, lambda _ea: None,
+            device_control_index=0x0E, expected_pointer_width=8)
+        self.assertEqual(result["status"], "partial")
+        timed = selector_structure.finalize_registration_scan(result, expired=True)
+        self.assertEqual(timed["reason_code"],
+            "driver_entry_registration_scan_timeout")
+
+    def test_helper_caller_requires_tail_call_to_dominate_every_success_exit(self):
+        caller, helpers, resolve = helper_registration_fixture(8)
+        caller.body.cblock.insert(0, Statement(Hexrays.cit_return,
+            Expr(Hexrays.cot_num, Type(kind="scalar", name="NTSTATUS", size=4),
+                number=0, ea=0x801)))
+        self.assertIsNone(selector_structure.collect_helper_driver_registration(
+            caller, 0x800, Hexrays, Typeinf, resolve, helpers.get,
+            device_control_index=0x0E, expected_pointer_width=8))
+
+        caller, helpers, resolve = helper_registration_fixture(8)
+        failed = Statement(Hexrays.cit_return,
+            Expr(Hexrays.cot_num, Type(kind="scalar", name="NTSTATUS", size=4),
+                number=0xC0000001, ea=0x802))
+        caller.body.cblock.insert(0, Statement(Hexrays.cit_if, children=[failed]))
+        result = selector_structure.collect_helper_driver_registration(
+            caller, 0x800, Hexrays, Typeinf, resolve, helpers.get,
+            device_control_index=0x0E, expected_pointer_width=8)
+        self.assertEqual(result["status"], "complete")
+
+        for returned in (
+            Expr(Hexrays.cot_num, Type(kind="scalar", name="NTSTATUS", size=4),
+                number=0, ea=0x803),
+            Expr(Hexrays.cot_var, Type(kind="scalar", name="NTSTATUS", size=4),
+                lvar_index=2, ea=0x803),
+        ):
+            caller, helpers, resolve = helper_registration_fixture(8)
+            caller.body.cblock.insert(0, Statement(Hexrays.cit_if,
+                children=[Statement(Hexrays.cit_return, returned)]))
+            self.assertIsNone(selector_structure.collect_helper_driver_registration(
+                caller, 0x800, Hexrays, Typeinf, resolve, helpers.get,
+                device_control_index=0x0E, expected_pointer_width=8))
+
+        caller, helpers, resolve = helper_registration_fixture(8)
+        tail = caller.body.cblock.pop()
+        caller.body.cblock.append(Statement(Hexrays.cit_if, children=[tail]))
+        self.assertIsNone(selector_structure.collect_helper_driver_registration(
+            caller, 0x800, Hexrays, Typeinf, resolve, helpers.get,
+            device_control_index=0x0E, expected_pointer_width=8))
+
+    def test_helper_registration_rejects_prefix_rebind_early_success_and_post_control(self):
+        caller, helpers, resolve = helper_registration_fixture(8)
+        helper = helpers[0x2000]
+        pointer = helper.get_lvars()[0].type
+        rebind = Expr(Hexrays.cot_asg, pointer,
+            x=Expr(Hexrays.cot_var, pointer, lvar_index=0),
+            y=Expr(Hexrays.cot_var, pointer, lvar_index=2), ea=0x2050)
+        helper.body.cblock.insert(0, Statement(Hexrays.cit_expr, rebind))
+        result = selector_structure.collect_helper_driver_registration(
+            caller, 0x800, Hexrays, Typeinf, resolve, helpers.get,
+            device_control_index=0x0E, expected_pointer_width=8)
+        self.assertEqual(result["reason_code"],
+            "helper_registration_prefix_state_unsupported")
+
+        caller, helpers, resolve = helper_registration_fixture(8)
+        helper = helpers[0x2000]
+        pointer = helper.get_lvars()[0].type
+        nested_rebind = Expr(Hexrays.cot_asg, pointer,
+            x=Expr(Hexrays.cot_var, pointer, lvar_index=0),
+            y=Expr(Hexrays.cot_var, pointer, lvar_index=2), ea=0x2050)
+        helper.body.cblock.insert(0, Statement(Hexrays.cit_if, nested_rebind))
+        result = selector_structure.collect_helper_driver_registration(
+            caller, 0x800, Hexrays, Typeinf, resolve, helpers.get,
+            device_control_index=0x0E, expected_pointer_width=8)
+        self.assertEqual(result["reason_code"],
+            "helper_registration_prefix_control_unsupported")
+
+        caller, helpers, resolve = helper_registration_fixture(8)
+        helper = helpers[0x2000]
+        pointer = helper.get_lvars()[0].type
+        escaping = Expr(Hexrays.cot_call, Type(kind="scalar", name="void"),
+            x=Expr(Hexrays.cot_obj, obj_ea=0x4000),
+            arguments=[Expr(Hexrays.cot_var, pointer, lvar_index=0)], ea=0x2050)
+        helper.body.cblock.insert(0, Statement(Hexrays.cit_expr, escaping))
+        result = selector_structure.collect_helper_driver_registration(
+            caller, 0x800, Hexrays, Typeinf, resolve, helpers.get,
+            device_control_index=0x0E, expected_pointer_width=8)
+        self.assertEqual(result["reason_code"],
+            "helper_registration_prefix_state_unsupported")
+
+        caller, helpers, resolve = helper_registration_fixture(8)
+        helpers[0x2000].body.cblock.insert(0, Statement(Hexrays.cit_return,
+            Expr(Hexrays.cot_num, Type(kind="scalar", name="NTSTATUS", size=4),
+                number=0, ea=0x2050)))
+        result = selector_structure.collect_helper_driver_registration(
+            caller, 0x800, Hexrays, Typeinf, resolve, helpers.get,
+            device_control_index=0x0E, expected_pointer_width=8)
+        self.assertEqual(result["reason_code"],
+            "helper_registration_success_path_unsupported")
+
+        caller, helpers, resolve = helper_registration_fixture(8, post_offset=0x50)
+        helpers[0x4000].body.cblock.insert(0, Statement(Hexrays.cit_if))
+        result = selector_structure.collect_helper_driver_registration(
+            caller, 0x800, Hexrays, Typeinf, resolve, helpers.get,
+            device_control_index=0x0E, expected_pointer_width=8)
+        self.assertEqual(result["reason_code"],
+            "helper_registration_post_call_unproven")
+
+        caller, helpers, resolve = helper_registration_fixture(8, post_offset=0x50)
+        post = helpers[0x4000]
+        outer = post.body.cblock[0].cexpr
+        raw_type = post.get_lvars()[0].type
+        nested_address = Expr(Hexrays.cot_add, raw_type,
+            x=Expr(Hexrays.cot_var, raw_type, lvar_index=0),
+            y=Expr(Hexrays.cot_num, raw_type, number=0xE0))
+        nested_left = Expr(Hexrays.cot_ptr,
+            Type(kind="pointer", name="PVOID", size=8), x=nested_address)
+        outer.y = Expr(Hexrays.cot_asg, nested_left.type, x=nested_left,
+            y=Expr(Hexrays.cot_obj, obj_ea=0x3001), ea=0x4018)
+        result = selector_structure.collect_helper_driver_registration(
+            caller, 0x800, Hexrays, Typeinf, resolve, helpers.get,
+            device_control_index=0x0E, expected_pointer_width=8)
+        self.assertEqual(result["reason_code"],
+            "helper_registration_post_call_unproven")
+
+        caller, helpers, resolve = helper_registration_fixture(8, post_offset=0x50)
+        post = helpers[0x4000]
+        raw_type = post.get_lvars()[0].type
+        address = Expr(Hexrays.cot_add, raw_type,
+            x=Expr(Hexrays.cot_var, raw_type, lvar_index=0),
+            y=Expr(Hexrays.cot_num, raw_type, number=0xE0))
+        left = Expr(Hexrays.cot_ptr,
+            Type(kind="pointer", name="PVOID", size=8), x=address)
+        returned_write = Expr(Hexrays.cot_asg, left.type, x=left,
+            y=Expr(Hexrays.cot_obj, obj_ea=0x3001), ea=0x4020)
+        post.body.cblock.append(Statement(Hexrays.cit_return, returned_write))
+        result = selector_structure.collect_helper_driver_registration(
+            caller, 0x800, Hexrays, Typeinf, resolve, helpers.get,
+            device_control_index=0x0E, expected_pointer_width=8)
+        self.assertEqual(result["reason_code"],
+            "helper_registration_post_call_unproven")
+
+    def test_helper_registration_binds_post_call_argument_position_and_fill_width(self):
+        caller, helpers, resolve = helper_registration_fixture(8, post_offset=0x50)
+        post_call = helpers[0x2000].body.cblock[1].cexpr
+        post_call.a.insert(0, Expr(Hexrays.cot_num,
+            Type(kind="scalar", name="int", size=4), number=0))
+        result = selector_structure.collect_helper_driver_registration(
+            caller, 0x800, Hexrays, Typeinf, resolve, helpers.get,
+            device_control_index=0x0E, expected_pointer_width=8)
+        self.assertEqual(result["reason_code"],
+            "helper_registration_post_call_unproven")
+
+        caller, helpers, resolve = helper_registration_fixture(4)
+        helpers[0x2000].body.cblock[0].cexpr.x.helper = "memset64"
+        result = selector_structure.collect_helper_driver_registration(
+            caller, 0x800, Hexrays, Typeinf, resolve, helpers.get,
+            device_control_index=0x0E, expected_pointer_width=4)
+        self.assertEqual(result["reason_code"],
+            "helper_registration_bulk_store_unsupported")
+
+        caller, helpers, resolve = helper_registration_fixture(8)
+        bulk = helpers[0x2000].body.cblock[0].cexpr
+        original_base = bulk.a[0].x
+        narrow_pointer = Type(kind="pointer", name="PDRIVER_OBJECT32", size=4,
+            pointed=original_base.type.pointed)
+        bulk.a[0].x = Expr(Hexrays.cot_cast, narrow_pointer, x=original_base)
+        result = selector_structure.collect_helper_driver_registration(
+            caller, 0x800, Hexrays, Typeinf, resolve, helpers.get,
+            device_control_index=0x0E, expected_pointer_width=8)
+        self.assertEqual(result["reason_code"],
+            "helper_registration_bulk_store_unsupported")
+
+        caller, helpers, resolve = helper_registration_fixture(8)
+        original = caller.body.cblock[0].creturn.expr.a[0]
+        caller.body.cblock[0].creturn.expr.a[0] = Expr(Hexrays.cot_cast,
+            Type(kind="scalar", name="uint32_t", size=4), x=original)
+        self.assertIsNone(selector_structure.collect_helper_driver_registration(
+            caller, 0x800, Hexrays, Typeinf, resolve, helpers.get,
+            device_control_index=0x0E, expected_pointer_width=8))
+
+        caller, helpers, resolve = helper_registration_fixture(8)
+        bulk = helpers[0x2000].body.cblock[0].cexpr
+        bulk.a[1].type = Type(kind="scalar", name="uint32_t", size=4)
+        result = selector_structure.collect_helper_driver_registration(
+            caller, 0x800, Hexrays, Typeinf, resolve, helpers.get,
+            device_control_index=0x0E, expected_pointer_width=8)
+        self.assertEqual(result["reason_code"],
+            "helper_registration_bulk_store_unsupported")
+
     def test_exact_struct_and_union_metadata_produces_the_binding(self):
         selector = expression()
         self.assertEqual(selector_structure.structural_selector_binding(

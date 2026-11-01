@@ -168,6 +168,26 @@ def test_driver_ctree_proxy_identity_and_explicit_qvector_iteration():
     assert recreated and all(recreated)
 
 
+@test()
+def test_mup_helper_registration_remains_unsupported_when_prefix_control_is_unproven():
+    import idc
+    if idc.get_name_ea_simple("DriverEntry") != 0x140023010:
+        return
+    survey = driver_survey()
+    typed = [item for item in survey["dispatchers"]
+        if item["kind"] == "device_control"]
+    assert all(item["confidence"] != "typed_registration" for item in typed)
+    assert survey["trigger_fact_producer"]["status"] == "unsupported"
+    assert survey["trigger_fact_producer"]["reason_code"] \
+        == "helper_registration_prefix_control_unsupported"
+    result = driver_find_ioctls()
+    producer = result["trigger_fact_producer"]
+    assert producer["status"] == "unsupported"
+    assert producer["reason_code"] == "helper_registration_prefix_control_unsupported"
+
+
+
+
 @test(binary="crackme03.elf")
 def test_driver_find_ioctls_elf_reports_not_driver():
     """driver_find_ioctls on a non-driver returns empty candidates plus a reason."""
