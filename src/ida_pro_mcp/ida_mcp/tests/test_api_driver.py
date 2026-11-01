@@ -1,5 +1,8 @@
 """Tests for api_driver (Windows driver triage tools)."""
 
+import json
+from pathlib import Path
+
 from ..api_driver import (
     driver_audit_acl,
     driver_audit_exports,
@@ -11,6 +14,11 @@ from ..api_driver import (
     driver_survey,
     driver_trace_calls,
     driver_triage_leads,
+)
+from ..driver.selector_structure import (
+    _same_ctree_expression,
+    _top_level_statements,
+    build_ioctl_selector_fact,
 )
 from ..driver.pipeline import run_full
 from ..framework import (
@@ -82,6 +90,84 @@ def test_driver_decode_ioctls_rejects_bad_input():
     assert "error" in by_input["not-a-code"]
 
 
+@test()
+def test_driver_selector_fact_rejects_heuristic_or_non_external_dispatch():
+    """Only an exact external device-control ctree case gets a trigger fact."""
+    fixture = json.loads((Path(__file__).resolve().parents[4]
+        / "tests/fixtures/driver_ioctl_selector_projection.json").read_text())
+    candidate = fixture["structuredContent"]["candidates"][0]
+    producer = fixture["structuredContent"]["trigger_fact_producer"]
+    assert build_ioctl_selector_fact(producer, candidate,
+        device_control_code=0x0E) is not None
+    assert build_ioctl_selector_fact(producer, {**candidate, "method_detail": "immediate"},
+        device_control_code=0x0E) is None
+    wrong_index = json.loads(json.dumps(producer))
+    wrong_index["registrations"][0]["major_function_index"] = 0x0F
+    assert build_ioctl_selector_fact(wrong_index, candidate,
+        device_control_code=0x0E) is None
+
+
+@test()
+def test_driver_selector_fact_matches_the_cross_repo_projection_fixture():
+    """The shared projection is emitted from the same structural IDA fact shape."""
+    fixture = json.loads((Path(__file__).resolve().parents[4]
+        / "tests/fixtures/driver_ioctl_selector_projection.json").read_text())
+    candidate = fixture["structuredContent"]["candidates"][0]
+    assert build_ioctl_selector_fact(fixture["structuredContent"]["trigger_fact_producer"],
+        candidate, device_control_code=0x0E) == candidate["selector_fact"]
+
+
+@test()
+def test_driver_registration_write_audit_uses_the_complete_sdk_operator_families():
+    """The installed SDK classifies every compound and pre/post lvar write."""
+    import ida_hexrays
+
+    assignments = (
+        ida_hexrays.cot_asg, ida_hexrays.cot_asgbor, ida_hexrays.cot_asgxor,
+        ida_hexrays.cot_asgband, ida_hexrays.cot_asgadd, ida_hexrays.cot_asgsub,
+        ida_hexrays.cot_asgmul, ida_hexrays.cot_asgsshr, ida_hexrays.cot_asgushr,
+        ida_hexrays.cot_asgshl, ida_hexrays.cot_asgsdiv, ida_hexrays.cot_asgudiv,
+        ida_hexrays.cot_asgsmod, ida_hexrays.cot_asgumod,
+    )
+    prepost = (ida_hexrays.cot_postinc, ida_hexrays.cot_postdec,
+        ida_hexrays.cot_preinc, ida_hexrays.cot_predec)
+    assert all(ida_hexrays.is_assignment(op) for op in assignments)
+    assert all(ida_hexrays.is_prepost(op) for op in prepost)
+
+
+@test(binary="driver_fixture.sys")
+def test_driver_ctree_proxy_identity_and_explicit_qvector_iteration():
+    """Real SDK wrappers compare by ctree identity and cblock is indexed explicitly."""
+    import ida_hexrays
+    import idc
+
+    cfunc = ida_hexrays.decompile(idc.get_name_ea_simple("DispatchDeviceControl"))
+    statements = _top_level_statements(cfunc)
+    assert len(statements) == len(cfunc.body.cblock)
+    top_expressions = [statement.cexpr for statement in statements
+        if statement.op == ida_hexrays.cit_expr]
+
+    class Visitor(ida_hexrays.ctree_visitor_t):
+        def __init__(self):
+            super().__init__(ida_hexrays.CV_FAST)
+            self.expressions = []
+
+        def visit_expr(self, item):
+            self.expressions.append(item)
+            return 0
+
+    visitor = Visitor()
+    visitor.apply_to(cfunc.body, None)
+    recreated = []
+    for expression in top_expressions:
+        matches = [item for item in visitor.expressions
+            if item.op == expression.op and int(item.ea) == int(expression.ea)]
+        if matches:
+            recreated.append(matches[0] is not expression
+                and _same_ctree_expression(matches[0], expression))
+    assert recreated and all(recreated)
+
+
 @test(binary="crackme03.elf")
 def test_driver_find_ioctls_elf_reports_not_driver():
     """driver_find_ioctls on a non-driver returns empty candidates plus a reason."""
@@ -139,11 +225,16 @@ def test_driver_fixture_finds_both_ioctls():
     codes = {c["code_int"] for c in result["candidates"]}
     assert codes == {0x222000, 0x80002007}
     by_code = {c["code_int"]: c for c in result["candidates"]}
+    producer = result["trigger_fact_producer"]
+    assert producer["status"] == "unsupported"
+    assert producer["reason_code"] == "cast_registration_form_unsupported"
+    assert producer["registrations"] == []
     assert by_code[0x80002007]["severity"] == "HIGH"
     assert by_code[0x80002007]["method"] == "METHOD_NEITHER"
     # BUFFERED/ANY starts LOW and only climbs via the capped sink bump.
     assert by_code[0x222000]["severity"] == "MEDIUM"
     assert any("capped" in r for r in by_code[0x222000]["risk_reasons"])
+    assert all("selector_fact" not in candidate for candidate in by_code.values())
 
 
 @test(binary="driver_fixture.sys")

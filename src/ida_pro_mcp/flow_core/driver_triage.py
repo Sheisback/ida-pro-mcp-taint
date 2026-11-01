@@ -563,22 +563,38 @@ SDDL_PREFIXES: tuple[str, ...] = ("D:", "O:", "G:", "S:")
 #: IRP_MJ codes relevant to dispatch discovery (public DDK values).
 IRP_MJ_DEVICE_CONTROL = 0x0E
 IRP_MJ_INTERNAL_DEVICE_CONTROL = 0x0F
+DRIVER_TRIGGER_ABI_CONTRACT_ID = "aasystem.windows-driver-trigger-abi.v1"
 
 
 def major_function_slot_offset(ptr_size: int, mj_code: int) -> int:
     """Derive a DRIVER_OBJECT.MajorFunction slot offset from public layout.
 
-    x64: slots start at 0x70; x86: slots start at 0x3C. Slots are pointer
+    x64: slots start at 0x70; x86: slots start at 0x38. Slots are pointer
     sized. Computing the offset keeps the adapter honest on both widths
     instead of hardcoding one build's bytes.
     """
     if ptr_size == 8:
         base = 0x70
     elif ptr_size == 4:
-        base = 0x3C
+        base = 0x38
     else:
         raise ValueError(f"unsupported pointer size: {ptr_size}")
     return base + mj_code * ptr_size
+
+
+def driver_trigger_abi_member_offsets(ptr_size: int) -> dict[str, tuple[int, int, int]]:
+    """Canonical public WDK member-relative offsets used by trigger proof."""
+    if ptr_size == 8:
+        return {
+            "irp_current_stack": (0x78, 0x00, 0x40),
+            "ioctl_selector": (0x08, 0x00, 0x08),
+        }
+    if ptr_size == 4:
+        return {
+            "irp_current_stack": (0x40, 0x00, 0x20),
+            "ioctl_selector": (0x04, 0x00, 0x08),
+        }
+    raise ValueError(f"unsupported pointer size: {ptr_size}")
 
 
 # ---------------------------------------------------------------------------

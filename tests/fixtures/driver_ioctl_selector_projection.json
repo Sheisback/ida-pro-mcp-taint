@@ -1,0 +1,141 @@
+{
+  "structuredContent": {
+    "candidates": [
+      {
+        "code": "0x222000",
+        "code_int": 2236416,
+        "device_name": "FILE_DEVICE_UNKNOWN",
+        "function_code": 2048,
+        "method": "METHOD_BUFFERED",
+        "access": "FILE_ANY_ACCESS",
+        "method_detail": "ctree_case",
+        "confidence": "high",
+        "function": "DispatchDeviceControl",
+        "function_addr": "0x1000",
+        "addr": "0x1010",
+        "selector_binding": {
+          "kind": "typed_member_path",
+          "member_path": ["Parameters", "DeviceIoControl", "IoControlCode"],
+          "source_ea": "0x1010",
+          "selector_member_offsets_bytes": [8, 0, 8],
+          "root_provenance": {
+            "schema_version": "driver-irp-current-stack-proof/1",
+            "abi_contract_id": "aasystem.windows-driver-trigger-abi.v1",
+            "dispatch_function_ea": "0x1000",
+            "irp_argument_index": 1,
+            "irp_lvar_index": 1,
+            "irp_pointee_type_name": "_IRP",
+            "pointer_width_bytes": 8,
+            "target_architecture_bits": 64,
+            "root_kind": "local_assignment",
+            "root_lvar_index": 4,
+            "assignment_ea": "0x1005",
+            "current_stack_member_path": ["Tail", "Overlay", "CurrentStackLocation"],
+            "current_stack_member_offsets_bytes": [120, 0, 64]
+          }
+        },
+        "selector_fact": {
+          "schema_version": "driver-ioctl-selector-fact/1",
+          "selector_proven": true,
+          "operation_kind": "device_control",
+          "operation_selector_sha256": "d0acb52a572dc7fe8a3192f7903ad2d551f9735427c86776bf29031ad0db1958",
+          "field_predicate": {
+            "field_key": "operation.selector",
+            "member_path": ["device_control", "io_control_code"],
+            "offset_bytes": 0,
+            "width_bytes": 4,
+            "interpretation": "unsigned_little_endian",
+            "relation": "equals",
+            "value_sha256": "7f0493c40c38896845c14175891a5dc5dae024fdf68c114b42abf7b6782e6bdd",
+            "value_hex": "0x00222000"
+          },
+          "operation_discriminator": {
+            "field_key": "operation.major_function",
+            "member_path": ["irp_stack", "major_function"],
+            "offset_bytes": 0,
+            "width_bytes": 1,
+            "interpretation": "unsigned_little_endian",
+            "value_sha256": "691b9300018a5cbd4da833ad1cb84ce7603745a67d444f134ad139e3beb161ac",
+            "value_hex": "0x0e",
+            "source": {
+              "schema_version": "driver-entry-registration-proof/1",
+              "driver_entry_ea": "0x800",
+              "assignment_ea": "0x900",
+              "base_argument_index": 0,
+              "base_lvar_index": 3,
+              "base_type_kind": "plain_pointer_to_driver_object_udt",
+              "base_pointee_type_name": "_DRIVER_OBJECT",
+              "member_name": "MajorFunction",
+              "member_offset_bytes": 112,
+              "major_function_index": 14,
+              "pointer_width_bytes": 8,
+              "target_architecture_bits": 64,
+              "derived_slot_offset_bytes": 224,
+              "rhs_target_ea": "0x1000",
+              "top_level_unconditional": true
+            }
+          },
+          "source": {
+            "function_addr": "0x1000",
+            "source_ea": "0x1010",
+            "node_id": "driver-selector-v1:1bd988bd46206be6fe0ed57ecfff18b669796a39b252e6888a9b82e9d2d71d89",
+            "method": "ctree_case",
+            "confidence": "high",
+            "selector_member_offsets_bytes": [8, 0, 8],
+            "root_provenance": {
+              "schema_version": "driver-irp-current-stack-proof/1",
+              "abi_contract_id": "aasystem.windows-driver-trigger-abi.v1",
+              "dispatch_function_ea": "0x1000",
+              "irp_argument_index": 1,
+              "irp_lvar_index": 1,
+              "irp_pointee_type_name": "_IRP",
+              "pointer_width_bytes": 8,
+              "target_architecture_bits": 64,
+              "root_kind": "local_assignment",
+              "root_lvar_index": 4,
+              "assignment_ea": "0x1005",
+              "current_stack_member_path": ["Tail", "Overlay", "CurrentStackLocation"],
+              "current_stack_member_offsets_bytes": [120, 0, 64]
+            }
+          },
+          "effect_link": {
+            "kind": "dispatch_case",
+            "function_addr": "0x1000",
+            "source_ea": "0x1010"
+          }
+        }
+      }
+    ],
+    "next_offset": null,
+    "stats": {
+      "ctree_consts_found": true
+    },
+    "limitations": [],
+    "trigger_fact_producer": {
+      "contract_id": "ida.driver-trigger-registration-producer.v1",
+      "version": 1,
+      "driver_entry_ea": "0x800",
+      "status": "complete",
+      "reason_code": null,
+      "registrations": [
+        {
+          "schema_version": "driver-entry-registration-proof/1",
+          "driver_entry_ea": "0x800",
+          "assignment_ea": "0x900",
+          "base_argument_index": 0,
+          "base_lvar_index": 3,
+          "base_type_kind": "plain_pointer_to_driver_object_udt",
+          "base_pointee_type_name": "_DRIVER_OBJECT",
+          "member_name": "MajorFunction",
+          "member_offset_bytes": 112,
+          "major_function_index": 14,
+          "pointer_width_bytes": 8,
+          "target_architecture_bits": 64,
+          "derived_slot_offset_bytes": 224,
+          "rhs_target_ea": "0x1000",
+          "top_level_unconditional": true
+        }
+      ]
+    }
+  }
+}

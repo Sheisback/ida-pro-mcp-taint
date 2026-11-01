@@ -26,12 +26,23 @@ from .context import (
     expired,
     func_name,
     iter_func_items,
+    strip_import_name,
+    try_decompile,
+)
+from .selector_structure import (
+    collect_driver_entry_registrations,
+    finalize_registration_scan,
+    expression_nodes,
+    lvar_definition_hazard,
+    registration_slot_write_form,
+    call_is_proven_pre_registration,
+    unmodeled_lvar_derived_write,
 )
 
 #: x64 IRP.Tail.Overlay.CurrentStackLocation offset (public WDK layout).
 _X64_IOSTACK_OFFSET = 0xB8
 #: x64 IO_STACK_LOCATION.Parameters.DeviceIoControl.IoControlCode offset.
-_X64_IOCTLCODE_OFFSET = 0x18
+_X64_IOCTLCODE_OFFSET = 0x10
 
 
 def populate(ctx: DriverContext) -> DriverContext:
@@ -52,6 +63,111 @@ def populate(ctx: DriverContext) -> DriverContext:
     _unwrap_entry_stub(ctx)
     ctx.dispatchers = discover_dispatchers(ctx)
     return ctx
+
+
+def collect_trigger_registration_producer(ctx: DriverContext) -> dict:
+    """Collect only direct typed DriverEntry registration proof authority."""
+    base = {
+        "contract_id": "ida.driver-trigger-registration-producer.v1",
+        "version": 1,
+        "driver_entry_ea": hex(ctx.driver_entry_ea or 0),
+        "registrations": [],
+    }
+    if ctx.driver_entry_ea is None:
+        return {**base, "status": "partial", "reason_code": "driver_entry_unavailable"}
+    cfunc = try_decompile(ctx.driver_entry_ea)
+    if cfunc is None:
+        return {**base, "status": "partial",
+            "reason_code": "driver_entry_decompile_unavailable"}
+    try:
+        import ida_hexrays
+        import ida_typeinf
+
+        def exact_function_entry(ea: int):
+            found = idaapi.get_func(ea)
+            return ea if found is not None and int(found.start_ea) == ea else None
+
+        def documented_external_call(ea: int):
+            return strip_import_name(func_name(ea)) in ctx.imports_map
+
+        initial = collect_driver_entry_registrations(
+            cfunc,
+            ctx.driver_entry_ea,
+            ida_hexrays,
+            ida_typeinf,
+            exact_function_entry,
+            device_control_index=core.IRP_MJ_DEVICE_CONTROL,
+            expected_pointer_width=8 if ctx.is_64bit else 4,
+            documented_external_call=documented_external_call,
+        )
+        accepted_eas = {int(item["assignment_ea"], 16)
+            for item in initial["registrations"]}
+        argument_indices = [int(value) for value in cfunc.argidx]
+        first_lvar_index = argument_indices[0] if argument_indices else -1
+        unsupported_forms = []
+        direct_top_level = []
+        top_level = [cfunc.body.cblock[index]
+            for index in range(len(cfunc.body.cblock))]
+        for index, statement in enumerate(top_level):
+            if statement.op != ida_hexrays.cit_expr:
+                continue
+            if registration_slot_write_form(statement.cexpr, first_lvar_index,
+                    ida_hexrays, ida_typeinf, exact_function_entry,
+                    device_control_index=core.IRP_MJ_DEVICE_CONTROL) == "direct":
+                direct_top_level.append((index, statement.cexpr))
+        allowed_pre_calls = []
+        if len(direct_top_level) == 1:
+            for statement in top_level[:direct_top_level[0][0]]:
+                if statement.op != ida_hexrays.cit_expr:
+                    continue
+                allowed_pre_calls.extend(item for item in expression_nodes(statement.cexpr)
+                    if item.op == ida_hexrays.cot_call)
+        base_visitor = getattr(ida_hexrays, "ctree_visitor_t", None) or getattr(
+            ida_hexrays, "cfunc_visitor_t", None)
+        if base_visitor is not None and first_lvar_index >= 0:
+            class RegistrationFormVisitor(base_visitor):  # type: ignore[misc,valid-type]
+                def __init__(self):
+                    base_visitor.__init__(self, ida_hexrays.CV_FAST)
+
+                def visit_expr(self, expression):
+                    form = registration_slot_write_form(expression, first_lvar_index,
+                        ida_hexrays, ida_typeinf, exact_function_entry,
+                        device_control_index=core.IRP_MJ_DEVICE_CONTROL)
+                    if form == "cast":
+                        unsupported_forms.append("cast_registration_form_unsupported")
+                    elif form == "dynamic":
+                        unsupported_forms.append("ambiguous_registration_form_unsupported")
+                    elif form == "unknown":
+                        unsupported_forms.append(
+                            "typed_major_function_registration_form_unsupported")
+                    elif form == "direct" and int(expression.ea) not in accepted_eas:
+                        unsupported_forms.append("conditional_registration_form_unsupported")
+                    elif form is None and unmodeled_lvar_derived_write(
+                            expression, first_lvar_index, ida_hexrays, ida_typeinf):
+                        unsupported_forms.append(
+                            "ambiguous_registration_form_unsupported")
+                    hazard = lvar_definition_hazard(expression, first_lvar_index,
+                        ida_hexrays, documented_external_call,
+                        after_registration=bool(direct_top_level)
+                          and expression.op == ida_hexrays.cot_call
+                          and not call_is_proven_pre_registration(
+                              expression, allowed_pre_calls))
+                    if hazard is not None:
+                        unsupported_forms.append(hazard)
+                    return 0
+
+            visitor = RegistrationFormVisitor()
+            visitor.apply_to(cfunc.body, None)
+        result = collect_driver_entry_registrations(
+            cfunc, ctx.driver_entry_ea, ida_hexrays, ida_typeinf,
+            exact_function_entry, device_control_index=core.IRP_MJ_DEVICE_CONTROL,
+            expected_pointer_width=8 if ctx.is_64bit else 4,
+            unsupported_forms=unsupported_forms,
+            documented_external_call=documented_external_call)
+        return finalize_registration_scan(result, expired=expired())
+    except Exception:
+        return {**base, "status": "partial",
+            "reason_code": "driver_entry_registration_scan_failed"}
 
 
 def _inf_is_64() -> bool:

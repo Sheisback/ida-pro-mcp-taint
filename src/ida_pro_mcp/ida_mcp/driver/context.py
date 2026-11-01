@@ -30,6 +30,7 @@ class DriverContext:
     framework: str = "unknown"
     framework_evidence: list[str] = field(default_factory=list)
     dispatchers: list[dict] = field(default_factory=list)
+    trigger_registration_producer: dict | None = None
     imports_map: dict[str, list[int]] = field(default_factory=dict)
     functions_map: dict[str, int] = field(default_factory=dict)
     limitations: list[str] = field(default_factory=list)

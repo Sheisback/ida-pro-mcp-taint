@@ -17,6 +17,7 @@ from .driver import pooltags as pooltag_stage
 from .driver import scoring as scoring_stage
 from .driver.callchain import transitive_callees
 from .driver.context import DriverContext, func_range, is_library_func
+from .driver.selector_structure import build_ioctl_selector_fact
 from .rpc import tool
 from .sync import idasync, tool_timeout
 from .utils import normalize_list_input, paginate, parse_address, pattern_filter
@@ -165,10 +166,11 @@ def driver_find_ioctls(
     offset: Annotated[int, "Pagination start index"] = 0,
     count: Annotated[int, "Max candidates (0=all)"] = 200,
 ) -> FindIoctlsResult:
-    """Discover IOCTLs handled by driver dispatchers. Collects decompiler constants, switch-table cases, and gated immediates, excludes outbound codes, and risk-scores each survivor. Returns paginated candidates with collection methods and confidence levels."""
+    """Discover IOCTLs handled by driver dispatchers. Collects decompiler constants, switch-table cases, and gated immediates, excludes outbound codes, and risk-scores each survivor. Returns paginated candidates with collection methods and confidence levels. An exact typed IoControlCode switch case on an exact IRP_MJ_DEVICE_CONTROL slot-store dispatcher also carries selector_fact; candidates without it remain heuristic."""
     ctx = _fresh_context()
     if not ctx.is_pe or ctx.driver_entry_ea is None:
         return {"candidates": [], "next_offset": None, "stats": {}, **_not_driver(ctx)}
+    ctx.trigger_registration_producer = dispatch_stage.collect_trigger_registration_producer(ctx)
     wanted = _resolve_eas(dispatchers)
     dispatch_eas = wanted or [int(d["addr"], 16) for d in ctx.dispatchers]
     candidates, stats = ioctl_stage.scan_dispatchers(
@@ -178,6 +180,14 @@ def driver_find_ioctls(
         fallback, fallback_stats = ioctl_stage.scan_iocontrolcode_fallback(ctx, set())
         candidates = fallback
         stats["fallback"] = fallback_stats
+    for candidate in candidates:
+        selector_fact = build_ioctl_selector_fact(
+            ctx.trigger_registration_producer or {},
+            candidate,
+            device_control_code=core.IRP_MJ_DEVICE_CONTROL,
+        )
+        if selector_fact is not None:
+            candidate["selector_fact"] = selector_fact
     paths, _trace_stats = callchain_stage.trace(ctx, dispatch_eas or [ctx.driver_entry_ea])
     scored = scoring_stage.finalize(candidates, paths)
     page = paginate(scored, offset, count)
@@ -186,6 +196,7 @@ def driver_find_ioctls(
         "next_offset": page["next_offset"],
         "stats": stats,
         "limitations": list(ctx.limitations),
+        "trigger_fact_producer": ctx.trigger_registration_producer,
     }
 
 

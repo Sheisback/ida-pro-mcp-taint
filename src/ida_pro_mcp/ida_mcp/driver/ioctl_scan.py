@@ -27,6 +27,9 @@ from .context import (
     try_decompile,
 )
 from .dispatch import references_iocontrolcode
+from .selector_structure import (
+    structural_selector_analysis,
+)
 
 #: Mnemonics whose immediate operands are worth testing as IOCTLs.
 _IMMEDIATE_MNEMS = frozenset({"cmp", "test", "sub", "mov", "and", "add"})
@@ -160,17 +163,20 @@ def _collect_switch_cases(func_ea: int) -> tuple[list[tuple[int, int]], str]:
     return found, "ida switch tables"
 
 
-def _collect_ctree_consts(func_ea: int) -> tuple[list[tuple[int, int, str]], str]:
+def _collect_ctree_consts(func_ea: int, expected_pointer_width: int) -> tuple[
+        list[tuple[int, int, str, dict | None, dict | None]], str]:
     """Collect constants from the decompiled control flow of a function.
 
-    Returns (value, insn_ea, kind) triples where kind is "case" (switch-case
-    label, high confidence) or "cmp" (equality comparison, medium).
+    Returns (value, insn_ea, kind, selector_binding, selector_producer) tuples. A switch case is
+    eligible for exact selector proof only when Hex-Rays renders the switch
+    expression through the typed IoControlCode member path.
     """
     cfunc = try_decompile(func_ea)
     if cfunc is None:
         return [], "decompiler unavailable"
     try:
         import ida_hexrays
+        import ida_typeinf
 
         _base = getattr(ida_hexrays, "ctree_visitor_t", None) or getattr(
             ida_hexrays, "cfunc_visitor_t", None
@@ -181,15 +187,31 @@ def _collect_ctree_consts(func_ea: int) -> tuple[list[tuple[int, int, str]], str
         class _Visitor(_base):  # type: ignore[misc, valid-type]
             def __init__(self):
                 _base.__init__(self, ida_hexrays.CV_FAST)
-                self.case_values: list[tuple[int, int]] = []
+                self.case_values: list[tuple[int, int, dict | None, dict | None]] = []
                 self.cmp_values: list[tuple[int, int]] = []
 
             def visit_insn(self, ins):
                 try:
                     if ins.op == ida_hexrays.cit_switch:
+                        expression = ins.cswitch.expr
+                        binding, producer = structural_selector_analysis(
+                            expression, cfunc, ida_hexrays, ida_typeinf,
+                            expected_pointer_width
+                        )
+                        if int(expression.ea) == idaapi.BADADDR:
+                            binding, producer = None, None
                         for case in ins.cswitch.cases:
                             for raw in case.values:
-                                self.case_values.append((int(raw) & 0xFFFFFFFF, int(ins.ea)))
+                                self.case_values.append(
+                                    (
+                                        int(raw) & 0xFFFFFFFF,
+                                        int(expression.ea) if (binding is not None
+                                        or producer is not None)
+                                        else int(ins.ea),
+                                        binding,
+                                        producer,
+                                    )
+                                )
                 except Exception:
                     pass
                 return 0
@@ -212,8 +234,9 @@ def _collect_ctree_consts(func_ea: int) -> tuple[list[tuple[int, int, str]], str
         visitor.apply_to(cfunc.body, None)
     except Exception:
         return [], "ctree walk failed"
-    triples = [(v, ea, "case") for v, ea in visitor.case_values]
-    triples += [(v, ea, "cmp") for v, ea in visitor.cmp_values]
+    triples = [(v, ea, "case", binding, producer)
+        for v, ea, binding, producer in visitor.case_values]
+    triples += [(v, ea, "cmp", None, None) for v, ea in visitor.cmp_values]
     return triples, "hexrays ctree"
 
 
@@ -274,14 +297,17 @@ def scan_dispatchers(
         name = func_name(func_ea) or hex(func_ea)
         structured = False
         if include_decompiler:
-            triples, _source = _collect_ctree_consts(func_ea)
+            triples, _source = _collect_ctree_consts(
+                func_ea, 8 if ctx.is_64bit else 4)
             if triples:
                 stats["ctree_consts_found"] = True
-            for value, item_ea, kind in triples:
+            for value, item_ea, kind, selector_binding, selector_producer in triples:
                 method = "ctree_case" if kind == "case" else "ctree_cmp"
                 if _emit(
                     ctx, merged, stats, value, method, name, func_ea, item_ea, end,
                     ntstatus_extra, "high" if kind == "case" else "medium",
+                    selector_binding=selector_binding,
+                    selector_producer=selector_producer,
                 ):
                     structured = True
         switch_found, _source = _collect_switch_cases(func_ea)
@@ -320,6 +346,8 @@ def _emit(
     func_end: int,
     ntstatus_extra: set[int],
     confidence: str,
+    selector_binding: dict | None = None,
+    selector_producer: dict | None = None,
 ) -> bool:
     """Validate one raw candidate and merge it. Returns True when kept."""
     ok, reason = core.is_plausible_ioctl(value, ntstatus_extra)
@@ -344,6 +372,10 @@ def _emit(
         "function_addr": hex(func_ea),
         "addr": hex(item_ea),
     }
+    if selector_binding is not None:
+        record["selector_binding"] = selector_binding
+    if selector_producer is not None:
+        record["selector_fact_producer"] = selector_producer
     prior = merged.get(value)
     if prior is None or _method_rank(method) > _method_rank(prior["method_detail"]):
         merged[value] = record

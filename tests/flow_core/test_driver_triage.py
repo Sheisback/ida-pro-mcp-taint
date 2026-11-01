@@ -110,10 +110,18 @@ def test_sink_bump_without_sinks_is_identity():
 def test_major_function_slot_offsets_derived():
     assert dt.major_function_slot_offset(8, dt.IRP_MJ_DEVICE_CONTROL) == 0xE0
     assert dt.major_function_slot_offset(8, dt.IRP_MJ_INTERNAL_DEVICE_CONTROL) == 0xE8
-    assert dt.major_function_slot_offset(4, dt.IRP_MJ_DEVICE_CONTROL) == 0x74
-    assert dt.major_function_slot_offset(4, dt.IRP_MJ_INTERNAL_DEVICE_CONTROL) == 0x78
+    assert dt.major_function_slot_offset(4, dt.IRP_MJ_DEVICE_CONTROL) == 0x70
+    assert dt.major_function_slot_offset(4, dt.IRP_MJ_INTERNAL_DEVICE_CONTROL) == 0x74
     with pytest.raises(ValueError):
         dt.major_function_slot_offset(2, dt.IRP_MJ_DEVICE_CONTROL)
+    assert dt.driver_trigger_abi_member_offsets(8) == {
+        "irp_current_stack": (0x78, 0x00, 0x40),
+        "ioctl_selector": (0x08, 0x00, 0x08),
+    }
+    assert dt.driver_trigger_abi_member_offsets(4) == {
+        "irp_current_stack": (0x40, 0x00, 0x20),
+        "ioctl_selector": (0x04, 0x00, 0x08),
+    }
 
 
 def test_trace_paths_finds_shortest_first():
