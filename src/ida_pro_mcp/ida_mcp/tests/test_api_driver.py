@@ -285,7 +285,7 @@ def test_control_code_fallback_still_runs_when_direct_dispatchers_have_codes():
     result = driver_find_ioctls()
     assert any(item["code_int"] == 0x98490
                and item["function"] == "IndirectFileSystemControlLead"
-               and item["method_detail"] == "immediate"
+               and item["method_detail"] == "ctree_cmp"
                for item in result["candidates"])
 
 
@@ -295,6 +295,46 @@ def test_same_control_code_in_two_functions_retains_both_handler_leads():
     names = {item["function"] for item in result["candidates"]
              if item["code_int"] == 0x9848C}
     assert {"DispatchFileSystemControl", "SameCodeSecondHandler"} <= names
+
+
+@test(binary="driver_fixture.sys")
+def test_unregistered_fsctl_switch_is_collected_as_a_structural_lead():
+    result = driver_find_ioctls()
+    found = [item for item in result["candidates"]
+             if item["function"] == "IndirectSwitchFileSystemControlLead"
+             and item["code_int"] == 0x984C0]
+    assert len(found) == 1
+    assert found[0]["method_detail"] == "ctree_case"
+    assert found[0]["confidence"] == "high"
+    assert "selector_fact" not in found[0]
+
+
+@test()
+def test_structural_leads_precede_high_scored_unproven_immediates():
+    from ..driver.scoring import finalize
+    candidates = [
+        {"code_int": 0x14018F, "function_addr": "0x1000",
+         "method": "METHOD_NEITHER", "access": "FILE_ANY_ACCESS",
+         "method_detail": "immediate", "confidence": "low"},
+        {"code_int": 0x984C0, "function_addr": "0x2000",
+         "method": "METHOD_BUFFERED", "access": "FILE_WRITE_ACCESS",
+         "method_detail": "ctree_case", "confidence": "high"},
+    ]
+    result = finalize(candidates, [])
+    assert result[0]["method_detail"] == "ctree_case"
+    assert result[0]["severity_rank"] < result[1]["severity_rank"]
+
+
+@test(binary="driver_fixture.sys")
+def test_evidence_first_control_code_pages_replay_the_same_order():
+    full = driver_find_ioctls(count=0)
+    first = driver_find_ioctls(offset=0, count=3)
+    second = driver_find_ioctls(offset=3, count=3)
+    def identity(item):
+        return item["function_addr"], item["code_int"], item["method_detail"]
+    assert first["next_offset"] == 3
+    assert [identity(item) for item in first["candidates"] + second["candidates"]] \
+        == [identity(item) for item in full["candidates"][:6]]
 
 
 @test(binary="driver_fixture.sys")

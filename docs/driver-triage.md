@@ -29,8 +29,15 @@ uv run idalib-mcp --stdio --profile profiles/driver-readonly.txt path/to/disposa
 
 Heuristic output (`driver_triage_leads`, ACL/export leads, IOCTL severity)
 is a prioritized review queue. Every lead carries `requires_manual_review`,
-a `method` note, and address evidence. Severity answers "look here first",
+a `method` note, and address evidence. Within one evidence class, severity answers "look here first",
 never "this is a vulnerability".
+The control-code fallback now collects decompiler switch cases and comparisons,
+IDA switch cases, and corroborated immediates for each code-reading function.
+The review queue orders collection evidence quality before decoded severity;
+severity still orders leads of the same evidence class. A low-confidence
+immediate with a high decoded risk score cannot hide a structural switch case.
+All leads remain visible, and a structural case without exact route/selector
+proof is still a lead rather than a trigger fact.
 
 The eleven checks: `unvalidated_copy`, `pool_alloc_unguarded`,
 `stack_alloc`, `privileged_insn`, `physical_memory_ref`, `unsafe_mdl`,
@@ -96,6 +103,13 @@ uv run ida-mcp-test "$work/driver_fixture.sys" -p '*driver*' -q
 cp tests/driver_stub_fixture.sys "$work/driver_stub_fixture.sys"
 uv run ida-mcp-test "$work/driver_stub_fixture.sys" -c api_driver -q
 ```
+
+The owned fixture also has an unregistered multi-case FSCTL handler. The
+auto-discovery fallback must retain it as a high-confidence ctree lead without
+inventing `selector_fact`. A disposable symbolized driver smoke changed a
+known FSCTL lead from low-confidence immediate positions 41/42 of 75 to
+ctree-case positions 20/21 of 101; the unrelated high-severity immediate moved
+from position 1 to 59. This changes review order, not route authority.
 
 An RDBSS-shaped indirect MajorFunction initializer and second-level dispatch
 vector are still unresolved by the typed route producer. A read-only smoke on

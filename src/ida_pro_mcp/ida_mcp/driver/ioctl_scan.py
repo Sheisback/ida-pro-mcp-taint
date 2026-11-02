@@ -383,13 +383,13 @@ def _emit(
         record["selector_fact_producer"] = selector_producer
     key = (func_ea, value)
     prior = merged.get(key)
-    if prior is None or _method_rank(method) > _method_rank(prior["method_detail"]):
+    if prior is None or collection_method_rank(method) > collection_method_rank(prior["method_detail"]):
         merged[key] = record
     stats["by_method"][method] = stats["by_method"].get(method, 0) + 1
     return True
 
 
-def _method_rank(method: str) -> int:
+def collection_method_rank(method: str) -> int:
     return {"ctree_case": 4, "switch_table": 3, "ctree_cmp": 2, "immediate": 1}.get(method, 0)
 
 
@@ -399,8 +399,8 @@ def scan_iocontrolcode_fallback(
 ) -> tuple[list[dict], dict]:
     """Fallback scan over control-code-referencing functions.
 
-    Runs only when dispatcher discovery recovered nothing, mirroring the
-    reference fallback role. Whole-binary text matching is deliberately
+    Runs beside dispatcher discovery so a proven direct handler does not hide
+    a separate internal handler. Whole-binary text matching is deliberately
     avoided: every scanned function must structurally reference the IRP's
     control-code field first.
     """
@@ -435,6 +435,22 @@ def scan_iocontrolcode_fallback(
         _start, end = bounds
         stats["functions_scanned"] += 1
         name = func_name(func_ea) or hex(func_ea)
+        triples, _source = _collect_ctree_consts(func_ea, 8 if ctx.is_64bit else 4)
+        for value, item_ea, kind, selector_binding, selector_producer in triples:
+            if (func_ea, value) in exclude_codes:
+                continue
+            _emit(ctx, merged, stats, value,
+                "ctree_case" if kind == "case" else "ctree_cmp",
+                name, func_ea, item_ea, end, ntstatus_extra,
+                "high" if kind == "case" else "medium",
+                selector_binding=selector_binding,
+                selector_producer=selector_producer)
+        switch_found, _source = _collect_switch_cases(func_ea)
+        for item_ea, value in switch_found:
+            if (func_ea, value) in exclude_codes:
+                continue
+            _emit(ctx, merged, stats, value, "switch_table", name,
+                func_ea, item_ea, end, ntstatus_extra, "high")
         for item_ea, value in _collect_immediates(func_ea):
             if (func_ea, value) in exclude_codes:
                 continue
@@ -442,5 +458,7 @@ def scan_iocontrolcode_fallback(
                 ctx, merged, stats, value, "immediate", name, func_ea, item_ea, end,
                 ntstatus_extra, "low",
             )
+    if expired() and "control-code fallback hit the tool deadline (partial)" not in ctx.limitations:
+        ctx.limitations.append("control-code fallback hit the tool deadline (partial)")
     return sorted(merged.values(), key=lambda c:
         (c["code_int"], int(c["function_addr"], 16))), stats

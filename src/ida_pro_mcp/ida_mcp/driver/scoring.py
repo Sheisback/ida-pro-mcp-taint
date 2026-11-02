@@ -1,4 +1,4 @@
-"""Per-IOCTL risk finalization (read-only).
+"""Per-control-code risk finalization and evidence-first review order (read-only).
 
 Mirrors the reference ``scoring`` stage: start from the transfer-method and
 access-mode base score, then bump codes whose handler closure reaches a
@@ -9,6 +9,8 @@ so every sink bump is capped and labeled imprecise rather than forced.
 from __future__ import annotations
 
 from ida_pro_mcp.flow_core import driver_triage as core
+
+from .ioctl_scan import collection_method_rank
 
 
 def finalize(candidates: list[dict], call_paths: list[dict]) -> list[dict]:
@@ -52,5 +54,6 @@ def finalize(candidates: list[dict], call_paths: list[dict]) -> list[dict]:
             }
         )
         finalized.append(record)
-    finalized.sort(key=lambda c: (-c["severity_rank"], c["code_int"]))
+    finalized.sort(key=lambda c: (-collection_method_rank(c.get("method_detail", "")),
+        -c["severity_rank"], c["code_int"], c.get("function_addr", "")))
     return finalized
