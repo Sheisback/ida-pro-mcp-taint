@@ -325,6 +325,23 @@ def test_structural_leads_precede_high_scored_unproven_immediates():
     assert result[0]["severity_rank"] < result[1]["severity_rank"]
 
 
+@test()
+def test_proven_selector_precedes_unproven_switch_with_higher_base_risk():
+    from ..driver.scoring import finalize
+    candidates = [
+        {"code_int": 0x14018F, "function_addr": "0x1000",
+         "method": "METHOD_NEITHER", "access": "FILE_ANY_ACCESS",
+         "method_detail": "ctree_case", "confidence": "high"},
+        {"code_int": 0x984C0, "function_addr": "0x2000",
+         "method": "METHOD_BUFFERED", "access": "FILE_WRITE_ACCESS",
+         "method_detail": "ctree_case", "confidence": "high",
+         "selector_fact": {"selector_proven": True}},
+    ]
+    result = finalize(candidates, [])
+    assert result[0]["selector_fact"]["selector_proven"] is True
+    assert result[0]["severity_rank"] < result[1]["severity_rank"]
+
+
 @test(binary="driver_fixture.sys")
 def test_evidence_first_control_code_pages_replay_the_same_order():
     full = driver_find_ioctls(count=0)

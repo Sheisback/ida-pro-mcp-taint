@@ -33,8 +33,8 @@ a `method` note, and address evidence. Within one evidence class, severity answe
 never "this is a vulnerability".
 The control-code fallback now collects decompiler switch cases and comparisons,
 IDA switch cases, and corroborated immediates for each code-reading function.
-The review queue orders collection evidence quality before decoded severity;
-severity still orders leads of the same evidence class. A low-confidence
+The review queue orders exact selector facts first, then collection evidence
+quality, then decoded severity. A low-confidence
 immediate with a high decoded risk score cannot hide a structural switch case.
 All leads remain visible, and a structural case without exact route/selector
 proof is still a lead rather than a trigger fact.

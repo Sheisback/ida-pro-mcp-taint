@@ -54,6 +54,8 @@ def finalize(candidates: list[dict], call_paths: list[dict]) -> list[dict]:
             }
         )
         finalized.append(record)
-    finalized.sort(key=lambda c: (-collection_method_rank(c.get("method_detail", "")),
+    finalized.sort(key=lambda c: (0 if (c.get("selector_fact") or {}).get(
+        "selector_proven") is True else 1,
+        -collection_method_rank(c.get("method_detail", "")),
         -c["severity_rank"], c["code_int"], c.get("function_addr", "")))
     return finalized
