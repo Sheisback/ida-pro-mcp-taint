@@ -1,7 +1,7 @@
 # Windows driver triage (`driver_*` tools)
 
 Read-only static triage for Windows kernel drivers, exposed as ten MCP tools.
-Start with `driver_survey`, decode or discover IOCTLs, then review device,
+Start with `driver_survey`, decode or discover IOCTL and FSCTL leads, then review device,
 pool, sink, and heuristic leads. Nothing here mutates the database.
 
 ## Tool map
@@ -10,7 +10,7 @@ pool, sink, and heuristic leads. Nothing here mutates the database.
 | --- | --- | --- |
 | `driver_survey` | dispatch | PE/driver check, DriverEntry, framework, dispatchers |
 | `driver_decode_ioctls` | decode | Field split, plausibility, base score for given codes |
-| `driver_find_ioctls` | ioctl_scan + scoring | Discovered IOCTLs with method, confidence, severity |
+| `driver_find_ioctls` | ioctl_scan + scoring | Discovered IOCTL/FSCTL leads with method, confidence, severity |
 | `driver_find_devices` | devices | Device paths and symbolic-link path evidence |
 | `driver_audit_acl` | acl | Default-ACL and SDDL review leads |
 | `driver_find_pooltags` | pooltags | Resolved pool tags with call sites |
@@ -40,6 +40,20 @@ The eleven checks: `unvalidated_copy`, `pool_alloc_unguarded`,
 ## Scope and honesty rules
 
 - Static IDA analysis only; the target binary is never executed.
+- A slot-like memory store is a dispatch lead only when it is reached by a
+  direct call chain from the entry and a typed `DRIVER_OBJECT.MajorFunction`
+  member write names an exact handler function. A bulk or indirect registration
+  that cannot be proved stays unresolved. `GsDriverEntry` reports the exact
+  `DriverEntry` continuation when it is directly called after initialization.
+- Direct `IRP_MJ_FILE_SYSTEM_CONTROL` registrations are surveyed alongside
+  device and internal controls. x64 control-code corroboration uses the WDK
+  `IO_STACK_LOCATION` `+0x18` member offset, including address-temporary and
+  compare-read forms. An unregistered code match remains a heuristic lead,
+  never proof of an externally reachable route or a vulnerability.
+- The fallback examines every corroborated function until EOF or the tool
+  deadline, whether or not another dispatcher already yielded codes. The
+  same code in two functions retains both leads. Deadline expiry reports a
+  partial limitation; it cannot make a truncated scan clean.
 - x64 is the primary width. x86 dispatcher slots are derived arithmetically,
   but IRP-offset corroboration, double-fetch, and intra-function UAF stay
   x64-only and say so in `limitations`.
@@ -68,15 +82,23 @@ reviewed entries instead.
   ELF fixtures (non-driver behavior only).
 - Positive driver paths: owned fixture `tests/driver_fixture.sys` (built
   from `tests/driver_fixture.c`, never executed) verified on licensed
-  IDA 9.3 headless: 2 dispatchers, 2/2 IOCTLs via the decompiler, pool tag,
+  IDA 9.3 headless: three direct dispatchers, two IOCTLs, one direct FSCTL,
+  later and duplicate-code heuristic leads, unrelated-slot rejection, pool tag,
   device/symlink strings, world-SDDL ACL lead, thunk-aware flagging and
-  call chain, and the planted heuristic leads. Re-run on a disposable copy:
+  call chain, and the planted heuristic leads. The separate
+  `driver_stub_fixture.sys` proves the cookie-wrapper continuation. Re-run on
+  disposable copies:
 
 ```sh
 work=$(mktemp -d)
 cp tests/driver_fixture.sys "$work/driver_fixture.sys"
 uv run ida-mcp-test "$work/driver_fixture.sys" -p '*driver*' -q
+cp tests/driver_stub_fixture.sys "$work/driver_stub_fixture.sys"
+uv run ida-mcp-test "$work/driver_stub_fixture.sys" -c api_driver -q
 ```
 
-Real-world drivers (jump-table dispatch, packed imports, 32-bit images)
-remain untested; treat those paths as experimental until such a smoke passes.
+An RDBSS-shaped indirect MajorFunction initializer and second-level dispatch
+vector are still unresolved by the typed route producer. A read-only smoke on
+a symbolized Windows driver found the FSCTL code leads in the internal handler,
+but did not prove their external route. Jump-table dispatch, packed imports,
+and 32-bit images likewise remain experimental.

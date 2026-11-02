@@ -15,9 +15,17 @@
         "addr": "0x1010",
         "selector_binding": {
           "kind": "typed_member_path",
-          "member_path": ["Parameters", "DeviceIoControl", "IoControlCode"],
+          "member_path": [
+            "Parameters",
+            "DeviceIoControl",
+            "IoControlCode"
+          ],
           "source_ea": "0x1010",
-          "selector_member_offsets_bytes": [8, 0, 8],
+          "selector_member_offsets_bytes": [
+            8,
+            0,
+            16
+          ],
           "root_provenance": {
             "schema_version": "driver-irp-current-stack-proof/1",
             "abi_contract_id": "aasystem.windows-driver-trigger-abi.v1",
@@ -30,8 +38,16 @@
             "root_kind": "local_assignment",
             "root_lvar_index": 4,
             "assignment_ea": "0x1005",
-            "current_stack_member_path": ["Tail", "Overlay", "CurrentStackLocation"],
-            "current_stack_member_offsets_bytes": [120, 0, 64]
+            "current_stack_member_path": [
+              "Tail",
+              "Overlay",
+              "CurrentStackLocation"
+            ],
+            "current_stack_member_offsets_bytes": [
+              120,
+              0,
+              64
+            ]
           }
         },
         "selector_fact": {
@@ -41,7 +57,10 @@
           "operation_selector_sha256": "d0acb52a572dc7fe8a3192f7903ad2d551f9735427c86776bf29031ad0db1958",
           "field_predicate": {
             "field_key": "operation.selector",
-            "member_path": ["device_control", "io_control_code"],
+            "member_path": [
+              "device_control",
+              "io_control_code"
+            ],
             "offset_bytes": 0,
             "width_bytes": 4,
             "interpretation": "unsigned_little_endian",
@@ -51,7 +70,10 @@
           },
           "operation_discriminator": {
             "field_key": "operation.major_function",
-            "member_path": ["irp_stack", "major_function"],
+            "member_path": [
+              "irp_stack",
+              "major_function"
+            ],
             "offset_bytes": 0,
             "width_bytes": 1,
             "interpretation": "unsigned_little_endian",
@@ -81,7 +103,11 @@
             "node_id": "driver-selector-v1:1bd988bd46206be6fe0ed57ecfff18b669796a39b252e6888a9b82e9d2d71d89",
             "method": "ctree_case",
             "confidence": "high",
-            "selector_member_offsets_bytes": [8, 0, 8],
+            "selector_member_offsets_bytes": [
+              8,
+              0,
+              16
+            ],
             "root_provenance": {
               "schema_version": "driver-irp-current-stack-proof/1",
               "abi_contract_id": "aasystem.windows-driver-trigger-abi.v1",
@@ -94,8 +120,16 @@
               "root_kind": "local_assignment",
               "root_lvar_index": 4,
               "assignment_ea": "0x1005",
-              "current_stack_member_path": ["Tail", "Overlay", "CurrentStackLocation"],
-              "current_stack_member_offsets_bytes": [120, 0, 64]
+              "current_stack_member_path": [
+                "Tail",
+                "Overlay",
+                "CurrentStackLocation"
+              ],
+              "current_stack_member_offsets_bytes": [
+                120,
+                0,
+                64
+              ]
             }
           },
           "effect_link": {

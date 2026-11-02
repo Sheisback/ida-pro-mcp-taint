@@ -138,7 +138,7 @@ def expression(*, cast=False, leaf_name="IoControlCode", pointer_width=8, root=N
     device = Type(kind="udt", name="DeviceIoControl", members=(
         Member("OutputBufferLength", u32, 0),
         Member("InputBufferLength", u32, 32),
-        Member(leaf_name, u32, 64),
+        Member(leaf_name, u32, (128 if pointer_width == 8 else 64)),
     ))
     parameters = Type(kind="udt", name="Parameters", is_union=True, members=(
         Member("Create", opaque), Member("DeviceIoControl", device),
@@ -157,7 +157,8 @@ def expression(*, cast=False, leaf_name="IoControlCode", pointer_width=8, root=N
     parameters_expr = Expr(Hexrays.cot_memptr, parameters, x=base,
         member=8 if pointer_width == 8 else 4)
     device_expr = Expr(Hexrays.cot_memref, device, x=parameters_expr, member=1)
-    return Expr(Hexrays.cot_memref, u32, x=device_expr, member=8,
+    return Expr(Hexrays.cot_memref, u32, x=device_expr,
+        member=16 if pointer_width == 8 else 8,
         rendered="Parameters.DeviceIoControl.IoControlCode")
 
 
@@ -291,7 +292,8 @@ def helper_registration_fixture(pointer_width=8, *, bulk_count=28,
             number=0, ea=0x21F0)))
     helper = Cfunc(statements, pointer, argidx=(0,), entry_ea=0x2000)
     helpers[0x2000] = helper
-    resolve = lambda ea: ea if ea in {0x2000, 0x3000, 0x3001, 0x4000} else None
+    def resolve(ea):
+        return ea if ea in {0x2000, 0x3000, 0x3001, 0x4000} else None
     return caller, helpers, resolve
 
 
@@ -377,7 +379,8 @@ def selector_binding_expected(pointer_width=8, *, root_kind="local_assignment"):
         "kind": "typed_member_path",
         "member_path": ["Parameters", "DeviceIoControl", "IoControlCode"],
         "source_ea": "0x1010",
-        "selector_member_offsets_bytes": [8 if pointer_width == 8 else 4, 0, 8],
+        "selector_member_offsets_bytes": [8 if pointer_width == 8 else 4, 0,
+            16 if pointer_width == 8 else 8],
         "root_provenance": {
             "schema_version": "driver-irp-current-stack-proof/1",
             "abi_contract_id": "aasystem.windows-driver-trigger-abi.v1",

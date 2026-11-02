@@ -32,6 +32,7 @@ from .context import (
 from .selector_structure import (
     collect_driver_entry_registrations,
     collect_helper_driver_registration,
+    collect_typed_major_function_store_leads,
     finalize_registration_scan,
     expression_nodes,
     lvar_definition_hazard,
@@ -42,8 +43,8 @@ from .selector_structure import (
 
 #: x64 IRP.Tail.Overlay.CurrentStackLocation offset (public WDK layout).
 _X64_IOSTACK_OFFSET = 0xB8
-#: x64 IO_STACK_LOCATION.Parameters.DeviceIoControl.IoControlCode offset.
-_X64_IOCTLCODE_OFFSET = 0x10
+#: x64 IO_STACK_LOCATION.Parameters.{DeviceIoControl,FileSystemControl} code offset.
+_X64_IOCTLCODE_OFFSET = 0x18
 
 
 def populate(ctx: DriverContext) -> DriverContext:
@@ -68,15 +69,16 @@ def populate(ctx: DriverContext) -> DriverContext:
 
 def collect_trigger_registration_producer(ctx: DriverContext) -> dict:
     """Collect only direct typed DriverEntry registration proof authority."""
+    entry_ea = ctx.real_entry_ea or ctx.driver_entry_ea
     base = {
         "contract_id": "ida.driver-trigger-registration-producer.v1",
         "version": 1,
-        "driver_entry_ea": hex(ctx.driver_entry_ea or 0),
+        "driver_entry_ea": hex(entry_ea or 0),
         "registrations": [],
     }
-    if ctx.driver_entry_ea is None:
+    if entry_ea is None:
         return {**base, "status": "partial", "reason_code": "driver_entry_unavailable"}
-    cfunc = try_decompile(ctx.driver_entry_ea)
+    cfunc = try_decompile(entry_ea)
     if cfunc is None:
         return {**base, "status": "partial",
             "reason_code": "driver_entry_decompile_unavailable"}
@@ -92,7 +94,7 @@ def collect_trigger_registration_producer(ctx: DriverContext) -> dict:
             return strip_import_name(func_name(ea)) in ctx.imports_map
 
         helper_result = collect_helper_driver_registration(
-            cfunc, ctx.driver_entry_ea, ida_hexrays, ida_typeinf,
+            cfunc, entry_ea, ida_hexrays, ida_typeinf,
             exact_function_entry, try_decompile,
             device_control_index=core.IRP_MJ_DEVICE_CONTROL,
             expected_pointer_width=8 if ctx.is_64bit else 4)
@@ -101,7 +103,7 @@ def collect_trigger_registration_producer(ctx: DriverContext) -> dict:
 
         initial = collect_driver_entry_registrations(
             cfunc,
-            ctx.driver_entry_ea,
+            entry_ea,
             ida_hexrays,
             ida_typeinf,
             exact_function_entry,
@@ -168,7 +170,7 @@ def collect_trigger_registration_producer(ctx: DriverContext) -> dict:
             visitor = RegistrationFormVisitor()
             visitor.apply_to(cfunc.body, None)
         result = collect_driver_entry_registrations(
-            cfunc, ctx.driver_entry_ea, ida_hexrays, ida_typeinf,
+            cfunc, entry_ea, ida_hexrays, ida_typeinf,
             exact_function_entry, device_control_index=core.IRP_MJ_DEVICE_CONTROL,
             expected_pointer_width=8 if ctx.is_64bit else 4,
             unsupported_forms=unsupported_forms,
@@ -231,7 +233,6 @@ def _classify_framework(ctx: DriverContext) -> None:
             return
     ctx.framework = "WDM"
     ctx.framework_evidence = []
-    ctx.limitations.append("no framework import marker; assuming WDM-shaped")
 
 
 def _unwrap_entry_stub(ctx: DriverContext) -> None:
@@ -243,6 +244,21 @@ def _unwrap_entry_stub(ctx: DriverContext) -> None:
     func = idaapi.get_func(ea)
     size = (func.end_ea - func.start_ea) if func else 0
     if ctx.driver_entry_name != "GsDriverEntry" and size >= 64:
+        return
+    if ctx.driver_entry_name == "GsDriverEntry":
+        candidates = {ctx.functions_map[name] for name in
+            ("DriverEntry", "DriverEntry_0") if name in ctx.functions_map}
+        called = set()
+        for item_ea in iter_func_items(ea, 64):
+            if idc.print_insn_mnem(item_ea) not in ("call", "jmp"):
+                continue
+            _name, target = call_target(item_ea)
+            if target in candidates:
+                called.add(target)
+        if len(called) == 1:
+            ctx.real_entry_ea = called.pop()
+        else:
+            ctx.limitations.append("GsDriverEntry continuation is ambiguous")
         return
     try:
         for item_ea in iter_func_items(ea, 64):
@@ -274,6 +290,7 @@ def references_iocontrolcode(func_ea: int, is_64bit: bool) -> tuple[bool, str]:
     any width. 32-bit raw offsets are intentionally not guessed.
     """
     iostack_regs: set[int] = set()
+    iostack_address_regs: set[int] = set()
     saw_b8 = False
     try:
         for item_ea in iter_func_items(func_ea):
@@ -286,17 +303,41 @@ def references_iocontrolcode(func_ea: int, is_64bit: bool) -> tuple[bool, str]:
                 except Exception:
                     mnem = ""
                 dest_reg: int | None = None
-                if insn.ops and insn.ops[0].type == idaapi.o_reg:
+                if (mnem in {"mov", "lea", "xor", "add", "sub", "and", "or"}
+                        and insn.ops and insn.ops[0].type == idaapi.o_reg):
                     dest_reg = int(insn.ops[0].reg)
+                next_address = False
+                next_stack = False
                 for position, op in enumerate(insn.ops):
-                    if op.type != idaapi.o_displ or position == 0:
+                    if (op.type not in (idaapi.o_displ, idaapi.o_phrase)
+                            or position == 0 and mnem not in {"cmp", "test"}):
                         continue
-                    if op.addr == _X64_IOSTACK_OFFSET:
-                        if mnem == "mov" and dest_reg is not None:
-                            iostack_regs.add(dest_reg)
+                    offset = int(op.addr) if op.type == idaapi.o_displ else 0
+                    if offset == _X64_IOSTACK_OFFSET:
+                        if mnem in {"mov", "lea"} and dest_reg is not None:
+                            next_stack = mnem == "mov"
+                            next_address = mnem == "lea"
                             saw_b8 = True
-                    elif op.addr == _X64_IOCTLCODE_OFFSET and int(op.reg) in iostack_regs:
+                    elif (offset == 0 and int(op.reg) in iostack_address_regs
+                            and mnem == "mov" and dest_reg is not None):
+                        next_stack = True
+                    elif offset == _X64_IOCTLCODE_OFFSET and int(op.reg) in iostack_regs:
                         return True, "iostack+0x18 read fed by irp+0xb8"
+                if (mnem == "mov" and dest_reg is not None and len(insn.ops) > 1
+                        and insn.ops[1].type == idaapi.o_reg):
+                    source = int(insn.ops[1].reg)
+                    next_address = source in iostack_address_regs
+                    next_stack = source in iostack_regs
+                if dest_reg is not None:
+                    iostack_regs.discard(dest_reg)
+                    iostack_address_regs.discard(dest_reg)
+                    if next_stack:
+                        iostack_regs.add(dest_reg)
+                    if next_address:
+                        iostack_address_regs.add(dest_reg)
+                if mnem == "call":
+                    iostack_regs.clear()
+                    iostack_address_regs.clear()
             try:
                 line = idc.GetDisasm(item_ea) or ""
             except Exception:
@@ -305,6 +346,8 @@ def references_iocontrolcode(func_ea: int, is_64bit: bool) -> tuple[bool, str]:
                 return True, "struct-annotated IoControlCode reference"
     except Exception:
         return False, "scan failed"
+    if expired():
+        return False, "control-code scan hit the tool deadline (partial)"
     if saw_b8:
         return False, "iostack load without control-code read"
     return False, "no IoControlCode reference found"
@@ -371,6 +414,44 @@ def _resolve_store_target(store_ea: int, func_ea: int) -> int | None:
     return None
 
 
+def _entry_reaches_store_function(ctx: DriverContext, store_function_ea: int,
+                                  cache: dict[int, bool]) -> bool:
+    """Require a direct code-call chain from the PE entry before using a slot-like store."""
+    root = ctx.driver_entry_ea
+    if root is None:
+        return False
+    pending = [store_function_ea]
+    visited: set[int] = set()
+    while pending:
+        if expired():
+            ctx.limitations.append("dispatcher entry-call scan hit the tool deadline (partial)")
+            return False
+        current = pending.pop()
+        if current == root or cache.get(current) is True:
+            cache[store_function_ea] = True
+            return True
+        if current in visited or cache.get(current) is False:
+            continue
+        visited.add(current)
+        try:
+            refs = idautils.XrefsTo(current, 0)
+        except Exception:
+            ctx.limitations.append("dispatcher entry-call references are unavailable")
+            return False
+        for ref in refs:
+            try:
+                caller = idaapi.get_func(ref.frm)
+                if (idc.print_insn_mnem(ref.frm) == "call"
+                        and caller is not None
+                        and call_target(ref.frm)[1] == current):
+                    pending.append(int(caller.start_ea))
+            except Exception:
+                continue
+    for item in visited:
+        cache[item] = False
+    return False
+
+
 def discover_dispatchers(ctx: DriverContext) -> list[dict]:
     """Scan every function for MajorFunction slot stores (read-only).
 
@@ -379,13 +460,18 @@ def discover_dispatchers(ctx: DriverContext) -> list[dict]:
     """
     ptr_size = 8 if ctx.is_64bit else 4
     try:
+        slot_fsc = core.major_function_slot_offset(ptr_size,
+            core.IRP_MJ_FILE_SYSTEM_CONTROL)
         slot_dc = core.major_function_slot_offset(ptr_size, core.IRP_MJ_DEVICE_CONTROL)
         slot_idc = core.major_function_slot_offset(ptr_size, core.IRP_MJ_INTERNAL_DEVICE_CONTROL)
     except ValueError:
         ctx.limitations.append("unsupported pointer width for slot derivation")
         return []
-    slots = {slot_dc: "device_control", slot_idc: "internal_device_control"}
-    found: dict[int, dict] = {}
+    slots = {slot_fsc: "file_system_control", slot_dc: "device_control",
+        slot_idc: "internal_device_control"}
+    found: dict[tuple[int, int], dict] = {}
+    entry_reachability: dict[int, bool] = {}
+    typed_leads: dict[int, set[tuple[int, int]]] = {}
     try:
         functions = list(idautils.Functions())
     except Exception:
@@ -398,20 +484,39 @@ def discover_dispatchers(ctx: DriverContext) -> list[dict]:
             slot = _store_slot(item_ea, set(slots))
             if slot is None:
                 continue
+            if not _entry_reaches_store_function(ctx, func_ea, entry_reachability):
+                continue
             target = _resolve_store_target(item_ea, func_ea)
-            if target is None or target in found:
+            if target is None or (slot, target) in found:
                 continue
             target_func = idaapi.get_func(target)
-            if target_func is not None:
-                confidence = "function"
-                entry = target_func.start_ea
-            else:
-                entry = target
-                try:
-                    confidence = "named" if idc.get_name(target) else "address"
-                except Exception:
-                    confidence = "address"
-            found[target] = {
+            if target_func is None or int(target_func.start_ea) != target:
+                ctx.limitations.append("MajorFunction slot-like store has no exact handler entry")
+                continue
+            if func_ea not in typed_leads:
+                cfunc = try_decompile(func_ea)
+                if cfunc is None:
+                    ctx.limitations.append("MajorFunction store type is unavailable")
+                    typed_leads[func_ea] = set()
+                else:
+                    try:
+                        import ida_hexrays
+                        import ida_typeinf
+                        typed_leads[func_ea] = set(
+                            collect_typed_major_function_store_leads(cfunc,
+                                ida_hexrays, ida_typeinf,
+                                lambda ea: ea if idaapi.get_func(ea) is not None
+                                  and idaapi.get_func(ea).start_ea == ea else None,
+                                ptr_size))
+                    except Exception:
+                        ctx.limitations.append("MajorFunction store type scan failed")
+                        typed_leads[func_ea] = set()
+            slot_index = (slot - core.major_function_slot_offset(ptr_size, 0)) // ptr_size
+            if (slot_index, target) not in typed_leads[func_ea]:
+                continue
+            confidence = "function"
+            entry = target
+            found[(slot, target)] = {
                 "addr": hex(entry),
                 "name": func_name(entry),
                 "kind": slots[slot],
@@ -421,6 +526,8 @@ def discover_dispatchers(ctx: DriverContext) -> list[dict]:
                 "confidence": confidence,
                 "method": "MajorFunction slot-store scan",
             }
+    if expired():
+        ctx.limitations.append("dispatcher scan hit the tool deadline (partial)")
     if not found:
         ctx.limitations.append("no MajorFunction slot store resolved to a handler")
     return list(found.values())

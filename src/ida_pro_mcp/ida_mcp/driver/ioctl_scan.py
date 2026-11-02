@@ -266,7 +266,6 @@ def scan_dispatchers(
     dispatch_eas: list[int],
     *,
     include_decompiler: bool = True,
-    max_funcs: int = 32,
 ) -> tuple[list[dict], dict]:
     """Discover IOCTL candidates across dispatcher functions.
 
@@ -275,7 +274,7 @@ def scan_dispatchers(
     keyed by code value; the strongest method wins each code.
     """
     ntstatus_extra, ntstatus_source = ntstatus_values_from_db()
-    merged: dict[int, dict] = {}
+    merged: dict[tuple[int, int], dict] = {}
     stats = {
         "dispatchers_scanned": 0,
         "by_method": {},
@@ -285,7 +284,7 @@ def scan_dispatchers(
         "hexrays_ready": hexrays_ready(),
         "ctree_consts_found": False,
     }
-    for func_ea in dispatch_eas[:max_funcs]:
+    for func_ea in dispatch_eas:
         if expired():
             ctx.limitations.append("IOCTL scan hit the tool deadline (partial)")
             break
@@ -319,7 +318,10 @@ def scan_dispatchers(
                 structured = True
         if structured:
             continue
-        corroborated, _why = references_iocontrolcode(func_ea, ctx.is_64bit)
+        corroborated, why = references_iocontrolcode(func_ea, ctx.is_64bit)
+        if why == "control-code scan hit the tool deadline (partial)":
+            ctx.limitations.append(why)
+            break
         if not corroborated:
             ctx.limitations.append(
                 f"immediate fallback skipped for {name}: no IoControlCode reference"
@@ -330,13 +332,16 @@ def scan_dispatchers(
                 ctx, merged, stats, value, "immediate", name, func_ea, item_ea, end,
                 ntstatus_extra, "low",
             )
-    candidates = sorted(merged.values(), key=lambda c: c["code_int"])
+    if expired() and "IOCTL scan hit the tool deadline (partial)" not in ctx.limitations:
+        ctx.limitations.append("IOCTL scan hit the tool deadline (partial)")
+    candidates = sorted(merged.values(), key=lambda c:
+        (c["code_int"], int(c["function_addr"], 16)))
     return candidates, stats
 
 
 def _emit(
     ctx: DriverContext,
-    merged: dict[int, dict],
+    merged: dict[tuple[int, int], dict],
     stats: dict,
     value: int,
     method: str,
@@ -376,9 +381,10 @@ def _emit(
         record["selector_binding"] = selector_binding
     if selector_producer is not None:
         record["selector_fact_producer"] = selector_producer
-    prior = merged.get(value)
+    key = (func_ea, value)
+    prior = merged.get(key)
     if prior is None or _method_rank(method) > _method_rank(prior["method_detail"]):
-        merged[value] = record
+        merged[key] = record
     stats["by_method"][method] = stats["by_method"].get(method, 0) + 1
     return True
 
@@ -389,11 +395,9 @@ def _method_rank(method: str) -> int:
 
 def scan_iocontrolcode_fallback(
     ctx: DriverContext,
-    exclude_codes: set[int],
-    *,
-    max_funcs: int = 16,
+    exclude_codes: set[tuple[int, int]],
 ) -> tuple[list[dict], dict]:
-    """Bounded fallback scan over IoControlCode-referencing functions.
+    """Fallback scan over control-code-referencing functions.
 
     Runs only when dispatcher discovery recovered nothing, mirroring the
     reference fallback role. Whole-binary text matching is deliberately
@@ -403,7 +407,7 @@ def scan_iocontrolcode_fallback(
     import idautils
 
     ntstatus_extra, ntstatus_source = ntstatus_values_from_db()
-    merged: dict[int, dict] = {}
+    merged: dict[tuple[int, int], dict] = {}
     stats = {
         "functions_scanned": 0,
         "by_method": {},
@@ -411,29 +415,32 @@ def scan_iocontrolcode_fallback(
         "rejected": 0,
         "ntstatus_source": ntstatus_source,
     }
-    scanned = 0
     try:
         functions = list(idautils.Functions())
     except Exception:
         return [], stats
     for func_ea in functions:
-        if scanned >= max_funcs or expired():
+        if expired():
+            ctx.limitations.append("control-code fallback hit the tool deadline (partial)")
             break
-        corroborated, _why = references_iocontrolcode(func_ea, ctx.is_64bit)
+        corroborated, why = references_iocontrolcode(func_ea, ctx.is_64bit)
+        if why == "control-code scan hit the tool deadline (partial)":
+            ctx.limitations.append(why)
+            break
         if not corroborated:
             continue
         bounds = func_range(func_ea)
         if bounds is None:
             continue
         _start, end = bounds
-        scanned += 1
         stats["functions_scanned"] += 1
         name = func_name(func_ea) or hex(func_ea)
         for item_ea, value in _collect_immediates(func_ea):
-            if value in exclude_codes:
+            if (func_ea, value) in exclude_codes:
                 continue
             _emit(
                 ctx, merged, stats, value, "immediate", name, func_ea, item_ea, end,
                 ntstatus_extra, "low",
             )
-    return sorted(merged.values(), key=lambda c: c["code_int"]), stats
+    return sorted(merged.values(), key=lambda c:
+        (c["code_int"], int(c["function_addr"], 16))), stats

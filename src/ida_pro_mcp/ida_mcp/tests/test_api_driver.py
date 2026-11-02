@@ -236,14 +236,85 @@ def test_driver_fixture_survey_finds_dispatchers():
     assert by_kind["device_control"]["name"] == "DispatchDeviceControl"
     assert by_kind["device_control"]["confidence"] == "function"
     assert by_kind["internal_device_control"]["name"] == "DispatchInternal"
+    assert by_kind["file_system_control"]["name"] == "DispatchFileSystemControl"
+    assert "no framework import marker; assuming WDM-shaped" not in result["limitations"]
 
 
 @test(binary="driver_fixture.sys")
-def test_driver_fixture_finds_both_ioctls():
-    """Owned fixture IOCTL scan recovers both planted codes, no more."""
+def test_driver_survey_excludes_constant_stores_at_dispatch_slot_offsets():
+    """Unrelated data at the same displacement must not become a dispatcher."""
+    result = driver_survey()
+    assert all(int(item["addr"], 16) != 3 for item in result["dispatchers"])
+    assert {item["name"] for item in result["dispatchers"]
+            if item["kind"] == "device_control"} == {"DispatchDeviceControl"}
+
+
+@test(binary="driver_stub_fixture.sys")
+def test_driver_survey_unwraps_the_tail_driver_entry_call():
+    """A cookie initializer before the real entry is not the driver entry."""
+    result = driver_survey()
+    assert result["driver_entry"]["name"] == "GsDriverEntry"
+    import idc
+    assert result["driver_entry"]["real_entry"] == hex(
+        idc.get_name_ea_simple("DriverEntry"))
+    assert result["trigger_fact_producer"]["driver_entry_ea"] \
+        == result["driver_entry"]["real_entry"]
+
+
+@test(binary="driver_fixture.sys")
+def test_control_code_scan_follows_irp_stack_address_temporary():
+    import idc
+    from ..driver.dispatch import references_iocontrolcode
+    ea = idc.get_name_ea_simple("StackAliasControlCode")
+    assert references_iocontrolcode(ea, True)[0] is True
+
+
+@test(binary="driver_fixture.sys")
+def test_control_code_fallback_inspects_later_functions():
+    from ..api_driver import _fresh_context
+    from ..driver.ioctl_scan import scan_iocontrolcode_fallback
+    result, stats = scan_iocontrolcode_fallback(_fresh_context(), set())
+    assert stats["functions_scanned"] > 16
+    assert any(item["code_int"] == 0x9848C
+               and item["function"] == "DispatchFileSystemControl"
+               for item in result)
+
+
+@test(binary="driver_fixture.sys")
+def test_control_code_fallback_still_runs_when_direct_dispatchers_have_codes():
+    result = driver_find_ioctls()
+    assert any(item["code_int"] == 0x98490
+               and item["function"] == "IndirectFileSystemControlLead"
+               and item["method_detail"] == "immediate"
+               for item in result["candidates"])
+
+
+@test(binary="driver_fixture.sys")
+def test_same_control_code_in_two_functions_retains_both_handler_leads():
+    result = driver_find_ioctls()
+    names = {item["function"] for item in result["candidates"]
+             if item["code_int"] == 0x9848C}
+    assert {"DispatchFileSystemControl", "SameCodeSecondHandler"} <= names
+
+
+@test(binary="driver_fixture.sys")
+def test_driver_instruction_walk_does_not_silently_stop_at_20000_items():
+    import idautils
+    from ..driver.context import iter_func_items
+    original = idautils.FuncItems
+    try:
+        idautils.FuncItems = lambda _ea: range(20001)
+        assert sum(1 for _ in iter_func_items(0)) == 20001
+    finally:
+        idautils.FuncItems = original
+
+
+@test(binary="driver_fixture.sys")
+def test_driver_fixture_finds_control_codes():
+    """Owned fixture scan includes the file-system-control selector."""
     result = driver_find_ioctls()
     codes = {c["code_int"] for c in result["candidates"]}
-    assert codes == {0x222000, 0x80002007}
+    assert {0x222000, 0x80002007, 0x9848C, 0x98490} <= codes
     by_code = {c["code_int"]: c for c in result["candidates"]}
     producer = result["trigger_fact_producer"]
     assert producer["status"] == "unsupported"

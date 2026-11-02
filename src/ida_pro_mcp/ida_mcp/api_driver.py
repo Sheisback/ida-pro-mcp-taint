@@ -172,7 +172,7 @@ def driver_find_ioctls(
     offset: Annotated[int, "Pagination start index"] = 0,
     count: Annotated[int, "Max candidates (0=all)"] = 200,
 ) -> FindIoctlsResult:
-    """Discover IOCTLs handled by driver dispatchers. Collects decompiler constants, switch-table cases, and gated immediates, excludes outbound codes, and risk-scores each survivor. Returns paginated candidates with collection methods and confidence levels. An exact typed IoControlCode switch case on an exact IRP_MJ_DEVICE_CONTROL slot-store dispatcher also carries selector_fact; candidates without it remain heuristic."""
+    """Discover driver control-code leads from dispatchers and the remaining IRP-stack readers. Collects decompiler constants, switch-table cases, and gated immediates, excludes outbound codes, and risk-scores each survivor. Returns paginated candidates with collection methods and confidence levels. An exact typed IoControlCode switch case on an exact IRP_MJ_DEVICE_CONTROL slot-store dispatcher also carries selector_fact; FSCTL and fallback candidates without route proof remain heuristic."""
     ctx = _fresh_context()
     if not ctx.is_pe or ctx.driver_entry_ea is None:
         return {"candidates": [], "next_offset": None, "stats": {}, **_not_driver(ctx)}
@@ -186,9 +186,12 @@ def driver_find_ioctls(
     candidates, stats = ioctl_stage.scan_dispatchers(
         ctx, dispatch_eas, include_decompiler=include_decompiler
     )
-    if not candidates and include_fallback and not wanted:
-        fallback, fallback_stats = ioctl_stage.scan_iocontrolcode_fallback(ctx, set())
-        candidates = fallback
+    if include_fallback and not wanted:
+        fallback, fallback_stats = ioctl_stage.scan_iocontrolcode_fallback(ctx,
+            {(int(item["function_addr"], 16), item["code_int"])
+                for item in candidates})
+        candidates = sorted([*candidates, *fallback], key=lambda item:
+            (item["code_int"], int(item["function_addr"], 16)))
         stats["fallback"] = fallback_stats
     for candidate in candidates:
         selector_fact = build_ioctl_selector_fact(

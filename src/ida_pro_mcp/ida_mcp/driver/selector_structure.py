@@ -613,6 +613,46 @@ def _major_function_write_index(expression, lvar_index: int, ida_hexrays,
         return None
 
 
+def collect_typed_major_function_store_leads(cfunc, ida_hexrays, ida_typeinf,
+                                             resolve_function_entry,
+                                             pointer_width: int) -> list[tuple[int, int]]:
+    """Return (slot index, handler) only for a typed DRIVER_OBJECT member write.
+
+    This is a triage lead, not registration proof: control flow and intervening
+    writes are deliberately left to the stronger registration producer.
+    """
+    try:
+        arguments = [int(value) for value in cfunc.argidx]
+        lvars = cfunc.get_lvars()
+        driver_arguments = []
+        for index in arguments:
+            value = lvars[index].type
+            value = value() if callable(value) else value
+            identity = _pointer_udt_identity(value, ida_typeinf,
+                {"DRIVER_OBJECT", "_DRIVER_OBJECT"})
+            if identity is not None and identity[2] == pointer_width:
+                driver_arguments.append(index)
+        if not driver_arguments:
+            return []
+        collected = _collect_cfunc_expressions(cfunc, ida_hexrays)
+        if collected is None:
+            return []
+        leads = set()
+        for expression in collected[0]:
+            for index in driver_arguments:
+                slot = _major_function_write_index(expression, index,
+                    ida_hexrays, ida_typeinf, pointer_width)
+                if type(slot) is not int or not 0 <= slot < 28:
+                    continue
+                handler = _exact_handler_target(expression.y, ida_hexrays,
+                    resolve_function_entry, pointer_width)
+                if handler is not None:
+                    leads.add((slot, handler))
+        return sorted(leads)
+    except Exception:
+        return []
+
+
 def _helper_caller_binding(cfunc, driver_entry_ea: int, ida_hexrays,
                            ida_typeinf, resolve_function_entry,
                            expected_pointer_width: int):

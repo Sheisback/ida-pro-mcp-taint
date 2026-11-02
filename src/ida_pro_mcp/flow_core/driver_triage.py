@@ -561,6 +561,7 @@ WORLD_SIDS: frozenset[str] = frozenset({"WD", "BU", "S-1-1-0", "S-1-5-32-545"})
 SDDL_PREFIXES: tuple[str, ...] = ("D:", "O:", "G:", "S:")
 
 #: IRP_MJ codes relevant to dispatch discovery (public DDK values).
+IRP_MJ_FILE_SYSTEM_CONTROL = 0x0D
 IRP_MJ_DEVICE_CONTROL = 0x0E
 IRP_MJ_INTERNAL_DEVICE_CONTROL = 0x0F
 DRIVER_TRIGGER_ABI_CONTRACT_ID = "aasystem.windows-driver-trigger-abi.v1"
@@ -587,7 +588,7 @@ def driver_trigger_abi_member_offsets(ptr_size: int) -> dict[str, tuple[int, int
     if ptr_size == 8:
         return {
             "irp_current_stack": (0x78, 0x00, 0x40),
-            "ioctl_selector": (0x08, 0x00, 0x08),
+            "ioctl_selector": (0x08, 0x00, 0x10),
         }
     if ptr_size == 4:
         return {

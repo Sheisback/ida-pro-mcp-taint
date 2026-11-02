@@ -116,7 +116,7 @@ def test_major_function_slot_offsets_derived():
         dt.major_function_slot_offset(2, dt.IRP_MJ_DEVICE_CONTROL)
     assert dt.driver_trigger_abi_member_offsets(8) == {
         "irp_current_stack": (0x78, 0x00, 0x40),
-        "ioctl_selector": (0x08, 0x00, 0x08),
+        "ioctl_selector": (0x08, 0x00, 0x10),
     }
     assert dt.driver_trigger_abi_member_offsets(4) == {
         "irp_current_stack": (0x40, 0x00, 0x20),

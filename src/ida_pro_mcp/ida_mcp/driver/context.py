@@ -71,11 +71,11 @@ def is_library_func(ea: int) -> bool:
         return False
 
 
-def iter_func_items(ea: int, limit: int = 20000) -> Iterator[int]:
-    """Yield instruction/data heads of a function, bounded and deadline-aware."""
+def iter_func_items(ea: int, limit: int | None = None) -> Iterator[int]:
+    """Yield instruction/data heads until EOF or the tool deadline."""
     try:
         for index, item_ea in enumerate(idautils.FuncItems(ea)):
-            if index >= limit or expired():
+            if (limit is not None and index >= limit) or expired():
                 break
             yield item_ea
     except Exception:
