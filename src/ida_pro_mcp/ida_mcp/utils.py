@@ -1245,10 +1245,8 @@ def get_callees(addr: str) -> list[dict]:
         func = idaapi.get_func(func_start)
         if not func:
             return []
-        func_end = idc.find_func_end(func_start)
         callees: list[dict[str, str]] = []
-        current_ea = func_start
-        while current_ea < func_end:
+        for current_ea in idautils.FuncItems(func.start_ea):
             insn = idaapi.insn_t()
             idaapi.decode_insn(insn, current_ea)
             if insn.itype in [idaapi.NN_call, idaapi.NN_callfi, idaapi.NN_callni]:
@@ -1269,8 +1267,6 @@ def get_callees(addr: str) -> list[dict]:
                                 "type": func_type,
                             }
                         )
-            current_ea = idc.next_head(current_ea, func_end)
-
         unique_callee_tuples = {tuple(callee.items()) for callee in callees}
         unique_callees = [dict(callee) for callee in unique_callee_tuples]
         return unique_callees

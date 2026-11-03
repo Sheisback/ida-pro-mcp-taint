@@ -1,6 +1,13 @@
 """Targeted tests for deeper internal helpers in api_analysis.py."""
 
 import json
+from types import SimpleNamespace
+
+import idaapi
+import idautils
+import idc
+import ida_name
+from .. import api_analysis
 
 from ..framework import test, assert_non_empty
 from ..api_analysis import (
@@ -13,8 +20,60 @@ from ..api_analysis import (
     _scan_insn_ranges,
     _value_to_le_bytes,
     _value_candidates_for_immediate,
+    callees,
 )
+from ..utils import get_callees
 from ..utils import Ref
+
+
+@test()
+def test_callees_include_direct_calls_in_owned_tail_chunks():
+    """A main-chunk-only scan must not omit calls from the function's tail."""
+    originals = {module: {name: getattr(module, name) for name in names}
+        for module, names in [
+            (idaapi, ["get_func", "insn_t", "decode_insn"]),
+            (idautils, ["FuncItems"]),
+            (ida_name, ["get_name"]),
+            (api_analysis, ["_decode_insn_at", "_next_head"]),
+            (idc, ["find_func_end", "next_head", "get_operand_type",
+                   "get_operand_value", "get_name"]),
+        ]}
+    try:
+        idaapi.get_func = lambda ea: SimpleNamespace(start_ea=0x1000,
+            end_ea=0x1010) if ea in (
+            0x1000, 0x3000, 0x4000) else None
+        idaapi.insn_t = lambda: SimpleNamespace(itype=None,
+            ops=[SimpleNamespace(type=idaapi.o_near, addr=0, value=0)])
+        def decode(insn, ea):
+            insn.itype = idaapi.NN_call
+            insn.ops[0].addr = {0x1000: 0x3000, 0x2000: 0x4000}[ea]
+        idaapi.decode_insn = decode
+        idautils.FuncItems = lambda ea: iter((0x1000, 0x2000))
+        idc.find_func_end = lambda ea: 0x1010
+        idc.next_head = lambda ea, end: end
+        idc.get_operand_type = lambda ea, n: idaapi.o_near
+        idc.get_operand_value = lambda ea, n: {0x1000: 0x3000,
+            0x2000: 0x4000}[ea]
+        idc.get_name = lambda ea: {0x3000: "main_target",
+            0x4000: "tail_target"}.get(ea)
+        ida_name.get_name = idc.get_name
+        api_analysis._decode_insn_at = lambda ea: SimpleNamespace(itype=idaapi.NN_call,
+            ops=[SimpleNamespace(type=idaapi.o_near,
+                addr={0x1000: 0x3000, 0x2000: 0x4000}[ea])])
+        api_analysis._next_head = lambda ea, end: end
+        names = {item["name"] for item in get_callees("0x1000")}
+        assert names == {"main_target", "tail_target"}, names
+        api_result = callees("0x1000")
+        assert api_result[0]["callees"] is not None, api_result
+        api_names = {item["name"] for item in api_result[0]["callees"]}
+        assert api_names == names, api_names
+        limited = callees("0x1000", limit=1)[0]
+        assert len(limited["callees"]) == 1
+        assert limited["more"] is True
+    finally:
+        for module, methods in originals.items():
+            for name, original in methods.items():
+                setattr(module, name, original)
 
 
 @test(binary="typed_fixture.elf")

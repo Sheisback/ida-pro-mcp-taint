@@ -533,7 +533,7 @@ untouched.
 - `disasm(addr)`: Disassemble function with full details (arguments, stack frame, etc).
 - `xrefs_to(addrs)`: Get all cross-references to address(es).
 - `xrefs_to_field(queries)`: Get cross-references to specific struct field(s).
-- `callees(addrs)`: Get functions called by function(s) at address(es).
+- `callees(addrs)`: Get functions called by function(s) at address(es), including calls in owned tail chunks.
 
 ## Modification Operations
 

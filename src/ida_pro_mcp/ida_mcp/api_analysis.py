@@ -16,7 +16,7 @@ import ida_xref
 import ida_ua
 import ida_name
 from .rpc import OUTPUT_LIMIT_MAX_CHARS, tool
-from .sync import idasync, tool_timeout, IDAError
+from .sync import idasync, tool_timeout
 from .utils import (
     parse_address,
     normalize_list_input,
@@ -1655,20 +1655,14 @@ def callees(
                     {"addr": fn_addr, "callees": None, "error": "No function found"}
                 )
                 continue
-            func_end = func.end_ea
             callees_dict = {}
             more = False
-            current_ea = func_start
-            while current_ea < func_end:
+            for current_ea in idautils.FuncItems(func.start_ea):
                 if len(callees_dict) >= limit:
                     more = True
                     break
                 insn = _decode_insn_at(current_ea)
                 if insn is None:
-                    next_ea = _next_head(current_ea, func_end)
-                    if next_ea == idaapi.BADADDR:
-                        break
-                    current_ea = next_ea
                     continue
                 if insn.itype in [idaapi.NN_call, idaapi.NN_callfi, idaapi.NN_callni]:
                     op0 = insn.ops[0]
@@ -1691,11 +1685,6 @@ def callees(
                                 "name": func_name,
                                 "type": func_type,
                             }
-                next_ea = _next_head(current_ea, func_end)
-                if next_ea == idaapi.BADADDR:
-                    break
-                current_ea = next_ea
-
             results.append(
                 {
                     "addr": fn_addr,
