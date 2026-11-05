@@ -297,6 +297,16 @@ def test_same_control_code_in_two_functions_retains_both_handler_leads():
     assert {"DispatchFileSystemControl", "SameCodeSecondHandler"} <= names
 
 
+@test()
+def test_case_handler_requires_one_unique_non_dispatcher_target():
+    from ..driver.ioctl_scan import select_unique_case_handler
+    assert select_unique_case_handler([0x2000], 0x1000) == 0x2000
+    assert select_unique_case_handler([0x2000, 0x2000], 0x1000) == 0x2000
+    assert select_unique_case_handler([0x1000, 0x2000], 0x1000) == 0x2000
+    assert select_unique_case_handler([0x2000, 0x3000], 0x1000) is None
+    assert select_unique_case_handler([0x1000], 0x1000) is None
+
+
 @test(binary="driver_fixture.sys")
 def test_unregistered_fsctl_switch_is_collected_as_a_structural_lead():
     result = driver_find_ioctls()

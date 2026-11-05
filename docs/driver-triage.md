@@ -38,6 +38,12 @@ quality, then decoded severity. A low-confidence
 immediate with a high decoded risk score cannot hide a structural switch case.
 All leads remain visible, and a structural case without exact route/selector
 proof is still a lead rather than a trigger fact.
+For an exact ctree case, `driver_find_ioctls` also reports
+`handler_function`/`handler_function_addr` only when the case body has one
+unique direct internal function target. Multiple targets, indirect calls,
+imports, or a self-call leave the handler unknown. This narrows static review;
+`function_addr` remains the dispatcher and the handler never becomes external
+route proof.
 
 The eleven checks: `unvalidated_copy`, `pool_alloc_unguarded`,
 `stack_alloc`, `privileged_insn`, `physical_memory_ref`, `unsafe_mdl`,

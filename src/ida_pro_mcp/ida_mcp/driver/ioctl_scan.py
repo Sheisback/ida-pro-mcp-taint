@@ -164,7 +164,7 @@ def _collect_switch_cases(func_ea: int) -> tuple[list[tuple[int, int]], str]:
 
 
 def _collect_ctree_consts(func_ea: int, expected_pointer_width: int) -> tuple[
-        list[tuple[int, int, str, dict | None, dict | None]], str]:
+        list[tuple[int, int, str, dict | None, dict | None, int | None]], str]:
     """Collect constants from the decompiled control flow of a function.
 
     Returns (value, insn_ea, kind, selector_binding, selector_producer) tuples. A switch case is
@@ -187,7 +187,9 @@ def _collect_ctree_consts(func_ea: int, expected_pointer_width: int) -> tuple[
         class _Visitor(_base):  # type: ignore[misc, valid-type]
             def __init__(self):
                 _base.__init__(self, ida_hexrays.CV_FAST)
-                self.case_values: list[tuple[int, int, dict | None, dict | None]] = []
+                self.case_values: list[
+                    tuple[int, int, dict | None, dict | None, int | None]
+                ] = []
                 self.cmp_values: list[tuple[int, int]] = []
 
             def visit_insn(self, ins):
@@ -201,6 +203,9 @@ def _collect_ctree_consts(func_ea: int, expected_pointer_width: int) -> tuple[
                         if int(expression.ea) == idaapi.BADADDR:
                             binding, producer = None, None
                         for case in ins.cswitch.cases:
+                            handler_ea = _case_handler_ea(
+                                case, func_ea, _base, ida_hexrays
+                            )
                             for raw in case.values:
                                 self.case_values.append(
                                     (
@@ -210,6 +215,7 @@ def _collect_ctree_consts(func_ea: int, expected_pointer_width: int) -> tuple[
                                         else int(ins.ea),
                                         binding,
                                         producer,
+                                        handler_ea,
                                     )
                                 )
                 except Exception:
@@ -234,10 +240,53 @@ def _collect_ctree_consts(func_ea: int, expected_pointer_width: int) -> tuple[
         visitor.apply_to(cfunc.body, None)
     except Exception:
         return [], "ctree walk failed"
-    triples = [(v, ea, "case", binding, producer)
-        for v, ea, binding, producer in visitor.case_values]
-    triples += [(v, ea, "cmp", None, None) for v, ea in visitor.cmp_values]
+    triples = [(v, ea, "case", binding, producer, handler_ea)
+        for v, ea, binding, producer, handler_ea in visitor.case_values]
+    triples += [(v, ea, "cmp", None, None, None)
+        for v, ea in visitor.cmp_values]
     return triples, "hexrays ctree"
+
+
+def select_unique_case_handler(call_targets: list[int], dispatcher_ea: int) -> int | None:
+    """Return one exact non-dispatcher call target, otherwise stay unknown."""
+    targets = {int(target) for target in call_targets
+        if int(target) not in (idaapi.BADADDR, dispatcher_ea)}
+    return next(iter(targets)) if len(targets) == 1 else None
+
+
+def _case_handler_ea(case, dispatcher_ea: int, visitor_base, ida_hexrays) -> int | None:
+    """Extract one direct internal function called by an exact ctree case."""
+    class _CallVisitor(visitor_base):  # type: ignore[misc, valid-type]
+        def __init__(self):
+            visitor_base.__init__(self, ida_hexrays.CV_FAST)
+            self.targets: list[int] = []
+
+        def visit_expr(self, expression):
+            try:
+                if expression.op != ida_hexrays.cot_call:
+                    return 0
+                callee = expression.x
+                while callee.op == getattr(ida_hexrays, "cot_cast", None):
+                    callee = callee.x
+                if callee.op != ida_hexrays.cot_obj:
+                    return 0
+                target = int(callee.obj_ea)
+                if func_range(target) is None:
+                    return 0
+                segment = (idc.get_segm_name(target) or "").lower()
+                if segment in {".idata", "idata", "extern", ".extern"}:
+                    return 0
+                self.targets.append(target)
+            except Exception:
+                pass
+            return 0
+
+    visitor = _CallVisitor()
+    try:
+        visitor.apply_to(case, None)
+    except Exception:
+        return None
+    return select_unique_case_handler(visitor.targets, dispatcher_ea)
 
 
 def _precedes_outbound_builder(item_ea: int, func_end: int, window: int = 6) -> str | None:
@@ -300,13 +349,14 @@ def scan_dispatchers(
                 func_ea, 8 if ctx.is_64bit else 4)
             if triples:
                 stats["ctree_consts_found"] = True
-            for value, item_ea, kind, selector_binding, selector_producer in triples:
+            for value, item_ea, kind, selector_binding, selector_producer, handler_ea in triples:
                 method = "ctree_case" if kind == "case" else "ctree_cmp"
                 if _emit(
                     ctx, merged, stats, value, method, name, func_ea, item_ea, end,
                     ntstatus_extra, "high" if kind == "case" else "medium",
                     selector_binding=selector_binding,
                     selector_producer=selector_producer,
+                    handler_ea=handler_ea,
                 ):
                     structured = True
         switch_found, _source = _collect_switch_cases(func_ea)
@@ -353,6 +403,7 @@ def _emit(
     confidence: str,
     selector_binding: dict | None = None,
     selector_producer: dict | None = None,
+    handler_ea: int | None = None,
 ) -> bool:
     """Validate one raw candidate and merge it. Returns True when kept."""
     ok, reason = core.is_plausible_ioctl(value, ntstatus_extra)
@@ -381,6 +432,9 @@ def _emit(
         record["selector_binding"] = selector_binding
     if selector_producer is not None:
         record["selector_fact_producer"] = selector_producer
+    if handler_ea is not None:
+        record["handler_function"] = func_name(handler_ea) or hex(handler_ea)
+        record["handler_function_addr"] = hex(handler_ea)
     key = (func_ea, value)
     prior = merged.get(key)
     if prior is None or collection_method_rank(method) > collection_method_rank(prior["method_detail"]):
@@ -436,7 +490,7 @@ def scan_iocontrolcode_fallback(
         stats["functions_scanned"] += 1
         name = func_name(func_ea) or hex(func_ea)
         triples, _source = _collect_ctree_consts(func_ea, 8 if ctx.is_64bit else 4)
-        for value, item_ea, kind, selector_binding, selector_producer in triples:
+        for value, item_ea, kind, selector_binding, selector_producer, handler_ea in triples:
             if (func_ea, value) in exclude_codes:
                 continue
             _emit(ctx, merged, stats, value,
@@ -444,7 +498,8 @@ def scan_iocontrolcode_fallback(
                 name, func_ea, item_ea, end, ntstatus_extra,
                 "high" if kind == "case" else "medium",
                 selector_binding=selector_binding,
-                selector_producer=selector_producer)
+                selector_producer=selector_producer,
+                handler_ea=handler_ea)
         switch_found, _source = _collect_switch_cases(func_ea)
         for item_ea, value in switch_found:
             if (func_ea, value) in exclude_codes:

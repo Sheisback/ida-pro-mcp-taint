@@ -490,7 +490,7 @@ untouched.
 
 - `driver_survey()`: PE/driver check, DriverEntry, framework, dispatchers.
 - `driver_decode_ioctls(codes)`: Decode IOCTL(s) with plausibility and score.
-- `driver_find_ioctls(...)`: Discover handled IOCTLs with severity.
+- `driver_find_ioctls(...)`: Discover handled IOCTLs with severity and unambiguous case handlers.
 - `driver_find_devices()`: Device paths and symbolic-link evidence.
 - `driver_audit_acl()`: Default-ACL and SDDL review leads.
 - `driver_find_pooltags(...)`: Pool tags from allocator call sites.
