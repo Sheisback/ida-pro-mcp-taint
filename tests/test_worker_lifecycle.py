@@ -116,4 +116,6 @@ def test_busy_probe_keeps_worker_alive_past_ttl():
     time.sleep(0.10)
     assert lc.check_shutdown_reason() is None
     busy[0] = False
+    assert lc.check_shutdown_reason() is None
+    time.sleep(0.06)
     assert lc.check_shutdown_reason() is not None

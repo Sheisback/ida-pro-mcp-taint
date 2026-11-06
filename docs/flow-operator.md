@@ -164,6 +164,18 @@ increasing `processed` count. Each batch checks cancellation and renews the
 same job lease. This is processing granularity, not an analytical record limit;
 all graph records are indexed before the snapshot job completes.
 
+The preceding semantic digest and immutable blob publication are streamed too.
+`progress.stage=graph_digest` reports canonical bytes hashed, while
+`progress.stage=artifact_blob` reports each artifact kind's `blob_phase`
+(`write` or `verify`) and canonical bytes. The emitted JSON and digests are byte-identical
+to the non-streamed contract, and the already computed graph digest is reused by
+the window chain and index. `progress.stage=window_slice` renews the lease after
+each complete digest-linked slice. Large `width_bits` values are structural metadata;
+the 4,096-bit envelope still applies to materialized constant/value payloads,
+not to an extracted storage node's declared width. These progress records renew
+the existing lease and check cancellation without imposing a graph-size,
+duration, task, retry, or page-count limit.
+
 On failed, cancelled, or interrupted jobs, best-effort progress also records
 the last allowlisted `extract_stage` and `extract_elapsed_ms` (time since
 extraction started). Stages distinguish `preflight`, `gen_microcode`,
@@ -178,6 +190,8 @@ generation is not forcibly preempted. Other failures remain `failed`, with
 static reasons such as `ida_tool_timeout`, `ida_request_cancelled`,
 `ida_pump_busy`, `sdk_shape_mismatch`, `input_digest_unavailable`,
 `snapshot_serialization_failed`, or `derived_closure_failed`. Recognized
+wire payload range failures use `wire_integer_out_of_range` rather than the
+generic `contract_rejected`. Recognized
 exception subclasses retain their family's classification. Unclassified
 failures remain `internal_error`; a reason identifies a failure category,
 not proof of its underlying cause. Error/progress diagnostics persist only

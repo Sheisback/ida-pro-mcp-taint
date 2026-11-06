@@ -22,7 +22,14 @@ from .runtime_contracts import (
     TraceSpec,
     TraceState,
 )
-from .serialization import ContractError, canonical_json, digest, to_wire_v2
+from .serialization import (
+    CANONICAL_STREAM_PROGRESS_BYTES,
+    ContractError,
+    canonical_json,
+    canonical_json_chunks,
+    digest,
+    to_wire_v2,
+)
 
 _MISSING = object()
 PAGE_TARGET_CHARS = 32000
@@ -128,7 +135,7 @@ class BlobStore:
         )
         return self.path / (key.split(":")[1] + ".json")
 
-    def prepare(self, value):
+    def prepare(self, value, *, checkpoint=None, progress=None):
         """Materialize and verify one immutable blob before metadata locking.
 
         Large flow graphs can take much longer than the public status busy
@@ -137,22 +144,62 @@ class BlobStore:
         only ``publish`` makes it visible by content digest.
         """
         self._check()
-        raw = canonical_json(value).encode("utf-8")
-        key = "sha256-v1:" + hashlib.sha256(raw).hexdigest()
+        require(checkpoint is None or callable(checkpoint), "invalid_blob_checkpoint")
+        require(progress is None or callable(progress), "invalid_blob_progress")
         temporary = self.path / (".tmp-" + uuid.uuid4().hex + ".json")
         fd = os.open(
             temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600
         )
         try:
+            hasher = hashlib.sha256()
+            length = 0
+            reported = 0
             with os.fdopen(fd, "wb") as stream:
-                stream.write(raw)
+                for chunk in canonical_json_chunks(value):
+                    encoded = chunk.encode("utf-8")
+                    stream.write(encoded)
+                    hasher.update(encoded)
+                    length += len(encoded)
+                    if length - reported >= CANONICAL_STREAM_PROGRESS_BYTES:
+                        if checkpoint is not None:
+                            checkpoint()
+                        if progress is not None:
+                            progress({"blob_phase": "write", "bytes": length})
+                        reported = length
                 stream.flush()
                 os.fsync(stream.fileno())
-            require(temporary.read_bytes() == raw, "blob_write_mismatch")
+            if length != reported:
+                if checkpoint is not None:
+                    checkpoint()
+                if progress is not None:
+                    progress({"blob_phase": "write", "bytes": length})
+            verified = hashlib.sha256()
+            verified_length = 0
+            reported = 0
+            fd = os.open(temporary, os.O_RDONLY | os.O_NOFOLLOW)
+            with os.fdopen(fd, "rb") as stream:
+                while chunk := stream.read(CANONICAL_STREAM_PROGRESS_BYTES):
+                    verified.update(chunk)
+                    verified_length += len(chunk)
+                    if checkpoint is not None:
+                        checkpoint()
+                    if progress is not None:
+                        progress({"blob_phase": "verify", "bytes": verified_length})
+                    reported = verified_length
+            if verified_length != reported:
+                if checkpoint is not None:
+                    checkpoint()
+                if progress is not None:
+                    progress({"blob_phase": "verify", "bytes": verified_length})
+            require(
+                verified_length == length and verified.digest() == hasher.digest(),
+                "blob_write_mismatch",
+            )
+            key = "sha256-v1:" + hasher.hexdigest()
             identity = _file_check(temporary)
-            require(identity.st_size == len(raw), "blob_write_mismatch")
+            require(identity.st_size == length, "blob_write_mismatch")
             self._check()
-            return key, len(raw), temporary, identity.st_dev, identity.st_ino
+            return key, length, temporary, identity.st_dev, identity.st_ino
         except BaseException:
             if temporary.exists():
                 temporary.unlink()
@@ -633,7 +680,8 @@ class Store:
         )
 
     @_scope_lifecycle_operation
-    def put_artifact(self, kind, value, *, _return_blob=False):
+    def put_artifact(self, kind, value, *, _return_blob=False,
+                     checkpoint=None, progress=None):
         require(
             type(_return_blob) is bool and (not _return_blob or kind == "graph"),
             "invalid_artifact_publication_mode",
@@ -655,7 +703,7 @@ class Store:
                 identity.policy_digest,
             )
             require(self._artifact_scope_matches(actual), "snapshot_scope_mismatch")
-            value = snapshot.to_data()
+            value = snapshot
         if kind == "graph":
             graph = value if type(value) is Graph else Graph.from_data(value)
             if not isinstance(graph.snapshot, Snapshot):
@@ -671,9 +719,14 @@ class Store:
                 identity.policy_digest,
             )
             require(self._artifact_scope_matches(actual), "graph_scope_mismatch")
-            value = graph.to_data()
+            value = graph
         require(not self.closed, "store_closed")
-        prepared = self.blobs.prepare(value)
+        artifact_progress = None
+        if progress is not None:
+            def artifact_progress(item):
+                progress({"artifact_kind": kind, **item})
+        prepared = self.blobs.prepare(value, checkpoint=checkpoint,
+            progress=artifact_progress)
         try:
             require(not self.closed, "store_closed")
             with self._transaction() as conn:

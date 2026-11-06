@@ -34,7 +34,7 @@ from .derived_calls import (
 )
 from .serialization import Model, digest
 from .ssa import SSAProgram, argument_bindings, build_ssa
-from .states import PointerCandidate, PointerValue, StorageLocation, require
+from .states import check_digest, PointerCandidate, PointerValue, StorageLocation, require
 
 
 FLAT_USERSPACE_ASSUMPTION = (
@@ -914,7 +914,8 @@ def strip_memory_derivations(graph: Graph) -> Graph:
 
 
 def build_window_slices(
-    bundle: MemoryGraphAnalysis, window_steps: int
+    bundle: MemoryGraphAnalysis, window_steps: int, *, graph_digest: str | None = None,
+    checkpoint=None, progress=None
 ) -> tuple[dict, ...]:
     """Partition derived memory edges by target window with a digest chain.
 
@@ -923,6 +924,10 @@ def build_window_slices(
     all evidence its edges cite.
     """
     require(type(window_steps) is int and window_steps > 0, "Invalid window steps")
+    require(checkpoint is None or callable(checkpoint), "Invalid window checkpoint")
+    require(progress is None or callable(progress), "Invalid window progress")
+    if graph_digest is not None:
+        check_digest(graph_digest)
     plan = bundle.plan
     graph = bundle.graph
     definitions = {d.node_id: d.block for d in plan.program.definitions}
@@ -947,7 +952,7 @@ def build_window_slices(
         by_window[block_window[definitions[edge.target]]].append(edge)
     evidence = {item.evidence_id: item for item in graph.evidence}
     slices: list[dict] = []
-    prev = graph.graph_digest
+    prev = graph.graph_digest if graph_digest is None else graph_digest
     for index, window in enumerate(windows):
         window_edges = sorted(by_window[index], key=lambda edge: edge.edge_id)
         wanted: set[str] = set()
@@ -973,6 +978,10 @@ def build_window_slices(
         body["slice_digest"] = digest(body)
         prev = body["slice_digest"]
         slices.append(body)
+        if checkpoint is not None:
+            checkpoint()
+        if progress is not None:
+            progress({"window_index": index, "window_count": len(windows)})
     return tuple(slices)
 
 

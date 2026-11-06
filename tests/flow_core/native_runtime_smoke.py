@@ -84,6 +84,7 @@ def main():
     assert runtime.wait(job, 10)
     record = runtime.store.job(job)
     assert record["state"] == "complete" and record["result"] == {"answer": 5}
+    assert life.check_shutdown_reason() is None
     assert runtime.submit("reference", {"input": 4}, "native-request") == job
     assert module.active_job_count() == 0
     with module.database_switch():
@@ -95,6 +96,7 @@ def main():
         "ida_version": ida_kernwin.get_kernel_version(),
         "binary_digest": identity["binary_digest"],
         "busy_guard_passed": True,
+        "post_job_idle_grace_passed": True,
         "admission_blocks_active_job": True,
         "empty_switch_passed": True,
         "job_terminal": "complete",
@@ -112,6 +114,7 @@ def main():
                 "src/ida_pro_mcp/flow_core/runtime.py",
                 "src/ida_pro_mcp/ida_mcp/flow/runtime.py",
                 "src/ida_pro_mcp/idalib_server.py",
+                "src/ida_pro_mcp/worker_lifecycle.py",
             )
         },
     }

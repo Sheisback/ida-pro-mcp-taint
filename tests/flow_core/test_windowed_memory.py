@@ -418,6 +418,13 @@ def memory_edge_ids(graph):
 
 def test_window_slices_partition_cover_and_verify():
     bundle, slices = sliced_bundle(12)
+    precomputed = bundle.graph.graph_digest
+    progress = []
+    checkpoints = []
+    assert build_window_slices(bundle, 12, graph_digest=precomputed,
+        checkpoint=lambda: checkpoints.append(True), progress=progress.append) == slices
+    assert [item["window_index"] for item in progress] == [0, 1, 2, 3]
+    assert len(checkpoints) == len(progress)
     assert len(slices) == 4
     assert all(s["window_count"] == 4 and s["window_steps"] == 12 for s in slices)
     assert [s["window_index"] for s in slices] == [0, 1, 2, 3]
@@ -437,6 +444,14 @@ def test_window_slices_partition_cover_and_verify():
     head = verify_window_slices(slices, bundle.graph.graph_digest)
     assert head == slices[-1]["slice_digest"]
     assert len({s["slice_digest"] for s in slices}) == 4
+
+
+def test_window_slice_progress_cancellation_stops_before_publication():
+    bundle, _ = sliced_bundle(12)
+    with pytest.raises(InterruptedError, match="cancelled"):
+        build_window_slices(bundle, 12, graph_digest=bundle.graph.graph_digest,
+          checkpoint=lambda: None,
+          progress=lambda _item: (_ for _ in ()).throw(InterruptedError("cancelled")))
 
 
 def test_window_chain_tamper_fails_closed():

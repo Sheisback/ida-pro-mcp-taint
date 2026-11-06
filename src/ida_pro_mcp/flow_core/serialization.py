@@ -9,6 +9,8 @@ import types
 from typing import Any, Literal, Self, Union, cast, get_args, get_origin, get_type_hints
 
 SCHEMA_VERSION = 1
+CANONICAL_STREAM_CHUNK_CHARACTERS = 64 * 1024
+CANONICAL_STREAM_PROGRESS_BYTES = 8 * 1024 * 1024
 
 
 class ContractError(ValueError):
@@ -52,6 +54,125 @@ def canonical_json(value) -> str:
         )
     except (RecursionError, UnicodeError) as exc:
         raise ContractError("Cyclic or invalid JSON") from exc
+
+
+def _canonical_tokens(value: Any, *, wire_v2: bool, model_ok: bool, tuple_ok: bool):
+    if isinstance(value, Model):
+        if not model_ok and not wire_v2:
+            raise ContractError("Expected finite JSON values with string object keys")
+        members = [
+            field
+            for field in fields(cast(Any, value))
+            if not (
+                field.metadata.get("omit_if_default")
+                and getattr(value, field.name) == field.default
+            )
+        ]
+        yield "{"
+        for index, field in enumerate(sorted(members, key=lambda item: item.name)):
+            if index:
+                yield ","
+            yield json.dumps(field.name, ensure_ascii=False)
+            yield ":"
+            yield from _canonical_tokens(
+                getattr(value, field.name), wire_v2=wire_v2,
+                model_ok=True, tuple_ok=True
+            )
+        yield "}"
+        return
+    if value is None:
+        yield "null"
+        return
+    if type(value) is bool:
+        yield "true" if value else "false"
+        return
+    if type(value) is str:
+        _json_value(value)
+        yield json.dumps(value, ensure_ascii=False)
+        return
+    if type(value) is int:
+        if wire_v2:
+            yield '{"$int":'
+            yield json.dumps(str(_wire_integer(value)))
+            yield "}"
+        else:
+            yield str(value)
+        return
+    if type(value) is float:
+        if wire_v2 or not math.isfinite(value):
+            raise ContractError("Expected tagged integer JSON payload without numeric leaves")
+        yield json.dumps(value, allow_nan=False)
+        return
+    if type(value) is tuple:
+        if not tuple_ok:
+            raise ContractError("Expected finite JSON values with string object keys")
+        sequence = value
+        child_model_ok = True
+        child_tuple_ok = True
+    elif type(value) is list:
+        sequence = value
+        child_model_ok = False
+        child_tuple_ok = False
+    else:
+        sequence = None
+    if sequence is not None:
+        yield "["
+        for index, child in enumerate(sequence):
+            if index:
+                yield ","
+            yield from _canonical_tokens(
+                child, wire_v2=wire_v2,
+                model_ok=child_model_ok, tuple_ok=child_tuple_ok
+            )
+        yield "]"
+        return
+    if type(value) is dict and all(type(key) is str for key in value):
+        if wire_v2 and "$int" in value:
+            raise ContractError("Reserved $int key in unencoded payload")
+        yield "{"
+        for index, key in enumerate(sorted(value)):
+            _json_value(key)
+            if index:
+                yield ","
+            yield json.dumps(key, ensure_ascii=False)
+            yield ":"
+            yield from _canonical_tokens(
+                value[key], wire_v2=wire_v2, model_ok=False, tuple_ok=False
+            )
+        yield "}"
+        return
+    message = ("Expected tagged integer JSON payload without numeric leaves"
+        if wire_v2 else "Expected finite JSON values with string object keys")
+    raise ContractError(message)
+
+
+def canonical_json_chunks(value: Any, *, wire_v2: bool = False):
+    """Yield byte-equivalent canonical JSON without materializing its full tree.
+
+    Model tuples receive the same list projection as ``Model.to_data``. Raw
+    JSON remains closed to tuples and nested model instances. Chunks are a
+    transport optimization only; joining them is exactly ``canonical_json``
+    (or ``canonical_json_v2`` when ``wire_v2`` is true).
+    """
+    if type(wire_v2) is not bool:
+        raise ContractError("Invalid canonical JSON stream")
+    buffered = []
+    characters = 0
+    try:
+        for token in _canonical_tokens(
+            value, wire_v2=wire_v2, model_ok=True,
+            tuple_ok=isinstance(value, Model)
+        ):
+            buffered.append(token)
+            characters += len(token)
+            if characters >= CANONICAL_STREAM_CHUNK_CHARACTERS:
+                yield "".join(buffered)
+                buffered.clear()
+                characters = 0
+        if buffered:
+            yield "".join(buffered)
+    except RecursionError as exc:
+        raise ContractError("Cyclic or excessively deep wire document") from exc
 
 
 def digest(value) -> str:
@@ -175,7 +296,7 @@ def from_wire_v2(value: Any) -> Any:
 
 
 def canonical_json_v2(value: Any) -> str:
-    return canonical_json(to_wire_v2(value))
+    return "".join(canonical_json_chunks(value, wire_v2=True))
 
 
 def stable_id_v2(kind: str, value: Any) -> str:
@@ -190,13 +311,39 @@ def stable_id_v2(kind: str, value: Any) -> str:
 
 def graph_digest_bytes_v2(value: Any) -> bytes:
     """Return the entire graph digest preimage, including its domain wrapper."""
-    return canonical_json(
-        {"domain": "graph", "identity_version": 2, "value": to_wire_v2(value)}
-    ).encode("utf-8")
+    return (b'{"domain":"graph","identity_version":2,"value":'
+        + canonical_json_v2(value).encode("utf-8") + b"}")
 
 
-def digest_v2(value: Any) -> str:
-    return "sha256-v2:" + hashlib.sha256(graph_digest_bytes_v2(value)).hexdigest()
+def digest_v2(value: Any, *, checkpoint=None, progress=None) -> str:
+    """Hash the v2 graph preimage incrementally with optional lease progress."""
+    if checkpoint is not None and not callable(checkpoint):
+        raise ContractError("Invalid digest checkpoint")
+    if progress is not None and not callable(progress):
+        raise ContractError("Invalid digest progress")
+    hasher = hashlib.sha256()
+    prefix = b'{"domain":"graph","identity_version":2,"value":'
+    hasher.update(prefix)
+    processed = len(prefix)
+    reported = 0
+    for chunk in canonical_json_chunks(value, wire_v2=True):
+        encoded = chunk.encode("utf-8")
+        hasher.update(encoded)
+        processed += len(encoded)
+        if processed - reported >= CANONICAL_STREAM_PROGRESS_BYTES:
+            if checkpoint is not None:
+                checkpoint()
+            if progress is not None:
+                progress(processed)
+            reported = processed
+    hasher.update(b"}")
+    processed += 1
+    if processed != reported:
+        if checkpoint is not None:
+            checkpoint()
+        if progress is not None:
+            progress(processed)
+    return "sha256-v2:" + hasher.hexdigest()
 
 
 def ensure_wire_v1_safe(value: Any) -> None:

@@ -42,6 +42,7 @@ class WorkerLifecycle:
         self._thread: threading.Thread | None = None
         self._on_shutdown: Callable[[str], None] | None = None
         self._busy_probe: Callable[[], bool] | None = None
+        self._busy_observed = False
 
     def set_busy_probe(self, probe: Callable[[], bool]) -> None:
         """Register a callback reporting whether a call is currently running.
@@ -70,6 +71,7 @@ class WorkerLifecycle:
     def touch(self) -> None:
         with self._lock:
             self._last_request_at = time.monotonic()
+            self._busy_observed = False
 
     def set_idle_ttl(self, user_ttl_sec: float, load_time_sec: float = 0.0) -> None:
         with self._lock:
@@ -87,15 +89,27 @@ class WorkerLifecycle:
 
     def check_shutdown_reason(self) -> str | None:
         with self._lock:
-            last_req = self._last_request_at
             ttl = self.idle_ttl_sec
+            probe = self._busy_probe
         if ttl <= 0:
             return None  # long-lived worker: never self-exit
-        if self._busy_probe is not None and self._busy_probe():
-            return None  # mid tool call: not idle, however long it takes
+        busy = probe is not None and probe()
         now = time.monotonic()
-        if (now - last_req) > ttl:
-            return f"no requests for {now - last_req:.1f}s"
+        with self._lock:
+            if busy:
+                self._busy_observed = True
+                return None  # mid tool call/job: not idle, however long it takes
+            if self._busy_observed:
+                # A background job may finish long after the request that
+                # created it. Start a fresh observation window at the exact
+                # busy→idle transition so its durable terminal result remains
+                # readable without correctness depending on polling cadence.
+                self._busy_observed = False
+                self._last_request_at = now
+                return None
+            idle = now - self._last_request_at
+        if idle > ttl:
+            return f"no requests for {idle:.1f}s"
         return None
 
     def _run(self) -> None:

@@ -10,6 +10,7 @@ from typing import Any, cast
 from ida_pro_mcp.flow_core import canonical_json, digest
 from ida_pro_mcp.flow_core.serialization import (
     canonical_json_v2,
+    digest_v2,
     ensure_wire_v1_safe,
     from_wire_v2,
     graph_digest_bytes_v2,
@@ -663,6 +664,42 @@ def _analyze(ctx, extracted):
             }
         )
 
+    def report_graph_digest(processed_bytes):
+        nonlocal progress_sequence
+        progress_sequence += 1
+        ctx.report(
+            {
+                "phase": "analyze",
+                "stage": "graph_digest",
+                "sequence": progress_sequence,
+                "processed_bytes": processed_bytes,
+            }
+        )
+
+    def report_artifact_blob(progress):
+        nonlocal progress_sequence
+        progress_sequence += 1
+        ctx.report(
+            {
+                "phase": "analyze",
+                "stage": "artifact_blob",
+                "sequence": progress_sequence,
+                **progress,
+            }
+        )
+
+    def report_window_slice(progress):
+        nonlocal progress_sequence
+        progress_sequence += 1
+        ctx.report(
+            {
+                "phase": "analyze",
+                "stage": "window_slice",
+                "sequence": progress_sequence,
+                **progress,
+            }
+        )
+
     memory = build_memory_graph(
         snapshot,
         derived_returns=derived_returns,
@@ -677,10 +714,19 @@ def _analyze(ctx, extracted):
     ctx.check()
     entry_registers = _resolve_entry_registers(program.entry_storage, reg_info)
     calls = compose_program_calls(function, program, catalog, callees, ctx.check)
-    semantic_graph_digest = memory.graph.graph_digest
-    sid = current.store.put_artifact("snapshot", snapshot)
+    semantic_graph_digest = (
+        digest_v2(
+            memory.graph, checkpoint=ctx.check, progress=report_graph_digest
+        )
+        if memory.graph.snapshot.snapshot_id.startswith("snapshot-v2:")
+        else memory.graph.graph_digest
+    )
+    sid = current.store.put_artifact(
+        "snapshot", snapshot, checkpoint=ctx.check, progress=report_artifact_blob
+    )
     gid, graph_blob_digest = current.store.put_artifact(
-        "graph", memory.graph, _return_blob=True
+        "graph", memory.graph, _return_blob=True,
+        checkpoint=ctx.check, progress=report_artifact_blob
     )
     current.store.ensure_trace_index(
         gid,
@@ -695,9 +741,13 @@ def _analyze(ctx, extracted):
         ),
     )
     base_graph = strip_memory_derivations(memory.graph)
-    base_id = current.store.put_artifact("graph", base_graph)
+    base_id = current.store.put_artifact(
+        "graph", base_graph, checkpoint=ctx.check, progress=report_artifact_blob
+    )
     window_chain = build_window_slices(
-        memory, memory.result.window_steps or DEFAULT_WINDOW_STEPS
+        memory, memory.result.window_steps or DEFAULT_WINDOW_STEPS,
+        graph_digest=semantic_graph_digest,
+        checkpoint=ctx.check, progress=report_window_slice,
     )
     slice_ids = []
     for window_slice in window_chain:
@@ -705,7 +755,10 @@ def _analyze(ctx, extracted):
         slice_ids.append(
             {
                 "window_index": window_slice["window_index"],
-                "artifact_id": current.store.put_artifact("analysis", window_slice),
+                "artifact_id": current.store.put_artifact(
+                    "analysis", window_slice, checkpoint=ctx.check,
+                    progress=report_artifact_blob
+                ),
                 "slice_digest": window_slice["slice_digest"],
             }
         )
@@ -720,10 +773,19 @@ def _analyze(ctx, extracted):
             slice_ids,
             window_chain[-1]["slice_digest"] if window_chain else None,
         ),
+        checkpoint=ctx.check,
+        progress=report_artifact_blob,
     )
-    pid = current.store.put_artifact("analysis", program.to_data())
-    mid = current.store.put_artifact("analysis", memory.plan.to_data())
-    rid = current.store.put_artifact("analysis", memory.result.to_data())
+    pid = current.store.put_artifact(
+        "analysis", program, checkpoint=ctx.check, progress=report_artifact_blob
+    )
+    mid = current.store.put_artifact(
+        "analysis", memory.plan, checkpoint=ctx.check, progress=report_artifact_blob
+    )
+    rid = current.store.put_artifact(
+        "analysis", memory.result, checkpoint=ctx.check,
+        progress=report_artifact_blob
+    )
     cid = current.store.put_artifact(
         "analysis",
         {
@@ -731,6 +793,8 @@ def _analyze(ctx, extracted):
             "catalog_digest": catalog.catalog_digest,
             "calls": calls,
         },
+        checkpoint=ctx.check,
+        progress=report_artifact_blob,
     )
     derived_evidence = []
     for effect in derived_returns:
@@ -745,6 +809,8 @@ def _analyze(ctx, extracted):
                 "target_executed": False,
                 "no_auto_vulnerability_verdict": True,
             },
+            checkpoint=ctx.check,
+            progress=report_artifact_blob,
         )
         derived_evidence.append(
             {
@@ -780,6 +846,8 @@ def _analyze(ctx, extracted):
                 "target_executed": False,
                 "no_auto_vulnerability_verdict": True,
             },
+            checkpoint=ctx.check,
+            progress=report_artifact_blob,
         )
         derived_indirect_evidence.append(
             {
@@ -810,6 +878,8 @@ def _analyze(ctx, extracted):
                 "target_executed": False,
                 "no_auto_vulnerability_verdict": True,
             },
+            checkpoint=ctx.check,
+            progress=report_artifact_blob,
         )
         derived_memory_evidence.append(
             {

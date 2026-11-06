@@ -19,6 +19,7 @@ from ida_pro_mcp.flow_core.serialization import (
     ContractError,
     Model,
     canonical_json,
+    canonical_json_chunks,
     canonical_json_v2,
     digest,
     digest_v2,
@@ -158,6 +159,52 @@ def test_public_integer_field_limits_cover_signed_offsets_and_plural_addresses()
     ):
         with pytest.raises(ContractError, match="integer_out_of_range"):
             validate_model_wire_v2(invalid, 64)
+
+
+def test_large_width_metadata_is_distinct_from_bounded_bit_vector_payloads():
+    validate_model_wire_v2(
+        {"kind": "InputValue", "width_bits": 6016, "constant": None}, 64
+    )
+    with pytest.raises(ContractError, match="integer_out_of_range"):
+        validate_model_wire_v2(
+            {"kind": "Constant", "width_bits": 6016, "constant": 1}, 64
+        )
+    with pytest.raises(ContractError, match="integer_out_of_range"):
+        validate_model_wire_v2(
+            {"kind": "InputValue", "width_bits": 1 << 53, "constant": None}, 64
+        )
+
+
+def test_streamed_canonical_json_and_v2_digest_preserve_exact_bytes_and_progress():
+    @dataclass(frozen=True)
+    class SampleModel(Model):
+        n: int
+
+    value = {"z": [None, True, "한글", (1 << 53) + 1, SampleModel(3)],
+      "a": {"nested": SampleModel(-7)}}
+    plain = {"z": [None, True, "한글", (1 << 53) + 1], "a": {"n": -7}}
+    assert "".join(canonical_json_chunks(plain)) == canonical_json(plain)
+    expected_v2 = canonical_json(to_wire_v2(value))
+    assert "".join(canonical_json_chunks(value, wire_v2=True)) == expected_v2
+    assert canonical_json_v2(value) == expected_v2
+    progress = []
+    streamed = digest_v2(value, progress=progress.append)
+    preimage = canonical_json({"domain": "graph", "identity_version": 2,
+      "value": to_wire_v2(value)}).encode("utf-8")
+    expected = "sha256-v2:" + hashlib.sha256(preimage).hexdigest()
+    assert graph_digest_bytes_v2(value) == preimage
+    assert streamed == expected
+    assert progress and progress[-1] > 0
+
+
+def test_streamed_v2_digest_propagates_checkpoint_and_progress_cancellation():
+    def cancelled():
+        raise InterruptedError("cancelled")
+
+    with pytest.raises(InterruptedError, match="cancelled"):
+        digest_v2({"value": 1}, checkpoint=cancelled)
+    with pytest.raises(InterruptedError, match="cancelled"):
+        digest_v2({"value": 1}, progress=lambda _processed: cancelled())
 
 
 def test_user_labels_do_not_select_wire_version():

@@ -33,6 +33,7 @@ _CONTRACT_REASONS = {
     "Stored memory dependency replay mismatch": "memory_dependency_drift",
     "Stored memory plan replay mismatch": "memory_plan_drift",
     "Explanation graph mismatch": "artifact_graph_mismatch",
+    "integer_out_of_range": "wire_integer_out_of_range",
     "stale_database": "stale_database",
     "stale_profile_evidence": "stale_profile_evidence",
     "stale_summary_catalog": "stale_summary_catalog",

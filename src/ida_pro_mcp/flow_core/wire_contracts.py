@@ -52,7 +52,10 @@ def _integer(value: int, field_name: str, parent: Any, bitness: int) -> None:
     ):
         _range(value, -(1 << 63), (1 << 63) - 1)
     elif field_name == "width_bits":
-        _range(value, 1, 4096)
+        # Width is structural metadata. Large extracted storage locations do
+        # not themselves materialize a same-width Python bit vector; the
+        # constant/value branch below retains the 4096-bit payload envelope.
+        _range(value, 1, MAX_STRUCTURAL)
     elif field_name in {"constant", "constant_value", "value"} and type(width) is int:
         _range(width, 1, 4096)
         _range(value, 0, (1 << width) - 1)

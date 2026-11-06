@@ -221,6 +221,46 @@ def test_size_uses_rpc_json_characters_and_no_frontier_advance(tmp_path):
         store.close()
 
 
+def test_artifact_blob_streaming_reports_write_and_verify_progress(tmp_path):
+    store, _, _ = setup(tmp_path)
+    progress = []
+    try:
+        value = {"items": ["한" * 4096, {"number": 1 << 53}]}
+        artifact = store.put_artifact(
+            "analysis", value, checkpoint=lambda: None, progress=progress.append
+        )
+        assert store.artifact(artifact) == value
+        assert {item["blob_phase"] for item in progress} == {"verify", "write"}
+        assert all(item["bytes"] > 0 for item in progress)
+    finally:
+        store.close()
+
+
+@pytest.mark.parametrize("failure_phase", ["write", "verify"])
+def test_artifact_blob_stream_failure_discards_unpublished_temp(tmp_path, failure_phase):
+    store, _, _ = setup(tmp_path)
+    before_files = {path.name for path in store.blobs.path.iterdir()}
+    with sqlite3.connect(store.db) as connection:
+        before_artifacts = connection.execute("SELECT COUNT(*) FROM artifacts").fetchone()[0]
+
+    def fail(item):
+        if item["blob_phase"] == failure_phase:
+            raise InterruptedError("cancelled")
+
+    try:
+        with pytest.raises(InterruptedError, match="cancelled"):
+            store.put_artifact("analysis", {"payload": "A" * 4096},
+                checkpoint=lambda: None, progress=fail)
+        assert {path.name for path in store.blobs.path.iterdir()} == before_files
+        with sqlite3.connect(store.db) as connection:
+            after_artifacts = connection.execute(
+                "SELECT COUNT(*) FROM artifacts"
+            ).fetchone()[0]
+        assert after_artifacts == before_artifacts
+    finally:
+        store.close()
+
+
 def test_blob_integrity_permissions_and_narrow_cleanup(tmp_path):
     store, g, tid = setup(tmp_path)
     try:
@@ -475,6 +515,8 @@ def test_long_job_busy_lease_expiry_and_bounded_shutdown(tmp_path):
     assert life.check_shutdown_reason() is None
     now[0] = 11
     assert runtime.active_job_count == 0 and store.job(job)["state"] == "interrupted"
+    assert life.check_shutdown_reason() is None
+    life._last_request_at = 0
     assert life.check_shutdown_reason() is not None
     runtime.shutdown(0)
     with pytest.raises(PersistenceError, match="runtime_closing"):
@@ -855,6 +897,9 @@ def test_runtime_failure_reasons_are_phase_bound_allowlisted_and_path_free(tmp_p
     def private_fail(ctx, value):
         raise PrivateInternalName("/Users/private/secret.i64")
 
+    def wire_fail(ctx, value):
+        raise ContractError("integer_out_of_range")
+
     handlers = {
         "budget": Handler(
             lambda ctx, value: value,
@@ -862,6 +907,7 @@ def test_runtime_failure_reasons_are_phase_bound_allowlisted_and_path_free(tmp_p
         ),
         "native": Handler(microcode_fail, lambda ctx, value: value),
         "stale": Handler(lambda ctx, value: value, stale_fail),
+        "wire": Handler(lambda ctx, value: value, wire_fail),
         "internal": Handler(private_fail, lambda ctx, value: value),
     }
     runtime = Runtime(store, handlers)
@@ -869,6 +915,7 @@ def test_runtime_failure_reasons_are_phase_bound_allowlisted_and_path_free(tmp_p
         "budget": ("analyze", "ssa_node_budget_exceeded", "ContractError"),
         "native": ("extract", "microcode_generation_failed", "RuntimeError"),
         "stale": ("analyze", "stale_database", "PersistenceError"),
+        "wire": ("analyze", "wire_integer_out_of_range", "ContractError"),
         "internal": ("extract", "internal_error", "InternalError"),
     }
     for name, (phase, reason, kind) in expected.items():
@@ -1153,6 +1200,7 @@ def test_native_runtime_receipt_and_rpc_limit_are_current():
     assert receipt["ida_version"] == "9.3"
     assert (
         receipt["busy_guard_passed"]
+        and receipt["post_job_idle_grace_passed"]
         and receipt["idempotent_replay"]
         and receipt["integrity_passed"]
     )
@@ -2061,14 +2109,14 @@ def test_large_artifact_materialization_does_not_block_job_status(
     entered = threading.Event()
     release = threading.Event()
     failures = []
-    original = persistence_module.canonical_json
+    original = persistence_module.canonical_json_chunks
 
-    def paused_canonical_json(value):
+    def paused_canonical_json_chunks(value, **kwargs):
         if value is artifact:
             entered.set()
             if not release.wait(5):
                 raise RuntimeError("artifact materialization gate timed out")
-        return original(value)
+        yield from original(value, **kwargs)
 
     def publish():
         try:
@@ -2076,7 +2124,9 @@ def test_large_artifact_materialization_does_not_block_job_status(
         except BaseException as exc:  # pragma: no cover - asserted below
             failures.append(exc)
 
-    monkeypatch.setattr(persistence_module, "canonical_json", paused_canonical_json)
+    monkeypatch.setattr(
+        persistence_module, "canonical_json_chunks", paused_canonical_json_chunks
+    )
     thread = threading.Thread(target=publish)
     thread.start()
     try:
@@ -2099,14 +2149,14 @@ def test_close_during_artifact_materialization_discards_unpublished_blob(
     entered = threading.Event()
     release = threading.Event()
     errors = []
-    original = persistence_module.canonical_json
+    original = persistence_module.canonical_json_chunks
 
-    def paused_canonical_json(value):
+    def paused_canonical_json_chunks(value, **kwargs):
         if value is artifact:
             entered.set()
             if not release.wait(5):
                 raise RuntimeError("artifact close gate timed out")
-        return original(value)
+        yield from original(value, **kwargs)
 
     def publish():
         try:
@@ -2114,7 +2164,9 @@ def test_close_during_artifact_materialization_discards_unpublished_blob(
         except PersistenceError as exc:
             errors.append(str(exc))
 
-    monkeypatch.setattr(persistence_module, "canonical_json", paused_canonical_json)
+    monkeypatch.setattr(
+        persistence_module, "canonical_json_chunks", paused_canonical_json_chunks
+    )
     thread = threading.Thread(target=publish)
     thread.start()
     assert entered.wait(5)

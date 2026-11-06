@@ -333,9 +333,13 @@ binary/profile/rule/summary/policy digests. Changed context explicitly invalidat
 old rows; terminal job state stays immutable with a separate stale flag. Old
 views/replays fail rather than silently reattaching to another interpretation.
 
-Immutable JSON is canonicalized, written to a same-directory exclusive temp,
-flushed/fsynced, re-read, atomically renamed and directory-synced before SQLite
-references it. Store writers and recovery share the SQLite writer transaction.
+Immutable JSON is canonicalized as a byte-identical chunk stream, written to a
+same-directory exclusive temp, flushed/fsynced, hash-verified by a streamed
+read-back, atomically renamed and directory-synced before SQLite references it.
+Large graph digest and blob write/verify stages expose trusted byte progress so
+the renewable job lease and cancellation checks continue after memory windows;
+they never assemble a second whole-graph JSON tree. Store writers and recovery
+share the SQLite writer transaction.
 The low-level BlobStore helper is not a separate metadata publication authority.
 Cleanup checks references across **all namespaces** and removes only owned
 unreferenced temp/orphan files. Referenced history is never collected. A crash
@@ -443,12 +447,13 @@ metadata attempts also use nonblocking Store-lock acquisition. Repeated barrier
 tests exercise both same-handle serialization and peer-handle database fencing
 for artifacts, graphs, jobs, traces, pages and idempotent request replay.
 
-Large immutable artifacts are canonicalized, written, fsynced and byte-verified
-as private temporary blobs before taking the Store metadata lock. The short
+Large immutable artifacts are stream-canonicalized, written, fsynced and
+digest-verified as private temporary blobs before taking the Store metadata lock. The short
 locked phase atomically publishes the verified inode and registers its digest in
 the same SQLite transaction as the artifact row. A separate same-Store scope
 lifecycle lock preserves publication-before-invalidation order without blocking
-job status reads; a peer Store still wins only through the durable scope digest.
+job status reads; progress callbacks renew the same job lease during canonical
+write and verification, while a peer Store still wins only through the durable scope digest.
 Close during preparation discards the unpublished temporary blob. A crash after
 publication but before metadata commit can leave only an orphan, which the
 existing verified recovery owns. This keeps multi-hundred-megabyte graph/SSA
