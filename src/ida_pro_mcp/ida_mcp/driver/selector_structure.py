@@ -1139,6 +1139,7 @@ def collect_driver_entry_registrations(cfunc, driver_entry_ea: int, ida_hexrays,
         registrations = []
         unsupported_form = False
         local_unsupported = []
+        pre_registration_helpers = False
         for statement in cfunc.body.cblock:
             if statement.op in {ida_hexrays.cit_return, ida_hexrays.cit_goto}:
                 break
@@ -1163,7 +1164,11 @@ def collect_driver_entry_registrations(cfunc, driver_entry_ea: int, ida_hexrays,
                 hazard = lvar_definition_hazard(assignment, first_lvar_index, ida_hexrays,
                     documented_external_call, after_registration=bool(registrations))
                 if hazard is not None:
-                    local_unsupported.append(hazard)
+                    if (hazard == "helper_registration_form_unsupported"
+                            and not registrations):
+                        pre_registration_helpers = True
+                    else:
+                        local_unsupported.append(hazard)
                 continue
             left, right = assignment.x, assignment.y
             if left.op != ida_hexrays.cot_idx or left.y.op != ida_hexrays.cot_num:
@@ -1227,7 +1232,9 @@ def collect_driver_entry_registrations(cfunc, driver_entry_ea: int, ida_hexrays,
                 "rhs_target_ea": hex(rhs_ea),
                 "top_level_unconditional": True,
             })
-        all_unsupported = sorted(set([*unsupported_forms, *local_unsupported]))
+        all_unsupported = sorted(set([*unsupported_forms, *local_unsupported,
+            *(["helper_registration_form_unsupported"]
+              if pre_registration_helpers and not registrations else [])]))
         if len(registrations) > 1:
             return {**base, "status": "unsupported",
                 "reason_code": "ambiguous_registration_form_unsupported",
