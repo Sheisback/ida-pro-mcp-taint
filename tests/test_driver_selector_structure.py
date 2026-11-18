@@ -1040,26 +1040,17 @@ class StructuralSelectorTests(unittest.TestCase):
             lambda ea: ea if ea == 0x1000 else None,
             device_control_index=0x0E), "cast")
 
-    def test_bulk_default_before_exact_unconditional_slot_override_keeps_override(self):
-        direct = registration_cfunc()
-        pointer = direct.get_lvars()[3].type
-        member = direct.body.cblock[0].cexpr.x.x
-        function_pointer = direct.body.cblock[0].cexpr.type
-        bulk = Expr(Hexrays.cot_call, Type(kind="scalar", name="void"),
-            x=Expr(Hexrays.cot_helper, helper="memset64"), arguments=[member,
-                Expr(Hexrays.cot_cast, Type(kind="scalar", name="uintptr_t", size=8),
-                    x=Expr(Hexrays.cot_obj, function_pointer, obj_ea=0x2000)),
-                Expr(Hexrays.cot_num, Type(kind="scalar", name="size_t", size=8),
-                    number=28)], ea=0x880)
-        cfunc = Cfunc([Statement(Hexrays.cit_expr, bulk), direct.body.cblock[0]], pointer)
+    def test_typed_lead_resolves_cast_function_address_without_promoting_registration(self):
+        function_pointer = Type(kind="pointer", name="PDRIVER_DISPATCH", size=8,
+            pointed=Type(kind="function", name="DRIVER_DISPATCH"))
+        addressed = Expr(Hexrays.cot_ref, function_pointer,
+            x=Expr(Hexrays.cot_obj, function_pointer, obj_ea=0x1000))
+        cast = Expr(Hexrays.cot_cast, function_pointer, x=addressed)
 
-        scan = registration_scan(cfunc)
+        resolved = selector_structure._exact_handler_target(cast, Hexrays,
+            lambda ea: ea if ea == 0x1000 else None, 8)
 
-        self.assertEqual(scan["status"], "complete")
-        self.assertIsNone(scan["reason_code"])
-        self.assertEqual(len(scan["registrations"]), 1)
-        self.assertEqual(scan["registrations"][0]["assignment_ea"], "0x900")
-        self.assertEqual(scan["registrations"][0]["major_function_index"], 0x0E)
+        self.assertEqual(resolved, 0x1000)
 
     def test_multiple_direct_registration_assignments_are_typed_unsupported(self):
         first = registration_cfunc()

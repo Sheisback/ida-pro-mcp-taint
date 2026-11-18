@@ -518,6 +518,13 @@ def _exact_handler_target(expression, ida_hexrays, resolve_function_entry,
         except Exception:
             return None
         handler = handler.x
+    if handler is not None and handler.op == getattr(ida_hexrays, "cot_ref", None):
+        try:
+            if int(handler.type.get_size()) != pointer_width:
+                return None
+        except Exception:
+            return None
+        handler = _strip_representation_casts(handler.x, ida_hexrays)
     if handler is None or handler.op != ida_hexrays.cot_obj:
         return None
     handler_ea = int(handler.obj_ea)
@@ -1139,7 +1146,6 @@ def collect_driver_entry_registrations(cfunc, driver_entry_ea: int, ida_hexrays,
         registrations = []
         unsupported_form = False
         local_unsupported = []
-        pre_registration_helpers = False
         for statement in cfunc.body.cblock:
             if statement.op in {ida_hexrays.cit_return, ida_hexrays.cit_goto}:
                 break
@@ -1164,11 +1170,7 @@ def collect_driver_entry_registrations(cfunc, driver_entry_ea: int, ida_hexrays,
                 hazard = lvar_definition_hazard(assignment, first_lvar_index, ida_hexrays,
                     documented_external_call, after_registration=bool(registrations))
                 if hazard is not None:
-                    if (hazard == "helper_registration_form_unsupported"
-                            and not registrations):
-                        pre_registration_helpers = True
-                    else:
-                        local_unsupported.append(hazard)
+                    local_unsupported.append(hazard)
                 continue
             left, right = assignment.x, assignment.y
             if left.op != ida_hexrays.cot_idx or left.y.op != ida_hexrays.cot_num:
@@ -1232,9 +1234,7 @@ def collect_driver_entry_registrations(cfunc, driver_entry_ea: int, ida_hexrays,
                 "rhs_target_ea": hex(rhs_ea),
                 "top_level_unconditional": True,
             })
-        all_unsupported = sorted(set([*unsupported_forms, *local_unsupported,
-            *(["helper_registration_form_unsupported"]
-              if pre_registration_helpers and not registrations else [])]))
+        all_unsupported = sorted(set([*unsupported_forms, *local_unsupported]))
         if len(registrations) > 1:
             return {**base, "status": "unsupported",
                 "reason_code": "ambiguous_registration_form_unsupported",
