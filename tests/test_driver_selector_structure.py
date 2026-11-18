@@ -43,6 +43,9 @@ class Type:
     def is_integral(self):
         return self.kind == "scalar" and self.name != "double"
 
+    def is_bool(self):
+        return self.kind == "scalar" and self.name == "_BOOL8"
+
     def is_shifted_ptr(self):
         return False
 
@@ -1077,6 +1080,20 @@ class StructuralSelectorTests(unittest.TestCase):
         converted = Expr(Hexrays.cot_cast, scalar,
             x=Expr(Hexrays.cot_cast, Type(kind="scalar", name="double", size=8),
               x=Expr(Hexrays.cot_cast, scalar, x=addressed)))
+
+        resolved = selector_structure._exact_handler_target(converted, Hexrays,
+            lambda ea: ea if ea == 0x1000 else None, 8)
+
+        self.assertIsNone(resolved)
+
+    def test_typed_lead_rejects_pointer_width_boolean_casts(self):
+        function_pointer = Type(kind="pointer", name="PDRIVER_DISPATCH", size=8,
+            pointed=Type(kind="function", name="DRIVER_DISPATCH"))
+        addressed = Expr(Hexrays.cot_ref, function_pointer,
+            x=Expr(Hexrays.cot_obj, function_pointer, obj_ea=0x1000))
+        converted = Expr(Hexrays.cot_cast, function_pointer,
+            x=Expr(Hexrays.cot_cast, Type(kind="scalar", name="_BOOL8", size=8),
+              x=addressed))
 
         resolved = selector_structure._exact_handler_target(converted, Hexrays,
             lambda ea: ea if ea == 0x1000 else None, 8)

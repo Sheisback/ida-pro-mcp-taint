@@ -513,8 +513,10 @@ def _exact_handler_target(expression, ida_hexrays, resolve_function_entry,
             return None
         seen.add(identity)
         try:
+            integral = handler.type.is_integral()
+            boolean = integral and handler.type.is_bool()
             if (int(handler.type.get_size()) != pointer_width
-                    or not (handler.type.is_ptr() or handler.type.is_integral())):
+                    or not (handler.type.is_ptr() or integral) or boolean):
                 return None
         except Exception:
             return None
