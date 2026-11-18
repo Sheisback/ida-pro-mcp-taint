@@ -40,6 +40,9 @@ class Type:
     def is_ptr(self):
         return self.kind == "pointer"
 
+    def is_integral(self):
+        return self.kind == "scalar" and self.name != "double"
+
     def is_shifted_ptr(self):
         return False
 
@@ -1039,6 +1042,46 @@ class StructuralSelectorTests(unittest.TestCase):
             rhs_cast_assignment, 3, Hexrays, Typeinf,
             lambda ea: ea if ea == 0x1000 else None,
             device_control_index=0x0E), "cast")
+
+    def test_typed_lead_resolves_cast_function_address_without_promoting_registration(self):
+        function_pointer = Type(kind="pointer", name="PDRIVER_DISPATCH", size=8,
+            pointed=Type(kind="function", name="DRIVER_DISPATCH"))
+        addressed = Expr(Hexrays.cot_ref, function_pointer,
+            x=Expr(Hexrays.cot_obj, function_pointer, obj_ea=0x1000))
+        cast = Expr(Hexrays.cot_cast, function_pointer, x=addressed)
+
+        resolved = selector_structure._exact_handler_target(cast, Hexrays,
+            lambda ea: ea if ea == 0x1000 else None, 8)
+
+        self.assertEqual(resolved, 0x1000)
+
+    def test_typed_lead_rejects_casts_below_function_address(self):
+        function_pointer = Type(kind="pointer", name="PDRIVER_DISPATCH", size=8,
+            pointed=Type(kind="function", name="DRIVER_DISPATCH"))
+        function = Expr(Hexrays.cot_obj, function_pointer, obj_ea=0x1000)
+        for size in (4, 8):
+            cast = Expr(Hexrays.cot_cast, Type(kind="scalar", size=size), x=function)
+            addressed = Expr(Hexrays.cot_ref, function_pointer, x=cast)
+
+            resolved = selector_structure._exact_handler_target(addressed, Hexrays,
+                lambda ea: ea if ea == 0x1000 else None, 8)
+
+            self.assertIsNone(resolved)
+
+    def test_typed_lead_rejects_numeric_casts_around_function_address(self):
+        function_pointer = Type(kind="pointer", name="PDRIVER_DISPATCH", size=8,
+            pointed=Type(kind="function", name="DRIVER_DISPATCH"))
+        function = Expr(Hexrays.cot_obj, function_pointer, obj_ea=0x1000)
+        addressed = Expr(Hexrays.cot_ref, function_pointer, x=function)
+        scalar = Type(kind="scalar", name="uintptr_t", size=8)
+        converted = Expr(Hexrays.cot_cast, scalar,
+            x=Expr(Hexrays.cot_cast, Type(kind="scalar", name="double", size=8),
+              x=Expr(Hexrays.cot_cast, scalar, x=addressed)))
+
+        resolved = selector_structure._exact_handler_target(converted, Hexrays,
+            lambda ea: ea if ea == 0x1000 else None, 8)
+
+        self.assertIsNone(resolved)
 
     def test_multiple_direct_registration_assignments_are_typed_unsupported(self):
         first = registration_cfunc()

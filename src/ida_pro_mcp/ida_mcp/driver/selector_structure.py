@@ -513,7 +513,15 @@ def _exact_handler_target(expression, ida_hexrays, resolve_function_entry,
             return None
         seen.add(identity)
         try:
-            if int(handler.type.get_size()) != pointer_width:
+            if (int(handler.type.get_size()) != pointer_width
+                    or not (handler.type.is_ptr() or handler.type.is_integral())):
+                return None
+        except Exception:
+            return None
+        handler = handler.x
+    if handler is not None and handler.op == getattr(ida_hexrays, "cot_ref", None):
+        try:
+            if not handler.type.is_ptr() or int(handler.type.get_size()) != pointer_width:
                 return None
         except Exception:
             return None
