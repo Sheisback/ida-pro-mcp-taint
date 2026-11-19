@@ -43,6 +43,7 @@ EXPORT const ULONG AfdStyleIoctlTable[0x12] = {
   [0x10] = IOCTL_TABLE_A,
   [0x11] = IOCTL_TABLE_B,
 };
+EXPORT const ULONG UnboundedIoctlTable[2] = { IOCTL_TABLE_A, IOCTL_TABLE_B };
 EXPORT volatile ULONG UnrelatedIoctlMetadata[2] = { IOCTL_TABLE_A, IOCTL_TABLE_B };
 
 EXPORT NOINLINE NTSTATUS NTAPI HandleBuffered(PDEVICE_OBJECT device, PIRP irp) {
@@ -166,6 +167,16 @@ EXPORT NOINLINE ULONG NTAPI UnrelatedIoctlTableReader(PIRP irp) {
   PIO_STACK_LOCATION stack = irp->Tail.Overlay.CurrentStackLocation;
   return stack->Parameters.DeviceIoControl.IoControlCode
     ^ UnrelatedIoctlMetadata[0];
+}
+
+/* A named and scaled lookup without a dominating index check is not selector
+ * evidence. This function is inspected only; the fixture is never loaded. */
+EXPORT NOINLINE NTSTATUS NTAPI UnboundedTableDeviceControl(PIRP irp) {
+  PIO_STACK_LOCATION stack = irp->Tail.Overlay.CurrentStackLocation;
+  ULONG code = stack->Parameters.DeviceIoControl.IoControlCode;
+  ULONG index = (code >> 2) & 0xFFF;
+  return UnboundedIoctlTable[index] == code
+    ? STATUS_SUCCESS : STATUS_INVALID_DEVICE_REQUEST;
 }
 
 /* Represents an unregistered internal handler: a static lead, not route proof. */

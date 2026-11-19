@@ -250,7 +250,7 @@ def _collect_validated_ioctl_table(func_ea: int, is_64bit: bool) -> list[tuple[i
 
 
 def _validated_table_entry_count(items: list[int], comparison_ea: int,
-        item_size_bytes: int) -> int | None:
+        _item_size_bytes: int) -> int | None:
     """Bind a scaled table comparison to its exact dominating index bound."""
     try:
         line = (idc.GetDisasm(comparison_ea) or "").lower()
@@ -288,16 +288,64 @@ def _validated_table_entry_count(items: list[int], comparison_ea: int,
             branch = (idc.print_insn_mnem(next_ea) or "").lower()
         except Exception:
             continue
-        if branch in {"jnb", "jae"} and bound > 0:
+        if branch in {"jnb", "jae"} and bound > 0 \
+                and _bound_controls_table_comparison(
+                    items, cursor, next_ea, comparison_ea, index_family):
             bounded_count = bound
             break
-        if branch == "ja" and bound >= 0:
+        if branch == "ja" and bound >= 0 \
+                and _bound_controls_table_comparison(
+                    items, cursor, next_ea, comparison_ea, index_family):
             bounded_count = bound + 1
             break
-    item_count = (item_size_bytes // 4
-        if item_size_bytes >= 4 and item_size_bytes % 4 == 0 else 0)
-    count = max(item_count, bounded_count or 0)
-    return count if count > 0 else None
+    return bounded_count
+
+
+def _bound_controls_table_comparison(items: list[int], bound_compare_ea: int,
+        branch_ea: int, comparison_ea: int, index_family: str) -> bool:
+    """Prove the unsigned bound's in-range edge uniquely reaches the lookup."""
+    try:
+        function = idaapi.get_func(comparison_ea)
+        if function is None or not (function.start_ea <= branch_ea < function.end_ea):
+            return False
+        blocks = list(idaapi.FlowChart(function))
+        bound_block = next(block for block in blocks
+            if block.start_ea <= branch_ea < block.end_ea)
+        comparison_block = next(block for block in blocks
+            if block.start_ea <= comparison_ea < block.end_ea)
+        fallthrough_ea = idc.next_head(branch_ea, function.end_ea)
+        successors = {int(block.start_ea) for block in bound_block.succs()}
+        predecessors = {int(block.start_ea) for block in comparison_block.preds()}
+    except Exception:
+        return False
+    if (not (bound_block.start_ea <= bound_compare_ea < bound_block.end_ea)
+            or fallthrough_ea != comparison_block.start_ea
+            or int(comparison_block.start_ea) not in successors
+            or len(successors) != 2
+            or predecessors != {int(bound_block.start_ea)}):
+        return False
+    for item_ea in items:
+        if item_ea < fallthrough_ea or item_ea >= comparison_ea:
+            continue
+        try:
+            insn = idaapi.insn_t()
+            if idaapi.decode_insn(insn, item_ea) <= 0:
+                return False
+            mnem = (idc.print_insn_mnem(item_ea) or "").lower()
+            if mnem == "call":
+                return False
+            if (not insn.ops or insn.ops[0].type != idaapi.o_reg
+                    or _x86_register_family(
+                        idc.print_operand(item_ea, 0) or "") != index_family):
+                continue
+            if (mnem != "mov" or len(insn.ops) < 2
+                    or insn.ops[1].type != idaapi.o_reg
+                    or _x86_register_family(
+                        idc.print_operand(item_ea, 1) or "") != index_family):
+                return False
+        except Exception:
+            return False
+    return True
 
 
 def _x86_register_family(value: str) -> str | None:

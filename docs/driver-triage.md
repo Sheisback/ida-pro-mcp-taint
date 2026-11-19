@@ -35,7 +35,9 @@ The control-code fallback now collects decompiler switch cases and comparisons,
 IDA switch cases, and corroborated immediates for each code-reading function.
 It preserves Windows-x64 nonvolatile register provenance across calls and can
 recover a complete PDB-named IOCTL validation table when the dispatcher binds
-its scaled lookup to an exact dominating index bound. Table values remain
+its scaled lookup to an unsigned index bound whose in-range fallthrough is the
+lookup block's unique predecessor. The index must remain unchanged before the
+comparison; IDA item size never substitutes for the bound. Table values remain
 function-bound static leads and never become route or vulnerability proof.
 The review queue orders exact selector facts first, then collection evidence
 quality, then decoded severity. A low-confidence
@@ -62,8 +64,8 @@ The eleven checks: `unvalidated_copy`, `pool_alloc_unguarded`,
   member write names an exact handler function. A bulk or indirect registration
   that cannot be proved stays unresolved. `GsDriverEntry` reports the exact
   `DriverEntry` continuation when it is directly called after initialization.
-- All 28 public `DRIVER_OBJECT.MajorFunction` slots are surveyed from exact
-  typed entry-reachable stores, including Create/Close, Read/Write, directory,
+- All 28 public `DRIVER_OBJECT.MajorFunction` slot indices are checked; exact
+  typed entry-reachable stores are retained, including Create/Close, Read/Write, directory,
   security, PnP, Power, WMI, FSCTL, device control and internal device control.
   x64 control-code corroboration uses the WDK
   `IO_STACK_LOCATION` `+0x18` member offset, including address-temporary and
@@ -106,7 +108,8 @@ reviewed entries instead.
   from `tests/driver_fixture.c`, never executed) verified on licensed
   IDA 9.3 headless: five direct dispatchers across the MajorFunction table,
   two switch IOCTLs, two exact parallel-table IOCTLs, one direct FSCTL,
-  later and duplicate-code heuristic leads, unrelated-slot rejection, pool tag,
+  a bound-free named-table rejection, later and duplicate-code heuristic leads,
+  unrelated-slot rejection, pool tag,
   device/symlink strings, world-SDDL ACL lead, thunk-aware flagging and
   call chain, and the planted heuristic leads. The separate
   `driver_stub_fixture.sys` proves the cookie-wrapper continuation. Re-run on
