@@ -288,10 +288,10 @@ def _validated_table_entry_count(items: list[int], comparison_ea: int,
             branch = (idc.print_insn_mnem(next_ea) or "").lower()
         except Exception:
             continue
-        if branch in {"jnb", "jae", "jge"} and bound > 0:
+        if branch in {"jnb", "jae"} and bound > 0:
             bounded_count = bound
             break
-        if branch in {"ja", "jg"} and bound >= 0:
+        if branch == "ja" and bound >= 0:
             bounded_count = bound + 1
             break
     item_count = (item_size_bytes // 4
