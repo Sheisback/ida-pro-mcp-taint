@@ -18,6 +18,8 @@
 
 #define IOCTL_HELLO CTL_CODE(FILE_DEVICE_UNKNOWN, 0x800, METHOD_BUFFERED, FILE_ANY_ACCESS)
 #define IOCTL_RAW CTL_CODE(0x8000, 0x801, METHOD_NEITHER, FILE_ANY_ACCESS)
+#define IOCTL_TABLE_A CTL_CODE(FILE_DEVICE_UNKNOWN, 0x10, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define IOCTL_TABLE_B CTL_CODE(FILE_DEVICE_UNKNOWN, 0x11, METHOD_IN_DIRECT, FILE_ANY_ACCESS)
 #define FSCTL_FIXTURE CTL_CODE(FILE_DEVICE_FILE_SYSTEM, 0x123, METHOD_BUFFERED, FILE_WRITE_DATA)
 #define FSCTL_INDIRECT_LEAD CTL_CODE(FILE_DEVICE_FILE_SYSTEM, 0x124, METHOD_BUFFERED, FILE_WRITE_DATA)
 #define FSCTL_SWITCH_A CTL_CODE(FILE_DEVICE_FILE_SYSTEM, 0x130, METHOD_BUFFERED, FILE_WRITE_DATA)
@@ -34,8 +36,14 @@ NTSTATUS NTAPI IoCreateDeviceSecure(PDRIVER_OBJECT DriverObject,
                                     PCUNICODE_STRING DefaultSDDLString,
                                     LPCGUID DeviceClassGuid,
                                     PDEVICE_OBJECT *DeviceObject);
+BOOLEAN NTAPI MmIsAddressValid(PVOID VirtualAddress);
 
 static volatile LONG sink_state;
+EXPORT const ULONG AfdStyleIoctlTable[0x12] = {
+  [0x10] = IOCTL_TABLE_A,
+  [0x11] = IOCTL_TABLE_B,
+};
+EXPORT volatile ULONG UnrelatedIoctlMetadata[2] = { IOCTL_TABLE_A, IOCTL_TABLE_B };
 
 EXPORT NOINLINE NTSTATUS NTAPI HandleBuffered(PDEVICE_OBJECT device, PIRP irp) {
   PIO_STACK_LOCATION stack;
@@ -86,6 +94,18 @@ EXPORT NTSTATUS NTAPI DispatchInternal(PDEVICE_OBJECT device, PIRP irp) {
   return STATUS_INVALID_DEVICE_REQUEST;
 }
 
+EXPORT NTSTATUS NTAPI DispatchCreate(PDEVICE_OBJECT device, PIRP irp) {
+  (void)device;
+  (void)irp;
+  return STATUS_SUCCESS;
+}
+
+EXPORT NTSTATUS NTAPI DispatchRead(PDEVICE_OBJECT device, PIRP irp) {
+  (void)device;
+  (void)irp;
+  return STATUS_SUCCESS;
+}
+
 /* Place more control-code readers before the FSCTL handler than the old
  * fallback's function-count cutoff. Each has distinct code so the PE linker
  * retains its own function body. */
@@ -118,6 +138,34 @@ EXPORT NOINLINE ULONG NTAPI StackAliasControlCode(PIRP irp) {
                    "movl 0x18(%%rdi), %0"
                    : "=r"(code) : "r"(irp) : "rax", "rdi", "memory");
   return code;
+}
+
+/* A real dispatch routine may keep the stack location in a Windows-x64
+ * nonvolatile register across an imported helper call before reading the
+ * selector. The provenance scanner must preserve that ABI-guaranteed value. */
+EXPORT NOINLINE ULONG NTAPI StackAliasAcrossCallControlCode(PIRP irp) {
+  PIO_STACK_LOCATION stack = irp->Tail.Overlay.CurrentStackLocation;
+  if (MmIsAddressValid(stack)) sink_state += 1;
+  return stack->Parameters.DeviceIoControl.IoControlCode;
+}
+
+/* AFD-style dispatchers validate a function-code index against a parallel
+ * table of complete IOCTL values instead of emitting a C switch. */
+EXPORT NOINLINE NTSTATUS NTAPI ParallelTableDeviceControl(
+    PDEVICE_OBJECT device, PIRP irp) {
+  PIO_STACK_LOCATION stack = irp->Tail.Overlay.CurrentStackLocation;
+  ULONG code = stack->Parameters.DeviceIoControl.IoControlCode;
+  ULONG index = (code >> 2) & 0xFFF;
+  (void)device;
+  return index < (sizeof(AfdStyleIoctlTable) / sizeof(AfdStyleIoctlTable[0]))
+      && AfdStyleIoctlTable[index] == code
+    ? STATUS_SUCCESS : STATUS_INVALID_DEVICE_REQUEST;
+}
+
+EXPORT NOINLINE ULONG NTAPI UnrelatedIoctlTableReader(PIRP irp) {
+  PIO_STACK_LOCATION stack = irp->Tail.Overlay.CurrentStackLocation;
+  return stack->Parameters.DeviceIoControl.IoControlCode
+    ^ UnrelatedIoctlMetadata[0];
 }
 
 /* Represents an unregistered internal handler: a static lead, not route proof. */
@@ -171,6 +219,8 @@ EXPORT NTSTATUS NTAPI DriverEntry(PDRIVER_OBJECT driver, PUNICODE_STRING registr
   (void)registry;
   if (driver == 0) return STATUS_INVALID_PARAMETER;
   UnrelatedFunctionStore(unrelated_blob);
+  driver->MajorFunction[IRP_MJ_CREATE] = DispatchCreate;
+  driver->MajorFunction[IRP_MJ_READ] = DispatchRead;
   driver->MajorFunction[IRP_MJ_DEVICE_CONTROL] = DispatchDeviceControl;
   driver->MajorFunction[IRP_MJ_FILE_SYSTEM_CONTROL] = DispatchFileSystemControl;
   driver->MajorFunction[IRP_MJ_INTERNAL_DEVICE_CONTROL] = DispatchInternal;

@@ -33,6 +33,10 @@ a `method` note, and address evidence. Within one evidence class, severity answe
 never "this is a vulnerability".
 The control-code fallback now collects decompiler switch cases and comparisons,
 IDA switch cases, and corroborated immediates for each code-reading function.
+It preserves Windows-x64 nonvolatile register provenance across calls and can
+recover a complete PDB-named IOCTL validation table when the dispatcher binds
+its scaled lookup to an exact dominating index bound. Table values remain
+function-bound static leads and never become route or vulnerability proof.
 The review queue orders exact selector facts first, then collection evidence
 quality, then decoded severity. A low-confidence
 immediate with a high decoded risk score cannot hide a structural switch case.
@@ -58,8 +62,10 @@ The eleven checks: `unvalidated_copy`, `pool_alloc_unguarded`,
   member write names an exact handler function. A bulk or indirect registration
   that cannot be proved stays unresolved. `GsDriverEntry` reports the exact
   `DriverEntry` continuation when it is directly called after initialization.
-- Direct `IRP_MJ_FILE_SYSTEM_CONTROL` registrations are surveyed alongside
-  device and internal controls. x64 control-code corroboration uses the WDK
+- All 28 public `DRIVER_OBJECT.MajorFunction` slots are surveyed from exact
+  typed entry-reachable stores, including Create/Close, Read/Write, directory,
+  security, PnP, Power, WMI, FSCTL, device control and internal device control.
+  x64 control-code corroboration uses the WDK
   `IO_STACK_LOCATION` `+0x18` member offset, including address-temporary and
   compare-read forms. An unregistered code match remains a heuristic lead,
   never proof of an externally reachable route or a vulnerability.
@@ -75,6 +81,9 @@ The eleven checks: `unvalidated_copy`, `pool_alloc_unguarded`,
 - IOCTL sink bumps use dispatcher-closure attribution, capped and labeled
   imprecise. Per-case attribution is a documented future step.
 - Indirect calls are never guessed; call-chain stats keep them unresolved.
+- `FastIoDispatch`, `DriverUnload`, `StartIo`, `AddDevice`, framework-specific
+  callback tables and callback-registration APIs remain outside the
+  `MajorFunction` survey. They must not be inferred complete from this tool.
 - `database` arguments elsewhere in this repo mean session IDs, not paths;
   these tools always operate on the currently open database.
 
@@ -95,7 +104,8 @@ reviewed entries instead.
   ELF fixtures (non-driver behavior only).
 - Positive driver paths: owned fixture `tests/driver_fixture.sys` (built
   from `tests/driver_fixture.c`, never executed) verified on licensed
-  IDA 9.3 headless: three direct dispatchers, two IOCTLs, one direct FSCTL,
+  IDA 9.3 headless: five direct dispatchers across the MajorFunction table,
+  two switch IOCTLs, two exact parallel-table IOCTLs, one direct FSCTL,
   later and duplicate-code heuristic leads, unrelated-slot rejection, pool tag,
   device/symlink strings, world-SDDL ACL lead, thunk-aware flagging and
   call chain, and the planted heuristic leads. The separate

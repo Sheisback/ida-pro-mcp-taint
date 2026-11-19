@@ -108,6 +108,10 @@ def test_sink_bump_without_sinks_is_identity():
 
 
 def test_major_function_slot_offsets_derived():
+    assert set(dt.IRP_MJ_KINDS) == set(range(0x1C))
+    assert dt.IRP_MJ_KINDS[0x00] == "create"
+    assert dt.IRP_MJ_KINDS[0x03] == "read"
+    assert dt.IRP_MJ_KINDS[0x1B] == "pnp"
     assert dt.major_function_slot_offset(8, dt.IRP_MJ_DEVICE_CONTROL) == 0xE0
     assert dt.major_function_slot_offset(8, dt.IRP_MJ_INTERNAL_DEVICE_CONTROL) == 0xE8
     assert dt.major_function_slot_offset(4, dt.IRP_MJ_DEVICE_CONTROL) == 0x70

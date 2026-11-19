@@ -564,6 +564,36 @@ SDDL_PREFIXES: tuple[str, ...] = ("D:", "O:", "G:", "S:")
 IRP_MJ_FILE_SYSTEM_CONTROL = 0x0D
 IRP_MJ_DEVICE_CONTROL = 0x0E
 IRP_MJ_INTERNAL_DEVICE_CONTROL = 0x0F
+IRP_MJ_KINDS: dict[int, str] = {
+    0x00: "create",
+    0x01: "create_named_pipe",
+    0x02: "close",
+    0x03: "read",
+    0x04: "write",
+    0x05: "query_information",
+    0x06: "set_information",
+    0x07: "query_ea",
+    0x08: "set_ea",
+    0x09: "flush_buffers",
+    0x0A: "query_volume_information",
+    0x0B: "set_volume_information",
+    0x0C: "directory_control",
+    IRP_MJ_FILE_SYSTEM_CONTROL: "file_system_control",
+    IRP_MJ_DEVICE_CONTROL: "device_control",
+    IRP_MJ_INTERNAL_DEVICE_CONTROL: "internal_device_control",
+    0x10: "shutdown",
+    0x11: "lock_control",
+    0x12: "cleanup",
+    0x13: "create_mailslot",
+    0x14: "query_security",
+    0x15: "set_security",
+    0x16: "power",
+    0x17: "system_control",
+    0x18: "device_change",
+    0x19: "query_quota",
+    0x1A: "set_quota",
+    0x1B: "pnp",
+}
 DRIVER_TRIGGER_ABI_CONTRACT_ID = "aasystem.windows-driver-trigger-abi.v1"
 
 

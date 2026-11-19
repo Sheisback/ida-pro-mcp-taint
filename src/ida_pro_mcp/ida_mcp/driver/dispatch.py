@@ -45,6 +45,24 @@ from .selector_structure import (
 _X64_IOSTACK_OFFSET = 0xB8
 #: x64 IO_STACK_LOCATION.Parameters.{DeviceIoControl,FileSystemControl} code offset.
 _X64_IOCTLCODE_OFFSET = 0x18
+#: Windows-x64 registers whose values a callee must preserve.
+_X64_NONVOLATILE_REGISTERS = frozenset({
+    "rbx", "rbp", "rsi", "rdi", "rsp", "r12", "r13", "r14", "r15",
+})
+
+
+def _x64_register_survives_call(reg: int) -> bool:
+    """Return whether an IDA register ID is nonvolatile under Windows x64."""
+    try:
+        import ida_idp
+
+        name = ida_idp.get_reg_name(reg, 8) or ""
+    except Exception:
+        try:
+            name = idaapi.get_reg_name(reg, 8) or ""
+        except Exception:
+            return False
+    return name.lower() in _X64_NONVOLATILE_REGISTERS
 
 
 def populate(ctx: DriverContext) -> DriverContext:
@@ -336,8 +354,10 @@ def references_iocontrolcode(func_ea: int, is_64bit: bool) -> tuple[bool, str]:
                     if next_address:
                         iostack_address_regs.add(dest_reg)
                 if mnem == "call":
-                    iostack_regs.clear()
-                    iostack_address_regs.clear()
+                    iostack_regs = {reg for reg in iostack_regs
+                        if _x64_register_survives_call(reg)}
+                    iostack_address_regs = {reg for reg in iostack_address_regs
+                        if _x64_register_survives_call(reg)}
             try:
                 line = idc.GetDisasm(item_ea) or ""
             except Exception:
@@ -460,15 +480,11 @@ def discover_dispatchers(ctx: DriverContext) -> list[dict]:
     """
     ptr_size = 8 if ctx.is_64bit else 4
     try:
-        slot_fsc = core.major_function_slot_offset(ptr_size,
-            core.IRP_MJ_FILE_SYSTEM_CONTROL)
-        slot_dc = core.major_function_slot_offset(ptr_size, core.IRP_MJ_DEVICE_CONTROL)
-        slot_idc = core.major_function_slot_offset(ptr_size, core.IRP_MJ_INTERNAL_DEVICE_CONTROL)
+        slots = {core.major_function_slot_offset(ptr_size, index): kind
+            for index, kind in core.IRP_MJ_KINDS.items()}
     except ValueError:
         ctx.limitations.append("unsupported pointer width for slot derivation")
         return []
-    slots = {slot_fsc: "file_system_control", slot_dc: "device_control",
-        slot_idc: "internal_device_control"}
     found: dict[tuple[int, int], dict] = {}
     entry_reachability: dict[int, bool] = {}
     typed_leads: dict[int, set[tuple[int, int]]] = {}

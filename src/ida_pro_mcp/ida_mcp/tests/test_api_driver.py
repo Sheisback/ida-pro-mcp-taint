@@ -241,6 +241,14 @@ def test_driver_fixture_survey_finds_dispatchers():
 
 
 @test(binary="driver_fixture.sys")
+def test_driver_survey_covers_non_ioctl_major_function_slots():
+    result = driver_survey()
+    by_kind = {item["kind"]: item for item in result["dispatchers"]}
+    assert by_kind["create"]["name"] == "DispatchCreate"
+    assert by_kind["read"]["name"] == "DispatchRead"
+
+
+@test(binary="driver_fixture.sys")
 def test_driver_survey_excludes_constant_stores_at_dispatch_slot_offsets():
     """Unrelated data at the same displacement must not become a dispatcher."""
     result = driver_survey()
@@ -267,6 +275,40 @@ def test_control_code_scan_follows_irp_stack_address_temporary():
     from ..driver.dispatch import references_iocontrolcode
     ea = idc.get_name_ea_simple("StackAliasControlCode")
     assert references_iocontrolcode(ea, True)[0] is True
+
+
+@test(binary="driver_fixture.sys")
+def test_control_code_scan_preserves_nonvolatile_stack_alias_across_call():
+    import idc
+    from ..driver.dispatch import references_iocontrolcode
+    ea = idc.get_name_ea_simple("StackAliasAcrossCallControlCode")
+    assert references_iocontrolcode(ea, True)[0] is True
+
+
+@test(binary="driver_fixture.sys")
+def test_driver_find_ioctls_recovers_named_parallel_validation_table():
+    import idaapi
+    import idautils
+    import idc
+    ea = idc.get_name_ea_simple("ParallelTableDeviceControl")
+    assert ea != idaapi.BADADDR, [idc.get_func_name(item) for item in idautils.Functions()]
+    result = driver_find_ioctls(
+        dispatchers=[hex(ea)], include_fallback=False)
+    found = {item["code_int"]: item for item in result["candidates"]}
+    assert {0x220040, 0x220045} <= set(found), result
+    assert found[0x220040]["method_detail"] == "validated_table"
+    assert found[0x220045]["method_detail"] == "validated_table"
+
+
+@test(binary="driver_fixture.sys")
+def test_driver_find_ioctls_rejects_unvalidated_named_table():
+    import idaapi
+    import idc
+    ea = idc.get_name_ea_simple("UnrelatedIoctlTableReader")
+    assert ea != idaapi.BADADDR
+    result = driver_find_ioctls(dispatchers=[hex(ea)], include_fallback=False)
+    assert all(item["method_detail"] != "validated_table"
+               for item in result["candidates"])
 
 
 @test(binary="driver_fixture.sys")

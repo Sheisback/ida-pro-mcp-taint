@@ -11,7 +11,10 @@ weigh ctree/switch evidence above raw immediates.
 
 from __future__ import annotations
 
+import re
+
 import idaapi
+import idautils
 import idc
 
 from ida_pro_mcp.flow_core import driver_triage as core
@@ -161,6 +164,156 @@ def _collect_switch_cases(func_ea: int) -> tuple[list[tuple[int, int]], str]:
         for value in _normalize_switch_cases(result, defjump):
             found.append((item_ea, value))
     return found, "ida switch tables"
+
+
+def _collect_validated_ioctl_table(func_ea: int, is_64bit: bool) -> list[tuple[int, int, dict]]:
+    """Read exact named IOCTL values from an input-validation table.
+
+    Some dispatchers derive a function-code index, compare the complete input
+    code against a parallel PDB-named table, and then load a handler from a
+    second table. Only an exact table item with a nearby scaled ``cmp`` rooted
+    at the table address is admitted; a named but merely referenced table is
+    not selector evidence.
+    """
+    corroborated, _reason = references_iocontrolcode(func_ea, is_64bit)
+    if not corroborated:
+        return []
+    items = list(iter_func_items(func_ea))
+    positions = {ea: index for index, ea in enumerate(items)}
+    found: list[tuple[int, int, dict]] = []
+    seen_tables: set[int] = set()
+    for item_ea in items:
+        try:
+            refs = list(idautils.DataRefsFrom(item_ea))
+        except Exception:
+            continue
+        for table_ea in refs:
+            if table_ea in seen_tables:
+                continue
+            try:
+                table_name = idc.get_name(table_ea) or ""
+            except Exception:
+                table_name = ""
+            if "ioctl" not in table_name.lower():
+                continue
+            try:
+                mnem = (idc.print_insn_mnem(item_ea) or "").lower()
+                anchor = (idc.print_operand(item_ea, 0) or "").lower()
+            except Exception:
+                continue
+            comparison_ea = None
+            for cursor in items[positions[item_ea]:]:
+                try:
+                    cursor_mnem = (idc.print_insn_mnem(cursor) or "").lower()
+                    line = (idc.GetDisasm(cursor) or "").lower()
+                except Exception:
+                    continue
+                if cursor != item_ea and cursor_mnem == "call":
+                    break
+                scaled = "*4" in line or "* 4" in line
+                if cursor_mnem == "cmp" and scaled and (table_name.lower() in line
+                        or mnem == "lea" and anchor and anchor in line):
+                    comparison_ea = cursor
+                    break
+            if comparison_ea is None:
+                continue
+            try:
+                import ida_bytes
+
+                item_size_bytes = int(ida_bytes.get_item_size(table_ea))
+            except Exception:
+                try:
+                    item_size_bytes = int(idc.get_item_size(table_ea))
+                except Exception:
+                    item_size_bytes = 0
+            entry_count = _validated_table_entry_count(
+                items, comparison_ea, item_size_bytes)
+            if entry_count is None:
+                continue
+            values = []
+            try:
+                import ida_bytes
+
+                addresses = [table_ea + index * 4 for index in range(entry_count)]
+                if not all(ida_bytes.is_loaded(address) for address in addresses):
+                    continue
+                values = [int(ida_bytes.get_dword(address)) & 0xFFFFFFFF
+                    for address in addresses]
+            except Exception:
+                continue
+            seen_tables.add(table_ea)
+            binding = {"table_addr": hex(table_ea), "table_name": table_name,
+                "table_size_bytes": entry_count * 4, "comparison_ea": hex(comparison_ea)}
+            found.extend((comparison_ea, value, {**binding, "table_index": index})
+                for index, value in enumerate(values))
+    return found
+
+
+def _validated_table_entry_count(items: list[int], comparison_ea: int,
+        item_size_bytes: int) -> int | None:
+    """Bind a scaled table comparison to its exact dominating index bound."""
+    try:
+        line = (idc.GetDisasm(comparison_ea) or "").lower()
+    except Exception:
+        return None
+    match = re.search(r"\b([a-z][a-z0-9]*)\s*\*\s*4\b", line)
+    if match is None:
+        return None
+    index_family = _x86_register_family(match.group(1))
+    if index_family is None:
+        return None
+    try:
+        position = items.index(comparison_ea)
+    except ValueError:
+        return None
+    bounded_count = None
+    for cursor_position in range(position - 1, -1, -1):
+        cursor = items[cursor_position]
+        try:
+            mnem = (idc.print_insn_mnem(cursor) or "").lower()
+        except Exception:
+            continue
+        if mnem == "call":
+            break
+        if mnem != "cmp":
+            continue
+        try:
+            compared = _x86_register_family(idc.print_operand(cursor, 0) or "")
+            insn = idaapi.insn_t()
+            if (compared != index_family or idaapi.decode_insn(insn, cursor) <= 0
+                    or len(insn.ops) < 2 or insn.ops[1].type != idaapi.o_imm):
+                continue
+            bound = int(insn.ops[1].value)
+            next_ea = items[cursor_position + 1]
+            branch = (idc.print_insn_mnem(next_ea) or "").lower()
+        except Exception:
+            continue
+        if branch in {"jnb", "jae", "jge"} and bound > 0:
+            bounded_count = bound
+            break
+        if branch in {"ja", "jg"} and bound >= 0:
+            bounded_count = bound + 1
+            break
+    item_count = (item_size_bytes // 4
+        if item_size_bytes >= 4 and item_size_bytes % 4 == 0 else 0)
+    count = max(item_count, bounded_count or 0)
+    return count if count > 0 else None
+
+
+def _x86_register_family(value: str) -> str | None:
+    name = value.strip().lower()
+    aliases = {
+        "rax": "a", "eax": "a", "ax": "a", "al": "a",
+        "rbx": "b", "ebx": "b", "bx": "b", "bl": "b",
+        "rcx": "c", "ecx": "c", "cx": "c", "cl": "c",
+        "rdx": "d", "edx": "d", "dx": "d", "dl": "d",
+        "rsi": "si", "esi": "si", "si": "si", "sil": "si",
+        "rdi": "di", "edi": "di", "di": "di", "dil": "di",
+    }
+    if name in aliases:
+        return aliases[name]
+    match = re.fullmatch(r"r(1[0-5]|[8-9])(?:d|w|b)?", name)
+    return f"r{match.group(1)}" if match else None
 
 
 def _collect_ctree_consts(func_ea: int, expected_pointer_width: int) -> tuple[
@@ -366,6 +519,13 @@ def scan_dispatchers(
                 ntstatus_extra, "high",
             ):
                 structured = True
+        for item_ea, value, table_binding in _collect_validated_ioctl_table(
+                func_ea, ctx.is_64bit):
+            if _emit(
+                ctx, merged, stats, value, "validated_table", name, func_ea, item_ea, end,
+                ntstatus_extra, "high", table_binding=table_binding,
+            ):
+                structured = True
         if structured:
             continue
         corroborated, why = references_iocontrolcode(func_ea, ctx.is_64bit)
@@ -404,6 +564,7 @@ def _emit(
     selector_binding: dict | None = None,
     selector_producer: dict | None = None,
     handler_ea: int | None = None,
+    table_binding: dict | None = None,
 ) -> bool:
     """Validate one raw candidate and merge it. Returns True when kept."""
     ok, reason = core.is_plausible_ioctl(value, ntstatus_extra)
@@ -435,6 +596,8 @@ def _emit(
     if handler_ea is not None:
         record["handler_function"] = func_name(handler_ea) or hex(handler_ea)
         record["handler_function_addr"] = hex(handler_ea)
+    if table_binding is not None:
+        record["table_binding"] = table_binding
     key = (func_ea, value)
     prior = merged.get(key)
     if prior is None or collection_method_rank(method) > collection_method_rank(prior["method_detail"]):
@@ -444,7 +607,8 @@ def _emit(
 
 
 def collection_method_rank(method: str) -> int:
-    return {"ctree_case": 4, "switch_table": 3, "ctree_cmp": 2, "immediate": 1}.get(method, 0)
+    return {"ctree_case": 4, "validated_table": 4, "switch_table": 3,
+        "ctree_cmp": 2, "immediate": 1}.get(method, 0)
 
 
 def scan_iocontrolcode_fallback(
