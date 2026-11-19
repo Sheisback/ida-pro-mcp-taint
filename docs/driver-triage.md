@@ -108,7 +108,7 @@ reviewed entries instead.
   from `tests/driver_fixture.c`, never executed) verified on licensed
   IDA 9.3 headless: five direct dispatchers across the MajorFunction table,
   two switch IOCTLs, two exact parallel-table IOCTLs, one direct FSCTL,
-  a bound-free named-table rejection, later and duplicate-code heuristic leads,
+  bound-free and non-dominating named-table rejections, later and duplicate-code heuristic leads,
   unrelated-slot rejection, pool tag,
   device/symlink strings, world-SDDL ACL lead, thunk-aware flagging and
   call chain, and the planted heuristic leads. The separate

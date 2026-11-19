@@ -44,6 +44,10 @@ EXPORT const ULONG AfdStyleIoctlTable[0x12] = {
   [0x11] = IOCTL_TABLE_B,
 };
 EXPORT const ULONG UnboundedIoctlTable[2] = { IOCTL_TABLE_A, IOCTL_TABLE_B };
+EXPORT const ULONG ConditionalIoctlTable[0x12] = {
+  [0x10] = IOCTL_TABLE_A,
+  [0x11] = IOCTL_TABLE_B,
+};
 EXPORT volatile ULONG UnrelatedIoctlMetadata[2] = { IOCTL_TABLE_A, IOCTL_TABLE_B };
 
 EXPORT NOINLINE NTSTATUS NTAPI HandleBuffered(PDEVICE_OBJECT device, PIRP irp) {
@@ -177,6 +181,30 @@ EXPORT NOINLINE NTSTATUS NTAPI UnboundedTableDeviceControl(PIRP irp) {
   ULONG index = (code >> 2) & 0xFFF;
   return UnboundedIoctlTable[index] == code
     ? STATUS_SUCCESS : STATUS_INVALID_DEVICE_REQUEST;
+}
+
+/* A bound on only one incoming path does not dominate the table lookup. */
+EXPORT NOINLINE NTSTATUS NTAPI ConditionalBoundTableDeviceControl(PIRP irp) {
+  PIO_STACK_LOCATION stack = irp->Tail.Overlay.CurrentStackLocation;
+  ULONG code = stack->Parameters.DeviceIoControl.IoControlCode;
+  ULONG_PTR index = (code >> 2) & 0xFFF;
+  LONG gate = sink_state;
+  ULONG matched;
+  __asm__ volatile("testl %k3, %k3\n\t"
+                   "jz 1f\n\t"
+                   "cmpl $0x12, %k2\n\t"
+                   "jnb 2f\n\t"
+                   "1:\n\t"
+                   "cmpl %k1, (%4,%2,4)\n\t"
+                   "sete %b0\n\t"
+                   "jmp 3f\n\t"
+                   "2:\n\t"
+                   "xorl %k0, %k0\n\t"
+                   "3:"
+                   : "=&q"(matched)
+                   : "r"(code), "r"(index), "r"(gate), "r"(ConditionalIoctlTable)
+                   : "cc", "memory");
+  return matched ? STATUS_SUCCESS : STATUS_INVALID_DEVICE_REQUEST;
 }
 
 /* Represents an unregistered internal handler: a static lead, not route proof. */

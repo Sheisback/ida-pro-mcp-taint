@@ -329,6 +329,17 @@ def test_driver_find_ioctls_requires_dominating_table_bound():
 
 
 @test(binary="driver_fixture.sys")
+def test_driver_find_ioctls_rejects_non_dominating_table_bound():
+    import idaapi
+    import idc
+    ea = idc.get_name_ea_simple("ConditionalBoundTableDeviceControl")
+    assert ea != idaapi.BADADDR
+    result = driver_find_ioctls(dispatchers=[hex(ea)], include_fallback=False)
+    assert all(item["method_detail"] != "validated_table"
+               for item in result["candidates"])
+
+
+@test(binary="driver_fixture.sys")
 def test_control_code_fallback_inspects_later_functions():
     from ..api_driver import _fresh_context
     from ..driver.ioctl_scan import scan_iocontrolcode_fallback
