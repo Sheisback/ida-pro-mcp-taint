@@ -1,7 +1,9 @@
 """Worker self-shutdown bookkeeping.
 
 A spawned idalib worker exits cleanly when no JSON-RPC request has hit its
-dispatcher for `idle_ttl_sec` seconds. There is no per-supervisor refcount;
+dispatcher for `idle_ttl_sec` seconds. An exact zero disables idle expiry so
+an external Host can retain the worker until explicit terminal cleanup.
+There is no per-supervisor refcount;
 every callable client keeps the worker alive simply by issuing requests
 through `idb_open`, `idb_list`, or any forwarded tool.
 
@@ -75,7 +77,11 @@ class WorkerLifecycle:
 
     def set_idle_ttl(self, user_ttl_sec: float, load_time_sec: float = 0.0) -> None:
         with self._lock:
-            self.idle_ttl_sec = (
+            # An exact zero is the explicit long-lived contract. The Host owns
+            # terminal cleanup, so load time must not silently turn it back into
+            # a finite analytical-progress deadline. Other undersized values
+            # retain the baseline clamp used by ordinary standalone sessions.
+            self.idle_ttl_sec = 0.0 if user_ttl_sec == 0 else (
                 max(self.MIN_IDLE_TTL_SEC, user_ttl_sec) + max(0.0, load_time_sec)
             )
 

@@ -77,8 +77,6 @@ def test_set_idle_ttl_uses_request_when_above_min():
 
 def test_set_idle_ttl_clamps_to_min():
     lc = WorkerLifecycle(idle_ttl_sec=1000.0)
-    lc.set_idle_ttl(0)
-    assert lc.idle_ttl_sec == WorkerLifecycle.MIN_IDLE_TTL_SEC
     lc.set_idle_ttl(-50.0)
     assert lc.idle_ttl_sec == WorkerLifecycle.MIN_IDLE_TTL_SEC
     lc.set_idle_ttl(3.0)
@@ -93,7 +91,7 @@ def test_set_idle_ttl_adds_load_time():
 
 def test_set_idle_ttl_clamps_user_then_adds_load_time():
     lc = WorkerLifecycle(idle_ttl_sec=10.0)
-    lc.set_idle_ttl(0.0, load_time_sec=120.0)
+    lc.set_idle_ttl(3.0, load_time_sec=120.0)
     assert lc.idle_ttl_sec == WorkerLifecycle.MIN_IDLE_TTL_SEC + 120.0
 
 
@@ -105,6 +103,14 @@ def test_set_idle_ttl_ignores_negative_load_time():
 
 def test_zero_idle_ttl_never_self_exits():
     lc = WorkerLifecycle(idle_ttl_sec=0.0, poll_interval_sec=0.05)
+    time.sleep(0.10)
+    assert lc.check_shutdown_reason() is None
+
+
+def test_set_zero_idle_ttl_disables_expiry_even_after_load_time():
+    lc = WorkerLifecycle(idle_ttl_sec=10.0, poll_interval_sec=0.05)
+    lc.set_idle_ttl(0.0, load_time_sec=120.0)
+    assert lc.idle_ttl_sec == 0.0
     time.sleep(0.10)
     assert lc.check_shutdown_reason() is None
 
