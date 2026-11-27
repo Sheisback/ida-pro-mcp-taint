@@ -62,6 +62,7 @@ prefix. This skill supplies instructions, not an MCP connection or IDA license.
 | Does this Store write this function address? | `flow_check_store`; conditional Store-site evidence, not final registration, callback execution, or proof of reaching the Store |
 | What call effects were composed? | `flow_get_derived_call_evidence` / `flow_get_call_compositions`; reviewed summaries are exact-identity scoped, not general library recognition |
 | Can this CFG prefix be reached? | `flow_check_path`; entry-rooted blocks and exact metadata bindings, no caller-written equations; the final block is reached, not executed |
+| Can a Host independently test whole-sink CFG reachability? | `flow_get_cfg_witness`; page the exact SSA artifact to EOF and preserve completeness, exception-flow, alternate-entry, native-RVA, and analyzer-generation fields; the tool emits no safety verdict |
 | Can the optional engine refine that path? | `flow_refine_path_proof` with explicit `symbolic_angr: true`; x64/v1 only, configured sidecar, unknown preserved |
 | Can I quote a Load/Store pair's memory evidence? | `flow_refine_memory_proof`; evidence-only replay, no alias-narrowing engine |
 

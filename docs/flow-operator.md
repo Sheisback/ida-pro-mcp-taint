@@ -625,6 +625,23 @@ externalization only: traversal still visits every selected
 relation and preserves unresolved/opaque status. Do not treat absent inline
 `edges` as zero edges or as evidence of a safe path.
 
+## Complete CFG witness pages
+
+`flow_get_cfg_witness` pages one completed snapshot's SSA artifact as a
+data-only native-instruction CFG witness. Every block carries its stable block
+index/identity, unique native RVAs, normal successors and an explicit unknown
+successor flag. Shared metadata binds the snapshot, graph, binary, profile,
+ruleset, summaries, function name/start, analyzer generation, complete block
+count, exception-flow status and alternate entries. Consumers must page until
+`next_cursor` is null and verify the complete `0..block_count-1` set.
+
+The tool deliberately fails closed. An extraction diagnostic, ambiguous native
+instruction owner, external alternate entry, or any IDA try block prevents a
+complete contradiction claim. The initial exporter does not invent exception
+edges or external-call semantics. It executes no target and emits
+`no_auto_vulnerability_verdict: true`; only a separate Host policy may decide
+whether the exact witness contradicts a pre-existing candidate premise.
+
 ## Program-derived bounded path checks
 
 `flow_check_path` is the sole registered path-proof tool. Submit with

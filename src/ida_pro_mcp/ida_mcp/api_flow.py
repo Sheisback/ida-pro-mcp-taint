@@ -807,6 +807,22 @@ def flow_get_cfg(
 
 @tool
 @_flow_api
+def flow_get_cfg_witness(
+    artifact_id: str, cursor: str | None = None, limit: FlowPageLimit = 50
+) -> FlowArtifactPage | FlowError:
+    """Page the complete native-instruction CFG witness for one SSA snapshot.
+
+    The immutable page set binds native RVAs, normal CFG successors, alternate
+    entries, extraction completeness, and whether the function has no IDA
+    try-block gap. It is static evidence only and never an automatic
+    vulnerability or safety verdict. A false completeness field, alternate
+    entry, or exception-flow gap must remain Unknown in the consumer.
+    """
+    return _service().cfg_witness_page(artifact_id, cursor, limit)
+
+
+@tool
+@_flow_api
 def flow_get_graph(
     artifact_id: str,
     cursor: str | None = None,

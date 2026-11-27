@@ -46,6 +46,7 @@ once with a fresh key and explicit windows, then reassemble for later queries:
 
 ```json
 {"name":"flow_get_cfg","arguments":{"database":"<session.session_id>","artifact_id":"<snapshot.result.ssa_artifact>","limit":50}}
+{"name":"flow_get_cfg_witness","arguments":{"database":"<session.session_id>","artifact_id":"<snapshot.result.ssa_artifact>","limit":50}}
 ```
 
 ## Seed a value, or explicitly seed pointee bytes

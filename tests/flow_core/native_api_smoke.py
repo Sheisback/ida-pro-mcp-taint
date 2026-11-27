@@ -179,6 +179,27 @@ def main(build_dir, output):
 
             nodes = pages("flow_get_function_ssa", result["ssa_artifact"])
             cfg = pages("flow_get_cfg", result["ssa_artifact"])
+            witness_page = call(
+                "flow_get_cfg_witness", artifact_id=result["ssa_artifact"], limit=5
+            )
+            cfg_witness = list(witness_page["items"])
+            witness_metadata = witness_page["metadata"]
+            while witness_page["next_cursor"]:
+                witness_page = call(
+                    "flow_get_cfg_witness",
+                    artifact_id=result["ssa_artifact"],
+                    cursor=witness_page["next_cursor"],
+                    limit=5,
+                )
+                assert witness_page["metadata"] == witness_metadata
+                cfg_witness.extend(witness_page["items"])
+            assert witness_metadata["schema_version"] == "flow-cfg-witness/1"
+            assert witness_metadata["block_count"] == len(cfg_witness)
+            assert [block["block_index"] for block in cfg_witness] == list(
+                range(len(cfg_witness))
+            )
+            assert witness_metadata["target_executed"] is False
+            assert witness_metadata["no_auto_vulnerability_verdict"] is True
             graph_first = call(
                 "flow_get_graph", artifact_id=result["graph_artifact"], limit=5
             )
@@ -463,6 +484,10 @@ def main(build_dir, output):
                     "nodes": len(nodes),
                     "edges": len(edges),
                     "cfg_blocks": len(cfg),
+                    "cfg_witness_blocks": len(cfg_witness),
+                    "cfg_witness_exception_flow_complete": witness_metadata[
+                        "exception_flow_complete"
+                    ],
                     "evidence": len(evidence),
                     "native_evidence": len(native_evidence),
                     "calls": calls,

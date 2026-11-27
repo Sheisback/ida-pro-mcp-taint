@@ -22,6 +22,7 @@ from ida_pro_mcp.flow_core.wire_contracts import validate_model_wire_v2, wire_v2
 from ida_pro_mcp.flow_core.analysis import BitSeed, Seed, canonical_seed_order
 from ida_pro_mcp.flow_core.build_identity import BUILD_ID
 from ida_pro_mcp.flow_core.call_composition import CallCompositionResult
+from ida_pro_mcp.flow_core.cfg_witness import build_cfg_witness
 from ida_pro_mcp.flow_core.constraints import ConstraintBindings, ConstraintQuery
 from ida_pro_mcp.flow_core.derived_calls import (
     DerivedGlobalWriteEffect,
@@ -1799,6 +1800,84 @@ def page(
     if graph.snapshot.snapshot_id.startswith("snapshot-v2:"):
         meta["wire_version"] = "flow-wire/2"
     return artifact_page(artifact_id, section, items, meta, cursor, limit)
+
+
+def cfg_witness_page(artifact_id, cursor=None, limit=50):
+    engine = get_runtime()
+    raw = engine.store.artifact(artifact_id)
+    program = cast(SSAProgram, SSAProgram.from_data(raw))
+    graph = program.graph
+    require(isinstance(graph.snapshot, Snapshot),
+            "public_runtime_requires_normal_snapshot")
+    image_base, exception_complete, alternate_entries, function_name = _cfg_witness_ida_context(
+        program
+    )
+    witness = build_cfg_witness(
+        program,
+        image_base=image_base,
+        exception_flow_complete=exception_complete,
+        alternate_entry_blocks=alternate_entries,
+    )
+    metadata = {key: value for key, value in witness.items() if key != "blocks"}
+    metadata["function_name"] = function_name
+    if graph.snapshot.snapshot_id.startswith("snapshot-v2:"):
+        metadata["wire_version"] = "flow-wire/2"
+    return artifact_page(
+        artifact_id,
+        "cfg_witness",
+        witness["blocks"],
+        metadata,
+        cursor,
+        limit,
+    )
+
+
+@idasync
+def _cfg_witness_ida_context(program):
+    import ida_funcs  # pyright: ignore[reportMissingImports]
+    import ida_nalt  # pyright: ignore[reportMissingImports]
+    import ida_range  # pyright: ignore[reportMissingImports]
+    import ida_tryblks  # pyright: ignore[reportMissingImports]
+    import idautils  # pyright: ignore[reportMissingImports]
+
+    image_base = ida_nalt.get_imagebase()
+    require(type(image_base) is int and image_base >= 0,
+            "cfg_witness_image_base_unavailable")
+    native_by_block = {
+        block.index: sorted({
+            ea
+            for instruction in block.instructions
+            for ea in instruction.source_eas
+        })
+        for block in program.graph.snapshot.function.blocks
+    }
+    native = [ea for values in native_by_block.values() for ea in values]
+    require(native, "cfg_witness_native_instructions_unavailable")
+    function = ida_funcs.get_func(min(native))
+    require(function is not None, "cfg_witness_function_unavailable")
+    function_name = ida_funcs.get_func_name(function.start_ea)
+    require(type(function_name) is str and bool(function_name),
+            "cfg_witness_function_name_unavailable")
+    try_blocks = ida_tryblks.tryblks_t()
+    try_count = ida_tryblks.get_tryblks(
+        try_blocks, ida_range.range_t(function.start_ea, function.end_ea)
+    )
+    exception_complete = try_count == 0
+    alternate_entries = []
+    for block_index, addresses in native_by_block.items():
+        if block_index == program.graph.snapshot.function.entry_block or not addresses:
+            continue
+        external = False
+        for ea in addresses:
+            for source in idautils.CodeRefsTo(ea, False):
+                if not ida_funcs.func_contains(function, source):
+                    external = True
+                    break
+            if external:
+                break
+        if external:
+            alternate_entries.append(block_index)
+    return image_base, exception_complete, tuple(sorted(alternate_entries)), function_name
 
 
 def _chunk_large_items(section, items, *, wire_version="flow-wire/1"):
